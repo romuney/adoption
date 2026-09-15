@@ -557,6 +557,17 @@ button{font-family:inherit}
 .btn.ghost:hover{background:var(--blue-bg)}
 .btn.xs{padding:3px var(--s3);min-width:24px;font-size:11px}
 
+/* ================================ Воронка ================================
+   Рисуется своим SVG (см. UI.funnelSvg), а не библиотекой: бар растёт от
+   центра, поэтому и анимация — от центра. */
+.fnsvg{max-width:100%}
+.fn-g{cursor:help}
+.fn-bar{transform-box:fill-box;transform-origin:50% 50%;
+  animation:fn-grow .42s cubic-bezier(.22,.61,.36,1) both}
+@keyframes fn-grow{from{transform:scaleX(.02)}to{transform:none}}
+.panel-b.flexcol .chart.fill>.fnsvg{margin:auto}
+@media (prefers-reduced-motion:reduce){.fn-bar{animation:none}}
+
 /* ============================== Графики ECharts ========================== */
 .chart{width:100%}
 .chart.h-tall{height:330px}

@@ -426,6 +426,89 @@
     return h;
   }
 
+  /* --------------------------- Воронка ------------------------------------
+     Устройство перенесено из TeamPulse (screens/hiring.js → draw.js,
+     drawFunnel): центрированные бары сверху вниз, ширина ровно
+     пропорциональна значению, слева от бара — само число, справа —
+     конверсия с предыдущего этапа, между барами — две диагонали от нижних
+     углов к верхним углам следующего. Диагонали и делают из столбиков
+     воронку, не заставляя саму марку врать.
+
+     Что это чинит по сравнению с обычной funnel-серией: у той есть
+     минимальный размер ступени, поэтому этап с нулём рисуется заметной
+     плашкой, а ширина ступени зависит ещё и от длины названия, если
+     подпись положить внутрь. Здесь ноль — это пустое место, а название
+     стоит НАД баром и на геометрию не влияет.
+
+     Рисуем сами, а не библиотекой: SVG на полсотни строк точнее описывает
+     эту фигуру, чем настройка чужого сборщика, и переносится дословно.
+     ==================================================================== */
+  const FUNNEL_COLORS = ['#9ad4ee', '#64bde4', '#1b93c9', '#0a6791', '#08506f'];
+
+  function funnelSvg(steps, w, h, opt) {
+    const o = opt || {};
+    const n = steps.length;
+    if (!n || !w) return '';
+    const H = Math.max(h || 0, n * 74);
+    const rowH = (H - 12) / n;
+    /* Масштаб — от ПЕРВОГО этапа, а не от «красивого» максимума: первый
+       этап воронки это и есть 100%, его бар обязан занимать всю ширину. */
+    const max = steps[0].value || 1;
+    const cx = w / 2;
+    const sideW = 64;                       // колонки под цифры слева и справа
+    const maxBar = Math.max(60, w - sideW * 2 - 20);
+
+    let body = '';
+    steps.forEach((st, i) => {
+      const y = i * rowH + 16;
+      const bh = Math.max(14, rowH - 26);
+      const bw = (st.value / max) * maxBar;
+      const prev = i > 0 ? steps[i - 1].value : null;
+      const conv = prev != null ? (prev ? st.value / prev * 100 : 0) : null;
+      const color = FUNNEL_COLORS[Math.min(i, FUNNEL_COLORS.length - 1)];
+
+      const t = tip({
+        title: st.name,
+        rows: [{ label: 'Человек', value: nf(st.value), color }].concat(
+          conv != null ? [{ label: 'С предыдущего этапа', value: pct(conv, 0) }] : [],
+          i > 0 ? [{ label: 'От первого этапа', value: pct(max ? st.value / max * 100 : 0, 0), dash: true, color: '#c7c8cc' }] : []),
+        note: st.note || null,
+      });
+
+      body += '<text x="' + r1(cx) + '" y="' + r1(y - 5) + '" font-size="11" font-weight="600"' +
+        ' text-anchor="middle" fill="#8a909c">' + esc(st.name) + '</text>';
+      body += '<g class="fn-g"' + t + '>' +
+        '<rect x="0" y="' + r1(y - 14) + '" width="' + r1(w) + '" height="' + r1(bh + 18) + '" fill="transparent"/>' +
+        /* Ноль не рисуем вовсе: любая «минимальная» плашка означала бы,
+           что на этапе кто-то есть. */
+        (bw > 0.5
+          ? '<rect class="fn-bar" x="' + r1(cx - bw / 2) + '" y="' + r1(y) + '" width="' + r1(bw) +
+            '" height="' + r1(bh) + '" rx="3" fill="' + color + '"' +
+            ' style="animation-delay:' + (i * 45) + 'ms"/>'
+          : '<line x1="' + r1(cx - 9) + '" y1="' + r1(y + bh / 2) + '" x2="' + r1(cx + 9) +
+            '" y2="' + r1(y + bh / 2) + '" stroke="#d4d7de" stroke-width="2"/>') +
+        '</g>';
+      /* Значение слева, конверсия справа — так их не спутать между собой */
+      body += '<text x="' + r1(cx - bw / 2 - 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5"' +
+        ' font-weight="600" text-anchor="end" fill="#1f1f1f">' + esc(nf(st.value)) + '</text>';
+      if (conv != null) {
+        body += '<text x="' + r1(cx + bw / 2 + 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5"' +
+          ' font-weight="500" text-anchor="start" fill="#8a909c">' + pct(conv, 0) + '</text>';
+      }
+      if (i < n - 1) {
+        const nb = (steps[i + 1].value / max) * maxBar;
+        const ny = (i + 1) * rowH + 16;
+        body += '<path class="fn-link" d="M' + r1(cx - bw / 2) + ' ' + r1(y + bh) + 'L' + r1(cx - nb / 2) + ' ' + r1(ny) +
+          'M' + r1(cx + bw / 2) + ' ' + r1(y + bh) + 'L' + r1(cx + nb / 2) + ' ' + r1(ny) +
+          '" fill="none" stroke="#dfe3ea" stroke-width="1"/>';
+      }
+    });
+    return '<svg viewBox="0 0 ' + r1(w) + ' ' + r1(H) + '" width="' + r1(w) + '" height="' + r1(H) + '"' +
+      ' class="fnsvg" font-family="Inter, Helvetica, Arial, sans-serif" role="img"' +
+      ' aria-label="' + esc(o.label || 'Воронка') + '" style="display:block;overflow:visible">' + body + '</svg>';
+  }
+  const r1 = (v) => Math.round(v * 10) / 10;
+
   /* --------------------------- Наблюдения --------------------------------
      Не LLM: это отбор фактов по фиксированным порогам. Порог всегда назван
      в теле — чтобы читатель видел, почему факт сюда попал. */
@@ -484,7 +567,7 @@
     THIN, MINUS, esc, nf, pct, plural, compact, signed, days,
     fmtDate, axisLabel, bucketTitle, isoWeek, MONTHS, MONTHS_FULL,
     prevLabel, periodLabel, prevPeriodLabel,
-    tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, CT_BASES, observations, panel,
+    tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, CT_BASES, funnelSvg, observations, panel,
     chip, benchChip, searchBox,
   };
 })(window);

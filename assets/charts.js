@@ -280,84 +280,7 @@
   }
 
   /* ======================================================================
-     3. Воронка ЦА — БАРАМИ, а не трапециями.
-
-     Классическая воронка врёт формой: у неё есть minSize, поэтому этап с
-     нулём рисуется заметной плашкой, а ширина ступени зависит не только от
-     значения, но и от того, сколько букв в её названии. Здесь высота бара
-     ровно пропорциональна числу: ноль — это ноль. Соседние вершины
-     соединены ломаной, так что «сужение» по-прежнему читается как воронка.
-
-     Названия этапов стоят подписями оси под барами: внутрь марки их не
-     кладём — от длины подписи не должна зависеть геометрия.
-     ==================================================================== */
-  function funnelBars(steps, opt) {
-    const o = opt || {};
-    const max = steps[0].value || 1;
-    const n = steps.length;
-    const vals = steps.map((s) => s.value);
-    const bw = barWidth(o.width, n, 40);
-    /* Подписи этапов в две строки: «Открыли хотя бы раз» одной строкой
-       под баром не помещается ни при какой ширине панели. */
-    const wrap = (t) => {
-      const w = t.split(' ');
-      if (w.length < 3) return t;
-      const mid = Math.ceil(w.length / 2);
-      return w.slice(0, mid).join(' ') + '\n' + w.slice(mid).join(' ');
-    };
-    return {
-      textStyle: { fontFamily: FONT },
-      animationDuration: 460,
-      grid: { left: 8, right: 8, top: 34, bottom: 52 },
-      tooltip: Object.assign({}, TOOLTIP_BASE, {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(14,122,176,.06)' } },
-        formatter(ps) {
-          if (!ps.length) return '';
-          const i = ps[0].dataIndex, st = steps[i];
-          const prev = i > 0 ? vals[i - 1] : null;
-          return tipHead(st.name) +
-            tipRow(ps[0].color, 'Человек', U.nf(st.value)) +
-            tipRow(null, 'От целевой аудитории', U.pct(st.value / max * 100)) +
-            (prev != null ? tipRow(null, 'От предыдущего этапа', U.pct(prev ? st.value / prev * 100 : 0), true) : '') +
-            (st.note ? tipNote(st.note) : '') + tipEnd;
-        },
-      }),
-      xAxis: {
-        type: 'category', data: steps.map((s) => wrap(s.name)),
-        axisLine: { lineStyle: { color: C.axisLine } },
-        axisTick: { show: false },
-        axisLabel: {
-          fontFamily: FONT, color: '#3a3f4a', fontSize: 11, fontWeight: 500,
-          lineHeight: 14, margin: 10, interval: 0,
-        },
-        boundaryGap: true,
-      },
-      yAxis: valAxis(0, { max: Math.max(1, Math.ceil(max * 1.22)) }),
-      series: [
-        {
-          type: 'bar', barWidth: bw, barMaxWidth: BAR_MAX,
-          itemStyle: {
-            borderRadius: [3, 3, 0, 0],
-            color: (p) => ['#9ad4ee', '#64bde4', '#1b93c9', '#0a6791', '#08506f'][p.dataIndex] || C.act,
-          },
-          label: Object.assign(valueLabel(
-            (p) => U.nf(p.value) + '  ·  ' + U.pct(p.value / max * 100, 0), n), { fontSize: 11.5 }),
-          data: vals,
-        },
-        /* Ломаная по вершинам: она и делает из столбиков воронку */
-        {
-          type: 'line', symbol: 'circle', symbolSize: 6, smooth: false, silent: true,
-          lineStyle: { width: 1.5, color: '#9aa3b2', type: 'dashed' },
-          itemStyle: { color: '#9aa3b2' },
-          z: 3, data: vals,
-        },
-      ],
-    };
-  }
-
-  /* ======================================================================
-     4. Охват целевой аудитории по периодам — две панели на общей оси X.
+     3. Охват целевой аудитории по периодам — две панели на общей оси X.
 
      Это расшифровка воронки: воронка говорит, ЧЕМ всё кончилось, здесь
      видно, КОГДА это набиралось и менялось ли.
@@ -487,5 +410,5 @@
     };
   }
 
-  global.CHARTS = { C, FONT, STACK_GAP, dynamics, retentionCurve, funnelBars, audienceTimeline };
+  global.CHARTS = { C, FONT, STACK_GAP, dynamics, retentionCurve, audienceTimeline };
 })(window);

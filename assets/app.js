@@ -472,6 +472,17 @@
     return '<div class="chart ' + cls + '" id="' + id + '"' + sig + '></div>';
   }
 
+  /* График, который рисуем сами, а не отдаём ECharts (воронка). Живёт в той
+     же очереди и по тем же правилам зон: ширину узнаёт после вставки в DOM,
+     перерисовывается при resize. Разница только в том, что вместо
+     экземпляра библиотеки внутрь кладётся строка SVG. */
+  function svgChart(cls, drawFn, sigData) {
+    const id = 'ch-' + ZONE + '-' + (ZN++);
+    QUEUE.push({ id, drawFn });
+    const sig = sigData == null ? '' : ' data-sig="' + hash(JSON.stringify(sigData)) + '"';
+    return '<div class="chart ' + cls + '" id="' + id + '"' + sig + '></div>';
+  }
+
   /* Собрать разметку одной зоны */
   function zone(id, fn) {
     ZONE = id; ZN = 0;
@@ -527,16 +538,24 @@
       if (INSTANCES[q.id]) return;                          // зона не перерисовывалась
       const el = document.getElementById(q.id);
       if (!el) return;
+      if (q.drawFn) {                                       // рисуем сами
+        el.innerHTML = q.drawFn(el.clientWidth, el.clientHeight);
+        INSTANCES[q.id] = { el, draw: q.drawFn };
+        return;
+      }
       const inst = echarts.init(el, null, { renderer: 'canvas' });
       inst.setOption(q.optFn(el.clientWidth, el.clientHeight));
       INSTANCES[q.id] = { inst, el };
     });
     QUEUE = [];
   }
-  const eachInstance = (fn) => Object.keys(INSTANCES).forEach((id) => {
-    try { fn(INSTANCES[id].inst); } catch (e) { /* снят */ }
-  });
-  addEventListener('resize', () => eachInstance((i) => i.resize()));
+  addEventListener('resize', () => Object.keys(INSTANCES).forEach((id) => {
+    const rec = INSTANCES[id];
+    try {
+      if (rec.draw) rec.el.innerHTML = rec.draw(rec.el.clientWidth, rec.el.clientHeight);
+      else rec.inst.resize();
+    } catch (e) { /* снят */ }
+  }));
 
   /* ======================================================================
      ВКЛАДКА 1 — «Отчёты»: каталог и динамика в одном экране
@@ -1088,23 +1107,25 @@
       ? bs.findIndex((b) => b >= one.created_dt) : -1;
     const createdBefore = !!one && one.created_dt <= bs[0];
 
+    /* Ступени воронки. «Есть доступ» появляется только у настроенной ЦА:
+       когда целевая аудитория и есть доступ — это одно множество, и
+       рисовать стопроцентную ступень незачем. */
+    const funnelSteps = [
+      { name: 'Целевая аудитория', value: st.audience, note: def.mode === 'custom' ? 'Собрана в конструкторе' : 'Как роздан доступ' },
+      def.mode === 'custom'
+        ? { name: 'Есть доступ к области', value: st.access, note: 'права выданы AD-группой или поимённо' }
+        : null,
+      { name: 'Открыли хотя бы раз', value: st.came },
+      { name: 'Вернулись ещё раз', value: st.returned, note: 'заходили больше одного дня' },
+      { name: 'Заходят регулярно', value: st.regular, note: '8+ активных дней за период' },
+    ].filter(Boolean);
+
     const gFlow = group('split wide-r', [
       zone('funnel', () => U.panel({
         cls: 'split-l', title: 'Путь целевой аудитории',
         sub: 'от выданного доступа до регулярного использования',
         bodyCls: 'flexcol',
-        body: chart('fill', (w) => CH.funnelBars([
-          { name: 'Целевая аудитория', value: st.audience, note: def.mode === 'custom' ? 'Собрана в конструкторе' : 'Как роздан доступ' },
-          /* У настроенной ЦА ступень «есть доступ» отделяет «не роздали» от
-             «не ходят». Когда ЦА и есть доступ — это одно и то же множество,
-             и рисовать 100%-ную ступень незачем. */
-          def.mode === 'custom'
-            ? { name: 'Есть доступ к области', value: st.access, note: 'права выданы AD-группой или поимённо' }
-            : null,
-          { name: 'Открыли хотя бы раз', value: st.came },
-          { name: 'Вернулись ещё раз', value: st.returned },
-          { name: 'Заходят регулярно', value: st.regular, note: '8+ активных дней за период' },
-        ].filter(Boolean), { width: w }),
+        body: svgChart('fill', (w, h) => U.funnelSvg(funnelSteps, w, h, { label: 'Путь целевой аудитории' }),
           [st.audience, st.access, st.came, st.returned, st.regular, def.mode]) +
           '<div class="tbl-note">Каждый следующий этап — подмножество предыдущего. ' +
           (def.mode === 'custom'

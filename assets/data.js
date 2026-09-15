@@ -226,6 +226,24 @@
     });
   });
 
+  /* MAU — уникальные пользователи за последний закрытый месяц. Отдельная
+     строка, а не производная от периода: её смысл в том, чтобы быть
+     сравнимой всегда, какой бы период ни выбрали на экране. В SQL это тот
+     же COUNT(DISTINCT user_id) с фиксированным окном в месяц. */
+  Object.keys(GRAINS).forEach(() => {});
+  (function buildMau() {
+    const m = ds_overview.filter((r) => r.section === 'kpi' && r.grain === 'm');
+    m.forEach((r) => {
+      ds_overview.push({
+        section: 'mau', cut_key: r.cut_key, cut_val: r.cut_val,
+        /* Месячная аудитория — доля от годовой: за год людей набирается
+           больше, чем бывает в любом отдельном месяце. */
+        users: Math.round(r.users * 0.46 * jit(.05)),
+        users_prev: Math.round(r.users * 0.46 * jit(.05) / (1 + .03 * jit(.6))),
+      });
+    });
+  })();
+
   /* ======================================================================
      ДАТАСЕТ 2 — ds_reports   (вкладка «Отчёты»)
      ==================================================================== */
@@ -325,6 +343,16 @@
     });
   });
 
+  (function buildReportMau() {
+    ds_reports.filter((r) => r.section === 'report' && r.grain === 'm').forEach((r) => {
+      ds_reports.push({
+        section: 'rmau', dashboard_id: r.dashboard_id,
+        users: Math.max(1, Math.round(r.users * 0.46 * jit(.06))),
+        users_prev: Math.max(1, Math.round(r.users * 0.46 * jit(.06) / (1 + .04 * jit(.6)))),
+      });
+    });
+  })();
+
   /* ----------------------------------------------------------------------
      Группы отчётов: коллекция и владелец («мои отчёты»).
      В бою это тот же запрос с GROUP BY collection | owner — уникальные
@@ -380,6 +408,14 @@
             });
           });
 
+          if (grain === 'm') {
+            const mau = ds_reports.filter((r) => r.section === 'rmau' && ids[r.dashboard_id]);
+            ds_reports.push({
+              section: 'gmau', group_key: gk, group_val: gv,
+              users: Math.round(mau.reduce((a, b) => a + b.users, 0) * dedup),
+              users_prev: Math.round(mau.reduce((a, b) => a + b.users_prev, 0) * dedup),
+            });
+          }
           const fr = (idxFrq[grain] || []).filter((r) => ids[r.dashboard_id]);
           FREQ.forEach((fb) => {
             ds_reports.push({
@@ -590,12 +626,49 @@
   }
 
   /* Есть ли у человека доступ к конкретному отчёту */
-  function hasAccess(person, dashId) {
+  function baseAccess(person, dashId) {
     const m = audienceMeta[dashId];
     if (!m) return false;
     return m.audience_type === 'acl'
       ? inAcl(person, dashId, Math.max(30, Math.round(m.acl_logins_cnt / POP_W)))
       : m.ad_groups.some((g) => inAdGroup(person, g));
+  }
+
+  /* ----------------------------------------------------------------------
+     КАЛИБРОВКА ДОСТУПА. У отчёта не может быть пользователей больше, чем
+     людей с правами: войти без доступа нельзя. В сгенерированных данных это
+     нарушалось — популярный отчёт с четырьмя тысячами пользователей мог
+     висеть на группе в две с половиной тысячи, — и вся вкладка аудитории
+     считала по такому отчёту чепуху: «дошло» получалось больше, чем
+     «есть доступ».
+
+     Чинится не обрезкой пользователей (их число — правда с первой вкладки),
+     а расширением прав: у популярного отчёта права почти всегда розданы
+     шире одной группы — прямыми выдачами, соседними группами, наследованием
+     от коллекции. Здесь это одна добавка: сколько ещё процентов сотрудников
+     нужно, чтобы аудитория доступа покрыла пользователей с запасом.
+     -------------------------------------------------------------------- */
+  const ACCESS_TOPUP = {};
+  (function calibrateAccess() {
+    const byId = {};
+    ds_reports.forEach((r) => {
+      if (r.section !== 'report') return;
+      byId[r.dashboard_id] = Math.max(byId[r.dashboard_id] || 0, r.users);
+    });
+    reportMeta.forEach((m) => {
+      const id = m.dashboard_id;
+      const need = Math.ceil((byId[id] || 0) / POP_W / 0.85);
+      let have = 0;
+      population.forEach((p) => { if (baseAccess(p, id)) have++; });
+      if (have >= need || have >= POP_N) return;
+      ACCESS_TOPUP[id] = Math.min(1, (need - have) / (POP_N - have));
+    });
+  })();
+
+  function hasAccess(person, dashId) {
+    if (baseAccess(person, dashId)) return true;
+    const top = ACCESS_TOPUP[dashId];
+    return top ? h2(person.pid, dashId + 555) < top : false;
   }
 
   /* Целевая аудитория области «как роздан доступ» */
@@ -614,65 +687,152 @@
   }
 
   /* --------------------- Визиты: кто, куда, когда ------------------------
-     Склонность зайти зависит от того, «свой» ли человеку отчёт: сотрудник
-     из домашнего блока отчёта доходит заметно чаще случайного. Это и делает
-     осмысленной настройку ЦА: сузив аудиторию до нужной структуры, видно
-     совсем другое покрытие. */
-  function visitOf(person, dashId) {
+     ГЛАВНОЕ ПРАВИЛО: число зашедших берётся из ds_reports, а не выдумывается
+     заново. Раньше вкладка «Отчёты» считала пользователей одним генератором,
+     а вкладка «Аудитория» — другим, и на одном и том же отчёте выходили
+     разные цифры. Смотреть на такой макет нельзя: первое, что делает
+     читатель, — сверяет числа между экранами.
+
+     Поэтому здесь не «кто зашёл» решается вероятностью, а наоборот:
+     известно, СКОЛЬКО человек зашло (из ds_reports), и остаётся выбрать,
+     КТО именно. Кандидаты ранжируются детерминированно, берётся нужное
+     число сверху. Зайти может только тот, у кого есть доступ.
+
+     Отсюда же берётся честный ответ на «а кто заходил не из целевой
+     аудитории»: когда ЦА задана доступом, таких нет по построению — войти
+     без прав нельзя. Они появляются, когда целевую аудиторию задали
+     структурой: часть тех, кто ходит, под накликанные условия не попала.
+     -------------------------------------------------------------------- */
+
+  /* Склонность зайти: «свой» человек доходит чаще случайного. Числом служит
+     ранг, а не вероятность, — сравниваются они между собой. */
+  function visitRank(person, dashId) {
     const meta = audienceMeta[dashId];
     const home = meta && meta.home;
-    /* Поимённый список — это адресная раздача: человека назвали по фамилии,
-       и доходит он заметно чаще, чем случайный член большой AD-группы. */
-    const base = !meta ? .34 : (meta.is_wide ? .1 : (meta.audience_type === 'acl' ? .56 : .34));
     const aff = home && person.lvl3 === home ? 2.05 : (home ? .55 : 1);
-    const headBoost = person.is_head ? 1.25 : 1;
-    const score = h2(person.pid, dashId + 31);
-    const p = Math.min(.96, base * aff * headBoost);
-    if (score >= p) return null;
-    /* Насколько активно: степенное распределение, тяжёлый хвост у своих */
-    const r = h2(person.pid, dashId + 1009);
-    const days = 1 + Math.floor(Math.pow(r, 2.1) * (aff > 1 ? 26 : 13));
-    const firstShare = h2(person.pid, dashId + 2017);
-    return {
-      dashboard_id: dashId, days,
-      views: days * (1 + Math.round(h2(person.pid, dashId + 3001) * 4)),
-      firstShare,                                 // 0…1 — доля пути периода
-      lastAgo: Math.floor(Math.pow(h2(person.pid, dashId + 4099), 2) * 34),
-    };
+    const boost = person.is_head ? 1.25 : 1;
+    return h2(person.pid, dashId + 31) / (aff * boost);
+  }
+
+  /* Сколько уникальных пользователей у области за период — из ds_reports */
+  function scopeUsers(dashIds, grain) {
+    if (!dashIds.length) return 0;
+    const reps = ds_reports.filter((r) => r.section === 'report' && r.grain === grain &&
+      dashIds.indexOf(r.dashboard_id) >= 0);
+    if (reps.length === 1) return reps[0].users;
+    /* Уникальные по набору не складываются: тот же коэффициент пересечения
+       аудиторий, что и у групп отчётов в ds_reports. */
+    const dedup = 1 / (1 + .16 * Math.log(1 + reps.length));
+    return Math.round(reps.reduce((a, b) => a + b.users, 0) * dedup);
+  }
+
+  const _visCache = {};
+  /* Множество зашедших в область за период: ровно столько человек, сколько
+     говорит ds_reports, и все — с доступом. */
+  function visitorsOf(dashIds, grain) {
+    const key = grain + '|' + dashIds.slice().sort().join(',');
+    if (_visCache[key]) return _visCache[key];
+    const want = Math.round(scopeUsers(dashIds, grain) / POP_W);
+    const cand = [];
+    population.forEach((p) => {
+      let best = null;
+      dashIds.forEach((id) => {
+        if (!hasAccess(p, id)) return;
+        const r = visitRank(p, id);
+        if (best == null || r < best) best = r;
+      });
+      if (best != null) cand.push([best, p.pid]);
+    });
+    cand.sort((a, b) => a[0] - b[0]);
+    const set = {};
+    cand.slice(0, Math.min(want, cand.length)).forEach(([, pid]) => { set[pid] = 1; });
+    const taken = cand.slice(0, Math.min(want, cand.length)).length;
+    /* Масштаб СРЕДИ ЗАШЕДШИХ подгоняется под ds_reports, а не берётся общим
+       POP_W: иначе округление выборки давало бы «1521» там, где на соседней
+       вкладке написано «1524», и читатель справедливо перестал бы верить
+       обоим числам. */
+    const total = scopeUsers(dashIds, grain);
+    const out = { set, count: taken, want, withAccess: cand.length, total,
+      scale: taken ? total / taken : POP_W };
+    _visCache[key] = out;
+    return out;
   }
 
   const SEG_OF = (days) => (days >= 8 ? 'Постоянный' : (days >= 2 ? 'Эпизодический' : 'Разовый'));
 
   /* Люди целевой аудитории с фактом визита в ОБЛАСТЬ (один отчёт, набор
-     отчётов или коллекция). «Дошёл» — открыл хотя бы один отчёт области. */
-  function audienceRows(dashIds, people) {
+     отчётов или коллекция). «Дошёл» — попал в множество зашедших. */
+  function audienceRows(dashIds, people, grain) {
+    const vis = visitorsOf(dashIds, grain || 'd');
+    const nB = { d: 30, w: 20, m: 12, q: 8 }[grain || 'd'];
     return people.map((p) => {
-      let days = 0, views = 0, last = null, first = null, nRep = 0, acc = 0;
-      dashIds.forEach((id) => {
-        /* Без доступа визита быть не может. Это важно именно для настроенной
-           ЦА: накликав структуру, легко захватить людей, которым отчёт
-           никогда не раздавали, — и тогда низкий охват означает не «не
-           ходят», а «не роздан доступ». Разделить эти два случая и есть
-           работа этого флага. */
-        if (!hasAccess(p, id)) return;
-        acc = 1;
-        const v = visitOf(p, id);
-        if (!v) return;
-        nRep++; days = Math.max(days, v.days); views += v.views;
-        if (last == null || v.lastAgo < last) last = v.lastAgo;
-        if (first == null || v.firstShare < first) first = v.firstShare;
-      });
+      const acc = dashIds.some((id) => hasAccess(p, id)) ? 1 : 0;
+      const came = acc && vis.set[p.pid] ? 1 : 0;
+      let days = 0, views = 0, last = null, first = null;
+      if (came) {
+        const id0 = dashIds[0];
+        const home = audienceMeta[id0] && audienceMeta[id0].home;
+        const aff = home && p.lvl3 === home ? 1 : .6;
+        days = 1 + Math.floor(Math.pow(h2(p.pid, 1009), 2.1) * (nB - 1) * aff);
+        views = days * (1 + Math.round(h2(p.pid, 3001) * 4));
+        last = Math.floor(Math.pow(h2(p.pid, 4099), 2) * 34);
+        first = h2(p.pid, 2017);
+      }
       return {
         pid: p.pid, fio: p.fio, login: p.login,
         lvl3: p.lvl3, lvl4: p.lvl4, stream: p.stream, spec: p.spec,
         exp: p.exp, it: p.it, hq: p.hq, is_head: p.is_head,
         has_access: acc,
-        came: nRep > 0 ? 1 : 0, reports_seen: nRep,
-        active_days: days, views, last_visit_days: last,
+        came, active_days: days, views, last_visit_days: last,
         first_share: first,
-        segment: nRep > 0 ? SEG_OF(days) : (acc ? 'Не заходил' : 'Нет доступа'),
+        segment: came ? SEG_OF(days) : (acc ? 'Не заходил' : 'Нет доступа'),
       };
     });
+  }
+
+  /* Сколько человек заходило в область ВСЕГО (та же цифра, что на вкладке
+     «Отчёты»). Разница с «дошли» и есть аудитория вне ЦА. */
+  function scopeVisitors(dashIds, grain) {
+    return Math.round(visitorsOf(dashIds, grain).count * POP_W);
+  }
+
+  /* ----------------------------------------------------------------------
+     ОБРАТНЫЙ ХОД: не «кто ходит в этот отчёт», а «какие отчёты смотрят эти
+     люди». Второй сценарий не менее частый: руководитель приходит от своего
+     подразделения, а не от отчёта, и хочет увидеть, чем оно пользуется.
+
+     Считается тем же множеством зашедших, что и всё остальное на вкладке
+     аудитории, поэтому числа сходятся: человек, попавший в «дошли» отчёта,
+     попадёт и сюда.
+     -------------------------------------------------------------------- */
+  const _cutRepCache = {};
+  function reportsForPeople(people, grain, allIds) {
+    const key = grain + '|' + people.length + '|' + (people[0] ? people[0].pid : '-') +
+      '|' + (people[people.length - 1] ? people[people.length - 1].pid : '-') + '|' + allIds.length;
+    if (_cutRepCache[key]) return _cutRepCache[key];
+    const mine = {}; people.forEach((p) => { mine[p.pid] = 1; });
+    const out = allIds.map((id) => {
+      const vis = visitorsOf([id], grain);
+      let n = 0, acc = 0;
+      people.forEach((p) => {
+        if (hasAccess(p, id)) acc++;
+        if (vis.set[p.pid]) n++;
+      });
+      const meta = ds_reports.find((r) => r.section === 'report' && r.grain === grain && r.dashboard_id === id);
+      return {
+        dashboard_id: id,
+        dashboard_nm: meta ? meta.dashboard_nm : '',
+        collection: meta ? meta.collection : '',
+        owner_login: meta ? meta.owner_login : '',
+        users: Math.round(n * vis.scale),
+        access: Math.round(acc * POP_W),
+        share: acc ? n / acc * 100 : 0,
+        total_users: meta ? meta.users : 0,
+      };
+    }).filter((r) => r.users > 0).sort((a, b) => b.users - a.users);
+    void mine;
+    _cutRepCache[key] = out;
+    return out;
   }
 
   /* -------------------- Динамика охвата целевой аудитории -----------------
@@ -684,7 +844,8 @@
        reach_pct   накопленный охват ЦА, %;
        active_pct  доля ЦА, заходившая именно в этом бакете, %.
      Последние две и есть «как менялся процент в динамике». */
-  function audienceDynamics(rows, grain, audienceCount) {
+  function audienceDynamics(rows, grain, audienceCount, scale) {
+    const W = scale || POP_W;
     const bs = buckets(grain);
     const n = bs.length;
     const aud = Math.max(1, audienceCount);
@@ -711,11 +872,11 @@
       cum += firstIdx[i];
       return {
         bucket: b,
-        first_time: Math.round(firstIdx[i] * POP_W),
-        cum_reach: Math.round(cum * POP_W),
-        users: Math.round(nUsers[i] * POP_W),
-        active: Math.round(active[i] * POP_W),
-        views: Math.round(views[i] * POP_W),
+        first_time: Math.round(firstIdx[i] * W),
+        cum_reach: Math.round(cum * W),
+        users: Math.round(nUsers[i] * W),
+        active: Math.round(active[i] * W),
+        views: Math.round(views[i] * W),
         reach_pct: cum / aud * 100,
         active_pct: active[i] / aud * 100,
       };
@@ -728,7 +889,8 @@
     ds_overview, ds_reports,
     reportMeta, audienceMeta,
     population, POP_W, POP_N, AUD_DIMS, AD_GROUP_DEF,
-    accessAudience, customAudience, audienceRows, audienceDynamics, inAdGroup, hasAccess, visitOf,
+    accessAudience, customAudience, audienceRows, audienceDynamics, inAdGroup, hasAccess,
+    scopeUsers, scopeVisitors, visitorsOf, reportsForPeople,
     reportCohorts, globalCohorts,
     buckets,
     HC_TOTAL: HC_TOTAL_REF,

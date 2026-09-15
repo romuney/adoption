@@ -23,18 +23,18 @@
 
   const U = global.UI;
 
-  /* Палитра. Два полюса: ГОЛУБОЙ — то, что уже есть и держится; ОРАНЖЕВЫЙ —
-     то, что пришло сейчас. Внутри голубого работает ступень светлоты, а не
-     новый тон, поэтому «отдельного синего» в макете нет: барчарты нарисованы
-     тем же цветом, которым интерфейс помечает активное.
-     Проверено scripts/validate_palette.js (dataviz): adjacent, light,
-     surface #fff — 5/5 PASS, худшая пара CVD ΔE 21.9.
+  /* Палитра. Стек — ОДИН тон разными ступенями светлоты. Части стека не
+     соперничают друг с другом: это доли одного целого, и разный хуй на них
+     означал бы «разные сущности», которых тут нет. Оранжевый остался только
+     в дивергентной шкале когорт, где он противопоставлен голубому по
+     смыслу — «хуже» против «лучше» медианы.
+     Проверено scripts/validate_palette.js (dataviz) --ordinal: 4/4 PASS.
      Зеркало --se-* / --seg-* / --div-* в app.css. */
   const C = {
     act:   '#0e7ab0',           // активный тон интерфейса
-    ret:   '#36aede',           // продолжающие — голубой
-    react: '#0a6791',           // вернувшиеся — тот же тон темнее
-    new:   '#e8761f',           // новые — оранжевый
+    ret:   '#64bde4',           // продолжающие — самая светлая ступень
+    react: '#1b93c9',           // вернувшиеся — средняя
+    new:   '#0a6791',           // новые — самая тёмная, стоит в основании
     views: '#5b6478',           // просмотры: вторая панель, не серия
     bench: '#c7c8cc',
     /* Порядковая шкала вовлечённости (--ordinal PASS): темнее = глубже */
@@ -71,7 +71,7 @@
      наоборот: ЗАЗОР постоянный в пикселях, а бар занимает всё остальное —
      на редкой сетке он просто становится толще. Потолок нужен, чтобы на
      четырёх бакетах бар не превратился в плиту. */
-  const BAR_GAP = 6;             // постоянный зазор между барами, px
+  const BAR_GAP = 8;             // постоянный зазор между барами, px
   const BAR_MAX = 72;            // толще — уже не барчарт, а плита
   const BAR_MIN = 3;
   function barWidth(width, n, pad) {
@@ -140,7 +140,7 @@
   function valueLabel(fmt, n) {
     const d = n != null && isDense(n);
     return {
-      show: true, position: 'top', distance: 4,
+      show: true, position: 'top', distance: 7,
       rotate: 0, align: 'center', verticalAlign: 'middle',   // поворота нет и не будет
       fontFamily: FONT, fontSize: d ? 10 : VAL_SZ,
       fontWeight: 400, color: C.label, formatter: fmt,
@@ -151,8 +151,10 @@
   /* ======================================================================
      1. Динамика пользователей: стек «новые / вернувшиеся / продолжающие»
         + отдельная панель просмотров под общей осью X.
-        Вернувшиеся — были раньше, но не в предыдущем периоде (в данных
-        react_users); продолжающие — были и в предыдущем (ret_users).
+        Три части одного целого, и их определения держатся на ПРЕДЫДУЩЕМ
+        бакете: новый — не заходил в отчёт никогда; вернувшийся — заходил
+        когда-то раньше, но в предыдущем бакете его не было; продолжающий —
+        был и в предыдущем. Сумма трёх равна всем пользователям бакета.
      ==================================================================== */
   function dynamics(rows, grain, opt) {
     const o = opt || {};
@@ -160,9 +162,8 @@
     const n = rows.length;
     const totals = rows.map((r) => r.users);
     const bw = barWidth(o.width, n);
-    /* Сегменты стека разделяет цвет, а не белая линия: тон соседей разведён
-       (голубой / тёмно-голубой / оранжевый), а обводка на узких колонках
-       съедала саму марку и читалась как «уступ категории». */
+    /* Сегменты стека разделяет ступень светлоты, а не белая линия: обводка
+       на узких колонках съедала саму марку и читалась как «уступ». */
     const mk = (name, key, color) => ({
       name, type: 'bar', stack: 'u', xAxisIndex: 0, yAxisIndex: 0,
       barWidth: bw, barMaxWidth: BAR_MAX,
@@ -171,13 +172,26 @@
       labelLayout: LABEL_LAYOUT,
       data: rows.map((r) => r[key]),
     });
-    const sNew = mk('Новые', 'new_users', C.new);
+    const newLabel = o.newLabel || 'Новые';
+    const sNew = mk(newLabel, 'new_users', C.new);
     const sRe = mk('Вернувшиеся', 'react_users', C.react);
     const sRet = mk('Продолжающие', 'ret_users', C.ret);
-    // подпись — над вершиной стека: это всего пользователей за бакет
-    sNew.label = valueLabel((p) => U.compact(totals[p.dataIndex]), n);
-    sNew.itemStyle.borderRadius = [3, 3, 0, 0];
-    const newLabel = 'Новые';   // что значит «новый» — в подсказке и в подзаголовке панели
+    /* Порядок в стеке снизу вверх: НОВЫЕ в основании, дальше вернувшиеся,
+       сверху продолжающие. Приток стоит на земле и виден при любой высоте
+       столбика; будь он наверху, он плавал бы на разной высоте от бакета
+       к бакету, и сравнить приток между периодами стало бы нельзя. */
+    sRet.label = valueLabel((p) => U.compact(totals[p.dataIndex]), n);
+    sRet.itemStyle.borderRadius = [3, 3, 0, 0];
+
+    /* Нижняя панель: просмотры всего или в пересчёте на пользователя.
+       Две метрики разной размерности на одной оси не живут, поэтому не две
+       линии, а переключатель — см. подшапку панели. */
+    const perUser = o.viewsMode === 'per';
+    const viewsData = rows.map((r) => (perUser
+      ? +(r.users ? r.views / r.users : 0).toFixed(2)
+      : r.views));
+    const viewsTitle = perUser ? 'Просмотров на пользователя' : 'Просмотры';
+    const viewsFmt = (v) => (perUser ? U.nf(v, 1) : U.compact(v));
 
     return {
       textStyle: { fontFamily: FONT },
@@ -201,11 +215,12 @@
       legend: {
         top: 2, right: 4, itemWidth: 11, itemHeight: 9, itemGap: 12,
         icon: 'roundRect', textStyle: LEGEND_STYLE,
-        data: ['Продолжающие', 'Вернувшиеся', newLabel],
+        /* Порядок легенды повторяет порядок в стеке снизу вверх */
+        data: [newLabel, 'Вернувшиеся', 'Продолжающие'],
       },
       title: [
         { text: o.title || 'Пользователи по периодам', left: 0, top: 0, textStyle: TITLE_STYLE },
-        { text: 'Просмотры', left: 0, top: '61%', textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }) },
+        { text: viewsTitle, left: 0, top: '61%', textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }) },
       ],
       tooltip: Object.assign({}, TOOLTIP_BASE, {
         axisPointer: { type: 'shadow', link: [{ xAxisIndex: 'all' }] },
@@ -220,26 +235,26 @@
             tipRow(C.new, newLabel, U.nf(r.new_users) + ' · ' + U.pct(share, 0)) +
             tipRow(C.react, 'Вернувшиеся', U.nf(r.react_users)) +
             tipRow(C.ret, 'Продолжающие', U.nf(r.ret_users)) +
-            tipRow(C.views, 'Просмотры', U.nf(r.views), true) +
+            tipRow(C.views, viewsTitle, perUser ? U.nf(r.users ? r.views / r.users : 0, 1) : U.nf(r.views), true) +
             tipEnd;
         },
       }),
       xAxis: [catAxis(0, labels), catAxis(1, labels)],
       yAxis: [
         valAxis(0, { max: headroom(Math.max.apply(null, totals), n) }),
-        valAxis(1, { max: headroom(Math.max.apply(null, rows.map((r) => r.views)), n) }),
+        valAxis(1, { max: headroom(Math.max.apply(null, viewsData), n) }),
       ],
       series: [
-        sRet, sRe, sNew,
+        sNew, sRe, sRet,
         {
-          name: 'Просмотры', type: 'line', xAxisIndex: 1, yAxisIndex: 1,
+          name: viewsTitle, type: 'line', xAxisIndex: 1, yAxisIndex: 1,
           smooth: false, symbol: 'circle', symbolSize: 5,
           lineStyle: { width: 2, color: C.views },
           itemStyle: { color: C.views, borderColor: '#fff', borderWidth: 2 },
           areaStyle: { color: 'rgba(91,100,120,.07)' },
-          label: valueLabel((p) => U.compact(p.value), n),
+          label: valueLabel((p) => viewsFmt(p.value), n),
           labelLayout: LABEL_LAYOUT,
-          data: rows.map((r) => r.views),
+          data: viewsData,
         },
       ],
     };

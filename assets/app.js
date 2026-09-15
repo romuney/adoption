@@ -1125,7 +1125,8 @@
         cls: 'split-l', title: 'Путь целевой аудитории',
         sub: 'от выданного доступа до регулярного использования',
         bodyCls: 'flexcol',
-        body: svgChart('fill', (w, h) => U.funnelSvg(funnelSteps, w, h, { label: 'Путь целевой аудитории' }),
+        /* Без fill: высоту воронка задаёт себе сама, от числа этапов */
+        body: svgChart('fn-box', (w) => U.funnelSvg(funnelSteps, w, 0, { label: 'Путь целевой аудитории' }),
           [st.audience, st.access, st.came, st.returned, st.regular, def.mode]) +
           '<div class="tbl-note">Каждый следующий этап — подмножество предыдущего. ' +
           (def.mode === 'custom'

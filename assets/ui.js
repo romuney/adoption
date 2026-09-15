@@ -444,24 +444,33 @@
      эту фигуру, чем настройка чужого сборщика, и переносится дословно.
      ==================================================================== */
   const FUNNEL_COLORS = ['#9ad4ee', '#64bde4', '#1b93c9', '#0a6791', '#08506f'];
+  /* Высота ступени фиксирована, как в TeamPulse, и НЕ зависит от того,
+     сколько места дала панель. Растянутая на всю высоту воронка
+     превращается в стопку плит: бар в полтораста пикселей высотой уже не
+     читается как марка, он читается как фон. Лишнее место панели остаётся
+     пустым — это дешевле, чем испорченная фигура. Ширина ограничена по той
+     же причине. */
+  const FN_ROW = 74;
+  const FN_MIN_H = 300;
+  const FN_MAX_BAR = 420;
 
   function funnelSvg(steps, w, h, opt) {
     const o = opt || {};
     const n = steps.length;
     if (!n || !w) return '';
-    const H = Math.max(h || 0, n * 74);
+    const H = Math.max(FN_MIN_H, n * FN_ROW);
     const rowH = (H - 12) / n;
     /* Масштаб — от ПЕРВОГО этапа, а не от «красивого» максимума: первый
        этап воронки это и есть 100%, его бар обязан занимать всю ширину. */
     const max = steps[0].value || 1;
     const cx = w / 2;
     const sideW = 64;                       // колонки под цифры слева и справа
-    const maxBar = Math.max(60, w - sideW * 2 - 20);
+    const maxBar = Math.max(60, Math.min(FN_MAX_BAR, w - sideW * 2 - 20));
 
     let body = '';
     steps.forEach((st, i) => {
       const y = i * rowH + 16;
-      const bh = Math.max(14, rowH - 26);
+      const bh = Math.max(14, Math.min(FN_ROW - 26, rowH - 26));
       const bw = (st.value / max) * maxBar;
       const prev = i > 0 ? steps[i - 1].value : null;
       const conv = prev != null ? (prev ? st.value / prev * 100 : 0) : null;

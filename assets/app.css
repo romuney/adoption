@@ -291,7 +291,11 @@ button{font-family:inherit}
 
 .split{display:grid;grid-template-columns:minmax(500px,.95fr) minmax(440px,1.05fr);
   gap:var(--s8);align-items:stretch}
-.split.wide-r{grid-template-columns:minmax(420px,.78fr) minmax(520px,1.22fr)}
+/* Левая панель ряда — по содержимому: воронка имеет собственную высоту и
+   растягивать под неё панель значит открыть под воронкой пустую полосу. */
+.split.wide-r{grid-template-columns:minmax(420px,.78fr) minmax(520px,1.22fr);
+  align-items:start}
+.split.wide-r .panel{height:auto}
 /* Главный экран: слева каталог ЦЕЛИКОМ, справа динамика.
    Каталог ничего не делит: это список, и ценность его — в числе видимых
    строк. Всё, что раньше стояло под ним, уехало вниз. Правой колонке
@@ -560,12 +564,13 @@ button{font-family:inherit}
 /* ================================ Воронка ================================
    Рисуется своим SVG (см. UI.funnelSvg), а не библиотекой: бар растёт от
    центра, поэтому и анимация — от центра. */
+.chart.fn-box{display:flex;justify-content:center}
 .fnsvg{max-width:100%}
 .fn-g{cursor:help}
 .fn-bar{transform-box:fill-box;transform-origin:50% 50%;
   animation:fn-grow .42s cubic-bezier(.22,.61,.36,1) both}
 @keyframes fn-grow{from{transform:scaleX(.02)}to{transform:none}}
-.panel-b.flexcol .chart.fill>.fnsvg{margin:auto}
+
 @media (prefers-reduced-motion:reduce){.fn-bar{animation:none}}
 
 /* ============================== Графики ECharts ========================== */

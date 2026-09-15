@@ -63,6 +63,22 @@
      всё равно сталкиваются, прячет labelLayout.hideOverlap. */
   const DENSE = 16;
   const isDense = (n) => n > DENSE;
+
+  /* ШИРИНА БАРА СЧИТАЕТСЯ, А НЕ ЗАДАЁТСЯ ПРОЦЕНТОМ.
+     barCategoryGap в процентах означает «зазор — доля ширины категории», а
+     ширина категории зависит от их числа: на 30 днях колонки лепились друг
+     к другу, на 8 кварталах между ними зияло по полсотни пикселей. Здесь
+     наоборот: ЗАЗОР постоянный в пикселях, а бар занимает всё остальное —
+     на редкой сетке он просто становится толще. Потолок нужен, чтобы на
+     четырёх бакетах бар не превратился в плиту. */
+  const BAR_GAP = 6;             // постоянный зазор между барами, px
+  const BAR_MAX = 72;            // толще — уже не барчарт, а плита
+  const BAR_MIN = 3;
+  function barWidth(width, n, pad) {
+    if (!width || !n) return undefined;
+    const inner = Math.max(40, width - (pad == null ? 34 : pad));
+    return Math.max(BAR_MIN, Math.min(BAR_MAX, inner / n - BAR_GAP));
+  }
   /* Воздух над марками под подписи. Раньше при малом числе бакетов его почти
      не было — на 8 кварталах и 12 месяцах столбики упирались в заголовок. */
   const headroom = (max, n) => Math.max(1, Math.ceil(max * (isDense(n) ? 1.22 : 1.3)));
@@ -124,7 +140,7 @@
   function valueLabel(fmt, n) {
     const d = n != null && isDense(n);
     return {
-      show: true, position: 'top', distance: 5,
+      show: true, position: 'top', distance: 4,
       rotate: 0, align: 'center', verticalAlign: 'middle',   // поворота нет и не будет
       fontFamily: FONT, fontSize: d ? 10 : VAL_SZ,
       fontWeight: 400, color: C.label, formatter: fmt,
@@ -143,12 +159,13 @@
     const labels = rows.map((r) => U.axisLabel(r.bucket, grain));
     const n = rows.length;
     const totals = rows.map((r) => r.users);
+    const bw = barWidth(o.width, n);
     /* Сегменты стека разделяет цвет, а не белая линия: тон соседей разведён
        (голубой / тёмно-голубой / оранжевый), а обводка на узких колонках
        съедала саму марку и читалась как «уступ категории». */
     const mk = (name, key, color) => ({
       name, type: 'bar', stack: 'u', xAxisIndex: 0, yAxisIndex: 0,
-      barMaxWidth: 34, barCategoryGap: '30%',
+      barWidth: bw, barMaxWidth: BAR_MAX,
       itemStyle: { color },
       emphasis: { focus: 'series' },
       labelLayout: LABEL_LAYOUT,
@@ -172,9 +189,12 @@
          тянется вместе с колонкой, и при фиксированной высоте между
          столбиками и «Просмотрами» открывалась пустая полоса в сотню
          пикселей. Края держат пропорцию на любой высоте. */
+      /* У ОБЕИХ панелей своя подписанная ось X. Раньше верхняя шла без
+         оси, и столбики висели в воздухе: глазу не за что зацепиться,
+         чтобы понять, какой это день. */
       grid: [
-        { left: 6, right: 26, top: 46, bottom: '44%' },
-        { left: 6, right: 26, top: '68%', bottom: 26 },
+        { left: 6, right: 26, top: 46, bottom: '46%' },
+        { left: 6, right: 26, top: '70%', bottom: 26 },
       ],
       /* «Просмотры» в легенду не берём: у нижней панели свой заголовок,
          а длинная легенда наезжает на заголовок верхней. */
@@ -185,7 +205,7 @@
       },
       title: [
         { text: o.title || 'Пользователи по периодам', left: 0, top: 0, textStyle: TITLE_STYLE },
-        { text: 'Просмотры', left: 0, top: '59%', textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }) },
+        { text: 'Просмотры', left: 0, top: '61%', textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }) },
       ],
       tooltip: Object.assign({}, TOOLTIP_BASE, {
         axisPointer: { type: 'shadow', link: [{ xAxisIndex: 'all' }] },
@@ -204,7 +224,7 @@
             tipEnd;
         },
       }),
-      xAxis: [catAxis(0, labels, { hide: true }), catAxis(1, labels)],
+      xAxis: [catAxis(0, labels), catAxis(1, labels)],
       yAxis: [
         valAxis(0, { max: headroom(Math.max.apply(null, totals), n) }),
         valAxis(1, { max: headroom(Math.max.apply(null, rows.map((r) => r.views)), n) }),
@@ -260,59 +280,106 @@
   }
 
   /* ======================================================================
-     3. Воронка ЦА: целевая аудитория → зашли → вернулись → закрепились
+     3. Воронка ЦА — БАРАМИ, а не трапециями.
+
+     Классическая воронка врёт формой: у неё есть minSize, поэтому этап с
+     нулём рисуется заметной плашкой, а ширина ступени зависит не только от
+     значения, но и от того, сколько букв в её названии. Здесь высота бара
+     ровно пропорциональна числу: ноль — это ноль. Соседние вершины
+     соединены ломаной, так что «сужение» по-прежнему читается как воронка.
+
+     Названия этапов стоят подписями оси под барами: внутрь марки их не
+     кладём — от длины подписи не должна зависеть геометрия.
      ==================================================================== */
-  function funnel(steps) {
+  function funnelBars(steps, opt) {
+    const o = opt || {};
     const max = steps[0].value || 1;
+    const n = steps.length;
+    const vals = steps.map((s) => s.value);
+    const bw = barWidth(o.width, n, 40);
+    /* Подписи этапов в две строки: «Открыли хотя бы раз» одной строкой
+       под баром не помещается ни при какой ширине панели. */
+    const wrap = (t) => {
+      const w = t.split(' ');
+      if (w.length < 3) return t;
+      const mid = Math.ceil(w.length / 2);
+      return w.slice(0, mid).join(' ') + '\n' + w.slice(mid).join(' ');
+    };
     return {
       textStyle: { fontFamily: FONT },
-      grid: { left: 0, right: 0, top: 0, bottom: 0 },
+      animationDuration: 460,
+      grid: { left: 8, right: 8, top: 34, bottom: 52 },
       tooltip: Object.assign({}, TOOLTIP_BASE, {
-        trigger: 'item',
-        formatter(p) {
-          const s = steps[p.dataIndex];
-          return tipHead(s.name) +
-            tipRow(p.color, 'Человек', U.nf(s.value)) +
-            tipRow(null, 'От целевой аудитории', U.pct(s.value / max * 100)) +
-            (s.note ? tipNote(s.note) : '') + tipEnd;
+        trigger: 'axis',
+        axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(14,122,176,.06)' } },
+        formatter(ps) {
+          if (!ps.length) return '';
+          const i = ps[0].dataIndex, st = steps[i];
+          const prev = i > 0 ? vals[i - 1] : null;
+          return tipHead(st.name) +
+            tipRow(ps[0].color, 'Человек', U.nf(st.value)) +
+            tipRow(null, 'От целевой аудитории', U.pct(st.value / max * 100)) +
+            (prev != null ? tipRow(null, 'От предыдущего этапа', U.pct(prev ? st.value / prev * 100 : 0), true) : '') +
+            (st.note ? tipNote(st.note) : '') + tipEnd;
         },
       }),
-      series: [{
-        type: 'funnel', left: 8, right: 8, top: 8, bottom: 8,
-        minSize: '32%', maxSize: '100%', sort: 'descending', gap: 3,
-        label: {
-          show: true, position: 'inside', fontFamily: FONT, fontSize: 12, fontWeight: 500,
-          color: '#fff', textBorderColor: 'rgba(10,60,85,.45)', textBorderWidth: 2,
-          formatter: (p) => steps[p.dataIndex].name + '   ' + U.nf(p.value) + '  ·  ' + U.pct(p.value / max * 100, 0),
+      xAxis: {
+        type: 'category', data: steps.map((s) => wrap(s.name)),
+        axisLine: { lineStyle: { color: C.axisLine } },
+        axisTick: { show: false },
+        axisLabel: {
+          fontFamily: FONT, color: '#3a3f4a', fontSize: 11, fontWeight: 500,
+          lineHeight: 14, margin: 10, interval: 0,
         },
-        itemStyle: { borderColor: '#fff', borderWidth: 2 },
-        emphasis: { label: { fontWeight: 600 } },
-        /* Ступени воронки — порядковая шкала одного тона: этап глубже,
-           цвет темнее. Разными хуями красить нечего: это не категории. */
-        data: steps.map((s, i) => ({
-          name: s.name, value: s.value,
-          itemStyle: { color: ['#9ad4ee', '#64bde4', '#1b93c9', '#0a6791'][i] || C.act },
-        })),
-      }],
+        boundaryGap: true,
+      },
+      yAxis: valAxis(0, { max: Math.max(1, Math.ceil(max * 1.22)) }),
+      series: [
+        {
+          type: 'bar', barWidth: bw, barMaxWidth: BAR_MAX,
+          itemStyle: {
+            borderRadius: [3, 3, 0, 0],
+            color: (p) => ['#9ad4ee', '#64bde4', '#1b93c9', '#0a6791', '#08506f'][p.dataIndex] || C.act,
+          },
+          label: Object.assign(valueLabel(
+            (p) => U.nf(p.value) + '  ·  ' + U.pct(p.value / max * 100, 0), n), { fontSize: 11.5 }),
+          data: vals,
+        },
+        /* Ломаная по вершинам: она и делает из столбиков воронку */
+        {
+          type: 'line', symbol: 'circle', symbolSize: 6, smooth: false, silent: true,
+          lineStyle: { width: 1.5, color: '#9aa3b2', type: 'dashed' },
+          itemStyle: { color: '#9aa3b2' },
+          z: 3, data: vals,
+        },
+      ],
     };
   }
 
   /* ======================================================================
-     4. Что происходило с целевой аудиторией по бакетам — три панели на
-        общей оси X. Это и есть расшифровка воронки: воронка говорит, ЧЕМ
-        всё кончилось, а здесь видно, КОГДА это происходило и менялось ли.
+     4. Охват целевой аудитории по периодам — две панели на общей оси X.
 
-          верх    — сколько человек ЦА заходило в бакете, из них впервые;
-          середина— просмотры этих людей (та же метрика, что на вкладке
-                    «Отчёты», которой здесь не хватало);
-          низ     — охват ЦА в процентах: накопленный и активный в бакете.
+     Это расшифровка воронки: воронка говорит, ЧЕМ всё кончилось, здесь
+     видно, КОГДА это набиралось и менялось ли.
 
-        Две линии внизу живут на ОДНОЙ шкале 0–100%: это доли одной и той
-        же целевой аудитории, второй оси здесь быть не может.
+       верх  — ЛЮДИ: сколько человек ЦА заходило в каждом периоде и сколько
+               из них пришло впервые;
+       низ   — ПРОЦЕНТЫ от той же ЦА: накопленный охват (сколько людей мы
+               достали хотя бы раз к этой дате) и доля, заходившая ИМЕННО
+               в этом периоде.
 
-        Дата создания отчёта — не тонкая засечка внизу, а подписанная плашка
-        над графиком: раньше слово «создан» стояло вертикально у самой оси
-        и его не было видно.
+     Две нижние линии отвечают на разные вопросы и потому нужны обе.
+     Накопленная только растёт — она про «скольких мы вообще достали».
+     Помесячная колеблется — она про «сколько ими пользуются сейчас»: если
+     накопленная ползёт вверх, а помесячная стоит, значит новых приводим,
+     а старые отваливаются. Обе — доли одной и той же аудитории, поэтому
+     живут на одной шкале; второй оси здесь быть не может.
+
+     Просмотров тут нет намеренно: на этой вкладке считают ЛЮДЕЙ и их долю,
+     а объём просмотров живёт на вкладке «Отчёты».
+
+     Дата создания отчёта — подписанная плашка над графиком, а не
+     вертикальная засечка у оси: засечку не видно.
      ==================================================================== */
   function audienceTimeline(rows, grain, opt) {
     const o = opt || {};
@@ -321,6 +388,7 @@
     const users = rows.map((r) => r.users);
     const firsts = rows.map((r) => r.first_time);
     const rest = rows.map((r, i) => Math.max(0, users[i] - firsts[i]));
+    const bw = barWidth(o.width, n);
 
     const marks = [];
     if (o.createdIdx != null && o.createdIdx >= 0 && o.createdIdx < n) {
@@ -338,17 +406,18 @@
       ? { silent: true, symbol: 'none', lineStyle: { type: 'dashed', color: '#b9bec8', width: 1 }, data: marks }
       : undefined;
 
+    const pctMax = Math.min(100, Math.max(30, Math.ceil(
+      Math.max.apply(null, rows.map((r) => Math.max(r.reach_pct, r.active_pct)).concat([1])) * 1.28 / 10) * 10));
+
     return {
       textStyle: { fontFamily: FONT },
       animationDuration: 520,
-      /* Три панели на общей оси. Края подобраны так, чтобы подзаголовок
-         каждой панели стоял в зазоре МЕЖДУ панелями, а не поверх марок
-         соседней: заголовок на графике — первое, что ломается, когда
-         панели заданы высотой в процентах. */
+      /* У верхней панели своя подписанная ось X, поэтому её нижний край
+         поднят: иначе заголовок нижней панели садился прямо на подписи
+         дат верхней. */
       grid: [
-        { left: 6, right: 30, top: 46, bottom: '60%' },
-        { left: 6, right: 30, top: '48%', bottom: '36%' },
-        { left: 6, right: 30, top: '71%', bottom: 26 },
+        { left: 6, right: 30, top: 46, bottom: '57%' },
+        { left: 6, right: 30, top: '67%', bottom: 26 },
       ],
       legend: {
         top: 2, right: 4, itemWidth: 11, itemHeight: 9, itemGap: 12,
@@ -356,9 +425,14 @@
         data: ['Заходили не впервые', 'Пришли впервые'],
       },
       title: [
-        { text: o.title || 'Целевая аудитория по периодам', left: 0, top: 0, textStyle: TITLE_STYLE },
-        { text: 'Просмотры этих людей', left: 0, top: '42%', textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }) },
-        { text: 'Охват целевой аудитории, % от ' + U.nf(o.audience || 0), left: 0, top: '65%', textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }) },
+        { text: o.title || 'Заходили из целевой аудитории, человек', left: 0, top: 0, textStyle: TITLE_STYLE },
+        {
+          text: 'Охват целевой аудитории, % от ' + U.nf(o.audience || 0),
+          subtext: 'сплошная — накоплено к дате · пунктир — заходили в этом периоде',
+          left: 0, top: '52%',
+          textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }),
+          subtextStyle: { fontFamily: FONT, fontSize: 10.5, color: '#8a909c', fontWeight: 400 },
+        },
       ],
       tooltip: Object.assign({}, TOOLTIP_BASE, {
         axisPointer: { type: 'shadow', link: [{ xAxisIndex: 'all' }] },
@@ -368,54 +442,32 @@
           return tipHead(U.bucketTitle(r.bucket, grain)) +
             tipRow(C.ret, 'Заходили', U.nf(r.users)) +
             tipRow(C.new, 'из них впервые', U.nf(r.first_time)) +
-            tipRow(C.views, 'Просмотры', U.nf(r.views), true) +
-            tipRow(C.act, 'Охват накопленный', U.pct(r.reach_pct, 0)) +
-            tipRow(C.seg1, 'Активны в периоде', U.pct(r.active_pct, 0)) +
+            tipRow(C.act, 'Накоплено охвачено', U.nf(r.cum_reach) + ' · ' + U.pct(r.reach_pct, 0)) +
+            tipRow(C.seg1, 'Заходили в периоде', U.pct(r.active_pct, 0)) +
             tipEnd;
         },
       }),
-      xAxis: [
-        catAxis(0, labels, { hide: true }),
-        catAxis(1, labels, { hide: true }),
-        catAxis(2, labels),
-      ],
+      xAxis: [catAxis(0, labels), catAxis(1, labels)],
       yAxis: [
         valAxis(0, { max: headroom(Math.max.apply(null, users.concat([1])), n) }),
-        valAxis(1, { max: headroom(Math.max.apply(null, rows.map((r) => r.views).concat([1])), n) }),
-        /* Ось процентов от нуля обязательно, но тянуть её до 100 незачем,
-           когда охват 29%: три четверти панели уходили в пустоту. Потолок
-           округляется до десятков и не опускается ниже 30%. */
-        valAxis(2, {
-          max: Math.min(100, Math.max(30, Math.ceil(
-            Math.max.apply(null, rows.map((r) => Math.max(r.reach_pct, r.active_pct)).concat([1])) * 1.3 / 10) * 10)),
-          grid: true,
-        }),
+        valAxis(1, { max: pctMax, grid: true }),
       ],
       series: [
         {
           name: 'Заходили не впервые', type: 'bar', stack: 'a', xAxisIndex: 0, yAxisIndex: 0,
-          barMaxWidth: 30, barCategoryGap: '30%', itemStyle: { color: C.ret },
+          barWidth: bw, barMaxWidth: BAR_MAX, itemStyle: { color: C.ret },
           data: rest, markLine,
         },
         {
           name: 'Пришли впервые', type: 'bar', stack: 'a', xAxisIndex: 0, yAxisIndex: 0,
-          barMaxWidth: 30, itemStyle: { color: C.new, borderRadius: [3, 3, 0, 0] },
+          barWidth: bw, barMaxWidth: BAR_MAX,
+          itemStyle: { color: C.new, borderRadius: [3, 3, 0, 0] },
           label: valueLabel((p) => (users[p.dataIndex] ? U.compact(users[p.dataIndex]) : ''), n),
           labelLayout: LABEL_LAYOUT,
           data: firsts,
         },
         {
-          name: 'Просмотры', type: 'line', xAxisIndex: 1, yAxisIndex: 1,
-          symbol: 'circle', symbolSize: 5, smooth: false,
-          lineStyle: { width: 2, color: C.views },
-          itemStyle: { color: C.views, borderColor: '#fff', borderWidth: 2 },
-          areaStyle: { color: 'rgba(91,100,120,.07)' },
-          label: valueLabel((p) => (p.value ? U.compact(p.value) : ''), n),
-          labelLayout: LABEL_LAYOUT,
-          data: rows.map((r) => r.views),
-        },
-        {
-          name: 'Накопленный охват', type: 'line', xAxisIndex: 2, yAxisIndex: 2,
+          name: 'Накоплено к дате', type: 'line', xAxisIndex: 1, yAxisIndex: 1,
           symbol: 'circle', symbolSize: 5, smooth: false,
           lineStyle: { width: 2, color: C.act },
           itemStyle: { color: C.act, borderColor: '#fff', borderWidth: 2 },
@@ -425,7 +477,7 @@
           data: rows.map((r) => +r.reach_pct.toFixed(1)),
         },
         {
-          name: 'Активны в периоде', type: 'line', xAxisIndex: 2, yAxisIndex: 2,
+          name: 'Заходили в периоде', type: 'line', xAxisIndex: 1, yAxisIndex: 1,
           symbol: 'circle', symbolSize: 4, smooth: false,
           lineStyle: { width: 2, color: C.seg1, type: 'dashed' },
           itemStyle: { color: C.seg1, borderColor: '#fff', borderWidth: 2 },
@@ -435,5 +487,5 @@
     };
   }
 
-  global.CHARTS = { C, FONT, STACK_GAP, dynamics, retentionCurve, funnel, audienceTimeline };
+  global.CHARTS = { C, FONT, STACK_GAP, dynamics, retentionCurve, funnelBars, audienceTimeline };
 })(window);

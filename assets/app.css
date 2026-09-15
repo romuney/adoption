@@ -152,6 +152,7 @@ button{font-family:inherit}
 .ctl label{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
   color:var(--muted);font-weight:var(--fw-lead)}
 .ctl select,select.aud-pick{appearance:none;border:1px solid var(--line);background:var(--card);
+  box-shadow:var(--shadow);
   border-radius:var(--r3);padding:var(--s4) 30px var(--s4) var(--s6);font-size:13px;
   color:var(--ink);font-weight:var(--fw-lead);cursor:pointer;width:100%;
   text-overflow:ellipsis;
@@ -279,25 +280,38 @@ button{font-family:inherit}
 .sub-tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
 
 .rows{display:flex;flex-direction:column;gap:var(--s8)}
+/* Зоны рендера (см. paint() в app.js). Внутри сетки обёртка зоны
+   прозрачна для раскладки: ячейками грида остаются сами панели, иначе
+   пришлось бы дублировать на обёртке всю их геометрию. */
+.zone:empty{display:none}
+.split>.zone,.grid2>.zone{display:contents}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s8);align-items:stretch}
-.grid2>.panel{display:flex;flex-direction:column;min-height:0}
-.grid2>.panel>.panel-b{flex:1;min-height:0}
+.grid2 .panel{display:flex;flex-direction:column;min-height:0}
+.grid2 .panel>.panel-b{flex:1;min-height:0}
 
 .split{display:grid;grid-template-columns:minmax(500px,.95fr) minmax(440px,1.05fr);
   gap:var(--s8);align-items:stretch}
 .split.wide-r{grid-template-columns:minmax(420px,.78fr) minmax(520px,1.22fr)}
-/* Главный экран: слева колонка селекторов (каталог + частота визитов),
-   справа динамика. Правой отдано больше ширины — читают её, а подпись
-   стоит у каждого столбика и требует места. Каталог за это заплатил
-   парой процентов: в нём пять коротких колонок, ему хватает. */
-.split.main{grid-template-columns:minmax(400px,.8fr) minmax(540px,1.2fr);
+/* Главный экран: слева каталог ЦЕЛИКОМ, справа динамика.
+   Каталог ничего не делит: это список, и ценность его — в числе видимых
+   строк. Всё, что раньше стояло под ним, уехало вниз. Правой колонке
+   отдано больше ширины — подпись стоит у каждого столбика. */
+.split.main{grid-template-columns:minmax(400px,.82fr) minmax(520px,1.18fr);
   align-items:stretch}
-.split.main>.panel,.split.main>.split-col{height:712px;max-height:712px}
+.split.main .panel{height:712px;max-height:712px}
 .split.main .chart.fill{min-height:430px}
-/* Каталог тянется, частота занимает столько, сколько нужно её пяти строкам */
-.split-col>.panel.grow{flex:1 1 auto;min-height:0}
-.split-col>.panel.grow>.panel-b{flex:1 1 auto;min-height:0}
-.split>.panel{min-height:0;height:100%;display:flex;flex-direction:column}
+
+/* Закрепляемость и частота визитов. Когортной таблице нужна ширина,
+   частоте хватает узкой колонки: там пять строк и расшифровка. */
+ /* Частота не тянется до высоты когортной таблицы: у неё пять строк, и
+    растянутая панель открывала под ними пустую треть экрана. */
+.split.ret{grid-template-columns:minmax(520px,1.58fr) minmax(300px,.62fr);
+  margin-top:var(--s8);align-items:start}
+.split.ret .panel{min-height:0;height:auto}
+/* Компактная врезка-расшифровка над таблицей частоты */
+.note-inline.tight{margin-bottom:var(--s6);padding:8px var(--s6);font-size:var(--fs-note);
+  line-height:1.45;background:#fbfcfd;border-style:solid;border-color:var(--line2)}
+.split .panel{min-height:0;height:100%;display:flex;flex-direction:column}
 .split .panel-h{flex:0 0 auto;min-height:54px}
 .split .panel-b{flex:1;min-height:0}
 /* Таблицы каталога и пофамильного списка живут в скролл-контейнере.
@@ -427,6 +441,7 @@ button{font-family:inherit}
 .ct-cfg{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap;row-gap:3px}
 .ct-cfg-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;
   color:var(--muted2);font-weight:var(--fw-lead)}
+.ct-cfg-n{font-size:var(--fs-cap);color:var(--muted2);font-weight:var(--fw-med);cursor:help}
 .sub-tabs.tiny{border-radius:var(--r3);padding:2px}
 .sub-tabs.tiny .sub-tab{padding:2px var(--s4);font-size:var(--fs-note);border-radius:var(--r2)}
 /* Подсветка ступени: гаснут все ячейки, кроме попавших в неё */
@@ -551,7 +566,8 @@ button{font-family:inherit}
 .chart.fill{flex:1;min-height:260px}
 
 .psearch{position:relative;flex:0 0 auto;color:var(--muted)}
-.psearch input{border:1px solid var(--line);background:var(--card);border-radius:var(--r3);
+.psearch input{border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
+  border-radius:var(--r3);
   padding:7px var(--s5) 7px 28px;font-size:12px;font-weight:var(--fw-med);color:var(--ink);
   width:190px;font-family:inherit}
 .psearch input::placeholder{color:var(--muted2);font-weight:var(--fw-body)}
@@ -586,22 +602,62 @@ button{font-family:inherit}
 .as-x .mut{color:var(--muted2)}
 .sb-act{display:flex;gap:var(--s4);flex-wrap:wrap;margin-top:var(--s2)}
 .aud-pick{max-width:100%;width:100%}
-/* Мультивыбор отчётов: список с прокруткой, а не портянка на пол-экрана */
-.pickbox{max-height:104px;overflow:auto;border:1px solid var(--line);
-  border-radius:var(--r3);padding:var(--s3) var(--s4);background:var(--card)}
+/* Мультивыбор отчётов: поиск сверху, список с прокруткой снизу. Всё в
+   потоке страницы — всплывающий слой накрыл бы и поиск, и переключатель
+   области, из-за чего было непонятно, что вообще выбираешь. */
+.pickwrap{display:flex;flex-direction:column;gap:var(--s4)}
+.pickwrap .psearch input{width:100%}
+.pickbox{max-height:168px;overflow:auto;border:1px solid var(--line);
+  border-radius:var(--r3);padding:var(--s3) var(--s4);background:var(--card);
+  box-shadow:var(--shadow)}
+.pickgrp+.pickgrp{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line2)}
 .pickrow{display:flex;align-items:center;gap:var(--s4);padding:3px 2px;
   font-size:var(--fs-note);color:var(--ink2);cursor:pointer;line-height:1.3}
 .pickrow:hover{color:var(--ink)}
+.pickrow.head{font-weight:var(--fw-lead);color:var(--ink);font-size:var(--fs-body)}
+.pickrow:not(.head){padding-left:var(--s9)}
 .pickrow input{accent-color:var(--act);margin:0;flex:0 0 auto}
 .pickrow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pickempty{font-size:var(--fs-note);color:var(--muted);padding:var(--s5) 2px}
+.pcount{font-style:normal;margin-left:auto;font-size:var(--fs-micro);font-weight:var(--fw-lead);
+  color:var(--muted2);background:#f2f4f7;border-radius:var(--r-pill);padding:1px 6px;flex:0 0 auto}
+.pcount.on{background:var(--blue-bg);color:var(--act-ink)}
 
-/* Конструктор целевой аудитории: значения разреза — чипы-переключатели */
+/* ================== Конструктор целевой аудитории =======================
+   Разрезы списком слева, значения выбранного — справа. Восемь разрезов
+   простынёй чипов сразу — это три сотни кнопок на экране: по ним нельзя
+   ни скользнуть взглядом, ни попасть. Что означает разрез — в подсказке. */
+.modal.wide{max-width:860px}
+.cfg-b{padding-bottom:var(--s6)}
+.cfg-sel{display:flex;flex-wrap:wrap;gap:var(--s5);align-items:center;
+  min-height:30px;margin-bottom:var(--s6);padding-bottom:var(--s5);
+  border-bottom:1px solid var(--line2)}
+.cfg-cond{display:inline-flex;align-items:center;gap:var(--s3);flex-wrap:wrap;
+  font-size:var(--fs-note);color:var(--muted)}
+.cfg-cond b{color:var(--ink2);font-weight:var(--fw-lead)}
+.cfg-grid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--s8);
+  align-items:start}
+.cfg-dims{display:flex;flex-direction:column;gap:2px}
+.cfg-dim{display:flex;align-items:center;gap:var(--s4);border:0;background:transparent;
+  border-radius:var(--r3);padding:7px var(--s5);cursor:pointer;font-family:inherit;
+  font-size:var(--fs-body);font-weight:var(--fw-med);color:var(--ink2);text-align:left;
+  line-height:1.25}
+.cfg-dim:hover{background:#f4f6f9;color:var(--ink)}
+.cfg-dim.on{background:var(--blue-bg);color:var(--act-ink);font-weight:var(--fw-lead)}
+.cfg-vals{min-width:0;min-height:190px}
+.cfg-vh{font-size:var(--fs-body);font-weight:var(--fw-lead);color:var(--ink);
+  margin-bottom:var(--s5)}
+.cfg-vhx{display:block;font-size:var(--fs-note);color:var(--muted);
+  font-weight:var(--fw-body);line-height:1.45;margin-top:2px}
+
+/* Значения разреза — чипы-переключатели */
 .pickchips{display:flex;flex-wrap:wrap;gap:var(--s3)}
 .pchip{border:1px solid var(--line);background:var(--card);border-radius:var(--r-pill);
   padding:4px var(--s5);font-size:var(--fs-note);font-weight:var(--fw-med);
   color:var(--ink2);cursor:pointer;font-family:inherit;line-height:1.25}
 .pchip:hover{border-color:#c9ced8;background:#fafbfc}
 .pchip.on{background:var(--act);border-color:var(--act);color:#fff;font-weight:var(--fw-lead)}
+.pchip.sm{padding:2px var(--s4);font-size:var(--fs-cap)}
 .modal-f .as-x{flex:0 1 auto;min-width:0}
 
 /* ===================== Полоса сегментов над списком людей =================
@@ -609,7 +665,7 @@ button{font-family:inherit}
    под ним. Отдельным барчартом в чужой панели это читалось как «ещё один
    график», из которого непонятно, что делать. */
 .segstrip{display:flex;gap:var(--s3);margin-bottom:var(--s5);min-width:0}
-.seg-part{flex:1 1 0;min-width:74px;border:0;background:transparent;padding:0;
+.seg-part{flex:1 1 0;min-width:88px;border:0;background:transparent;padding:0;
   cursor:pointer;font-family:inherit;text-align:left;display:flex;
   flex-direction:column;gap:var(--s2);transition:opacity .15s}
 .seg-part .sp-bar{display:block;height:10px;border-radius:var(--r1)}
@@ -623,12 +679,10 @@ button{font-family:inherit}
 .seg-part.on .sp-bar{box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--ink2)}
 
 /* Сплит «Аудитории»: обе панели одной высоты, таблицы крутятся внутри */
- /* Панели выравнены по верху, а не растянуты до общей высоты: у разреза
-    бывает шесть строк, и при растяжке под ними открывалась пустая треть
-    экрана — ровно та «мёртвая зона», из-за которой блок читался как
-    недоделанный. */
-.split.aud{margin-top:var(--s8);align-items:start}
-.split.aud>.panel{max-height:596px}
+/* Обе панели одной фиксированной высоты, длинные списки крутятся внутри:
+   высота блока не должна прыгать от того, сколько строк в разрезе. */
+.split.aud{margin-top:var(--s8);align-items:stretch}
+.split.aud .panel{height:560px;max-height:560px}
 .split.aud .panel-b{display:flex;flex-direction:column;gap:var(--s5)}
 .split.aud .split-l .panel-b{overflow:hidden}
 /* Панель с одним растущим графиком: телу нужен свой флекс, иначе
@@ -638,8 +692,9 @@ button{font-family:inherit}
 .tbl-scroll{flex:1 1 auto;min-height:0;overflow:auto}
 /* Селектор разреза живёт в шапке своей панели, а не в общем меню слева */
 .ctl.inline{flex:0 0 auto;min-width:0}
-.ctl.inline select{padding:5px 28px 5px var(--s5);font-size:12px;
+.ctl.inline select{padding:6px 28px 6px var(--s5);font-size:12px;
   border:1px solid var(--line);background:var(--card);border-radius:var(--r3);
+  box-shadow:var(--shadow);
   font-weight:var(--fw-lead);color:var(--ink);cursor:pointer;appearance:none;
   font-family:inherit;max-width:200px;text-overflow:ellipsis;
   background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a909c' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
@@ -719,13 +774,20 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline-color:var(--ac
 /* Когортной таблице нужно 12 колонок возраста. Как только рядом с ней
    перестаёт помещаться частота — ставим блоки друг под друга, а не
    загоняем когорты в горизонтальную прокрутку. */
+/* Когортной таблице нужно 11 колонок возраста. Как только рядом с ней
+   перестаёт помещаться частота — ставим блоки друг под друга, а не
+   загоняем когорты в горизонтальную прокрутку. */
+@media(max-width:1366px){
+  .split.ret{grid-template-columns:1fr}
+}
 @media(max-width:1240px){
   .split,.split.wide-r,.split.main{grid-template-columns:minmax(410px,.9fr) minmax(400px,1.1fr)}
 }
 @media(max-width:1120px){
-  .split,.split.wide-r,.split.main{grid-template-columns:1fr;height:auto}
-  .split>.panel{height:auto}
-  .split.main>.panel,.split.main>.split-col{max-height:none}
+  .split,.split.wide-r,.split.main,.split.ret{grid-template-columns:1fr;height:auto}
+  .split .panel{height:auto}
+  .split.main .panel{height:auto;max-height:none}
+  .split.aud .panel{height:auto;max-height:none}
   .split.main .split-l .tbl-wrap{max-height:430px}
   .split-l .tbl-wrap{max-height:430px}
   .grid2{grid-template-columns:1fr}
@@ -762,8 +824,8 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline-color:var(--ac
   .layout,.main-col{display:block}
   .content{padding:0;max-width:none}
   .panel,.kpi,.obs{box-shadow:none;break-inside:avoid}
-  .split.aud>.panel{max-height:none}
-  .split.main>.panel,.split.main>.split-col{max-height:none}
+  .split.aud .panel{height:auto;max-height:none}
+  .split.main .panel{height:auto;max-height:none}
   .tbl-scroll,.tbl-wrap,.ct-wrap{overflow:visible}
   .chips .x{display:none}
 }

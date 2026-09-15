@@ -6,9 +6,16 @@ const path = require('path');
 const vm = require('vm');
 
 const els = {};
+/* Заглушка моделирует главное свойство настоящего DOM, на котором держится
+   зонный рендер: когда узлу переписали innerHTML, все узлы ВНУТРИ него —
+   другие объекты. Без этого нельзя проверить ни что зона перерисовалась,
+   ни что соседняя зона осталась нетронутой. */
+function purge(prefix) {
+  Object.keys(els).forEach((k) => { if (k.indexOf(prefix) === 0) delete els[k]; });
+}
 function mkEl(id) {
   const e = {
-    id, innerHTML: '', textContent: '', hidden: false, style: {}, value: '',
+    id, textContent: '', hidden: false, style: {}, value: '',
     dataset: {}, children: [],
     classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
     setAttribute() {}, getAttribute() { return null; }, appendChild() {},
@@ -17,9 +24,25 @@ function mkEl(id) {
     matches() { return false; },
     get parentNode() { return mkEl('p'); },
   };
+  let html = '';
+  Object.defineProperty(e, 'innerHTML', {
+    get() { return html; },
+    set(v) {
+      html = v;
+      if (id === 'view') { purge('z-'); purge('ch-'); }
+      else if (id.indexOf('z-') === 0) purge('ch-' + id.slice(2) + '-');
+    },
+  });
   return e;
 }
+/* Разметка экрана = склейка всех зон текущей вкладки */
+function viewHtml() {
+  return Object.keys(els).filter((k) => k.indexOf('z-') === 0)
+    .map((k) => els[k].innerHTML).join('');
+}
 const clickHandlers = [];
+/* Зонный рендер сравнивает УЗЛЫ, поэтому заглушка держит узлы по id и
+   заводит новый, когда зону переписали (dataset.sig меняется). */
 const document = {
   getElementById(id) { return (els[id] = els[id] || mkEl(id)); },
   createElement(t) { return mkEl(t); },
@@ -81,12 +104,14 @@ TABS.forEach((t) => {
   chartOptions.length = 0;
   let err = null;
   try { fireTab(t); } catch (e) { err = e; }
-  const html = els.view ? els.view.innerHTML : '';
+  const html = viewHtml();
   console.log('· ' + t);
   ok(!err, 'исключение при рендере: ' + (err && err.stack ? err.stack.split('\n').slice(0, 3).join(' | ') : err));
   if (err) return;
   ok(html.length > 3000, 'разметка подозрительно короткая: ' + html.length);
-  ok(chartOptions.length > 0, 'ни один график не собран');
+  /* Проверяем наличие контейнера, а не факт пересборки: зона, которая не
+     изменилась, графики намеренно не пересоздаёт — см. paint(). */
+  ok(/class="chart /.test(html), 'на вкладке нет ни одного графика');
   ok(html.indexOf('undefined') < 0, 'в разметке встретилось "undefined"');
   ok(html.indexOf('NaN') < 0, 'в разметке встретилось "NaN"');
   ok(!/>\s*—\s*<\/div>\s*<div class="k-row">/.test(html), 'пустые значения в KPI');
@@ -136,9 +161,9 @@ fireTab('reports');
   let err = fire('[data-mode]', { mode });
   ok(!err, 'режим ' + mode + ': ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
   if (val) { err = fire('[data-slice]', { slice: mode, val }); ok(!err, 'выбор ' + mode + '=' + val + ': ' + (err && err.message)); }
-  const html = els.view.innerHTML;
+  const html = viewHtml();
   ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, режим ' + mode);
-  ok(chartOptions.length > 0, 'режим ' + mode + ': график динамики не собран');
+  ok(/class="chart /.test(html), 'режим ' + mode + ': нет контейнера графика динамики');
   console.log('· ' + mode + (val ? ' → ' + val : '') + ' → ' + (err ? 'ОШИБКА' : 'ок, графиков ' + chartOptions.length));
 });
 
@@ -150,7 +175,7 @@ console.log('\nВыбор отчёта');
   chartOptions.length = 0;
   const err = fire('[data-rep]', { rep: String(id) });
   ok(!err, 'выбор отчёта: ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
-  const html = els.view.innerHTML;
+  const html = viewHtml();
   ok(html.indexOf('Закрепляемость отчёта') >= 0, 'когорты не переключились на выбранный отчёт');
   ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке при выборе отчёта');
   console.log('· отчёт ' + id + ' → ' + (err ? 'ОШИБКА' : 'ок, графиков ' + chartOptions.length));
@@ -159,7 +184,7 @@ console.log('\nВыбор отчёта');
 /* Столбца «старт» в когортах быть не должно: он всегда 100% */
 console.log('\nКогорты');
 (function () {
-  const html = els.view.innerHTML;
+  const html = viewHtml();
   ok(html.indexOf('>старт<') < 0, 'в когортах остался столбец «старт»');
   ok(/<th class="ct-h"(?:\s[^>]*)?>\+1</.test(html), 'возраст когорт начинается не с +1');
   ok(html.indexOf('ct-bar') >= 0, 'нет полосы размера когорты');
@@ -177,7 +202,7 @@ console.log('\nПереключатели панелей');
   let err = null;
   try { clickHandlers.forEach((h) => h({ target })); } catch (e) { err = e; }
   ok(!err, key + '=' + val + ': ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
-  const html = els.view.innerHTML;
+  const html = viewHtml();
   ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, key + '=' + val + ': мусор в разметке');
   console.log('· ' + key + ' = ' + val + ' → ' + (err ? 'ОШИБКА' : 'ок, графиков ' + chartOptions.length));
 });
@@ -197,7 +222,7 @@ console.log('\nШирокая AD-группа');
   let err = null;
   try { clickHandlers.forEach((h) => h({ target })); } catch (e) { err = e; }
   ok(!err, 'переход к широкой аудитории: ' + (err && err.message));
-  const html = els.view.innerHTML;
+  const html = viewHtml();
   ok(html.indexOf('покрытие не считаем') >= 0, 'нет предупреждения о широкой группе');
   console.log('· отчёт ' + wide[0] + ' → ' + (err ? 'ОШИБКА' : 'ок, предупреждение на месте'));
 })();
@@ -212,7 +237,7 @@ console.log('\nЧастота визитов как кросс-фильтр');
     chartOptions.length = 0;
     const err = fire('[data-freq]', { freq: fb });
     ok(!err, 'корзина ' + fb + ': ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
-    const html = els.view.innerHTML;
+    const html = viewHtml();
     ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, корзина ' + fb);
     ok(html.indexOf('Частота: ' + fb) >= 0, 'нет чипа снятия фильтра для ' + fb);
     ok(html.indexOf('к пред. 30 дням') < 0, 'при кросс-фильтре осталось сравнение с предыдущим периодом');
@@ -229,22 +254,44 @@ console.log('\nЧастота визитов как кросс-фильтр');
 console.log('\nНастройка шкалы когорт');
 (function () {
   fireTab('reports');
-  ['col', 'all', 'abs'].forEach((base) => {
+  ['col', 'all'].forEach((base) => {
     const err = fire('[data-ctbase]', { ctbase: base });
     ok(!err, 'база ' + base + ': ' + (err && err.message));
-    const html = els.view.innerHTML;
+    const html = viewHtml();
     ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, база ' + base);
     ok(/data-ctband="/.test(html), 'база ' + base + ': ступени шкалы не отрисованы');
-    ok(base === 'abs' || /data-band="/.test(html), 'база ' + base + ': у ячеек нет номера ступени');
+    ok(/data-band="/.test(html), 'база ' + base + ': у ячеек нет номера ступени');
     console.log('· цвет ' + base + ' → ' + (err ? 'ОШИБКА' : 'ок'));
   });
+  ok(viewHtml().indexOf('data-ctspan') < 0, 'контрол размаха шкалы не убран');
+  ok(viewHtml().indexOf('по абсолютной доле') < 0, 'база «по абсолютной доле» не убрана');
   fire('[data-ctbase]', { ctbase: 'col' });
-  ['', '5', '10', '30'].forEach((sp) => {
-    const err = fire('[data-ctspan]', { ctspan: sp });
-    ok(!err, 'размах ' + (sp || 'авто') + ': ' + (err && err.message));
-    ok(els.view.innerHTML.indexOf('NaN') < 0, 'NaN при размахе ' + (sp || 'авто'));
-  });
-  console.log('· размах: авто/±5/±10/±30 → ок');
+})();
+
+/* ЗОННЫЙ РЕНДЕР: действие не должно пересобирать графики, которые от него
+   не зависят. Это ровно та жалоба, ради которой рендер разбит на зоны. */
+console.log('\nЗоны: лишних перерисовок нет');
+(function () {
+  fireTab('reports');
+  fire('[data-mode]', { mode: 'report' });
+  fire('[data-ctbase]', { ctbase: 'col' });
+
+  chartOptions.length = 0;
+  fire('[data-ctbase]', { ctbase: 'all' });
+  ok(chartOptions.length === 0, 'смена базы раскраски когорт пересобрала ' + chartOptions.length + ' граф.: она не влияет ни на один');
+  console.log('· легенда когорт → графики не тронуты');
+
+  chartOptions.length = 0;
+  fire('th[data-sort]', { sort: 'views' });
+  ok(chartOptions.length === 0, 'сортировка каталога пересобрала ' + chartOptions.length + ' граф.');
+  console.log('· сортировка каталога → графики не тронуты');
+
+  /* А вот выбор строки данные меняет — тут перерисовка обязана быть */
+  chartOptions.length = 0;
+  fire('[data-rep]', { rep: String(ctx.PA_DATA.reportMeta[3].dashboard_id) });
+  ok(chartOptions.length > 0, 'выбор отчёта НЕ пересобрал график динамики');
+  console.log('· выбор отчёта → динамика пересобрана, как и должна');
+  fire('[data-rep]', { rep: String(ctx.PA_DATA.reportMeta[3].dashboard_id) });
 })();
 
 /* Вкладка «Аудитория»: область, настройка ЦА, кросс-фильтры */
@@ -252,13 +299,14 @@ console.log('\nАудитория: область и целевая аудито
 (function () {
   const D = ctx.PA_DATA;
   fireTab('audience');
-  ['one', 'many', 'collection', 'one'].forEach((kind) => {
+  ['many', 'collection', 'one'].forEach((kind) => {
     chartOptions.length = 0;
     const err = fire('[data-audkind]', { audkind: kind });
     ok(!err, 'область ' + kind + ': ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
-    const html = els.view.innerHTML;
+    const html = viewHtml();
     ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, область ' + kind);
-    ok(chartOptions.length > 0, 'область ' + kind + ': графики не собраны');
+    /* Смена области обязана пересобрать графики: их данные изменились */
+    ok(chartOptions.length > 0, 'область ' + kind + ': графики не пересобраны');
     const hits = [];
     chartOptions.forEach((o, i) => deepScanNaN(o, 'opt' + i, hits));
     ok(hits.length === 0, 'NaN в графиках, область ' + kind);
@@ -271,8 +319,8 @@ console.log('\nАудитория: область и целевая аудито
   const openTarget = { closest() { return null; }, id: 'audCfgOpen', dataset: {}, matches() { return false; } };
   try { clickHandlers.forEach((h) => h({ target: openTarget })); } catch (e) { err = e; }
   ok(!err, 'открытие конструктора ЦА: ' + (err && err.message));
-  ok(els.view.innerHTML.indexOf('data-auddim') >= 0, 'конструктор ЦА не отрисован');
-  ok(els.view.innerHTML.indexOf('доступ к области есть у') >= 0, 'конструктор не показывает, у скольких есть доступ');
+  ok(viewHtml().indexOf('data-auddim') >= 0, 'конструктор ЦА не отрисован');
+  ok(viewHtml().indexOf('доступ к области есть у') >= 0, 'конструктор не показывает, у скольких есть доступ');
 
   err = fire('[data-auddim]', { auddim: 'spec', audval: 'Аналитик' });
   ok(!err, 'выбор условия ЦА: ' + (err && err.message));
@@ -282,11 +330,11 @@ console.log('\nАудитория: область и целевая аудито
   chartOptions.length = 0;
   try { clickHandlers.forEach((h) => h({ target: applyTarget })); } catch (e) { err = e; }
   ok(!err, 'применение настроенной ЦА: ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
-  let html = els.view.innerHTML;
+  let html = viewHtml();
   ok(html.indexOf('Собрана в конструкторе') >= 0, 'ЦА не переключилась на настроенную');
-  /* Ступень воронки живёт в option графика, а не в разметке */
-  ok(JSON.stringify(chartOptions.map((o) => (o.series || []).map((x) => (x.data || []).map((d) => d && d.name))))
-    .indexOf('Есть доступ к области') >= 0, 'в воронке нет ступени «есть доступ»');
+  /* Ступени воронки — подписи оси X барчарта, а не имена марок */
+  ok(JSON.stringify(chartOptions.map((o) => (o.xAxis && o.xAxis.data) || ''))
+    .indexOf('Есть доступ') >= 0, 'в воронке нет ступени «есть доступ»');
   ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке настроенной ЦА');
   console.log('· конструктор ЦА → ок, ступень «есть доступ» на месте');
 
@@ -294,20 +342,20 @@ console.log('\nАудитория: область и целевая аудито
   err = null;
   try { clickHandlers.forEach((h) => h({ target: resetTarget })); } catch (e) { err = e; }
   ok(!err, 'возврат к доступу: ' + (err && err.message));
-  ok(els.view.innerHTML.indexOf('Собрана в конструкторе') < 0, 'ЦА не вернулась к «как роздан доступ»');
+  ok(viewHtml().indexOf('Собрана в конструкторе') < 0, 'ЦА не вернулась к «как роздан доступ»');
 
   /* Кросс-фильтры: разрез структуры и сегмент поведения */
   chartOptions.length = 0;
   err = fire('[data-audunit]', { audunit: D.CUTS.lvl3.vals[0], audkey: 'lvl3' });
   ok(!err, 'кросс-фильтр по разрезу: ' + (err && err.message));
-  html = els.view.innerHTML;
+  html = viewHtml();
   ok(html.indexOf('На экране срез') >= 0, 'плашка ЦА не отметила срез');
   ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке при кросс-фильтре');
   fire('[data-audunit]', { audunit: D.CUTS.lvl3.vals[0], audkey: 'lvl3' });   // снять
 
   err = fire('[data-seg]', { seg: 'Постоянный' });
   ok(!err, 'фильтр по сегменту: ' + (err && err.message));
-  ok(els.view.innerHTML.indexOf('Сегмент: Постоянный') >= 0, 'нет чипа снятия сегмента');
+  ok(viewHtml().indexOf('Сегмент: Постоянный') >= 0, 'нет чипа снятия сегмента');
   fire('[data-seg]', { seg: 'Постоянный' });
   console.log('· кросс-фильтры разреза и сегмента → ок');
 })();

@@ -56,6 +56,9 @@
     it:     { label: 'IT | non-IT',        vals: ['IT', 'non-IT'],                            w: [38, 62] },
     hq:     { label: 'HQ | non-HQ',        vals: ['HQ', 'non-HQ'],                            w: [57, 43] },
     exp:    { label: 'Стаж в компании',    vals: ['до 1 года', '1–3 года', '3–5 лет', '5–10 лет', '10+ лет'], w: [18, 29, 22, 20, 11] },
+    /* Значения подставляются ниже, когда известен список групп: справочник
+       разрезов объявлен раньше, чем AD_GROUPS. */
+    adgroup: { label: 'AD-группа',         vals: [],                                          w: [] },
   };
   const CUT_KEYS = Object.keys(CUTS);
   const HC_TOTAL_REF = 27400;                    // активная численность банка
@@ -476,6 +479,9 @@
     tableau_all_employees:    { home: null, pIn: .93, pOut: .93 },   // почти весь банк
   };
 
+  CUTS.adgroup.vals = AD_GROUPS.slice();
+  CUTS.adgroup.w = AD_GROUPS.map(() => 1);
+
   const audienceMeta = {};
   reportMeta.forEach((m, i) => {
     const mode = i % 5 === 0 ? 'acl' : (i % 7 === 3 ? 'wide' : 'ad');
@@ -556,9 +562,11 @@
     return out;
   })();
 
-  /* Разрезы, по которым можно СОБРАТЬ целевую аудиторию руками. Это ровно те
-     поля, что есть в mdm_employee_daily_proteus, — ничего сверх витрины. */
-  const AUD_DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq'];
+  /* Разрезы, по которым можно СОБРАТЬ целевую аудиторию руками. Это поля
+     mdm_employee_daily_proteus плюс членство в AD-группах: группа — тоже
+     осмысленный способ очертить аудиторию («все, кто в группе рисков»),
+     просто не обязательно тот, которым роздан доступ к этому отчёту. */
+  const AUD_DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq', 'adgroup'];
 
   const GROUP_IDX = {};
   Object.keys(AD_GROUP_DEF).forEach((g, i) => { GROUP_IDX[g] = i + 1; });
@@ -600,7 +608,9 @@
   function customAudience(filters) {
     const keys = AUD_DIMS.filter((k) => filters[k] && filters[k].length);
     if (!keys.length) return population.slice();
-    return population.filter((p) => keys.every((k) => filters[k].indexOf(p[k]) >= 0));
+    return population.filter((p) => keys.every((k) => (k === 'adgroup'
+      ? filters[k].some((g) => inAdGroup(p, g))
+      : filters[k].indexOf(p[k]) >= 0)));
   }
 
   /* --------------------- Визиты: кто, куда, когда ------------------------

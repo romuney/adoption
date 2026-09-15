@@ -58,7 +58,6 @@
     selectedReport: null,        // последний выбранный отчёт (нужен вкладке «Аудитория»)
     retView: 'cohort',
     ctBase: 'col',               // чем меряет цвет когорт: медиана столбца
-    ctSpan: null,                // размах шкалы когорт: null = авто
     freqSel: null,               // кросс-фильтр «как часто заходят» ⟳
     audCut: 'lvl3',              // разрез разбивки аудитории
     audSeg: null,                // сегмент поведения — фильтр поимённого списка
@@ -66,6 +65,8 @@
     audScope: { kind: 'one', ids: [], collection: 'Розница' },
     audDef: { mode: 'access', filters: {}, draft: {} },
     _audCfg: false,              // открыт ли конструктор целевой аудитории
+    _audDim: 'lvl3',             // разрез, открытый в конструкторе
+    scopeQuery: '',              // поиск в мультивыборе отчётов
     repSort: { col: 'users', dir: -1 },
     repQuery: '',
     audQuery: '',
@@ -411,7 +412,8 @@
       swt('excludeOwners', 'Исключить владельцев из просмотров', f.excludeOwners,
         'Владелец открывает свой отчёт при каждой правке — его визиты завышают аудиторию.'));
 
-    document.getElementById('sideNav').innerHTML = h;
+    const nav = document.getElementById('sideNav');
+    if (nav.innerHTML !== h) nav.innerHTML = h;   // не трогаем DOM без нужды
 
     function grp(id, title, cnt, body) {
       const open = S._grp !== undefined && S._grp[id] === false ? false : true;
@@ -426,26 +428,115 @@
     }
   }
 
-  /* ========================== Очередь графиков =========================== */
+  /* ======================================================================
+     ЗОНЫ И ГРАФИКИ
+
+     Экран собран не одним куском разметки, а набором ЗОН. Зона — кусок
+     страницы с собственным состоянием: каталог, панель динамики,
+     закрепляемость, частота. Вкладка возвращает список зон, рендер
+     сравнивает разметку каждой зоны с тем, что уже стоит в DOM, и
+     переписывает ТОЛЬКО изменившиеся.
+
+     Зачем: раньше любое действие перерисовывало экран целиком и все
+     графики создавались заново — переключил разрез в каталоге, а барчарт
+     динамики моргнул и проиграл анимацию, хотя его данные не менялись.
+     Теперь неизменившаяся зона не трогается вовсе, и живущий в ней
+     экземпляр ECharts продолжает жить.
+
+     Чтобы это работало, id контейнеров графиков должны быть
+     ДЕТЕРМИНИРОВАННЫМИ: id собирается из имени зоны и номера графика
+     внутри неё. Случайный id менял бы разметку зоны на каждом рендере, и
+     ни одна зона никогда не совпала бы сама с собой.
+     ==================================================================== */
   let QUEUE = [];
-  const INSTANCES = [];
-  function chart(cls, optFn) {
-    const id = 'ch' + (QUEUE.length + 1) + '_' + Math.random().toString(36).slice(2, 7);
-    QUEUE.push({ id, optFn });
-    return '<div class="chart ' + cls + '" id="' + id + '"></div>';
+  const INSTANCES = {};          // id контейнера → экземпляр ECharts
+  let ZONE = 'z';                // зона, которая собирается прямо сейчас
+  let ZN = 0;                    // номер графика внутри неё
+
+  /* Короткая подпись строки — чтобы зона менялась вместе с данными */
+  function hash(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+    return h.toString(36);
   }
+
+  /* Контейнер графика несёт подпись своих ДАННЫХ. Без неё разметка зоны
+     одинакова при любых данных (в ней только пустой div), и график не
+     перерисовался бы, когда перерисоваться нужно: сменили область — а
+     на экране остаются прежние столбики. Подпись замыкает круг: зона
+     меняется ровно тогда, когда меняется то, что она показывает. */
+  function chart(cls, optFn, sigData) {
+    const id = 'ch-' + ZONE + '-' + (ZN++);
+    QUEUE.push({ id, optFn });
+    const sig = sigData == null ? '' : ' data-sig="' + hash(JSON.stringify(sigData)) + '"';
+    return '<div class="chart ' + cls + '" id="' + id + '"' + sig + '></div>';
+  }
+
+  /* Собрать разметку одной зоны */
+  function zone(id, fn) {
+    ZONE = id; ZN = 0;
+    return { id, html: fn() };
+  }
+  /* Несколько зон в одном контейнере-сплите. Нужна, когда рядом стоят
+     блоки с РАЗНОЙ судьбой: каталог перерисовывается от сортировки и
+     поиска, панель динамики — нет, а лежат они в одной сетке.
+     Обёртка зоны в сетке невидима (display:contents в app.css), поэтому
+     панели остаются прямыми ячейками грида. */
+  const group = (cls, zones) => ({ group: cls, zones });
+
+  /* Разложить зоны по DOM, переписав только изменившиеся */
+  function paint(items) {
+    const view = document.getElementById('view');
+    const flat = [];
+    const skeleton = items.map((it) => {
+      if (!it.group) { flat.push(it); return '<div class="zone" id="z-' + it.id + '"></div>'; }
+      it.zones.forEach((z) => flat.push(z));
+      return '<div class="' + it.group + '">' +
+        it.zones.map((z) => '<div class="zone" id="z-' + z.id + '"></div>').join('') + '</div>';
+    }).join('');
+    const want = items.map((it) => (it.group ? it.group + '(' + it.zones.map((z) => z.id).join(',') + ')' : it.id)).join('|');
+
+    if (view.dataset.zones !== want) {
+      /* Набор зон сменился (другая вкладка) — пересобираем каркас целиком */
+      view.innerHTML = skeleton;
+      view.dataset.zones = want;
+    }
+    flat.forEach((z) => {
+      const el = document.getElementById('z-' + z.id);
+      if (!el) return;
+      const sig = z.html.length + ':' + z.html;
+      if (el.dataset.sig === sig) return;      // ничего не изменилось — не трогаем
+      el.innerHTML = z.html;
+      el.dataset.sig = sig;
+    });
+  }
+
+  /* Снять экземпляры, чьи контейнеры уехали из DOM, и поднять новые */
   function mountCharts() {
-    while (INSTANCES.length) { try { INSTANCES.pop().dispose(); } catch (e) { /* уже снят */ } }
+    /* Узел, на котором поднят экземпляр, храним рядом с ним: если зону
+       переписали, в DOM стоит уже ДРУГОЙ узел с тем же id, и старый
+       экземпляр надо снять. Сравнение по ссылке на узел — единственный
+       надёжный признак. */
+    Object.keys(INSTANCES).forEach((id) => {
+      const rec = INSTANCES[id];
+      if (rec.el === document.getElementById(id)) return;   // жив и на месте
+      try { rec.inst.dispose(); } catch (e) { /* уже снят */ }
+      delete INSTANCES[id];
+    });
     QUEUE.forEach((q) => {
+      if (INSTANCES[q.id]) return;                          // зона не перерисовывалась
       const el = document.getElementById(q.id);
       if (!el) return;
       const inst = echarts.init(el, null, { renderer: 'canvas' });
-      inst.setOption(q.optFn());
-      INSTANCES.push(inst);
+      inst.setOption(q.optFn(el.clientWidth, el.clientHeight));
+      INSTANCES[q.id] = { inst, el };
     });
     QUEUE = [];
   }
-  addEventListener('resize', () => INSTANCES.forEach((i) => { try { i.resize(); } catch (e) { /* снят */ } }));
+  const eachInstance = (fn) => Object.keys(INSTANCES).forEach((id) => {
+    try { fn(INSTANCES[id].inst); } catch (e) { /* снят */ }
+  });
+  addEventListener('resize', () => eachInstance((i) => i.resize()));
 
   /* ======================================================================
      ВКЛАДКА 1 — «Отчёты»: каталог и динамика в одном экране
@@ -603,17 +694,23 @@
     });
   }
 
+  /* Расшифровка корзин частоты: «1 день» — это один день ИЗ ПЕРИОДА, а не
+     один день подряд. Без этой строки таблица читается как угодно. */
+  function freqExplain() {
+    const n = D.GRAINS[S.grain].n;
+    const unit = { d: 'дней', w: 'недель', m: 'месяцев', q: 'кварталов' }[S.grain];
+    return 'Сколько РАЗНЫХ дней человек заходил за период (последние ' + n + ' ' + unit + '). ' +
+      '«1 день» — заходил ровно один раз за весь период, «16+ дней» — заходил в 16 и более разных дней.';
+  }
+
   function renderReports() {
     const sl = selection();
     const rows = reportRows();
     const fr = freqRows();
     const frTot = fr.reduce((a, b) => a + b.users, 0);
-    /* Частота — не отдельная табличка, а кросс-фильтр: выбранная корзина
-       пересчитывает и динамику, и карточки. Поэтому сначала считаем ряды,
-       потом накладываем фильтр, и только потом собираем KPI из того, что
-       реально нарисовано. */
+    const ts0 = series();
     const kBase = kpiRow();
-    const slice = freqSlice(series(), kBase);
+    const slice = freqSlice(ts0, kBase);
     const ts = slice.ts;
     const k = slice.k;
     const fSel = slice.sliced;      // корзина частоты действительно применена
@@ -622,12 +719,6 @@
     const shReg = k && k.users ? k.regular_users / k.users * 100 : 0;
     const shRegPrev = k && k.users_prev ? k.regular_users_prev / k.users_prev * 100 : 0;
     const isRep = sl.kind === 'rep';
-
-    let h = head('Отчёты и динамика просмотров',
-      'Основной экран: слева — по чему смотрим, справа — что с этим происходит. ' +
-      'Без выбора показан весь Proteus; выберите отчёт, коллекцию, себя как владельца или подразделение — ' +
-      'карточки, динамика, частота и закрепляемость пересчитаются под выбор. ' +
-      'Период — <b>' + U.periodLabel(S.grain) + '</b>.');
 
     /* Пятая карточка зависит от того, что выбрано: у отчёта осмысленна
        тишина, у группы и у всего Proteus — размер каталога. */
@@ -645,157 +736,158 @@
         delta: '', sub: 'по текущим фильтрам',
       });
 
-    h += U.kpis([
-      U.kpi({
-        label: 'Пользователей', value: U.nf(k.users),
-        tag: fSel ? S.freqSel : '',
-        hint: { title: 'Пользователи', text: 'Уникальные логины за период.', note: 'Сумма по дням больше: один человек заходит в разные дни.' },
-        delta: fSel ? '' : U.delta(dPct(k.users, k.users_prev), {
-          vs, tip: { title: 'Сравнение', rows: [{ label: 'Период', value: U.nf(k.users) }, { label: 'Предыдущий', value: U.nf(k.users_prev), dash: true, color: CH.C.bench }] },
-        }),
-        sub: fSel
-          ? 'это <b>' + U.pct(k.freq_share) + '</b> всей аудитории'
-          : 'предыдущий: <b>' + U.nf(k.users_prev) + '</b>',
-      }),
-      U.kpi({
-        label: 'Просмотров', value: U.compact(k.views),
-        hint: { title: 'Просмотры', text: 'Сумма открытий (action_count).' },
-        delta: fSel ? '' : U.delta(dPct(k.views, k.views_prev), { vs }),
-        sub: 'на пользователя: <b>' + U.nf(k.users ? k.views / k.users : 0, 1) + '</b>',
-      }),
-      U.kpi({
-        label: 'Новых пользователей', value: U.nf(k.new_users),
-        hint: {
-          title: 'Новые',
-          text: sl.kind === 'all' || sl.kind === 'cut'
-            ? 'Первый визит в Proteus пришёлся на этот период.'
-            : 'Впервые открыли этот отчёт за период.',
-        },
-        delta: fSel ? '' : U.delta(dPct(k.new_users, k.new_users_prev), { vs }),
-        sub: 'доля аудитории: <b>' + U.pct(k.users ? k.new_users / k.users * 100 : 0) + '</b>',
-      }),
-      fSel
-        ? U.kpi({
-          /* «Доля постоянных» внутри корзины — тавтология: в «16+ дней» она
-             всегда 100%, в «1 день» всегда 0. Показываем то, ради чего
-             корзину и открыли: сколько просмотров даёт один такой человек. */
-          label: 'Просмотров на человека',
-          value: U.nf(k.users ? k.views / k.users : 0, 1),
-          hint: { title: 'Интенсивность', text: 'Просмотры этой корзины, делённые на число людей в ней.', note: 'По всей аудитории — ' + U.nf(kBase.users ? kBase.views / kBase.users : 0, 1) + '.' },
-          delta: '',
-          sub: 'по всем: <b>' + U.nf(kBase.users ? kBase.views / kBase.users : 0, 1) + '</b>',
-        })
-        : U.kpi({
-          label: 'Постоянных', value: U.pct(shReg),
-          hint: { title: 'Постоянные', text: 'Заходили 8 и более разных дней за период.', note: 'Порог выбран как «примерно раз в неделю и чаще».' },
-          delta: U.delta(shReg - shRegPrev, { vs, unit: ' п.п.', dead: .3 }),
-          sub: '<b>' + U.nf(k.regular_users) + '</b> ' + U.plural(k.regular_users, 'человек', 'человека', 'человек'),
-        }),
-      fifth,
-    ], 5);
-
-    h += U.observations(obsMain(kBase), 'main');
-
-    /* ---- Ядро экрана ----------------------------------------------------
-       Слева колонка «по чему смотрим»: каталог и под ним частота визитов.
-       Обе таблицы — селекторы, а не справки, поэтому стоят рядом. Справа
-       динамика: ей отдана большая доля ширины, потому что читают её, а не
-       каталог, и потому что подпись стоит у каждого столбика. */
     const table = S.mode === 'report' ? reportTable()
       : (MODE(S.mode).axis === 'grp' ? groupTable() : cutTable());
 
-    const freqPanel = U.panel({
-      title: 'Как часто заходят',
-      subHtml: S.freqSel
-        ? 'фильтр: <b>' + U.esc(S.freqSel) + '</b> — клик по строке снимет'
-        : 'клик по строке фильтрует динамику справа ' + SRV_TXT,
-      body: U.barTable({
-        firstH: 'Активных дней', firstW: '34%', colW: '19%',
-        dense: true, clickAttr: 'freq', selected: S.freqSel,
-        cols: [{ label: 'Человек', hint: { text: 'Строки складываются в ИТОГО: у человека ровно одно число активных дней за период.' } }, { label: 'Доля' }],
-        total: { cells: [U.nf(frTot), '100%'] },
-        barH: '',
-        rows: fr.map((r) => ({
-          key: r.bucket, label: r.bucket,
-          cells: [U.nf(r.users), U.pct(frTot ? r.users / frTot * 100 : 0, 0)],
-          bar: r.users,
-          tip: {
-            title: r.bucket,
-            rows: [{ label: 'Человек', value: U.nf(r.users), color: CH.C.act },
-              { label: 'Доля аудитории', value: U.pct(frTot ? r.users / frTot * 100 : 0) }],
-            note: S.freqSel === r.bucket ? 'Клик снимет фильтр' : 'Клик оставит на графике справа только этих людей',
-          },
-        })),
-        /* Пояснение ушло в подсказку шапки: в колонке селекторов каждая
-           строка текста стоит одной видимой строки каталога. */
-      }),
-    });
-
-    h += '<div class="split main">' +
-      '<div class="split-col">' +
-        U.panel({
-          cls: 'split-l grow', title: 'Каталог', sub: 'клик по строке задаёт контекст вкладки',
-          right: S.mode === 'report' ? U.searchBox('repQ', 'Найти отчёт', S.repQuery) : '',
-          under: cutBar(), bodyCls: 'tbl-wrap', body: table,
-        }) +
-        freqPanel +
-      '</div>' +
-      U.panel({
-        cls: 'split-r', title: sl.title,
-        sub: sl.sub + (S.freqSel ? ' · только «' + S.freqSel + '»' : ''),
-        right: isRep ? '<button class="btn" data-goaud="' + sl.report.dashboard_id + '">Аудитория отчёта →</button>' : '',
-        body: chart('fill', () => CH.dynamics(ts, S.grain, {
-          title: S.freqSel ? 'Пользователи по периодам · ' + S.freqSel : 'Пользователи по периодам',
-          newLabel: (sl.kind === 'rep' || sl.kind === 'grp') ? 'Новые в отчёте' : 'Новые',
-        })) +
-          (fSel
-            ? '<div class="tbl-note">На графике только те, кто заходил <b>' + U.esc(S.freqSel) +
-              '</b> за период: человеко-дни корзины разложены по бакетам в пропорции общей динамики ' + SRV_TXT +
-              '. Сравнение с предыдущим периодом снято — состава корзин за прошлый период в витрине нет.</div>'
-            : (sl.kind === 'grp'
-              ? '<div class="tbl-note">Пользователи группы — уникальные по группе: один человек, открывший два отчёта, ' +
-                'в столбце учтён один раз. Просмотры складываются точно.</div>'
-              : '')),
-      }) +
-      '</div>';
-
-    /* ---- Закрепляемость: во всю ширину ---------------------------------
-       Когортной таблице нужно 12 колонок возраста плюс легенда-регулятор.
-       Рядом с ней больше ничего не стоит — частота уехала к каталогу,
-       которому она и сестра по смыслу. */
     const cohorts = cohortRows();
     const retTitle = isRep ? 'Закрепляемость отчёта' : 'Закрепляемость Proteus';
     const retSub = isRep
-      ? 'когорта — месяц, в который человек открыл этот отчёт впервые ' + SRV_TXT
+      ? 'когорта — месяц, в который человек открыл этот отчёт впервые'
       : 'когорта — месяц первого визита в Proteus; фильтр периода на этот блок не действует';
-    const retSubKey = isRep ? 'subHtml' : 'sub';
 
-    h += '<div class="rows" style="margin-top:var(--s8)">' +
-      U.panel(Object.assign({
-        title: retTitle,
-        tabKey: 'retView',
-        tabs: [{ key: 'cohort', label: 'Когорты', on: S.retView === 'cohort' },
-          { key: 'curve', label: 'Кривая', on: S.retView === 'curve' }],
-        body: S.retView === 'cohort'
-          ? U.cohortTable({
-            rows: cohorts, maxAge: 11, uid: 'ret',
-            base: S.ctBase, span: S.ctSpan,
-            firstTip: isRep ? 'Месяц, в который человек открыл этот отчёт впервые'
-              : 'Месяц первого визита в Proteus',
-            sizeNote: isRep ? 'Столько человек открыли этот отчёт впервые в этом месяце'
-              : 'Столько человек впервые зашли в Proteus в этом месяце',
-            note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Чем меряет цвет и какой у шкалы ' +
-              'размах — переключается в легенде над таблицей; наведите ступень шкалы, чтобы на таблице ' +
-              'остались только её ячейки. Серый курсив — месяц ещё не закрыт: значение дорастёт и в ' +
-              'раскраске не участвует. Столбца «старт» нет: в нём всегда 100%.',
+    /* Экран собран зонами: переключение разреза не трогает панель динамики,
+       настройка шкалы когорт не трогает ничего, кроме себя. См. paint(). */
+    return [
+      zone('head', () => head('Отчёты и динамика просмотров',
+        'Основной экран: слева — по чему смотрим, справа — что с этим происходит. ' +
+        'Без выбора показан весь Proteus; выберите отчёт, коллекцию, себя как владельца или подразделение — ' +
+        'карточки, динамика, частота и закрепляемость пересчитаются под выбор. ' +
+        'Период — <b>' + U.periodLabel(S.grain) + '</b>.')),
+
+      zone('kpi', () => U.kpis([
+        U.kpi({
+          label: 'Пользователей', value: U.nf(k.users),
+          tag: fSel ? S.freqSel : '',
+          hint: { title: 'Пользователи', text: 'Уникальные логины за период.', note: 'Сумма по дням больше: один человек заходит в разные дни.' },
+          delta: fSel ? '' : U.delta(dPct(k.users, k.users_prev), {
+            vs, tip: { title: 'Сравнение', rows: [{ label: 'Период', value: U.nf(k.users) }, { label: 'Предыдущий', value: U.nf(k.users_prev), dash: true, color: CH.C.bench }] },
+          }),
+          sub: fSel
+            ? 'это <b>' + U.pct(k.freq_share) + '</b> всей аудитории'
+            : 'предыдущий: <b>' + U.nf(k.users_prev) + '</b>',
+        }),
+        U.kpi({
+          label: 'Просмотров', value: U.compact(k.views),
+          hint: { title: 'Просмотры', text: 'Сумма открытий (action_count).' },
+          delta: fSel ? '' : U.delta(dPct(k.views, k.views_prev), { vs }),
+          sub: 'на пользователя: <b>' + U.nf(k.users ? k.views / k.users : 0, 1) + '</b>',
+        }),
+        U.kpi({
+          label: 'Новых пользователей', value: U.nf(k.new_users),
+          hint: {
+            title: 'Новые',
+            text: sl.kind === 'all' || sl.kind === 'cut'
+              ? 'Первый визит в Proteus пришёлся на этот период.'
+              : 'Впервые открыли этот отчёт за период.',
+          },
+          delta: fSel ? '' : U.delta(dPct(k.new_users, k.new_users_prev), { vs }),
+          sub: 'доля аудитории: <b>' + U.pct(k.users ? k.new_users / k.users * 100 : 0) + '</b>',
+        }),
+        fSel
+          ? U.kpi({
+            /* «Доля постоянных» внутри корзины — тавтология: в «16+ дней» она
+               всегда 100%, в «1 день» всегда 0. Показываем то, ради чего
+               корзину и открыли: сколько просмотров даёт один такой человек. */
+            label: 'Просмотров на человека',
+            value: U.nf(k.users ? k.views / k.users : 0, 1),
+            hint: { title: 'Интенсивность', text: 'Просмотры этой корзины, делённые на число людей в ней.', note: 'По всей аудитории — ' + U.nf(kBase.users ? kBase.views / kBase.users : 0, 1) + '.' },
+            delta: '',
+            sub: 'по всем: <b>' + U.nf(kBase.users ? kBase.views / kBase.users : 0, 1) + '</b>',
           })
-          : chart('h-tall', () => CH.retentionCurve(retentionPoints(cohorts), {
-            title: isRep ? 'Средняя кривая удержания отчёта' : 'Средняя кривая удержания по всем когортам',
-          })),
-      }, { [retSubKey]: retSub })) +
-      '</div>';
+          : U.kpi({
+            label: 'Постоянных', value: U.pct(shReg),
+            hint: { title: 'Постоянные', text: 'Заходили 8 и более разных дней за период.', note: 'Порог выбран как «примерно раз в неделю и чаще».' },
+            delta: U.delta(shReg - shRegPrev, { vs, unit: ' п.п.', dead: .3 }),
+            sub: '<b>' + U.nf(k.regular_users) + '</b> ' + U.plural(k.regular_users, 'человек', 'человека', 'человек'),
+          }),
+        fifth,
+      ], 5)),
 
-    return h;
+      zone('obs', () => U.observations(obsMain(kBase), 'main')),
+
+      /* Ядро экрана. Левую колонку целиком занимает каталог: в него должно
+         помещаться как можно больше строк — отчётов, коллекций,
+         подразделений. Частота визитов делить эту высоту не может, она
+         уехала вниз, к закрепляемости. */
+      group('split main', [
+        zone('catalog', () => U.panel({
+          cls: 'split-l', title: 'Каталог', sub: 'клик по строке задаёт контекст вкладки',
+          right: S.mode === 'report' ? U.searchBox('repQ', 'Найти отчёт', S.repQuery) : '',
+          under: cutBar(), bodyCls: 'tbl-wrap', body: table,
+        })),
+        zone('dyn', () => U.panel({
+          cls: 'split-r', title: sl.title,
+          sub: sl.sub + (fSel ? ' · только «' + S.freqSel + '»' : ''),
+          right: isRep ? '<button class="btn" data-goaud="' + sl.report.dashboard_id + '">Аудитория отчёта →</button>' : '',
+          body: chart('fill', (w) => CH.dynamics(ts, S.grain, {
+            width: w,
+            title: fSel ? 'Пользователи по периодам · ' + S.freqSel : 'Пользователи по периодам',
+            newLabel: (sl.kind === 'rep' || sl.kind === 'grp') ? 'Новые в отчёте' : 'Новые',
+          }), [ts, S.grain, S.freqSel, sl.kind, sl.title]) +
+            (fSel
+              ? '<div class="tbl-note">На графике только те, кто заходил <b>' + U.esc(S.freqSel) +
+                '</b> за период: человеко-дни корзины разложены по бакетам в пропорции общей динамики ' + SRV_TXT +
+                '. Сравнение с предыдущим периодом снято — состава корзин за прошлый период в витрине нет.</div>'
+              : (sl.kind === 'grp'
+                ? '<div class="tbl-note">Пользователи группы — уникальные по группе: один человек, открывший два отчёта, ' +
+                  'в столбце учтён один раз. Просмотры складываются точно.</div>'
+                : '')),
+        })),
+      ]),
+
+      /* Закрепляемость и частота. Частота стоит здесь, а не у каталога:
+         она тоже селектор, но выбирает НЕ строку, а людей, и место ей
+         рядом с блоком про то же самое — как люди возвращаются. */
+      group('split ret', [
+        zone('ret', () => U.panel({
+          cls: 'split-l', title: retTitle, sub: retSub,
+          tabKey: 'retView',
+          tabs: [{ key: 'cohort', label: 'Когорты', on: S.retView === 'cohort' },
+            { key: 'curve', label: 'Кривая', on: S.retView === 'curve' }],
+          body: S.retView === 'cohort'
+            ? U.cohortTable({
+              rows: cohorts, maxAge: 11, uid: 'ret', base: S.ctBase,
+              firstTip: isRep ? 'Месяц, в который человек открыл этот отчёт впервые'
+                : 'Месяц первого визита в Proteus',
+              sizeNote: isRep ? 'Столько человек открыли этот отчёт впервые в этом месяце'
+                : 'Столько человек впервые зашли в Proteus в этом месяце',
+              note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Чем меряет цвет — ' +
+                'переключается в легенде над таблицей; наведите ступень шкалы, чтобы на таблице ' +
+                'остались только её ячейки. Серый курсив — месяц ещё не закрыт: значение дорастёт и в ' +
+                'раскраске не участвует. Столбца «старт» нет: в нём всегда 100%.',
+            })
+            : chart('h-tall', (w) => CH.retentionCurve(retentionPoints(cohorts), {
+              width: w,
+              title: isRep ? 'Средняя кривая удержания отчёта' : 'Средняя кривая удержания по всем когортам',
+            }), [retentionPoints(cohorts), isRep]),
+        })),
+        zone('freq', () => U.panel({
+          cls: 'split-r', title: 'Как часто заходят',
+          subHtml: S.freqSel
+            ? 'фильтр: <b>' + U.esc(S.freqSel) + '</b> — клик по строке снимет'
+            : 'клик по строке фильтрует динамику вверху ' + SRV_TXT,
+          body: '<div class="note-inline tight">' + freqExplain() + '</div>' +
+            U.barTable({
+              firstH: 'Активных дней', firstW: '34%', colW: '19%', barH: '',
+              dense: true, clickAttr: 'freq', selected: S.freqSel,
+              cols: [{ label: 'Человек' }, { label: 'Доля' }],
+              total: { cells: [U.nf(frTot), '100%'] },
+              rows: fr.map((r) => ({
+                key: r.bucket, label: r.bucket,
+                cells: [U.nf(r.users), U.pct(frTot ? r.users / frTot * 100 : 0, 0)],
+                bar: r.users,
+                tip: {
+                  title: r.bucket + ' из ' + D.GRAINS[S.grain].n,
+                  rows: [{ label: 'Человек', value: U.nf(r.users), color: CH.C.act },
+                    { label: 'Доля аудитории', value: U.pct(frTot ? r.users / frTot * 100 : 0) }],
+                  note: S.freqSel === r.bucket ? 'Клик снимет фильтр' : 'Клик оставит на графике динамики только этих людей',
+                },
+              })),
+              note: 'Строки складываются в ИТОГО: у человека ровно одно число активных дней за период.',
+            }),
+        })),
+      ]),
+    ];
   }
 
   /* ======================================================================
@@ -816,7 +908,7 @@
        оттуда всех людей и посмотреть, сколько из них дошло.
      ==================================================================== */
 
-  const DIM_ORDER = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq'];
+  const DIM_ORDER = ['lvl3', 'lvl4', 'stream', 'spec', 'adgroup', 'exp', 'it', 'hq'];
   const SEGMENTS = [
     { key: 'Постоянный',    plural: 'Постоянные',    color: CH.C.seg3, note: '8+ активных дней' },
     { key: 'Эпизодический', plural: 'Эпизодические', color: CH.C.seg2, note: '2–7 активных дней' },
@@ -890,8 +982,8 @@
   function renderAudience() {
     const ids = scopeIds();
     if (!ids.length) {
-      return head('Аудитория', '') +
-        '<div class="empty"><b>Нет отчётов по текущим фильтрам</b>Снимите часть фильтров слева.</div>';
+      return [zone('head', () => head('Аудитория', '')),
+        zone('empty', () => '<div class="empty"><b>Нет отчётов по текущим фильтрам</b>Снимите часть фильтров слева.</div>')];
     }
     const def = audienceDef(ids);
     /* Разрез из правой панели — настоящий кросс-фильтр: он СУЖАЕТ целевую
@@ -927,17 +1019,17 @@
     const dyn = D.audienceDynamics(rows, S.grain, rows.length);
     const scTitle = scopeTitle(ids);
 
-    let h = head('Аудитория: ' + scTitle,
-      'Кому область была роздана, кто из них дошёл, кто закрепился и кто не заходил ни разу. ' +
-      'Слева выбирается <b>область</b> — отчёт, набор отчётов или коллекция; справа — <b>целевая аудитория</b>, ' +
-      'с которой сравниваем охват. Период — <b>' + U.periodLabel(S.grain) + '</b>.');
-
     /* Плашка источника описывает ЦЕЛЕВУЮ АУДИТОРИЮ ЦЕЛИКОМ, а не срез: иначе
        чип показывал число после кросс-фильтра, а текст рядом — до него. */
     const audTotal = Math.round(basePeople.length * W);
-    h += scopeBar(ids, def, audTotal, st, wide);
 
-    h += U.kpis([
+    const zHead = zone('head', () => head('Аудитория: ' + scTitle,
+      'Кому область была роздана, кто из них дошёл, кто закрепился и кто не заходил ни разу. ' +
+      'Слева выбирается <b>область</b> — отчёт, набор отчётов или коллекция; справа — <b>целевая аудитория</b>, ' +
+      'с которой сравниваем охват. Период — <b>' + U.periodLabel(S.grain) + '</b>.'));
+    const zScope = zone('scope', () => scopeBar(ids, def, audTotal, st, wide));
+
+    const zKpi = zone('kpi', () => U.kpis([
       U.kpi({
         label: 'Целевая аудитория', value: U.nf(st.audience),
         tag: def.mode === 'custom' ? 'настроена' : '',
@@ -981,9 +1073,9 @@
             ? 'из них <b>' + U.nf(st.noAccess) + '</b> без доступа'
             : '<b>' + U.pct(st.audience ? st.never / st.audience * 100 : 0, 0) + '</b> аудитории'),
       }),
-    ], 5);
+    ], 5));
 
-    h += U.observations(obsAudience(def, st, wide), 'aud');
+    const zObs = zone('obs', () => U.observations(obsAudience(def, st, wide), 'aud'));
 
     /* ---- Воронка + её расшифровка по времени ---------------------------- */
     const one = ids.length === 1 ? reportById(ids[0]) : null;
@@ -996,12 +1088,12 @@
       ? bs.findIndex((b) => b >= one.created_dt) : -1;
     const createdBefore = !!one && one.created_dt <= bs[0];
 
-    h += '<div class="split wide-r" style="margin-bottom:var(--s8)">' +
-      U.panel({
+    const gFlow = group('split wide-r', [
+      zone('funnel', () => U.panel({
         cls: 'split-l', title: 'Путь целевой аудитории',
         sub: 'от выданного доступа до регулярного использования',
         bodyCls: 'flexcol',
-        body: chart('fill', () => CH.funnel([
+        body: chart('fill', (w) => CH.funnelBars([
           { name: 'Целевая аудитория', value: st.audience, note: def.mode === 'custom' ? 'Собрана в конструкторе' : 'Как роздан доступ' },
           /* У настроенной ЦА ступень «есть доступ» отделяет «не роздали» от
              «не ходят». Когда ЦА и есть доступ — это одно и то же множество,
@@ -1012,7 +1104,8 @@
           { name: 'Открыли хотя бы раз', value: st.came },
           { name: 'Вернулись ещё раз', value: st.returned },
           { name: 'Заходят регулярно', value: st.regular, note: '8+ активных дней за период' },
-        ].filter(Boolean))) +
+        ].filter(Boolean), { width: w }),
+          [st.audience, st.access, st.came, st.returned, st.regular, def.mode]) +
           '<div class="tbl-note">Каждый следующий этап — подмножество предыдущего. ' +
           (def.mode === 'custom'
             ? 'Ступень <b>«есть доступ»</b> отделяет «не роздали права» от «роздали, но не ходят»: ' +
@@ -1020,22 +1113,23 @@
             : '') +
           '<b>Когда</b> этапы набирались и менялась ли доля — справа: воронка отвечает, чем всё кончилось, ' +
           'динамика — как к этому шли.</div>',
-      }) +
-      U.panel({
+      })),
+      zone('ats', () => U.panel({
         cls: 'split-r', title: 'Что происходило по периодам',
         subHtml: one && createdIdx >= 0
           ? 'отчёт создан <b>' + U.fmtDate(one.created_dt) + '</b> — отмечено плашкой на графике'
           : (one && createdBefore
             ? 'отчёт создан <b>' + U.fmtDate(one.created_dt) + '</b>, раньше начала периода'
             : 'приход, просмотры и охват целевой аудитории'),
-        body: chart('h-xtall', () => CH.audienceTimeline(dyn, S.grain, {
+        body: chart('h-xtall', (w) => CH.audienceTimeline(dyn, S.grain, {
+          width: w,
           audience: st.audience,
           createdIdx,
           createdLabel: one ? 'создан ' + U.fmtDate(one.created_dt) : '',
           title: 'Заходили из целевой аудитории',
-        })),
-      }) +
-      '</div>';
+        }), [dyn, S.grain, st.audience, createdIdx]),
+      })),
+    ]);
 
     /* ---- Люди и разрезы -------------------------------------------------
        Сегменты переехали к поимённому списку: это разбивка ровно той же
@@ -1071,8 +1165,8 @@
       cov: u.aud ? u.came / u.aud * 100 : 0,
     })).sort((a, b) => b.aud - a.aud);
 
-    h += '<div class="split aud">' +
-      U.panel({
+    const gPeople = group('split aud', [
+      zone('list', () => U.panel({
         cls: 'split-l', title: 'Кто из целевой аудитории',
         subHtml: 'полоса сегментов — та же аудитория по поведению; клик по сегменту сужает список',
         right: U.searchBox('audQ', 'Имя или логин', S.audQuery),
@@ -1101,8 +1195,8 @@
           '<div class="tbl-note">Показаны первые 40 строк; поиск и сегмент сужают список. ' +
           'В макете это выборка 1 к ' + U.nf(W, 0) + ' — числа в карточках и таблицах домножены обратно. ' +
           'В Proteus это серверная пагинация и выгрузка в файл.</div>',
-      }) +
-      U.panel({
+      })),
+      zone('units', () => U.panel({
         cls: 'split-r', title: 'Охват по разрезу',
         subHtml: S.audUnit
           ? 'фильтр: <b>' + U.esc(S.audUnit.val) + '</b> — клик по строке снимет'
@@ -1138,10 +1232,10 @@
             ? 'Долю охвата не показываем: в целевой аудитории почти весь банк, знаменатель ничего не измеряет. Настройте целевую аудиторию выше — доли вернутся.'
             : 'Полоса — доля дошедших ВНУТРИ строки, а не вклад строки в общий охват. ИТОГО считается по всей целевой аудитории.',
         }),
-      }) +
-      '</div>';
+      })),
+    ]);
 
-    return h;
+    return [zHead, zScope, zKpi, zObs, gFlow, gPeople];
   }
 
   /* ---------------------- Полоса сегментов + фильтр -----------------------
@@ -1190,10 +1284,40 @@
         '</select>' +
         '<div class="as-cap2">' + U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов') + ' в коллекции</div>';
     } else if (sc.kind === 'many') {
-      picker = '<div class="pickbox" role="group" aria-label="Отчёты области">' +
-        all.slice(0, 40).map((r) => '<label class="pickrow"><input type="checkbox" data-audrep="' + r.dashboard_id + '"' +
-          (sc.ids.indexOf(r.dashboard_id) >= 0 ? ' checked' : '') + '><span>' + U.esc(r.dashboard_nm) + '</span></label>').join('') +
-        '</div>' +
+      /* Мультивыбор раскрывается ВНИЗ, в потоке страницы, а не всплывающим
+         слоем: всплывашка накрывала бы и поиск, и переключатель области.
+         Отчёты сгруппированы по коллекциям — так их и ищут глазами, а
+         чекбокс на заголовке коллекции берёт её целиком. */
+      const q = S.scopeQuery.toLowerCase();
+      const hit = all.filter((r) => !q || r.dashboard_nm.toLowerCase().indexOf(q) >= 0 ||
+        r.collection.toLowerCase().indexOf(q) >= 0);
+      const byColl = {};
+      hit.forEach((r) => { (byColl[r.collection] = byColl[r.collection] || []).push(r); });
+      const sel = {}; sc.ids.forEach((id) => { sel[id] = 1; });
+
+      /* Коллекции с уже выбранными отчётами — наверх: иначе при
+         непустом выборе список открывается на чужой коллекции, и кажется,
+         что выбор потерялся. */
+      const collOrder = Object.keys(byColl).sort((a, b) => {
+        const sa = byColl[a].some((r) => sel[r.dashboard_id]) ? 0 : 1;
+        const sb = byColl[b].some((r) => sel[r.dashboard_id]) ? 0 : 1;
+        return sa - sb || (a > b ? 1 : -1);
+      });
+      const body = collOrder.map((c) => {
+        const list = byColl[c];
+        const on = list.every((r) => sel[r.dashboard_id]);
+        return '<div class="pickgrp">' +
+          '<label class="pickrow head"><input type="checkbox" data-audcoll="' + U.esc(c) + '"' +
+            (on ? ' checked' : '') + '><span>' + U.esc(c) + '</span>' +
+            '<i class="pcount">' + list.length + '</i></label>' +
+          list.map((r) => '<label class="pickrow"><input type="checkbox" data-audrep="' + r.dashboard_id + '"' +
+            (sel[r.dashboard_id] ? ' checked' : '') + '><span>' + U.esc(r.dashboard_nm) + '</span></label>').join('') +
+          '</div>';
+      }).join('');
+      picker = '<div class="pickwrap">' +
+        U.searchBox('scopeQ', 'Найти отчёт или коллекцию', S.scopeQuery) +
+        '<div class="pickbox" role="group" aria-label="Отчёты области">' +
+          (body || '<div class="pickempty">Ничего не найдено</div>') + '</div></div>' +
         '<div class="as-cap2">выбрано ' + U.nf(sc.ids.length) + ' ' + U.plural(sc.ids.length, 'отчёт', 'отчёта', 'отчётов') + '</div>';
     } else {
       picker = '<select id="audRep" class="aud-pick" aria-label="Отчёт">' +
@@ -1276,17 +1400,46 @@
        захватывают людей без доступа, охват просядет не от того, что не ходят. */
     const ids = scopeIds();
     const withAcc = people.filter((p) => ids.some((id) => D.hasAccess(p, id))).length;
+    const dim = DIM_ORDER.indexOf(S._audDim) >= 0 ? S._audDim : DIM_ORDER[0];
+    const cnt = (k) => (f[k] || []).length;
+    const total = DIM_ORDER.reduce((a, k) => a + cnt(k), 0);
+
+    /* Разрезы списком слева, значения выбранного — справа. Все восемь
+       разрезов простынёй чипов сразу — это триста кнопок на экране, по
+       которым нельзя ни скользнуть взглядом, ни попасть. */
+    const dims = DIM_ORDER.map((k) => '<button class="cfg-dim' + (k === dim ? ' on' : '') + '"' +
+      ' data-auddimsel="' + k + '"' + U.tip({ title: D.CUTS[k].label, text: DIM_HINT[k] }) + '>' +
+      U.esc(D.CUTS[k].label) +
+      (cnt(k) ? '<i class="pcount on">' + cnt(k) + '</i>' : '<i class="pcount">' + D.CUTS[k].vals.length + '</i>') +
+      '</button>').join('');
+
+    const vals = '<div class="pickchips">' + D.CUTS[dim].vals.map((v) =>
+      '<button class="pchip' + ((f[dim] || []).indexOf(v) >= 0 ? ' on' : '') + '"' +
+      ' data-auddim="' + dim + '" data-audval="' + U.esc(v) + '">' + U.esc(v) + '</button>').join('') + '</div>';
+
+    const chosen = total
+      ? DIM_ORDER.filter((k) => cnt(k)).map((k) =>
+        '<span class="cfg-cond"><b>' + U.esc(D.CUTS[k].label) + '</b>' +
+        (f[k] || []).map((v) => '<button class="pchip on sm" data-auddim="' + k + '" data-audval="' + U.esc(v) + '"' +
+          U.tip({ text: 'Убрать условие' }) + '>' + U.esc(v) + ' ×</button>').join('') + '</span>').join('')
+      : '<span class="as-x">Условий нет — под целевую аудиторию попадает весь банк. Выберите разрез слева.</span>';
+
     return '<div class="ovl" id="audCfg">' +
-      '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="audCfgT">' +
+      '<div class="modal wide" role="dialog" aria-modal="true" aria-labelledby="audCfgT">' +
         '<div class="modal-h"><h3 id="audCfgT">Целевая аудитория</h3>' +
         '<p>Накликайте структуру — возьмём оттуда всех сотрудников и посмотрим, сколько из них дошло до области. ' +
-        'Внутри разреза условия складываются по ИЛИ, между разрезами — по И. Пустой разрез ничего не ограничивает.</p></div>' +
-        '<div class="modal-b">' +
-          DIM_ORDER.map((k) => '<div class="hgrp"><h4>' + U.esc(D.CUTS[k].label) + '</h4>' +
-            '<div class="pickchips">' + D.CUTS[k].vals.map((v) =>
-              '<button class="pchip' + ((f[k] || []).indexOf(v) >= 0 ? ' on' : '') + '"' +
-              ' data-auddim="' + k + '" data-audval="' + U.esc(v) + '">' + U.esc(v) + '</button>').join('') +
-            '</div></div>').join('') +
+        'Внутри разреза условия складываются по <b>ИЛИ</b>, между разрезами — по <b>И</b>. ' +
+        'Пустой разрез ничего не ограничивает.</p></div>' +
+        '<div class="modal-b cfg-b">' +
+          '<div class="cfg-sel">' + chosen + '</div>' +
+          '<div class="cfg-grid">' +
+            '<div class="cfg-dims" role="tablist" aria-label="Разрезы">' + dims + '</div>' +
+            '<div class="cfg-vals">' +
+              '<div class="cfg-vh">' + U.esc(D.CUTS[dim].label) +
+                '<span class="cfg-vhx">' + U.esc(DIM_HINT[dim]) + '</span></div>' +
+              vals +
+            '</div>' +
+          '</div>' +
         '</div>' +
         '<div class="modal-f">' +
           '<span class="as-x">Под условия попадает <b>' + U.nf(Math.round(n * D.POP_W)) + '</b> ' +
@@ -1300,6 +1453,19 @@
         '</div>' +
       '</div></div>';
   }
+
+  /* Что означает разрез — в подсказке, а не в подписи: подписи должны быть
+     короткими, иначе список разрезов превращается в текст. */
+  const DIM_HINT = {
+    lvl3: 'Блок — третий уровень управленческой структуры. Самый частый способ очертить аудиторию: «отчёт для розницы».',
+    lvl4: 'Департамент — четвёртый уровень. Нужен, когда отчёт делали не для блока целиком.',
+    stream: 'Стрим — продуктовое направление; с управленческой структурой совпадает не всегда.',
+    spec: 'Кем человек работает: аналитик, разработчик, руководитель. Отчёт часто делают под роль, а не под подразделение.',
+    adgroup: 'Членство в AD-группе. Годится, когда нужная аудитория уже описана группой — пусть даже не той, которой роздан доступ к этому отчёту.',
+    exp: 'Стаж в компании. Новички и старожилы пользуются отчётностью по-разному.',
+    it: 'IT или не IT.',
+    hq: 'Головной офис или сеть.',
+  };
 
   /* ============================ Общий заголовок ========================== */
   function head(title, text) {
@@ -1331,15 +1497,16 @@
 
   function render(keepScroll) {
     const y = keepScroll ? window.scrollY : 0;
-    document.getElementById('tabsHost').innerHTML =
-      '<div class="tabs" role="tablist">' + TABS.map((t) =>
-        '<button class="tab' + (t.key === S.tab ? ' active' : '') + '" role="tab" data-tab="' + t.key + '"' +
-        ' aria-selected="' + (t.key === S.tab) + '">' + t.label + '</button>').join('') + '</div>' +
+    const tabs = '<div class="tabs" role="tablist">' + TABS.map((t) =>
+      '<button class="tab' + (t.key === S.tab ? ' active' : '') + '" role="tab" data-tab="' + t.key + '"' +
+      ' aria-selected="' + (t.key === S.tab) + '">' + t.label + '</button>').join('') + '</div>' +
       '<div style="flex:1"></div>' +
       '<button class="btn ghost" id="btnHow">Как это устроено</button>';
+    const host = document.getElementById('tabsHost');
+    if (host.innerHTML !== tabs) host.innerHTML = tabs;
 
     QUEUE = [];
-    document.getElementById('view').innerHTML = TABS.find((t) => t.key === S.tab).fn();
+    paint(TABS.find((t) => t.key === S.tab).fn());
     renderFilters();
     mountCharts();
     if (keepScroll) window.scrollTo(0, y);
@@ -1402,6 +1569,9 @@
       }
       render(true); return;
     }
+    const dsel = cl('[data-auddimsel]');
+    if (dsel) { S._audDim = dsel.dataset.auddimsel; render(true); return; }
+
     const pc = cl('[data-auddim]');
     if (pc) {
       const k = pc.dataset.auddim, v = pc.dataset.audval;
@@ -1430,8 +1600,7 @@
     /* Легенда когорт: чем меряем цвет и какой размах у шкалы */
     const ctb = cl('[data-ctbase]');
     if (ctb) { S.ctBase = ctb.dataset.ctbase; render(true); return; }
-    const cts = cl('[data-ctspan]');
-    if (cts) { S.ctSpan = cts.dataset.ctspan === '' ? null : +cts.dataset.ctspan; render(true); return; }
+
 
     const grp = cl('[data-grp]');
     if (grp) {
@@ -1488,7 +1657,8 @@
 
     if (t.id === 'fltReset') {
       S.sel = null; S.repQuery = ''; S.audQuery = ''; S.audSeg = null; S.freqSel = null;
-      S.audUnit = null; S.audDef = { mode: 'access', filters: {}, draft: {} }; S._audCfg = false;
+      S.audUnit = null; S.audDef = { mode: 'access', filters: {}, draft: {} };
+      S._audCfg = false; S.scopeQuery = '';
       S.filters = { collection: '', owner: '', published: true, actual: true, certified: false, excludeOwners: true };
       render(); return;
     }
@@ -1511,6 +1681,13 @@
     if (t.id === 'audCutSel') { S.audCut = t.value; S.audUnit = null; render(true); return; }
     if (t.id === 'audRep') { S.selectedReport = +t.value; S.audUnit = null; render(true); return; }
     if (t.id === 'audColl') { S.audScope.collection = t.value; S.audUnit = null; render(true); return; }
+    if (t.dataset && t.dataset.audcoll) {
+      const ids = reportRows().filter((r) => r.collection === t.dataset.audcoll).map((r) => r.dashboard_id);
+      const set = {}; S.audScope.ids.forEach((id) => { set[id] = 1; });
+      ids.forEach((id) => { if (t.checked) set[id] = 1; else delete set[id]; });
+      S.audScope.ids = Object.keys(set).map(Number);
+      S.audUnit = null; render(true); return;
+    }
     if (t.dataset && t.dataset.audrep) {
       const id = +t.dataset.audrep;
       const i = S.audScope.ids.indexOf(id);
@@ -1529,14 +1706,15 @@
   let qTimer = null;
   document.addEventListener('input', (e) => {
     const t = e.target;
-    if (t.id !== 'repQ' && t.id !== 'audQ') return;
+    const FIELDS = { repQ: 'repQuery', audQ: 'audQuery', scopeQ: 'scopeQuery' };
+    const key = FIELDS[t.id];
+    if (!key) return;
     clearTimeout(qTimer);
-    const isRep = t.id === 'repQ';
-    const v = t.value;
+    const id = t.id, v = t.value;
     qTimer = setTimeout(() => {
-      if (isRep) S.repQuery = v; else S.audQuery = v;
+      S[key] = v;
       render(true);
-      const el = document.getElementById(isRep ? 'repQ' : 'audQ');
+      const el = document.getElementById(id);
       if (el) { el.focus(); el.setSelectionRange(v.length, v.length); }
     }, 260);
   });

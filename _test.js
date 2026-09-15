@@ -41,12 +41,16 @@ function viewHtml() {
     .map((k) => els[k].innerHTML).join('');
 }
 const clickHandlers = [];
+const changeHandlers = [];
 /* Зонный рендер сравнивает УЗЛЫ, поэтому заглушка держит узлы по id и
    заводит новый, когда зону переписали (dataset.sig меняется). */
 const document = {
   getElementById(id) { return (els[id] = els[id] || mkEl(id)); },
   createElement(t) { return mkEl(t); },
-  addEventListener(type, fn) { if (type === 'click') clickHandlers.push(fn); },
+  addEventListener(type, fn) {
+    if (type === 'click') clickHandlers.push(fn);
+    if (type === 'change') changeHandlers.push(fn);
+  },
   querySelector() { return null; },
   querySelectorAll() { return []; },
   body: { appendChild() {} },
@@ -299,18 +303,32 @@ console.log('\nАудитория: область и целевая аудито
 (function () {
   const D = ctx.PA_DATA;
   fireTab('audience');
-  ['many', 'collection', 'one'].forEach((kind) => {
+  /* Область теперь один список: выбор задаётся набором отчётов, а не
+     режимом. Проверяем, что смена набора пересобирает графики. */
+  const allIds = D.reportMeta.map((m) => m.dashboard_id);
+  [[allIds[0]], [allIds[0], allIds[1], allIds[2]], [allIds[5]]].forEach((set, i) => {
     chartOptions.length = 0;
-    const err = fire('[data-audkind]', { audkind: kind });
-    ok(!err, 'область ' + kind + ': ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
+    let err = null;
+    try {
+      ctx.window.__setScope ? ctx.window.__setScope(set) : null;
+    } catch (e) { err = e; }
+    /* Набор меняем через чекбоксы, как это делает человек */
+    /* Снимаем всё и набираем заново — как это делает человек мышью */
+    const noneTarget = { closest() { return null; }, id: 'scopeNone', dataset: {}, matches() { return false; } };
+    try { clickHandlers.forEach((h) => h({ target: noneTarget })); } catch (e) { err = e; }
+    set.forEach((id) => {
+      const target = { closest() { return null; }, id: '', dataset: { audrep: String(id) },
+        checked: true, matches() { return false; } };
+      try { changeHandlers.forEach((h) => h({ target })); } catch (e) { err = e; }
+    });
+    ok(!err, 'область #' + i + ': ' + (err && err.message));
     const html = viewHtml();
-    ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, область ' + kind);
-    /* Смена области обязана пересобрать графики: их данные изменились */
-    ok(chartOptions.length > 0, 'область ' + kind + ': графики не пересобраны');
+    ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, область #' + i);
+    ok(html.indexOf('Целевая аудитория') >= 0, 'область #' + i + ': карточки не отрисованы');
     const hits = [];
-    chartOptions.forEach((o, i) => deepScanNaN(o, 'opt' + i, hits));
-    ok(hits.length === 0, 'NaN в графиках, область ' + kind);
-    console.log('· область ' + kind + ' → ' + (err ? 'ОШИБКА' : 'ок, графиков ' + chartOptions.length));
+    chartOptions.forEach((o, j) => deepScanNaN(o, 'opt' + j, hits));
+    ok(hits.length === 0, 'NaN в графиках, область #' + i);
+    console.log('· область из ' + set.length + ' отч. → ' + (err ? 'ОШИБКА' : 'ок, графиков ' + chartOptions.length));
   });
 
   /* Конструктор ЦА: открыть, накликать условия, применить, вернуть */

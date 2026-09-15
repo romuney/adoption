@@ -63,10 +63,12 @@
     audCut: 'lvl3',              // разрез разбивки аудитории
     audSeg: null,                // сегмент поведения — фильтр поимённого списка
     audUnit: null,               // {key,val} — кросс-фильтр по разрезу структуры
-    audScope: { kind: 'one', ids: [], collection: 'Розница' },
+    audScope: { ids: [] },       // область = набор отчётов; пустой = первый по каталогу
+    _scopeOpen: false,           // раскрыт ли список области
     audDef: { mode: 'access', filters: {}, draft: {} },
     _audCfg: false,              // открыт ли конструктор целевой аудитории
     _audDim: 'lvl3',             // разрез, открытый в конструкторе
+    _dimQuery: '',               // поиск по значениям разреза в конструкторе
     scopeQuery: '',              // поиск в мультивыборе отчётов
     repSort: { col: 'users', dir: -1 },
     repQuery: '',
@@ -1050,36 +1052,48 @@
     { key: 'Нет доступа',   plural: 'Нет доступа',   color: '#eceef1', note: 'под условия попал, но прав на отчёт нет', accessOnly: true },
   ];
 
-  /* --- Область: какие отчёты попали под выбор ---------------------------- */
+  /* --- Область: какие отчёты попали под выбор ----------------------------
+     Раньше область выбиралась в три приёма: сначала переключатель «отчёт /
+     несколько / коллекция», потом свой контрол под каждый из трёх. Три
+     разных способа сказать одно и то же — «вот эти отчёты». Теперь один
+     список: коллекции с отчётами внутри, чекбокс на любом уровне, поиск
+     и по названию отчёта, и по названию коллекции. Один отчёт, десять или
+     целая коллекция — это просто разное число галочек. */
   function scopeIds() {
-    const sc = S.audScope;
     const all = reportRows();
-    if (sc.kind === 'collection') {
-      return all.filter((r) => r.collection === sc.collection).map((r) => r.dashboard_id);
-    }
-    if (sc.kind === 'many') {
-      const set = {}; sc.ids.forEach((id) => { set[id] = 1; });
-      const ids = all.filter((r) => set[r.dashboard_id]).map((r) => r.dashboard_id);
-      return ids.length ? ids : (all[0] ? [all[0].dashboard_id] : []);
-    }
-    /* По умолчанию открываем не просто «свежий», а свежий с нормальной
-       AD-группой: на отчёте с поимённым списком или с группой «весь банк»
-       экран показывает краевой случай и читается как сломанный. */
+    if (!all.length) return [];
+    const set = {}; S.audScope.ids.forEach((id) => { set[id] = 1; });
+    const ids = all.filter((r) => set[r.dashboard_id]).map((r) => r.dashboard_id);
+    if (ids.length) return ids;
+    /* Пусто — берём самый заметный отчёт с нормальной AD-группой: на отчёте
+       с поимённым списком или с группой «весь банк» экран показывает
+       краевой случай и читается как сломанный. */
     const normal = (r) => {
       const m = D.audienceMeta[r.dashboard_id];
       return m && !m.is_wide && m.audience_type === 'ad';
     };
-    const one = all.find((r) => r.dashboard_id === S.selectedReport)
-      || all.filter(normal).find((r) => r.is_new) || all.find(normal) || all[0];
-    if (one) S.selectedReport = one.dashboard_id;
+    const one = all.filter(normal).find((r) => r.is_new) || all.find(normal) || all[0];
     return one ? [one.dashboard_id] : [];
   }
+
+  /* Как назвать выбранное: если это ровно одна коллекция целиком — так и
+     говорим, иначе отчёт по имени или «N отчётов». */
   function scopeTitle(ids) {
-    const sc = S.audScope;
-    if (sc.kind === 'collection') return 'Коллекция «' + sc.collection + '»';
-    if (sc.kind === 'many') return U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов');
-    const r = reportById(ids[0]);
-    return r ? r.dashboard_nm : 'Отчёт';
+    if (ids.length === 1) {
+      const r = reportById(ids[0]);
+      return r ? r.dashboard_nm : 'Отчёт';
+    }
+    const all = reportRows();
+    const colls = {}; ids.forEach((id) => {
+      const r = all.find((x) => x.dashboard_id === id);
+      if (r) colls[r.collection] = 1;
+    });
+    const names = Object.keys(colls);
+    if (names.length === 1) {
+      const whole = all.filter((r) => r.collection === names[0]).length === ids.length;
+      if (whole) return 'Коллекция «' + names[0] + '»';
+    }
+    return U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов');
   }
 
   /* --- Целевая аудитория: как роздан доступ или как собрано руками ------- */
@@ -1308,20 +1322,33 @@
        блок), разбивка по нему выродится в одну строку — молча переключаемся
        на первый разрез, который ещё что-то различает. */
     let cut = S.audCut;
-    if (def.mode === 'custom' && (S.audDef.filters[cut] || []).length === 1) {
+    if (cut !== 'report' && def.mode === 'custom' && (S.audDef.filters[cut] || []).length === 1) {
       cut = DIM_ORDER.find((k) => (S.audDef.filters[k] || []).length !== 1) || cut;
     }
-    const byUnit = {};
-    rowsAll.forEach((p) => {
-      const key = p[cut] != null ? p[cut] : p.lvl3;
-      const u = (byUnit[key] = byUnit[key] || { key, aud: 0, came: 0, reg: 0 });
-      u.aud++; if (p.came) u.came++; if (p.segment === 'Постоянный') u.reg++;
-    });
-    const unitRows = Object.values(byUnit).map((u) => ({
-      key: u.key, label: u.key,
-      aud: Math.round(u.aud * W), came: Math.round(u.came * W), reg: Math.round(u.reg * W),
-      cov: u.aud ? u.came / u.aud * 100 : 0,
-    })).sort((a, b) => b.aud - a.aud);
+    /* Разрез «Отчёты» — обратный ход: не «кем покрыт отчёт», а «какие
+       отчёты смотрит эта аудитория». Приходят и так: знают уровень
+       структуры, но не знают, какие борды под ним живут. */
+    const byReport = cut === 'report';
+    let unitRows;
+    if (byReport) {
+      const allIds = reportRows().map((r) => r.dashboard_id);
+      unitRows = D.reportsForPeople(basePeople, S.grain, allIds).slice(0, 25).map((r) => ({
+        key: String(r.dashboard_id), label: r.dashboard_nm, sub: r.owner_login + ' · ' + r.collection,
+        aud: r.access, came: r.users, reg: 0, cov: r.share,
+      }));
+    } else {
+      const byUnit = {};
+      rowsAll.forEach((p) => {
+        const key = p[cut] != null ? p[cut] : p.lvl3;
+        const u = (byUnit[key] = byUnit[key] || { key, aud: 0, came: 0, reg: 0 });
+        u.aud++; if (p.came) u.came++; if (p.segment === 'Постоянный') u.reg++;
+      });
+      unitRows = Object.values(byUnit).map((u) => ({
+        key: u.key, label: u.key,
+        aud: Math.round(u.aud * W), came: Math.round(u.came * W), reg: Math.round(u.reg * W),
+        cov: u.aud ? u.came / u.aud * 100 : 0,
+      })).sort((a, b) => b.aud - a.aud);
+    }
 
     const gPeople = group('split aud', [
       zone('list', () => U.panel({
@@ -1356,26 +1383,33 @@
       })),
       zone('units', () => U.panel({
         cls: 'split-r', title: 'Охват по разрезу',
-        subHtml: S.audUnit
-          ? 'фильтр: <b>' + U.esc(S.audUnit.val) + '</b> — клик по строке снимет'
-          : 'клик по строке сужает всю вкладку до этого подразделения',
+        subHtml: byReport
+          ? 'какие отчёты области смотрят эти люди'
+          : (S.audUnit
+            ? 'фильтр: <b>' + U.esc(S.audUnit.val) + '</b> — клик по строке снимет'
+            : 'клик по строке сужает всю вкладку до этой строки'),
         right: '<div class="ctl inline"><select id="audCutSel" aria-label="Разрез аудитории">' +
           DIM_ORDER.map((k) => '<option value="' + k + '"' + (k === cut ? ' selected' : '') + '>' +
-            U.esc(D.CUTS[k].label) + '</option>').join('') + '</select></div>',
+            U.esc(D.CUTS[k].label) + '</option>').join('') +
+          '<option value="report"' + (byReport ? ' selected' : '') + '>Отчёты области</option>' +
+          '</select></div>',
         bodyCls: 'tbl-wrap',
         body: U.barTable({
-          firstH: D.CUTS[cut].label, firstW: '36%', colW: '15%', barH: '',
+          firstH: byReport ? 'Отчёт' : D.CUTS[cut].label, firstW: '36%', colW: '15%', barH: '',
           barClass: 'c-cov', dense: true,
-          clickAttr: 'audunit', extraAttr: ' data-audkey="' + cut + '"',
-          selected: S.audUnit ? S.audUnit.val : null,
-          cols: [{ label: 'В ЦА' }, { label: 'Дошли' }, { label: 'Охват' }],
-          total: {
+          clickAttr: byReport ? 'goaud' : 'audunit',
+          extraAttr: byReport ? '' : ' data-audkey="' + cut + '"',
+          selected: byReport ? null : (S.audUnit ? S.audUnit.val : null),
+          cols: byReport
+            ? [{ label: 'Есть доступ' }, { label: 'Смотрят' }, { label: 'Доля' }]
+            : [{ label: 'В ЦА' }, { label: 'Дошли' }, { label: 'Охват' }],
+          total: byReport ? null : {
             cells: [U.nf(Math.round(rowsAll.length * W)), U.nf(Math.round(rowsAll.filter((r) => r.came).length * W)),
               wide ? '<span class="mut">—</span>' : U.pct(rowsAll.length ? rowsAll.filter((r) => r.came).length / rowsAll.length * 100 : 0, 0)],
           },
           rows: unitRows.map((r) => ({
-            key: r.key, label: r.label,
-            cells: [U.nf(r.aud), U.nf(r.came), wide ? '<span class="mut">—</span>' : U.pct(r.cov, 0)],
+            key: r.key, label: r.label, sub: r.sub,
+            cells: [U.nf(r.aud), U.nf(r.came), (wide && !byReport) ? '<span class="mut">—</span>' : U.pct(r.cov, 0)],
             bar: r.cov,
             tip: {
               title: r.label,
@@ -1386,9 +1420,11 @@
               note: S.audUnit && S.audUnit.val === r.key ? 'Клик снимет фильтр' : 'Клик сузит всю вкладку до этой строки',
             },
           })),
-          note: wide
-            ? 'Долю охвата не показываем: в целевой аудитории почти весь банк, знаменатель ничего не измеряет. Настройте целевую аудиторию выше — доли вернутся.'
-            : 'Полоса — доля дошедших ВНУТРИ строки, а не вклад строки в общий охват. ИТОГО считается по всей целевой аудитории.',
+          note: byReport
+            ? 'Двадцать пять самых популярных у этой аудитории. «Доля» — сколько из тех, у кого есть доступ, реально открывали отчёт. Клик по строке откроет аудиторию этого отчёта.'
+            : (wide
+              ? 'Проценты охвата скрыты: в целевой аудитории почти весь банк, знаменатель ничего не измеряет. Абсолютные числа на месте. Настройте целевую аудиторию выше — проценты вернутся.'
+              : 'Полоса — доля дошедших ВНУТРИ строки, а не вклад строки в общий охват. ИТОГО считается по всей целевой аудитории.'),
         }),
       })),
     ]);
@@ -1427,62 +1463,53 @@
      чип с числом: заголовок и чип лежали в одном потоке без права на
      перенос. Теперь это grid из двух колонок, каждая со своим переносом. */
   function scopeBar(ids, def, audTotal, st, wide) {
-    const sc = S.audScope;
     const all = reportRows();
 
-    const kinds = [
-      { key: 'one', label: 'Отчёт' },
-      { key: 'many', label: 'Несколько' },
-      { key: 'collection', label: 'Коллекция' },
-    ];
-    let picker;
-    if (sc.kind === 'collection') {
-      picker = '<select id="audColl" class="aud-pick" aria-label="Коллекция">' +
-        D.COLLECTIONS.map((c) => '<option value="' + U.esc(c) + '"' + (c === sc.collection ? ' selected' : '') + '>' + U.esc(c) + '</option>').join('') +
-        '</select>' +
-        '<div class="as-cap2">' + U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов') + ' в коллекции</div>';
-    } else if (sc.kind === 'many') {
-      /* Мультивыбор раскрывается ВНИЗ, в потоке страницы, а не всплывающим
-         слоем: всплывашка накрывала бы и поиск, и переключатель области.
-         Отчёты сгруппированы по коллекциям — так их и ищут глазами, а
-         чекбокс на заголовке коллекции берёт её целиком. */
-      const q = S.scopeQuery.toLowerCase();
-      const hit = all.filter((r) => !q || r.dashboard_nm.toLowerCase().indexOf(q) >= 0 ||
-        r.collection.toLowerCase().indexOf(q) >= 0);
-      const byColl = {};
-      hit.forEach((r) => { (byColl[r.collection] = byColl[r.collection] || []).push(r); });
-      const sel = {}; sc.ids.forEach((id) => { sel[id] = 1; });
+    const sel = {}; ids.forEach((id) => { sel[id] = 1; });
+    const q = S.scopeQuery.toLowerCase();
+    const hit = all.filter((r) => !q || r.dashboard_nm.toLowerCase().indexOf(q) >= 0 ||
+      r.collection.toLowerCase().indexOf(q) >= 0);
+    const byColl = {};
+    hit.forEach((r) => { (byColl[r.collection] = byColl[r.collection] || []).push(r); });
+    /* Коллекции с выбранными отчётами — наверх: иначе при непустом выборе
+       список открывается на чужой коллекции, и кажется, что выбор потерялся. */
+    const collOrder = Object.keys(byColl).sort((a, b) => {
+      const sa = byColl[a].some((r) => sel[r.dashboard_id]) ? 0 : 1;
+      const sb = byColl[b].some((r) => sel[r.dashboard_id]) ? 0 : 1;
+      return sa - sb || (a > b ? 1 : -1);
+    });
+    const list = collOrder.map((c) => {
+      const rs = byColl[c];
+      const on = rs.every((r) => sel[r.dashboard_id]);
+      const some = !on && rs.some((r) => sel[r.dashboard_id]);
+      return '<div class="pickgrp">' +
+        '<label class="pickrow head"><input type="checkbox" data-audcoll="' + U.esc(c) + '"' +
+          (on ? ' checked' : '') + (some ? ' data-some="1"' : '') + '><span>' + U.esc(c) + '</span>' +
+          '<i class="pcount' + (on || some ? ' on' : '') + '">' +
+            (some ? rs.filter((r) => sel[r.dashboard_id]).length + '/' : '') + rs.length + '</i></label>' +
+        rs.map((r) => '<label class="pickrow"><input type="checkbox" data-audrep="' + r.dashboard_id + '"' +
+          (sel[r.dashboard_id] ? ' checked' : '') + '><span>' + U.esc(r.dashboard_nm) + '</span></label>').join('') +
+        '</div>';
+    }).join('');
 
-      /* Коллекции с уже выбранными отчётами — наверх: иначе при
-         непустом выборе список открывается на чужой коллекции, и кажется,
-         что выбор потерялся. */
-      const collOrder = Object.keys(byColl).sort((a, b) => {
-        const sa = byColl[a].some((r) => sel[r.dashboard_id]) ? 0 : 1;
-        const sb = byColl[b].some((r) => sel[r.dashboard_id]) ? 0 : 1;
-        return sa - sb || (a > b ? 1 : -1);
-      });
-      const body = collOrder.map((c) => {
-        const list = byColl[c];
-        const on = list.every((r) => sel[r.dashboard_id]);
-        return '<div class="pickgrp">' +
-          '<label class="pickrow head"><input type="checkbox" data-audcoll="' + U.esc(c) + '"' +
-            (on ? ' checked' : '') + '><span>' + U.esc(c) + '</span>' +
-            '<i class="pcount">' + list.length + '</i></label>' +
-          list.map((r) => '<label class="pickrow"><input type="checkbox" data-audrep="' + r.dashboard_id + '"' +
-            (sel[r.dashboard_id] ? ' checked' : '') + '><span>' + U.esc(r.dashboard_nm) + '</span></label>').join('') +
-          '</div>';
-      }).join('');
-      picker = '<div class="pickwrap">' +
-        U.searchBox('scopeQ', 'Найти отчёт или коллекцию', S.scopeQuery) +
-        '<div class="pickbox" role="group" aria-label="Отчёты области">' +
-          (body || '<div class="pickempty">Ничего не найдено</div>') + '</div></div>' +
-        '<div class="as-cap2">выбрано ' + U.nf(sc.ids.length) + ' ' + U.plural(sc.ids.length, 'отчёт', 'отчёта', 'отчётов') + '</div>';
-    } else {
-      picker = '<select id="audRep" class="aud-pick" aria-label="Отчёт">' +
-        all.map((r) => '<option value="' + r.dashboard_id + '"' + (r.dashboard_id === ids[0] ? ' selected' : '') + '>' + U.esc(r.dashboard_nm) + '</option>').join('') +
-        '</select>' +
-        '<div class="as-cap2">аудитория показана для выбранного</div>';
-    }
+    const picker = '<div class="scopepick' + (S._scopeOpen ? ' open' : '') + '">' +
+      '<button class="scope-trg" id="scopeTrg" aria-expanded="' + S._scopeOpen + '">' +
+        '<span class="st-txt">' + U.esc(scopeTitle(ids)) + '</span>' +
+        '<span class="st-n">' + U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов') + '</span>' +
+        '<span class="st-c" aria-hidden="true">▾</span>' +
+      '</button>' +
+      (S._scopeOpen
+        ? '<div class="scope-body">' +
+            U.searchBox('scopeQ', 'Найти отчёт или коллекцию', S.scopeQuery) +
+            '<div class="pickbox" role="group" aria-label="Отчёты области">' +
+              (list || '<div class="pickempty">Ничего не найдено</div>') + '</div>' +
+            '<div class="scope-act">' +
+              '<button class="btn ghost xs" id="scopeAll">Выбрать всё найденное</button>' +
+              '<button class="btn ghost xs" id="scopeNone">Снять всё</button>' +
+            '</div>' +
+          '</div>'
+        : '') +
+      '</div>';
 
     /* Правый блок: откуда взялась целевая аудитория и как её переопределить */
     const metas = def.metas;
@@ -1522,9 +1549,6 @@
     return '<div class="scopebar' + (wide ? ' wide' : '') + '">' +
       '<div class="sb-col">' +
         '<div class="as-cap">Область — чью аудиторию смотрим</div>' +
-        '<div class="sub-tabs">' + kinds.map((kd) =>
-          '<button class="sub-tab' + (kd.key === sc.kind ? ' active' : '') + '" data-audkind="' + kd.key + '">' +
-          U.esc(kd.label) + '</button>').join('') + '</div>' +
         '<div class="sb-pick">' + picker + '</div>' +
       '</div>' +
       '<div class="sb-col sb-aud">' +
@@ -1571,15 +1595,37 @@
       (cnt(k) ? '<i class="pcount on">' + cnt(k) + '</i>' : '<i class="pcount">' + D.CUTS[k].vals.length + '</i>') +
       '</button>').join('');
 
-    const vals = '<div class="pickchips">' + D.CUTS[dim].vals.map((v) =>
-      '<button class="pchip' + ((f[dim] || []).indexOf(v) >= 0 ? ' on' : '') + '"' +
-      ' data-auddim="' + dim + '" data-audval="' + U.esc(v) + '">' + U.esc(v) + '</button>').join('') + '</div>';
+    /* Значения — список с поиском, а не простыня чипов. В бою в разрезе
+       бывает полсотни специализаций и сотни подразделений: чипами это
+       нечитаемо и непопадаемо. Выбранное поднимается наверх списка и
+       дублируется пилюлями над ним, чтобы не терялось при поиске. */
+    const dq = S._dimQuery.toLowerCase();
+    const picked = (f[dim] || []);
+    const allVals = D.CUTS[dim].vals;
+    const shown = allVals.filter((v) => !dq || v.toLowerCase().indexOf(dq) >= 0)
+      .sort((a, b) => (picked.indexOf(b) >= 0) - (picked.indexOf(a) >= 0));
+    const vals =
+      (picked.length
+        ? '<div class="pickchips sel">' + picked.map((v) =>
+          '<button class="pchip on sm" data-auddim="' + dim + '" data-audval="' + U.esc(v) + '"' +
+          U.tip({ text: 'Убрать условие' }) + '>' + U.esc(v) + ' ×</button>').join('') + '</div>'
+        : '') +
+      U.searchBox('dimQ', 'Найти значение', S._dimQuery) +
+      '<div class="dimbox">' + (shown.length
+        ? shown.map((v) => '<label class="pickrow"><input type="checkbox" data-auddim="' + dim +
+            '" data-audval="' + U.esc(v) + '"' + (picked.indexOf(v) >= 0 ? ' checked' : '') +
+            '><span>' + U.esc(v) + '</span></label>').join('')
+        : '<div class="pickempty">Ничего не найдено</div>') + '</div>' +
+      '<div class="as-cap2">' + U.nf(allVals.length) + ' ' +
+        U.plural(allVals.length, 'значение', 'значения', 'значений') + ' в разрезе' +
+        (picked.length ? ' · выбрано ' + picked.length : '') + '</div>';
 
     const chosen = total
       ? DIM_ORDER.filter((k) => cnt(k)).map((k) =>
-        '<span class="cfg-cond"><b>' + U.esc(D.CUTS[k].label) + '</b>' +
-        (f[k] || []).map((v) => '<button class="pchip on sm" data-auddim="' + k + '" data-audval="' + U.esc(v) + '"' +
-          U.tip({ text: 'Убрать условие' }) + '>' + U.esc(v) + ' ×</button>').join('') + '</span>').join('')
+        '<span class="cfg-cond"><b>' + U.esc(D.CUTS[k].label) + ':</b> ' +
+        U.esc((f[k] || []).slice(0, 3).join(', ')) +
+        ((f[k] || []).length > 3 ? ' <i class="pcount on">+' + ((f[k] || []).length - 3) + '</i>' : '') +
+        '</span>').join('')
       : '<span class="as-x">Условий нет — под целевую аудиторию попадает весь банк. Выберите разрез слева.</span>';
 
     return '<div class="ovl" id="audCfg">' +
@@ -1700,14 +1746,19 @@
     if (seg) { S.audSeg = S.audSeg === (seg.dataset.seg || null) ? null : (seg.dataset.seg || null); render(true); return; }
 
     /* --- Аудитория: область, кросс-фильтр разреза, конструктор ЦА --- */
-    const ak = cl('[data-audkind]');
-    if (ak) {
-      const kind = ak.dataset.audkind;
-      if (kind === 'many' && !S.audScope.ids.length) {
-        S.audScope.ids = reportRows().slice(0, 3).map((r) => r.dashboard_id);
-      }
-      S.audScope.kind = kind; S.audUnit = null; S.audSeg = null; render(true); return;
+    if (t.id === 'scopeTrg' || (cl('#scopeTrg'))) {
+      S._scopeOpen = !S._scopeOpen;
+      if (S._scopeOpen && !S.audScope.ids.length) S.audScope.ids = scopeIds().slice();
+      render(true); return;
     }
+    if (t.id === 'scopeAll') {
+      const q = S.scopeQuery.toLowerCase();
+      S.audScope.ids = reportRows()
+        .filter((r) => !q || r.dashboard_nm.toLowerCase().indexOf(q) >= 0 || r.collection.toLowerCase().indexOf(q) >= 0)
+        .map((r) => r.dashboard_id);
+      S.audUnit = null; render(true); return;
+    }
+    if (t.id === 'scopeNone') { S.audScope.ids = []; S.audUnit = null; render(true); return; }
     const au = cl('[data-audunit]');
     if (au) {
       const v = au.dataset.audunit;
@@ -1717,6 +1768,7 @@
     if (t.id === 'audCfgOpen') {
       S._audCfg = true;
       S.audDef.draft = JSON.parse(JSON.stringify(S.audDef.filters || {}));
+      S._dimQuery = '';
       /* Чистый лист — плохое начало: «настройте целевую аудиторию» без
          подсказки означает выбрать наугад из семи разрезов. Подставляем то
          подразделение, в котором уже сидит большинство обладателей доступа:
@@ -1728,9 +1780,9 @@
       render(true); return;
     }
     const dsel = cl('[data-auddimsel]');
-    if (dsel) { S._audDim = dsel.dataset.auddimsel; render(true); return; }
+    if (dsel) { S._audDim = dsel.dataset.auddimsel; S._dimQuery = ''; render(true); return; }
 
-    const pc = cl('[data-auddim]');
+    const pc = cl('button[data-auddim]');
     if (pc) {
       const k = pc.dataset.auddim, v = pc.dataset.audval;
       const arr = (S.audDef.draft[k] = S.audDef.draft[k] || []);
@@ -1790,8 +1842,11 @@
 
     const go = cl('[data-goaud]');
     if (go) {
+      /* Выбор с первой вкладки переносится в область: человек уже сказал,
+         какой отчёт его интересует, спрашивать второй раз незачем. */
       S.selectedReport = +go.dataset.goaud; S.tab = 'audience';
-      S.audScope.kind = 'one'; S.audSeg = null; S.audUnit = null;
+      S.audScope.ids = [+go.dataset.goaud];
+      S.audSeg = null; S.audUnit = null; S._scopeOpen = false;
       render(); return;
     }
 
@@ -1816,7 +1871,7 @@
     if (t.id === 'fltReset') {
       S.sel = null; S.repQuery = ''; S.audQuery = ''; S.audSeg = null; S.freqSel = null;
       S.audUnit = null; S.audDef = { mode: 'access', filters: {}, draft: {} };
-      S._audCfg = false; S.scopeQuery = '';
+      S._audCfg = false; S.scopeQuery = ''; S.audScope = { ids: [] }; S._scopeOpen = false;
       S.filters = { collection: '', owner: '', published: true, actual: true, certified: false, excludeOwners: true };
       render(); return;
     }
@@ -1836,21 +1891,30 @@
 
   document.addEventListener('change', (e) => {
     const t = e.target;
+    if (t.dataset && t.dataset.auddim && t.type === 'checkbox') {
+      const k = t.dataset.auddim, v = t.dataset.audval;
+      const arr = (S.audDef.draft[k] = S.audDef.draft[k] || []);
+      const i = arr.indexOf(v);
+      if (t.checked && i < 0) arr.push(v);
+      if (!t.checked && i >= 0) arr.splice(i, 1);
+      render(true); return;
+    }
     if (t.id === 'audCutSel') { S.audCut = t.value; S.audUnit = null; render(true); return; }
-    if (t.id === 'audRep') { S.selectedReport = +t.value; S.audUnit = null; render(true); return; }
-    if (t.id === 'audColl') { S.audScope.collection = t.value; S.audUnit = null; render(true); return; }
+
     if (t.dataset && t.dataset.audcoll) {
       const ids = reportRows().filter((r) => r.collection === t.dataset.audcoll).map((r) => r.dashboard_id);
-      const set = {}; S.audScope.ids.forEach((id) => { set[id] = 1; });
+      const set = {}; scopeIds().forEach((id) => { set[id] = 1; });
       ids.forEach((id) => { if (t.checked) set[id] = 1; else delete set[id]; });
       S.audScope.ids = Object.keys(set).map(Number);
       S.audUnit = null; render(true); return;
     }
     if (t.dataset && t.dataset.audrep) {
       const id = +t.dataset.audrep;
-      const i = S.audScope.ids.indexOf(id);
-      if (t.checked && i < 0) S.audScope.ids.push(id);
-      if (!t.checked && i >= 0) S.audScope.ids.splice(i, 1);
+      const cur = S.audScope.ids.length ? S.audScope.ids.slice() : scopeIds().slice();
+      const i = cur.indexOf(id);
+      if (t.checked && i < 0) cur.push(id);
+      if (!t.checked && i >= 0) cur.splice(i, 1);
+      S.audScope.ids = cur;
       S.audUnit = null; render(true); return;
     }
     if (t.dataset && t.dataset.f) {
@@ -1864,7 +1928,7 @@
   let qTimer = null;
   document.addEventListener('input', (e) => {
     const t = e.target;
-    const FIELDS = { repQ: 'repQuery', audQ: 'audQuery', scopeQ: 'scopeQuery' };
+    const FIELDS = { repQ: 'repQuery', audQ: 'audQuery', scopeQ: 'scopeQuery', dimQ: '_dimQuery' };
     const key = FIELDS[t.id];
     if (!key) return;
     clearTimeout(qTimer);

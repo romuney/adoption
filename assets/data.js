@@ -453,9 +453,28 @@
      переключается клиентски.
      ==================================================================== */
   const AD_GROUPS = ['proteus_retail_analytics', 'proteus_risk_all', 'proteus_finance_core', 'tableau_all_employees', 'proteus_tech_dept', 'proteus_msb_sales', 'proteus_support_leads'];
-  const WIDE_GROUPS = { tableau_all_employees: true };          // «широкая» — почти весь банк
-  const NAMES_F = ['Анна', 'Дмитрий', 'Мария', 'Кирилл', 'Наталья', 'Сергей', 'Елена', 'Роман', 'Игорь', 'Полина', 'Артём', 'Ольга', 'Павел', 'Ирина', 'Максим'];
-  const NAMES_L = ['Петрова', 'Соколов', 'Иванова', 'Орлов', 'Лебедева', 'Морозов', 'Волкова', 'Казанцев', 'Гусев', 'Новикова', 'Зайцев', 'Крылова', 'Ершов', 'Титова', 'Белов'];
+  /* Имя и фамилия согласованы по роду: «Дмитрий Лебедева» в поимённом
+     списке сразу выдаёт, что данные сгенерированы, и отвлекает от того,
+     ради чего список показан. Фамилия хранится основой, женская — с «а». */
+  const NAMES_M = ['Дмитрий', 'Кирилл', 'Сергей', 'Роман', 'Игорь', 'Артём', 'Павел', 'Максим'];
+  const NAMES_W = ['Анна', 'Мария', 'Наталья', 'Елена', 'Полина', 'Ольга', 'Ирина'];
+  const SURNAMES = ['Петров', 'Соколов', 'Иванов', 'Орлов', 'Лебедев', 'Морозов', 'Волков', 'Казанцев', 'Гусев', 'Новиков', 'Зайцев', 'Крылов', 'Ершов', 'Титов', 'Белов'];
+
+  /* ----------------------------------------------------------------------
+     КЕМ РОЗДАН ДОСТУП. У отчёта либо поимённый список (acl), либо AD-группы.
+     Группа не абстрактна: у неё есть «дом» — подразделение, из которого в
+     неё попадает большинство. Это нужно, чтобы настройка целевой аудитории
+     по структуре давала осмысленный результат, а не случайный шум.
+     -------------------------------------------------------------------- */
+  const AD_GROUP_DEF = {
+    proteus_retail_analytics: { home: 'Блок «Розница»', pIn: .52, pOut: .03 },
+    proteus_risk_all:         { home: 'Блок «Риски»', pIn: .68, pOut: .02 },
+    proteus_finance_core:     { home: 'Блок «Финансы»', pIn: .61, pOut: .02 },
+    proteus_tech_dept:        { home: 'Блок «Технологии»', pIn: .64, pOut: .02 },
+    proteus_msb_sales:        { home: 'Блок «Корпоративный»', pIn: .49, pOut: .03 },
+    proteus_support_leads:    { home: 'Блок «Операции»', pIn: .33, pOut: .015 },
+    tableau_all_employees:    { home: null, pIn: .93, pOut: .93 },   // почти весь банк
+  };
 
   const audienceMeta = {};
   reportMeta.forEach((m, i) => {
@@ -469,80 +488,239 @@
       is_wide: mode === 'wide',
       ad_groups: mode === 'acl' ? [] : groups,
       acl_logins_cnt: mode === 'acl' ? Math.round(30 + R() * 260) : 0,
+      home: mode === 'acl' ? null : (AD_GROUP_DEF[groups[0]] || {}).home,
     };
   });
 
-  /* Пофамильный список ЦА строится лениво и детерминированно по id отчёта */
-  const _audCache = {};
-  function audiencePersons(dashId) {
-    if (_audCache[dashId]) return _audCache[dashId];
-    const rep = ds_reports.find((r) => r.section === 'report' && r.dashboard_id === dashId && r.grain === 'd');
-    const meta = audienceMeta[dashId];
-    const r2 = rng(dashId);
-    const size = meta.is_wide ? 9400 + Math.round(r2() * 2000)
-      : (meta.audience_type === 'acl' ? meta.acl_logins_cnt : Math.round(rep.audience_size * (1 + r2() * .35)));
-    const cap = Math.min(size, 900);                      // в макете рисуем выборку
-    const reachTarget = meta.is_wide ? .07 : rep.reached_share;
-    const out = [];
-    for (let i = 0; i < cap; i++) {
-      const fn = NAMES_F[Math.floor(r2() * NAMES_F.length)];
-      const ln = NAMES_L[Math.floor(r2() * NAMES_L.length)];
-      const came = r2() < reachTarget;
-      const activeDays = came ? 1 + Math.floor(Math.pow(r2(), 1.9) * 21) : 0;
-      let segment;
-      if (!came) segment = 'Не заходил';
-      else if (activeDays >= 8) segment = 'Постоянный';
-      else if (activeDays >= 2) segment = 'Эпизодический';
-      else segment = 'Разовый';
-      const lastAgo = came ? Math.floor(Math.pow(r2(), 2) * 34) : null;
-      out.push({
-        section: 'person', dashboard_id: dashId,
-        login: (fn[0] + '.' + ln).toLowerCase().replace('ё', 'e'),
-        fio: fn + ' ' + ln,
-        lvl3: CUTS.lvl3.vals[Math.floor(r2() * CUTS.lvl3.vals.length)],
-        lvl4: CUTS.lvl4.vals[Math.floor(r2() * CUTS.lvl4.vals.length)],
-        stream: CUTS.stream.vals[Math.floor(r2() * CUTS.stream.vals.length)],
-        spec: CUTS.spec.vals[Math.floor(r2() * CUTS.spec.vals.length)],
-        exp: CUTS.exp.vals[Math.floor(r2() * CUTS.exp.vals.length)],
-        is_head: r2() < .14 ? 1 : 0,
-        came: came ? 1 : 0,
-        active_days: activeDays,
-        views: came ? activeDays * (1 + Math.round(r2() * 3)) : 0,
-        last_visit_days: lastAgo,
-        segment,
-        sample_of: size,
-      });
-    }
-    _audCache[dashId] = out;
-    return out;
+  /* ======================================================================
+     ПОПУЛЯЦИЯ СОТРУДНИКОВ — основа всей вкладки «Аудитория».
+
+     Раньше поимённый список строился ОТ ОТЧЁТА: сколько-то выдуманных людей
+     на каждый dashboard_id. С таким устройством нельзя ни собрать аудиторию
+     по нескольким отчётам (списки не пересекаются), ни задать целевую
+     аудиторию структурой — потому что «все сотрудники блока» просто негде
+     взять.
+
+     Теперь наоборот: есть одна выборка сотрудников с атрибутами из
+     mdm_employee_daily_proteus, а принадлежность к AD-группе и факт визита
+     в конкретный отчёт — детерминированные функции от (сотрудник, объект).
+     Отсюда одинаково считаются все три способа задать ЦА: AD-группы,
+     поимённый список и настройка по структуре.
+
+     Выборка, а не весь банк: 4000 человек на HC_TOTAL — каждый представляет
+     примерно семерых реальных. Веса возвращаются к настоящим числам
+     множителем POP_W. Меньше выборку брать нельзя: на 1600 все числа в
+     помесячной динамике становились кратны 17 и это было видно глазом.
+     В бою выборки нет — там та же логика по всей таблице.
+     ==================================================================== */
+  const POP_N = 4000;
+  const POP_W = HC_TOTAL_REF / POP_N;
+
+  /* Детерминированный хеш пары чисел: «зашёл ли этот человек в этот отчёт»
+     не должно зависеть от порядка вызовов. */
+  function h2(a, b) {
+    let x = (Math.imul(a + 1, 2654435761) ^ Math.imul(b + 1, 40503)) >>> 0;
+    x ^= x >>> 15; x = Math.imul(x, 2246822507) >>> 0;
+    x ^= x >>> 13; x = Math.imul(x, 3266489909) >>> 0;
+    return ((x ^ (x >>> 16)) >>> 0) / 4294967296;
   }
 
-  /* Приход аудитории по бакетам: сколько человек пришло ВПЕРВЫЕ + накопленный
-     охват. Накопленная кривая обязана сойтись с карточкой «Дошли»: это одни
-     и те же люди, поэтому итог передаётся снаружи (opt.total). */
-  function audienceReach(dashId, grain, opt) {
-    const rep = ds_reports.find((r) => r.section === 'report' && r.dashboard_id === dashId && r.grain === grain);
-    const bs = buckets(grain);
-    const r2 = rng(dashId + 991);
-    const isNew = rep.is_new;
-    const total = Math.max(1, Math.round((opt && opt.total != null) ? opt.total : rep.users));
-    const w = bs.map((b, i) => {
-      if (isNew && grain === 'd') return Math.max(.02, Math.exp(-Math.pow(i - 12, 2) / 26)); // всплеск рассылки
-      return .4 + r2() * .6 + (i / bs.length) * .4;
+  const population = (function buildPopulation() {
+    const rp = rng(777001);
+    const byCut = {};
+    ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq'].forEach((ck) => {
+      const c = CUTS[ck];
+      const counts = alloc(POP_N, c.w);
+      const bag = [];
+      c.vals.forEach((v, i) => { for (let k = 0; k < counts[i]; k++) bag.push(v); });
+      /* Перемешиваем, чтобы атрибуты не были скоррелированы порядком */
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = Math.floor(rp() * (i + 1)); const t = bag[i]; bag[i] = bag[j]; bag[j] = t;
+      }
+      byCut[ck] = bag;
     });
-    const a = alloc(total, w);
+    const out = [];
+    for (let i = 0; i < POP_N; i++) {
+      const woman = rp() < .52;
+      const fn = woman ? NAMES_W[Math.floor(rp() * NAMES_W.length)] : NAMES_M[Math.floor(rp() * NAMES_M.length)];
+      const ln = SURNAMES[Math.floor(rp() * SURNAMES.length)] + (woman ? 'а' : '');
+      out.push({
+        pid: i,
+        fio: fn + ' ' + ln,
+        login: (fn[0] + '.' + ln + (i % 23 ? '' : i)).toLowerCase().replace('ё', 'e'),
+        lvl3: byCut.lvl3[i], lvl4: byCut.lvl4[i], stream: byCut.stream[i],
+        spec: byCut.spec[i], exp: byCut.exp[i], it: byCut.it[i], hq: byCut.hq[i],
+        is_head: rp() < .12 ? 1 : 0,
+      });
+    }
+    return out;
+  })();
+
+  /* Разрезы, по которым можно СОБРАТЬ целевую аудиторию руками. Это ровно те
+     поля, что есть в mdm_employee_daily_proteus, — ничего сверх витрины. */
+  const AUD_DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq'];
+
+  const GROUP_IDX = {};
+  Object.keys(AD_GROUP_DEF).forEach((g, i) => { GROUP_IDX[g] = i + 1; });
+
+  function inAdGroup(person, group) {
+    const def = AD_GROUP_DEF[group];
+    if (!def) return false;
+    const p = (def.home == null || person.lvl3 === def.home) ? def.pIn : def.pOut;
+    if (def.home && def.home !== person.lvl3 && person.is_head) return h2(person.pid, GROUP_IDX[group] + 900) < p * 3;
+    return h2(person.pid, GROUP_IDX[group]) < p;
+  }
+
+  /* Поимённый список: те же люди, просто отобранные точечно. «Дом» отчёта
+     задаёт, из какого подразделения их набирали. */
+  function inAcl(person, dashId, want) {
+    const meta = audienceMeta[dashId];
+    const home = meta.home || CUTS.lvl3.vals[dashId % CUTS.lvl3.vals.length];
+    const base = want / POP_N;
+    const p = person.lvl3 === home ? base * 4.2 : base * .35;
+    return h2(person.pid, dashId + 7777) < p;
+  }
+
+  /* Есть ли у человека доступ к конкретному отчёту */
+  function hasAccess(person, dashId) {
+    const m = audienceMeta[dashId];
+    if (!m) return false;
+    return m.audience_type === 'acl'
+      ? inAcl(person, dashId, Math.max(30, Math.round(m.acl_logins_cnt / POP_W)))
+      : m.ad_groups.some((g) => inAdGroup(person, g));
+  }
+
+  /* Целевая аудитория области «как роздан доступ» */
+  function accessAudience(dashIds) {
+    return population.filter((p) => dashIds.some((id) => hasAccess(p, id)));
+  }
+
+  /* Целевая аудитория, собранная руками: пересечение разрезов.
+     Внутри разреза — ИЛИ, между разрезами — И. */
+  function customAudience(filters) {
+    const keys = AUD_DIMS.filter((k) => filters[k] && filters[k].length);
+    if (!keys.length) return population.slice();
+    return population.filter((p) => keys.every((k) => filters[k].indexOf(p[k]) >= 0));
+  }
+
+  /* --------------------- Визиты: кто, куда, когда ------------------------
+     Склонность зайти зависит от того, «свой» ли человеку отчёт: сотрудник
+     из домашнего блока отчёта доходит заметно чаще случайного. Это и делает
+     осмысленной настройку ЦА: сузив аудиторию до нужной структуры, видно
+     совсем другое покрытие. */
+  function visitOf(person, dashId) {
+    const meta = audienceMeta[dashId];
+    const home = meta && meta.home;
+    /* Поимённый список — это адресная раздача: человека назвали по фамилии,
+       и доходит он заметно чаще, чем случайный член большой AD-группы. */
+    const base = !meta ? .34 : (meta.is_wide ? .1 : (meta.audience_type === 'acl' ? .56 : .34));
+    const aff = home && person.lvl3 === home ? 2.05 : (home ? .55 : 1);
+    const headBoost = person.is_head ? 1.25 : 1;
+    const score = h2(person.pid, dashId + 31);
+    const p = Math.min(.96, base * aff * headBoost);
+    if (score >= p) return null;
+    /* Насколько активно: степенное распределение, тяжёлый хвост у своих */
+    const r = h2(person.pid, dashId + 1009);
+    const days = 1 + Math.floor(Math.pow(r, 2.1) * (aff > 1 ? 26 : 13));
+    const firstShare = h2(person.pid, dashId + 2017);
+    return {
+      dashboard_id: dashId, days,
+      views: days * (1 + Math.round(h2(person.pid, dashId + 3001) * 4)),
+      firstShare,                                 // 0…1 — доля пути периода
+      lastAgo: Math.floor(Math.pow(h2(person.pid, dashId + 4099), 2) * 34),
+    };
+  }
+
+  const SEG_OF = (days) => (days >= 8 ? 'Постоянный' : (days >= 2 ? 'Эпизодический' : 'Разовый'));
+
+  /* Люди целевой аудитории с фактом визита в ОБЛАСТЬ (один отчёт, набор
+     отчётов или коллекция). «Дошёл» — открыл хотя бы один отчёт области. */
+  function audienceRows(dashIds, people) {
+    return people.map((p) => {
+      let days = 0, views = 0, last = null, first = null, nRep = 0, acc = 0;
+      dashIds.forEach((id) => {
+        /* Без доступа визита быть не может. Это важно именно для настроенной
+           ЦА: накликав структуру, легко захватить людей, которым отчёт
+           никогда не раздавали, — и тогда низкий охват означает не «не
+           ходят», а «не роздан доступ». Разделить эти два случая и есть
+           работа этого флага. */
+        if (!hasAccess(p, id)) return;
+        acc = 1;
+        const v = visitOf(p, id);
+        if (!v) return;
+        nRep++; days = Math.max(days, v.days); views += v.views;
+        if (last == null || v.lastAgo < last) last = v.lastAgo;
+        if (first == null || v.firstShare < first) first = v.firstShare;
+      });
+      return {
+        pid: p.pid, fio: p.fio, login: p.login,
+        lvl3: p.lvl3, lvl4: p.lvl4, stream: p.stream, spec: p.spec,
+        exp: p.exp, it: p.it, hq: p.hq, is_head: p.is_head,
+        has_access: acc,
+        came: nRep > 0 ? 1 : 0, reports_seen: nRep,
+        active_days: days, views, last_visit_days: last,
+        first_share: first,
+        segment: nRep > 0 ? SEG_OF(days) : (acc ? 'Не заходил' : 'Нет доступа'),
+      };
+    });
+  }
+
+  /* -------------------- Динамика охвата целевой аудитории -----------------
+     Одна функция отдаёт всё, что расшифровывает воронку:
+       first_time  сколько человек ЦА пришло впервые в этом бакете;
+       cum_reach   сколько накоплено к концу бакета;
+       active      сколько из ЦА заходили в этом бакете;
+       views       просмотры этих людей;
+       reach_pct   накопленный охват ЦА, %;
+       active_pct  доля ЦА, заходившая именно в этом бакете, %.
+     Последние две и есть «как менялся процент в динамике». */
+  function audienceDynamics(rows, grain, audienceCount) {
+    const bs = buckets(grain);
+    const n = bs.length;
+    const aud = Math.max(1, audienceCount);
+    const firstIdx = new Array(n).fill(0);
+    const active = new Array(n).fill(0);
+    const views = new Array(n).fill(0);
+    const nUsers = new Array(n).fill(0);
+
+    rows.forEach((r) => {
+      if (!r.came) return;
+      const fi = Math.min(n - 1, Math.floor(r.first_share * n));
+      firstIdx[fi]++;
+      /* Сколько бакетов из оставшихся человек закрывает своей активностью */
+      const rate = Math.max(.08, Math.min(1, r.active_days / Math.max(1, { d: 30, w: 20, m: 12, q: 8 }[grain])));
+      const vPer = r.views / Math.max(1, r.active_days);
+      for (let i = fi; i < n; i++) {
+        if (h2(r.pid * 31 + i, 5501) < rate) {
+          active[i]++; nUsers[i]++; views[i] += vPer * (1 + h2(r.pid, i) * .8);
+        }
+      }
+    });
     let cum = 0;
-    return bs.map((b, i) => { cum += a[i]; return { bucket: b, first_time: a[i], cum_reach: cum }; });
+    return bs.map((b, i) => {
+      cum += firstIdx[i];
+      return {
+        bucket: b,
+        first_time: Math.round(firstIdx[i] * POP_W),
+        cum_reach: Math.round(cum * POP_W),
+        users: Math.round(nUsers[i] * POP_W),
+        active: Math.round(active[i] * POP_W),
+        views: Math.round(views[i] * POP_W),
+        reach_pct: cum / aud * 100,
+        active_pct: active[i] / aud * 100,
+      };
+    });
   }
 
   /* ============================== Экспорт ================================ */
   global.PA_DATA = {
     MAX_DATE, GRAINS, CUTS, CUT_KEYS, FREQ,
     ds_overview, ds_reports,
-    reportMeta, audienceMeta, audiencePersons, audienceReach,
+    reportMeta, audienceMeta,
+    population, POP_W, POP_N, AUD_DIMS, AD_GROUP_DEF,
+    accessAudience, customAudience, audienceRows, audienceDynamics, inAdGroup, hasAccess, visitOf,
     reportCohorts, globalCohorts,
     buckets,
-    WIDE_GROUPS,
     HC_TOTAL: HC_TOTAL_REF,
     OWNERS, COLLECTIONS, AD_GROUPS, GROUP_KEYS,
   };

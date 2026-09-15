@@ -116,12 +116,15 @@
       }
       return el;
     }
+    /* Подсказка встаёт ПОД курсором и правее. Раньше она вставала сверху и
+       накрывала то, что читатель только что прошёл глазами: на таблице
+       каталога это выглядело так, будто она «залезает» на список. Вверх
+       переворачивается только когда снизу не хватает места. */
     function place(n, x, y) {
-      const w = n.offsetWidth || 220, h = n.offsetHeight || 60;
-      let l = x + 16, t = y - h - 14;
-      if (l + w > innerWidth - 10) l = x - w - 16;
-      if (l < 10) l = 10;
-      if (t < 10) t = y + 20;
+      const w = n.offsetWidth || 200, h = n.offsetHeight || 60;
+      let l = x + 14, t = y + 18;
+      if (l + w > innerWidth - 10) l = Math.max(10, x - w - 14);
+      if (t + h > innerHeight - 10) t = Math.max(10, y - h - 14);
       n.style.left = Math.round(l) + 'px';
       n.style.top = Math.round(t) + 'px';
     }
@@ -188,7 +191,7 @@
       '<col></colgroup>';
     h += '<thead><tr><th class="txt">' + esc(o.firstH || '') + '</th>' +
       cols.map((c) => '<th' + (c.hint ? tip(c.hint) : '') + '>' + esc(c.label) + '</th>').join('') +
-      '<th class="txt bar-th">' + esc(o.barH || 'Распределение') + '</th></tr></thead><tbody>';
+      '<th class="txt bar-th">' + esc(o.barH == null ? 'Распределение' : o.barH) + '</th></tr></thead><tbody>';
 
     if (o.total) {
       h += '<tr class="total"' + (o.total.tip ? tip(o.total.tip) : '') + '><td class="txt">ИТОГО</td>' +
@@ -197,12 +200,16 @@
     }
     rows.forEach((r) => {
       const sel = o.selected === r.key ? ' sel' : '';
-      // строки кликабельны только там, где клик что-то делает: есть cutKey
+      /* Строки кликабельны там, где клик что-то делает: либо это выбор
+         разреза (cutKey → data-slice), либо кросс-фильтр (clickAttr). */
       const act = o.cutKey
         ? ' data-slice="' + esc(o.cutKey) + '" data-val="' + esc(r.key) + '"' +
           ' tabindex="0" role="button" aria-pressed="' + (sel ? 'true' : 'false') + '"'
-        : '';
-      h += '<tr class="' + (o.cutKey ? 'urow' : 'row') + sel + '"' + act + '>' +
+        : (o.clickAttr
+          ? ' data-' + esc(o.clickAttr) + '="' + esc(r.key) + '"' + (o.extraAttr || '') +
+            ' tabindex="0" role="button" aria-pressed="' + (sel ? 'true' : 'false') + '"'
+          : '');
+      h += '<tr class="' + (o.cutKey || o.clickAttr ? 'urow' : 'row') + sel + '"' + act + '>' +
         '<td class="txt">' + esc(r.label) +
           (r.sub ? '<span class="unit-sub">' + esc(r.sub) + '</span>' : '') + '</td>' +
         r.cells.map((c, i) => '<td class="' + (i === 0 ? 'lead' : '') + '">' + c + '</td>').join('') +
@@ -247,9 +254,13 @@
 
      Столбца «старт» нет: в нём по построению всегда 100% и та же самая
      когорта — смотреть не на что. */
-  const DIV_LOW = [255, 218, 122];   // жёлтый: ниже медианы
+  const DIV_LOW = [244, 177, 116];   // оранжевый: ниже медианы
   const DIV_MID = [255, 255, 255];   // белый: медиана
-  const DIV_HIGH = [160, 222, 255];  // голубой: выше медианы
+  const DIV_HIGH = [100, 189, 228];  // голубой: выше медианы
+  const SEQ_LO = [230, 244, 251];    // абсолютная шкала: один тон, светлый край
+  const SEQ_HI = [10, 103, 145];     //                   тот же тон, тёмный край
+  const BANDS = 3;                   // ступеней в каждую сторону от середины
+
   function medianOf(vals) {
     if (!vals.length) return null;
     const s = vals.slice().sort((a, b) => a - b);
@@ -261,45 +272,129 @@
       Math.round(c1[1] + (c2[1] - c1[1]) * t) + ',' +
       Math.round(c1[2] + (c2[2] - c1[2]) * t) + ')';
   }
-  function divColor(v, med, span) {
-    if (v == null || med == null || !isFinite(v) || !isFinite(med)) return 'rgb(255,255,255)';
-    let d = (v - med) / (span || 20);
-    d = Math.max(-1, Math.min(1, d));
-    return d >= 0 ? mixRgb(DIV_MID, DIV_HIGH, d) : mixRgb(DIV_MID, DIV_LOW, -d);
+  /* Нормированное отклонение → цвет. Одна функция и для ячеек, и для легенды:
+     легенда обязана показывать ровно ту шкалу, которой раскрашена таблица. */
+  function divColorAt(d) {
+    const t = Math.max(-1, Math.min(1, d));
+    return t >= 0 ? mixRgb(DIV_MID, DIV_HIGH, t) : mixRgb(DIV_MID, DIV_LOW, -t);
   }
+  function seqColorAt(t) {
+    return mixRgb(SEQ_LO, SEQ_HI, Math.max(0, Math.min(1, t)));
+  }
+  const bandOf = (d) => Math.max(-BANDS, Math.min(BANDS, Math.round(d * BANDS)));
+
+  /* Раскраска ячейки. base:
+       'col' — отклонение от медианы СВОЕГО столбца (как в боевом борде);
+       'all' — отклонение от медианы всей таблицы (сравнение когорт между собой);
+       'abs' — абсолютная доля 0…max, один тон (без «лучше/хуже среднего»). */
+  const CT_BASES = [
+    { key: 'col', label: 'от медианы столбца', hint: 'Цвет — насколько когорта держится лучше или хуже других когорт В ТОМ ЖЕ ВОЗРАСТЕ. Так раскрашена «Закрепляемость 2.0» боевого борда.' },
+    { key: 'all', label: 'от медианы таблицы', hint: 'Цвет — отклонение от медианы всех закрытых ячеек сразу. Видно общий наклон: свежие когорты против старых.' },
+    { key: 'abs', label: 'по абсолютной доле', hint: 'Цвет — сама доля удержания, один тон от светлого к тёмному. Без сравнения со средним.' },
+  ];
+  /* Ступени размаха шкалы. «авто» = максимальное отклонение в данных:
+     шкала всегда использована целиком. Фиксированные п.п. нужны, когда
+     таблицы сравнивают между собой — тогда цвет значит одно и то же. */
+  const CT_SPANS = [null, 5, 10, 20, 30];
+  const spanLabel = (v) => (v == null ? 'авто' : '±' + v + ' п.п.');
+
   function cohortTable(o) {
     const rows = o.rows || [];
     const maxAge = o.maxAge || Math.max(1, ...rows.map((r) => r.cells.length));
     const maxSize = Math.max(1, ...rows.map((r) => r.size));
     const pctOf = (r, c) => (r.size ? c.active / r.size * 100 : 0);
+    const base = o.base || 'col';
+    const uid = o.uid || 'ct';
 
     /* Медианы столбцов и размах шкалы — только по ЗАКРЫТЫМ месяцам:
        незакрытый месяц занизил бы и медиану, и край палитры. */
-    const med = {}; let maxDev = 0;
+    const med = {}; const closed = [];
     for (let a = 1; a <= maxAge; a++) {
       const vals = [];
       rows.forEach((r) => {
         const c = r.cells[a - 1];
-        if (c && !c.partial) vals.push(pctOf(r, c));
+        if (c && !c.partial) { vals.push(pctOf(r, c)); closed.push(pctOf(r, c)); }
       });
       med[a] = medianOf(vals);
     }
+    const medAll = medianOf(closed);
+    const maxClosed = closed.length ? Math.max.apply(null, closed) : 100;
+    const refOf = (a) => (base === 'all' ? medAll : med[a]);
+
+    let maxDev = 0;
     rows.forEach((r) => r.cells.forEach((c, i) => {
-      if (c.partial || med[i + 1] == null) return;
-      const dev = Math.abs(pctOf(r, c) - med[i + 1]);
+      const ref = refOf(i + 1);
+      if (c.partial || ref == null) return;
+      const dev = Math.abs(pctOf(r, c) - ref);
       if (dev > maxDev) maxDev = dev;
     }));
-    const span = maxDev > 0.001 ? maxDev : 20;
+    const autoSpan = maxDev > 0.001 ? maxDev : 20;
+    const span = o.span == null ? autoSpan : o.span;
 
-    /* Легенда — один короткий спан: на панели ~700px длинная легенда
-       переносилась и её вторая строка висела вплотную к шапке таблицы,
-       читалось как наложение. Остальные договорённости — в примечании
-       под таблицей и в подсказках шапки. */
-    let h = '<div class="ct-legend">' +
-      '<span class="sw" aria-hidden="true"></span>' +
-      '<span>жёлтый — ниже медианы столбца · голубой — выше</span></div>';
+    /* Нормированное отклонение ячейки: одно число, от которого зависит и
+       цвет, и полоса легенды, и подсветка при наведении на эту полосу. */
+    function normOf(v, a) {
+      if (base === 'abs') return maxClosed ? v / maxClosed : 0;
+      const ref = refOf(a);
+      if (ref == null || v == null) return null;
+      return Math.max(-1, Math.min(1, (v - ref) / (span || 20)));
+    }
+    const colorOf = (d) => (base === 'abs' ? seqColorAt(d) : divColorAt(d));
+    const bandIdx = (d) => (base === 'abs'
+      ? Math.max(0, Math.min(BANDS * 2, Math.round(d * BANDS * 2)))
+      : bandOf(d) + BANDS);
 
-    h += '<div class="ct-wrap"><table class="cttable"><colgroup>' +
+    /* ---------------------- Легенда: она же орган управления ---------------
+       Раньше здесь стоял градиентный прямоугольник — картинка, которую
+       нельзя ни о чём спросить. Теперь это 7 ступеней шкалы: наведение на
+       ступень гасит все ячейки, кроме попавших в неё (видно, где именно
+       сидят отстающие когорты), а рядом — чем меряем и какой размах. */
+    const bandTip = (i) => {
+      if (base === 'abs') {
+        const lo = maxClosed * (i - .5) / (BANDS * 2), hi = maxClosed * (i + .5) / (BANDS * 2);
+        return { title: 'Ступень шкалы', text: 'Удержание ' + pct(Math.max(0, lo), 0) + ' — ' + pct(Math.min(maxClosed, hi), 0) + '. Наведите, чтобы увидеть только эти ячейки.' };
+      }
+      const d = i - BANDS;
+      const lo = (d - .5) / BANDS * span, hi = (d + .5) / BANDS * span;
+      const what = base === 'all' ? 'медианы таблицы' : 'медианы своего столбца';
+      if (d === 0) return { title: 'Около медианы', text: 'Отклонение от ' + what + ' меньше ' + nf(span / BANDS / 2, 1) + ' п.п.' };
+      return {
+        title: d > 0 ? 'Выше медианы' : 'Ниже медианы',
+        text: (d > 0 ? '+' : MINUS) + nf(Math.abs(d > 0 ? lo : hi), 0) + '…' +
+          (Math.abs(d) === BANDS ? 'и дальше' : (d > 0 ? '+' : MINUS) + nf(Math.abs(d > 0 ? hi : lo), 0)) +
+          ' п.п. к ' + what + '. Наведите, чтобы увидеть только эти когорты.',
+      };
+    };
+    const stops = [];
+    const nStops = base === 'abs' ? BANDS * 2 + 1 : BANDS * 2 + 1;
+    for (let i = 0; i < nStops; i++) {
+      const d = base === 'abs' ? i / (nStops - 1) : (i - BANDS) / BANDS;
+      stops.push('<button class="ct-st" data-ctband="' + i + '" data-ctuid="' + esc(uid) + '" type="button"' +
+        ' style="background:' + colorOf(d) + '"' + tip(bandTip(i)) +
+        ' aria-label="Ступень шкалы ' + (i + 1) + ' из ' + nStops + '"></button>');
+    }
+
+    let h = '<div class="ct-legend" data-ctuid="' + esc(uid) + '">' +
+      '<div class="ct-scale-wrap">' +
+        '<span class="ct-end">' + (base === 'abs' ? 'реже' : 'ниже') + '</span>' +
+        '<div class="ct-scale" role="group" aria-label="Шкала раскраски: наведите ступень, чтобы подсветить ячейки">' + stops.join('') + '</div>' +
+        '<span class="ct-end">' + (base === 'abs' ? 'чаще' : 'выше') + '</span>' +
+      '</div>' +
+      '<div class="ct-cfg">' +
+        '<span class="ct-cfg-l">Цвет</span>' +
+        '<div class="sub-tabs tiny">' + CT_BASES.map((b) =>
+          '<button class="sub-tab' + (b.key === base ? ' active' : '') + '" data-ctbase="' + b.key + '"' +
+          tip({ title: b.label, text: b.hint }) + '>' + esc(b.label) + '</button>').join('') + '</div>' +
+        (base === 'abs' ? '' :
+          '<span class="ct-cfg-l">Размах</span>' +
+          '<div class="sub-tabs tiny">' + CT_SPANS.map((v) =>
+            '<button class="sub-tab' + ((o.span == null ? null : o.span) === v ? ' active' : '') +
+            '" data-ctspan="' + (v == null ? '' : v) + '"' +
+            tip({ text: v == null ? 'Край шкалы = максимальное отклонение в этой таблице (' + pct(autoSpan, 0) + '). Шкала всегда использована целиком.' : 'Край шкалы жёстко ' + v + ' п.п. Нужно, когда две таблицы сравнивают между собой: цвет значит одно и то же.' }) +
+            '>' + esc(spanLabel(v)) + '</button>').join('') + '</div>') +
+      '</div></div>';
+
+    h += '<div class="ct-wrap" data-ctuid="' + esc(uid) + '"><table class="cttable"><colgroup>' +
       '<col class="ct-c1"><col class="ct-c2">' +
       new Array(maxAge).fill('<col class="ct-c3">').join('') +
       '</colgroup><thead><tr>' +
@@ -308,15 +403,15 @@
       '<th class="txt"' + tip({ text: o.firstTip || 'Месяц первого визита' }) + '>Когорта</th>' +
       '<th class="ct-size-h"' + tip({ text: o.sizeNote || 'Столько человек открыли отчёт впервые в этом месяце' }) + '>Пришло</th>';
     for (let a = 1; a <= maxAge; a++) {
-      const medTip = med[a] != null
+      const ref = refOf(a);
+      const medTip = (base !== 'abs' && ref != null)
         ? tip({
           title: '+' + a + ' ' + plural(a, 'месяц', 'месяца', 'месяцев'),
-          rows: [{ label: 'Медиана столбца', value: pct(med[a]) }],
-          note: '«м» в шапке — медиана закрытых ячеек этого столбца; цвет ячейки — отклонение от неё',
+          rows: [{ label: base === 'all' ? 'Медиана таблицы' : 'Медиана столбца', value: pct(ref) }],
         })
-        : '';
+        : tip({ title: '+' + a + ' ' + plural(a, 'месяц', 'месяца', 'месяцев'), text: 'Доля когорты, активной через ' + a + ' мес. после первого визита' });
       h += '<th class="ct-h"' + medTip + '>+' + a +
-        (med[a] != null ? '<span class="ct-med">м ' + pct(med[a], 0) + '</span>' : '') + '</th>';
+        ((base !== 'abs' && ref != null && base === 'col') ? '<span class="ct-med">м ' + pct(ref, 0) + '</span>' : '') + '</th>';
     }
     h += '</tr></thead><tbody>';
 
@@ -326,8 +421,7 @@
       h += '<tr><td class="txt"' + tip({ title: MONTHS_FULL[d.getUTCMonth()] + ' ' + d.getUTCFullYear(), text: o.firstTip || 'Месяц первого визита' }) + '>' + esc(lbl) + '</td>' +
         '<td class="ct-size"' + tip({
           title: MONTHS_FULL[d.getUTCMonth()] + ' ' + d.getUTCFullYear(),
-          rows: [{ label: 'Пришли впервые', value: nf(r.size), color: '#4361ee' }],
-          note: o.sizeNote || 'Столько человек открыли отчёт впервые в этом месяце',
+          rows: [{ label: 'Пришли впервые', value: nf(r.size), color: '#0e7ab0' }],
         }) + '><div class="ct-sz">' +
           '<span class="ct-bar"><i style="width:' + (100 * r.size / maxSize).toFixed(1) + '%"></i></span>' +
           '<b>' + nf(r.size) + '</b></div></td>';
@@ -335,25 +429,29 @@
         const c = r.cells[a - 1];
         if (!c) { h += '<td class="ct-cell none"></td>'; continue; }
         const p = pctOf(r, c);
+        const ref = refOf(a);
         const tipObj = {
-          title: lbl + ' → +' + a + ' ' + plural(a, 'месяц', 'месяца', 'месяцев'),
+          title: lbl + ' → +' + a + ' мес',
           rows: [
-            { label: 'Вернулись', value: nf(c.active), color: '#4361ee' },
-            { label: 'Из когорты', value: nf(r.size), dash: true, color: '#c7c8cc' },
+            { label: 'Вернулись', value: nf(c.active) + ' из ' + nf(r.size), color: '#0e7ab0' },
             { label: 'Удержание', value: pct(p) },
           ],
           note: [],
         };
         if (c.partial) {
-          tipObj.note.push('Месяц ещё не закрыт — значение будет расти, в раскраске не участвует');
-        } else if (med[a] != null) {
-          tipObj.rows.push({ label: 'Медиана столбца', value: pct(med[a], 0) });
-          tipObj.note.push(p >= med[a]
-            ? 'Выше медианы столбца на ' + pct(p - med[a], 0)
-            : 'Ниже медианы столбца на ' + pct(med[a] - p, 0));
+          tipObj.note.push('Месяц не закрыт — значение дорастёт, в раскраске не участвует');
+        } else if (base !== 'abs' && ref != null) {
+          tipObj.rows.push({
+            label: base === 'all' ? 'Медиана таблицы' : 'Медиана столбца',
+            value: pct(ref, 0), dash: true, color: '#c7c8cc',
+          });
+          tipObj.rows.push({ label: 'Отклонение', value: signed(p - ref, 0, ' п.п.') });
         }
-        const bg = c.partial ? '' : divColor(p, med[a], span);
+        const nd = c.partial ? null : normOf(p, a);
+        const bg = nd == null ? '' : colorOf(nd);
+        const bi = nd == null ? '' : bandIdx(nd);
         h += '<td class="ct-cell' + (c.partial ? ' part' : '') + '"' +
+          (bi === '' ? '' : ' data-band="' + bi + '"') +
           (bg ? ' style="background:' + bg + '"' : '') +
           tip(tipObj) + '>' + pct(p, 0) + '</td>';
       }
@@ -392,7 +490,8 @@
     return '<div class="panel' + (o.cls ? ' ' + o.cls : '') + '">' +
       '<div class="panel-h' + (o.tabs ? ' with-tabs' : '') + '">' +
         '<div class="h-txt"><span>' + esc(o.title) + '</span>' +
-          (o.sub ? '<span class="sub">' + esc(o.sub) + '</span>' : '') + '</div>' +
+          (o.subHtml ? '<span class="sub">' + o.subHtml + '</span>'
+            : (o.sub ? '<span class="sub">' + esc(o.sub) + '</span>' : '')) + '</div>' +
         (o.right || '') +
         (o.tabs ? '<div class="sub-tabs">' + o.tabs.map((t) =>
           '<button class="sub-tab' + (t.on ? ' active' : '') + '" data-stab="' + esc(o.tabKey) +
@@ -421,7 +520,7 @@
     THIN, MINUS, esc, nf, pct, plural, compact, signed, days,
     fmtDate, axisLabel, bucketTitle, isoWeek, MONTHS, MONTHS_FULL,
     prevLabel, periodLabel, prevPeriodLabel,
-    tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, observations, panel,
+    tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, CT_BASES, CT_SPANS, observations, panel,
     chip, benchChip, searchBox,
   };
 })(window);

@@ -24,6 +24,7 @@ const document = {
   getElementById(id) { return (els[id] = els[id] || mkEl(id)); },
   createElement(t) { return mkEl(t); },
   addEventListener(type, fn) { if (type === 'click') clickHandlers.push(fn); },
+  querySelector() { return null; },
   querySelectorAll() { return []; },
   body: { appendChild() {} },
 };
@@ -199,6 +200,116 @@ console.log('\nШирокая AD-группа');
   const html = els.view.innerHTML;
   ok(html.indexOf('покрытие не считаем') >= 0, 'нет предупреждения о широкой группе');
   console.log('· отчёт ' + wide[0] + ' → ' + (err ? 'ОШИБКА' : 'ок, предупреждение на месте'));
+})();
+
+/* Кросс-фильтр «как часто заходят»: корзина пересчитывает динамику и KPI,
+   а сравнение с предыдущим периодом при этом честно снимается. */
+console.log('\nЧастота визитов как кросс-фильтр');
+(function () {
+  fireTab('reports');
+  fire('[data-mode]', { mode: 'report' });
+  ['1 день', '8–15 дней', '16+ дней'].forEach((fb) => {
+    chartOptions.length = 0;
+    const err = fire('[data-freq]', { freq: fb });
+    ok(!err, 'корзина ' + fb + ': ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
+    const html = els.view.innerHTML;
+    ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, корзина ' + fb);
+    ok(html.indexOf('Частота: ' + fb) >= 0, 'нет чипа снятия фильтра для ' + fb);
+    ok(html.indexOf('к пред. 30 дням') < 0, 'при кросс-фильтре осталось сравнение с предыдущим периодом');
+    ok(chartOptions.length > 0, 'корзина ' + fb + ': график не собран');
+    const hits = [];
+    chartOptions.forEach((o, i) => deepScanNaN(o, 'opt' + i, hits));
+    ok(hits.length === 0, 'NaN в графике при корзине ' + fb);
+    console.log('· ' + fb + ' → ' + (err ? 'ОШИБКА' : 'ок, графиков ' + chartOptions.length));
+    fire('[data-freq]', { freq: fb });            // снять
+  });
+})();
+
+/* Легенда когорт — орган управления: три базы раскраски и пять размахов */
+console.log('\nНастройка шкалы когорт');
+(function () {
+  fireTab('reports');
+  ['col', 'all', 'abs'].forEach((base) => {
+    const err = fire('[data-ctbase]', { ctbase: base });
+    ok(!err, 'база ' + base + ': ' + (err && err.message));
+    const html = els.view.innerHTML;
+    ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, база ' + base);
+    ok(/data-ctband="/.test(html), 'база ' + base + ': ступени шкалы не отрисованы');
+    ok(base === 'abs' || /data-band="/.test(html), 'база ' + base + ': у ячеек нет номера ступени');
+    console.log('· цвет ' + base + ' → ' + (err ? 'ОШИБКА' : 'ок'));
+  });
+  fire('[data-ctbase]', { ctbase: 'col' });
+  ['', '5', '10', '30'].forEach((sp) => {
+    const err = fire('[data-ctspan]', { ctspan: sp });
+    ok(!err, 'размах ' + (sp || 'авто') + ': ' + (err && err.message));
+    ok(els.view.innerHTML.indexOf('NaN') < 0, 'NaN при размахе ' + (sp || 'авто'));
+  });
+  console.log('· размах: авто/±5/±10/±30 → ок');
+})();
+
+/* Вкладка «Аудитория»: область, настройка ЦА, кросс-фильтры */
+console.log('\nАудитория: область и целевая аудитория');
+(function () {
+  const D = ctx.PA_DATA;
+  fireTab('audience');
+  ['one', 'many', 'collection', 'one'].forEach((kind) => {
+    chartOptions.length = 0;
+    const err = fire('[data-audkind]', { audkind: kind });
+    ok(!err, 'область ' + kind + ': ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
+    const html = els.view.innerHTML;
+    ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке, область ' + kind);
+    ok(chartOptions.length > 0, 'область ' + kind + ': графики не собраны');
+    const hits = [];
+    chartOptions.forEach((o, i) => deepScanNaN(o, 'opt' + i, hits));
+    ok(hits.length === 0, 'NaN в графиках, область ' + kind);
+    console.log('· область ' + kind + ' → ' + (err ? 'ОШИБКА' : 'ок, графиков ' + chartOptions.length));
+  });
+
+  /* Конструктор ЦА: открыть, накликать условия, применить, вернуть */
+  let err = fire('#audCfgOpen', {});
+  els.__ = null;
+  const openTarget = { closest() { return null; }, id: 'audCfgOpen', dataset: {}, matches() { return false; } };
+  try { clickHandlers.forEach((h) => h({ target: openTarget })); } catch (e) { err = e; }
+  ok(!err, 'открытие конструктора ЦА: ' + (err && err.message));
+  ok(els.view.innerHTML.indexOf('data-auddim') >= 0, 'конструктор ЦА не отрисован');
+  ok(els.view.innerHTML.indexOf('доступ к области есть у') >= 0, 'конструктор не показывает, у скольких есть доступ');
+
+  err = fire('[data-auddim]', { auddim: 'spec', audval: 'Аналитик' });
+  ok(!err, 'выбор условия ЦА: ' + (err && err.message));
+
+  const applyTarget = { closest() { return null; }, id: 'audCfgApply', dataset: {}, matches() { return false; } };
+  err = null;
+  chartOptions.length = 0;
+  try { clickHandlers.forEach((h) => h({ target: applyTarget })); } catch (e) { err = e; }
+  ok(!err, 'применение настроенной ЦА: ' + (err && err.stack && err.stack.split('\n').slice(0, 2).join(' | ')));
+  let html = els.view.innerHTML;
+  ok(html.indexOf('Собрана в конструкторе') >= 0, 'ЦА не переключилась на настроенную');
+  /* Ступень воронки живёт в option графика, а не в разметке */
+  ok(JSON.stringify(chartOptions.map((o) => (o.series || []).map((x) => (x.data || []).map((d) => d && d.name))))
+    .indexOf('Есть доступ к области') >= 0, 'в воронке нет ступени «есть доступ»');
+  ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке настроенной ЦА');
+  console.log('· конструктор ЦА → ок, ступень «есть доступ» на месте');
+
+  const resetTarget = { closest() { return null; }, id: 'audCfgReset', dataset: {}, matches() { return false; } };
+  err = null;
+  try { clickHandlers.forEach((h) => h({ target: resetTarget })); } catch (e) { err = e; }
+  ok(!err, 'возврат к доступу: ' + (err && err.message));
+  ok(els.view.innerHTML.indexOf('Собрана в конструкторе') < 0, 'ЦА не вернулась к «как роздан доступ»');
+
+  /* Кросс-фильтры: разрез структуры и сегмент поведения */
+  chartOptions.length = 0;
+  err = fire('[data-audunit]', { audunit: D.CUTS.lvl3.vals[0], audkey: 'lvl3' });
+  ok(!err, 'кросс-фильтр по разрезу: ' + (err && err.message));
+  html = els.view.innerHTML;
+  ok(html.indexOf('На экране срез') >= 0, 'плашка ЦА не отметила срез');
+  ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке при кросс-фильтре');
+  fire('[data-audunit]', { audunit: D.CUTS.lvl3.vals[0], audkey: 'lvl3' });   // снять
+
+  err = fire('[data-seg]', { seg: 'Постоянный' });
+  ok(!err, 'фильтр по сегменту: ' + (err && err.message));
+  ok(els.view.innerHTML.indexOf('Сегмент: Постоянный') >= 0, 'нет чипа снятия сегмента');
+  fire('[data-seg]', { seg: 'Постоянный' });
+  console.log('· кросс-фильтры разреза и сегмента → ок');
 })();
 
 console.log('\n' + (fails ? fails + ' проверок провалено' : 'Все проверки пройдены'));

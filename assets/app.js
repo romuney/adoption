@@ -57,8 +57,15 @@
     sel: null,                   // {mode, val} — что выбрано в левой таблице
     selectedReport: null,        // последний выбранный отчёт (нужен вкладке «Аудитория»)
     retView: 'cohort',
-    audCut: 'lvl3',              // разрез разбивки аудитории отчёта
-    audSeg: null,
+    ctBase: 'col',               // чем меряет цвет когорт: медиана столбца
+    ctSpan: null,                // размах шкалы когорт: null = авто
+    freqSel: null,               // кросс-фильтр «как часто заходят» ⟳
+    audCut: 'lvl3',              // разрез разбивки аудитории
+    audSeg: null,                // сегмент поведения — фильтр поимённого списка
+    audUnit: null,               // {key,val} — кросс-фильтр по разрезу структуры
+    audScope: { kind: 'one', ids: [], collection: 'Розница' },
+    audDef: { mode: 'access', filters: {}, draft: {} },
+    _audCfg: false,              // открыт ли конструктор целевой аудитории
     repSort: { col: 'users', dir: -1 },
     repQuery: '',
     audQuery: '',
@@ -162,6 +169,72 @@
     return pick(OV.filter((r) => r.section === 'freq' && r.grain === S.grain && r.cut_key === s.mode && r.cut_val === s.val));
   }
 
+  /* --- Кросс-фильтр «как часто заходят» ⟳ ---------------------------------
+     Клик по корзине частоты оставляет на экране только этих людей: динамика,
+     просмотры и карточки пересчитываются под них. В бою это серверный
+     запрос — сначала набирается множество user_id с нужным числом активных
+     дней, потом по нему строится динамика; в длинный формат такое
+     пересечение не укладывается. Здесь то же самое приближается детерминированно
+     из того, что уже лежит в браузере, чтобы можно было пощупать поведение.
+
+     Арифметика: у корзины известно число людей и среднее число активных
+     ДНЕЙ на человека. Значит известно и число человеко-дней — оно и
+     раскладывается по бакетам в пропорции исходной динамики. Доля
+     «продолжающих» падает вместе с частотой: кто заходит раз в месяц,
+     физически не может быть в предыдущем дне. */
+  const FREQ_DAYS = { '1 день': 1, '2–3 дня': 2.5, '4–7 дней': 5.5, '8–15 дней': 11.5, '16+ дней': 21 };
+  const REGULAR_FREQ = { '8–15 дней': 1, '16+ дней': 1 };
+
+  /* Доля бакетов, в которых человек этой корзины вообще появляется */
+  function freqPresence(bucketName, nBuckets) {
+    const days = FREQ_DAYS[bucketName] || 1;
+    return Math.max(0.02, Math.min(1, days / Math.max(1, nBuckets)));
+  }
+
+  /* Срез по корзине частоты: и ряды, и карточки считаются в одном месте,
+     иначе график и KPI разъезжаются. Сравнение с предыдущим периодом здесь
+     НЕ строится: состав корзин за прошлый период в датасете не лежит, а
+     подставлять туда общую динамику — значит нарисовать несуществующий рост.
+     Поэтому дельты в этом режиме честно сняты. */
+  function freqSlice(ts, k) {
+    if (!S.freqSel || !k || !ts.length) return { ts, k, sliced: false };
+    const fr = freqRows();
+    const total = fr.reduce((a, b) => a + b.users, 0);
+    const mine = fr.find((r) => r.bucket === S.freqSel);
+    if (!mine || !total) return { ts, k, sliced: false };
+
+    const n = ts.length;
+    const share = mine.users / total;
+    const pres = freqPresence(S.freqSel, n);
+    const sumU = ts.reduce((a, b) => a + b.users, 0) || 1;
+    const sumNew = ts.reduce((a, b) => a + b.new_users, 0) || 1;
+    /* Человеко-дни корзины = люди × среднее число активных дней. Их и
+       раскладываем по бакетам в пропорции исходной динамики. */
+    const uScale = (mine.users * pres * n) / sumU;
+    const newTarget = Math.round((k.new_users || 0) * share);
+    const nScale = newTarget / sumNew;
+    const vBoost = 1 + (FREQ_DAYS[S.freqSel] - 1) / 22;   // частый ходок и смотрит больше
+
+    const rows = ts.map((r) => {
+      const u = Math.max(0, Math.min(r.users, Math.round(r.users * uScale)));
+      const nu = Math.min(u, Math.round(r.new_users * nScale));
+      const ret = Math.min(u - nu, Math.round(u * pres));
+      return Object.assign({}, r, {
+        users: u, new_users: nu, ret_users: ret, react_users: Math.max(0, u - nu - ret),
+        views: Math.round(u * (r.users ? r.views / r.users : 0) * vBoost),
+      });
+    });
+    const k2 = Object.assign({}, k, {
+      users: mine.users, users_prev: null,
+      views: rows.reduce((a, b) => a + b.views, 0), views_prev: null,
+      new_users: newTarget, new_users_prev: null,
+      regular_users: REGULAR_FREQ[S.freqSel] ? mine.users : 0, regular_users_prev: null,
+      sleeping_users: null,
+      freq_share: share * 100,
+    });
+    return { ts: rows, k: k2, sliced: true };
+  }
+
   /* --- Когорты ------------------------------------------------------------ */
   function cohortRows() {
     const s = S.sel;
@@ -184,8 +257,8 @@
   /* ========================== Правила наблюдений =========================
      Не языковая модель: пороговый отбор фактов. Каждый факт называет порог,
      по которому он сюда попал. Нет факта выше порога — нет плашки. */
-  function obsMain() {
-    const k = kpiRow(); const out = []; const sl = selection();
+  function obsMain(kIn) {
+    const k = kIn || kpiRow(); const out = []; const sl = selection();
     if (!k) return out;
     const dU = k.users_prev ? (k.users / k.users_prev - 1) * 100 : null;
     const shNew = k.users ? k.new_users / k.users * 100 : 0;
@@ -242,23 +315,24 @@
     return out.sort((a, b) => ord[a.sev] - ord[b.sev]);
   }
 
-  function obsAudience(meta, stats) {
+  function obsAudience(def, stats, wide) {
     const out = [];
-    if (meta.is_wide) {
+    if (wide) {
       out.push({
         sev: 'mid',
-        lead: 'Доступ открыт почти всей компании — покрытие по нему не показываем',
-        body: 'Отчёт роздан через группу <b>' + U.esc(meta.ad_groups[0]) + '</b>, в которой <b>' + U.nf(stats.audience) +
-          '</b> человек — практически весь банк. Считать «покрытие целевой аудитории» по такой группе бессмысленно: ' +
-          'она не описывает, для кого отчёт делали. Разрезы ниже показывают, кто фактически ходит.',
-        rule: 'группа доступа охватывает ≥30% численности',
+        lead: 'Доступ открыт почти всей компании — покрытие по нему не считаем',
+        body: 'В целевой аудитории <b>' + U.nf(stats.audience) + '</b> человек — практически весь банк. ' +
+          'Доля покрытия по такому знаменателю всегда будет выглядеть провальной и ничего не измеряет: ' +
+          'он не описывает, для кого делали отчёт. <b>Соберите целевую аудиторию по структуре</b> — ' +
+          'кнопка «Настроить целевую аудиторию» выше, — и доли вернутся во все блоки.',
+        rule: 'целевая аудитория ≥30% численности компании',
       });
     }
-    if (!meta.is_wide && stats.reachPct < 40) {
+    if (!wide && stats.reachPct < 40) {
       out.push({
         sev: 'high',
-        lead: 'До отчёта дошли ' + U.pct(stats.reachPct) + ' целевой аудитории',
-        body: 'Из <b>' + U.nf(stats.audience) + '</b> человек с доступом заходили <b>' + U.nf(stats.came) +
+        lead: 'До области дошли ' + U.pct(stats.reachPct) + ' целевой аудитории',
+        body: 'Из <b>' + U.nf(stats.audience) + '</b> человек заходили <b>' + U.nf(stats.came) +
           '</b>. Не заходил ни разу <b>' + U.nf(stats.never) + '</b> человек — это и есть список, кому стоит напомнить.',
         rule: 'охват целевой аудитории <40%',
       });
@@ -267,7 +341,7 @@
       out.push({
         sev: 'mid',
         lead: 'Почти половина зашедших не вернулась',
-        body: '<b>' + U.nf(stats.once) + '</b> из <b>' + U.nf(stats.came) + '</b> открыли отчёт ровно один раз. ' +
+        body: '<b>' + U.nf(stats.once) + '</b> из <b>' + U.nf(stats.came) + '</b> открыли область ровно один раз. ' +
           'Разовый визит после рассылки — это не закрепление.',
         rule: 'доля разовых визитов среди зашедших ≥45%',
       });
@@ -275,18 +349,39 @@
     if (stats.regular && stats.came && stats.regular / stats.came >= .3) {
       out.push({
         sev: 'good',
-        lead: 'У отчёта сформировалось ядро из ' + U.nf(stats.regular) + ' постоянных пользователей',
+        lead: 'Сформировалось ядро из ' + U.nf(stats.regular) + ' постоянных пользователей',
         body: '<b>' + U.nf(stats.regular) + '</b> человек заходят регулярно (8+ дней за период) — отчёт встроился в их работу.',
         rule: 'доля постоянных среди зашедших ≥30%',
       });
     }
-    return out;
+    if (def.mode === 'custom' && stats.noAccess > 0 && stats.accessPct < 85) {
+      out.push({
+        sev: 'mid',
+        lead: U.nf(stats.noAccess) + ' ' + U.plural(stats.noAccess, 'человек', 'человека', 'человек') +
+          ' целевой аудитории не имеют доступа',
+        body: 'Права есть у <b>' + U.nf(stats.access) + '</b> из <b>' + U.nf(stats.audience) +
+          '</b> — это <b>' + U.pct(stats.accessPct, 0) + '</b>. Для остальных низкий охват означает не «не ходят», ' +
+          'а <b>«не роздали»</b>: сначала доступ, потом рассылка. Ступень «есть доступ» на воронке — про них.',
+        rule: 'доступ есть менее чем у 85% настроенной целевой аудитории',
+      });
+    } else if (def.mode === 'custom') {
+      out.push({
+        sev: 'none',
+        lead: 'Целевая аудитория задана структурой, а не доступом',
+        body: 'Знаменатель — накликанные условия, а не AD-группы. Доступ при этом есть почти у всех ' +
+          '(<b>' + U.pct(stats.accessPct, 0) + '</b>), так что охват честно читается как «дошли / могли дойти».',
+        rule: 'целевая аудитория собрана в конструкторе',
+      });
+    }
+    const ord = { high: 0, mid: 1, good: 2, none: 3 };
+    return out.sort((a, b) => ord[a.sev] - ord[b.sev]);
   }
 
   /* ============================== Фильтры UI ============================= */
   const SRV = '<span class="info" data-tip="' + U.esc(U.tipHtml({
     title: 'Пересчёт', text: 'Этот фильтр меняет SQL-запрос: комбинация атрибутов не помещается в предрасчёт. Остальные переключатели считаются в браузере мгновенно.',
   })) + '" aria-label="Требует пересчёта">⟳</span>';
+  const SRV_TXT = SRV;         // тот же значок, но в подзаголовках панелей
 
   function renderFilters() {
     const f = S.filters;
@@ -311,13 +406,6 @@
       swt('published', 'Только опубликованные', f.published) +
       swt('actual', 'Только актуальные', f.actual) +
       swt('certified', 'Только сертифицированные', f.certified));
-
-    if (S.tab === 'audience') {
-      h += grp('aud', 'Аудитория', 0,
-        '<div class="ctl"><label>Разбивка аудитории</label><select id="audCutSel">' +
-          ['lvl3', 'lvl4', 'stream', 'spec', 'exp'].map((k) => opt(k, S.audCut, D.CUTS[k].label)).join('') +
-        '</select></div>');
-    }
 
     h += grp('opt', 'Опции', f.excludeOwners ? 1 : 0,
       swt('excludeOwners', 'Исключить владельцев из просмотров', f.excludeOwners,
@@ -397,19 +485,26 @@
       '</tr></thead><tbody>' +
       sorted.map((r) => '<tr class="urow' + (r.dashboard_id === curId ? ' sel' : '') + '"' +
         ' data-rep="' + r.dashboard_id + '" tabindex="0" role="button" aria-pressed="' + (r.dashboard_id === curId) + '"' +
+        /* Подсказка строки — три числа и дата. Всё остальное про отчёт
+           читается на самом экране, когда строка выбрана; раньше здесь
+           стояло шесть строк, и подсказка накрывала полкаталога. */
         U.tip({
           title: r.dashboard_nm,
           rows: [
             { label: 'Пользователи', value: U.nf(r.users), color: CH.C.ret },
             { label: 'Просмотры', value: U.nf(r.views), dash: true, color: CH.C.bench },
             { label: 'На пользователя', value: U.nf(r.views_per_user, 1) },
-            { label: 'Новые в отчёте', value: U.nf(r.new_users) },
           ],
-          note: 'Создан ' + U.fmtDate(r.created_dt) + (r.certified_by ? ' · сертифицирован ' + r.certified_by : ''),
+          note: 'создан ' + U.fmtDate(r.created_dt),
         }) + '>' +
+        /* Строка каталога — две строки текста максимум. Признаки «сертифицирован»
+           и «новый» стали значками: словами они разгоняли строку до трёх
+           строк, а в узкой колонке это стоило половины видимого списка. */
         '<td class="txt">' + U.esc(r.dashboard_nm) +
-          '<span class="unit-sub">' + U.esc(r.owner_login) + ' · ' + U.esc(r.collection) +
-          (r.certified_by ? ' · сертифицирован' : '') + (r.is_new ? ' · новый' : '') + '</span></td>' +
+          '<span class="unit-sub">' +
+            (r.certified_by ? '<i class="rflag cert"' + U.tip({ title: 'Сертифицирован', text: r.certified_by }) + '>✓</i>' : '') +
+            (r.is_new ? '<i class="rflag new"' + U.tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
+            U.esc(r.owner_login) + ' · ' + U.esc(r.collection) + '</span></td>' +
         '<td class="lead">' + U.nf(r.users) + '</td>' +
         '<td>' + U.compact(r.views) + '</td>' +
         '<td>' + U.pct(r.users ? r.regular_users / r.users * 100 : 0, 0) + '</td>' +
@@ -509,14 +604,24 @@
   }
 
   function renderReports() {
-    const k = kpiRow();
-    const ts = series();
     const sl = selection();
     const rows = reportRows();
+    const fr = freqRows();
+    const frTot = fr.reduce((a, b) => a + b.users, 0);
+    /* Частота — не отдельная табличка, а кросс-фильтр: выбранная корзина
+       пересчитывает и динамику, и карточки. Поэтому сначала считаем ряды,
+       потом накладываем фильтр, и только потом собираем KPI из того, что
+       реально нарисовано. */
+    const kBase = kpiRow();
+    const slice = freqSlice(series(), kBase);
+    const ts = slice.ts;
+    const k = slice.k;
+    const fSel = slice.sliced;      // корзина частоты действительно применена
     const dPct = (a, b) => (b ? (a / b - 1) * 100 : null);
     const vs = U.prevPeriodLabel(S.grain);
     const shReg = k && k.users ? k.regular_users / k.users * 100 : 0;
     const shRegPrev = k && k.users_prev ? k.regular_users_prev / k.users_prev * 100 : 0;
+    const isRep = sl.kind === 'rep';
 
     let h = head('Отчёты и динамика просмотров',
       'Основной экран: слева — по чему смотрим, справа — что с этим происходит. ' +
@@ -526,7 +631,7 @@
 
     /* Пятая карточка зависит от того, что выбрано: у отчёта осмысленна
        тишина, у группы и у всего Proteus — размер каталога. */
-    const fifth = sl.kind === 'rep'
+    const fifth = isRep
       ? U.kpi({
         label: 'Последний просмотр',
         value: sl.report.last_view_days === 0 ? 'сегодня' : U.days(sl.report.last_view_days),
@@ -543,16 +648,19 @@
     h += U.kpis([
       U.kpi({
         label: 'Пользователей', value: U.nf(k.users),
+        tag: fSel ? S.freqSel : '',
         hint: { title: 'Пользователи', text: 'Уникальные логины за период.', note: 'Сумма по дням больше: один человек заходит в разные дни.' },
-        delta: U.delta(dPct(k.users, k.users_prev), {
+        delta: fSel ? '' : U.delta(dPct(k.users, k.users_prev), {
           vs, tip: { title: 'Сравнение', rows: [{ label: 'Период', value: U.nf(k.users) }, { label: 'Предыдущий', value: U.nf(k.users_prev), dash: true, color: CH.C.bench }] },
         }),
-        sub: 'предыдущий: <b>' + U.nf(k.users_prev) + '</b>',
+        sub: fSel
+          ? 'это <b>' + U.pct(k.freq_share) + '</b> всей аудитории'
+          : 'предыдущий: <b>' + U.nf(k.users_prev) + '</b>',
       }),
       U.kpi({
         label: 'Просмотров', value: U.compact(k.views),
         hint: { title: 'Просмотры', text: 'Сумма открытий (action_count).' },
-        delta: U.delta(dPct(k.views, k.views_prev), { vs }),
+        delta: fSel ? '' : U.delta(dPct(k.views, k.views_prev), { vs }),
         sub: 'на пользователя: <b>' + U.nf(k.users ? k.views / k.users : 0, 1) + '</b>',
       }),
       U.kpi({
@@ -563,178 +671,296 @@
             ? 'Первый визит в Proteus пришёлся на этот период.'
             : 'Впервые открыли этот отчёт за период.',
         },
-        delta: U.delta(dPct(k.new_users, k.new_users_prev), { vs }),
+        delta: fSel ? '' : U.delta(dPct(k.new_users, k.new_users_prev), { vs }),
         sub: 'доля аудитории: <b>' + U.pct(k.users ? k.new_users / k.users * 100 : 0) + '</b>',
       }),
-      U.kpi({
-        label: 'Постоянных', value: U.pct(shReg),
-        hint: { title: 'Постоянные', text: 'Заходили 8 и более разных дней за период.', note: 'Порог выбран как «примерно раз в неделю и чаще».' },
-        delta: U.delta(shReg - shRegPrev, { vs, unit: ' п.п.', dead: .3 }),
-        sub: '<b>' + U.nf(k.regular_users) + '</b> ' + U.plural(k.regular_users, 'человек', 'человека', 'человек'),
-      }),
+      fSel
+        ? U.kpi({
+          /* «Доля постоянных» внутри корзины — тавтология: в «16+ дней» она
+             всегда 100%, в «1 день» всегда 0. Показываем то, ради чего
+             корзину и открыли: сколько просмотров даёт один такой человек. */
+          label: 'Просмотров на человека',
+          value: U.nf(k.users ? k.views / k.users : 0, 1),
+          hint: { title: 'Интенсивность', text: 'Просмотры этой корзины, делённые на число людей в ней.', note: 'По всей аудитории — ' + U.nf(kBase.users ? kBase.views / kBase.users : 0, 1) + '.' },
+          delta: '',
+          sub: 'по всем: <b>' + U.nf(kBase.users ? kBase.views / kBase.users : 0, 1) + '</b>',
+        })
+        : U.kpi({
+          label: 'Постоянных', value: U.pct(shReg),
+          hint: { title: 'Постоянные', text: 'Заходили 8 и более разных дней за период.', note: 'Порог выбран как «примерно раз в неделю и чаще».' },
+          delta: U.delta(shReg - shRegPrev, { vs, unit: ' п.п.', dead: .3 }),
+          sub: '<b>' + U.nf(k.regular_users) + '</b> ' + U.plural(k.regular_users, 'человек', 'человека', 'человек'),
+        }),
       fifth,
     ], 5);
 
-    h += U.observations(obsMain(), 'main');
+    h += U.observations(obsMain(kBase), 'main');
 
-    /* ---- Ядро экрана: селектор слева, динамика справа ------------------- */
+    /* ---- Ядро экрана ----------------------------------------------------
+       Слева колонка «по чему смотрим»: каталог и под ним частота визитов.
+       Обе таблицы — селекторы, а не справки, поэтому стоят рядом. Справа
+       динамика: ей отдана большая доля ширины, потому что читают её, а не
+       каталог, и потому что подпись стоит у каждого столбика. */
     const table = S.mode === 'report' ? reportTable()
       : (MODE(S.mode).axis === 'grp' ? groupTable() : cutTable());
 
-    const isRep = sl.kind === 'rep';
+    const freqPanel = U.panel({
+      title: 'Как часто заходят',
+      subHtml: S.freqSel
+        ? 'фильтр: <b>' + U.esc(S.freqSel) + '</b> — клик по строке снимет'
+        : 'клик по строке фильтрует динамику справа ' + SRV_TXT,
+      body: U.barTable({
+        firstH: 'Активных дней', firstW: '34%', colW: '19%',
+        dense: true, clickAttr: 'freq', selected: S.freqSel,
+        cols: [{ label: 'Человек', hint: { text: 'Строки складываются в ИТОГО: у человека ровно одно число активных дней за период.' } }, { label: 'Доля' }],
+        total: { cells: [U.nf(frTot), '100%'] },
+        barH: '',
+        rows: fr.map((r) => ({
+          key: r.bucket, label: r.bucket,
+          cells: [U.nf(r.users), U.pct(frTot ? r.users / frTot * 100 : 0, 0)],
+          bar: r.users,
+          tip: {
+            title: r.bucket,
+            rows: [{ label: 'Человек', value: U.nf(r.users), color: CH.C.act },
+              { label: 'Доля аудитории', value: U.pct(frTot ? r.users / frTot * 100 : 0) }],
+            note: S.freqSel === r.bucket ? 'Клик снимет фильтр' : 'Клик оставит на графике справа только этих людей',
+          },
+        })),
+        /* Пояснение ушло в подсказку шапки: в колонке селекторов каждая
+           строка текста стоит одной видимой строки каталога. */
+      }),
+    });
+
     h += '<div class="split main">' +
+      '<div class="split-col">' +
+        U.panel({
+          cls: 'split-l grow', title: 'Каталог', sub: 'клик по строке задаёт контекст вкладки',
+          right: S.mode === 'report' ? U.searchBox('repQ', 'Найти отчёт', S.repQuery) : '',
+          under: cutBar(), bodyCls: 'tbl-wrap', body: table,
+        }) +
+        freqPanel +
+      '</div>' +
       U.panel({
-        cls: 'split-l', title: 'Каталог', sub: 'клик по строке задаёт контекст вкладки',
-        right: S.mode === 'report' ? U.searchBox('repQ', 'Найти отчёт', S.repQuery) : '',
-        under: cutBar(), bodyCls: 'tbl-wrap', body: table,
-      }) +
-      U.panel({
-        cls: 'split-r', title: sl.title, sub: sl.sub,
+        cls: 'split-r', title: sl.title,
+        sub: sl.sub + (S.freqSel ? ' · только «' + S.freqSel + '»' : ''),
         right: isRep ? '<button class="btn" data-goaud="' + sl.report.dashboard_id + '">Аудитория отчёта →</button>' : '',
         body: chart('fill', () => CH.dynamics(ts, S.grain, {
-          title: 'Пользователи по периодам',
+          title: S.freqSel ? 'Пользователи по периодам · ' + S.freqSel : 'Пользователи по периодам',
           newLabel: (sl.kind === 'rep' || sl.kind === 'grp') ? 'Новые в отчёте' : 'Новые',
-          newNote: (sl.kind === 'rep' || sl.kind === 'grp')
-            ? 'Новый — впервые открыл этот отчёт, а не Proteus вообще'
-            : 'Новый — первый визит в Proteus пришёлся на этот ' + D.GRAINS[S.grain].unit,
         })) +
-          (sl.kind === 'grp'
-            ? '<div class="tbl-note">Пользователи группы — уникальные по группе: один человек, открывший два отчёта, ' +
-              'в столбце учтён один раз. Просмотры складываются точно.</div>'
-            : ''),
+          (fSel
+            ? '<div class="tbl-note">На графике только те, кто заходил <b>' + U.esc(S.freqSel) +
+              '</b> за период: человеко-дни корзины разложены по бакетам в пропорции общей динамики ' + SRV_TXT +
+              '. Сравнение с предыдущим периодом снято — состава корзин за прошлый период в витрине нет.</div>'
+            : (sl.kind === 'grp'
+              ? '<div class="tbl-note">Пользователи группы — уникальные по группе: один человек, открывший два отчёта, ' +
+                'в столбце учтён один раз. Просмотры складываются точно.</div>'
+              : '')),
       }) +
       '</div>';
 
-    /* ---- Закрепляемость и частота --------------------------------------- */
+    /* ---- Закрепляемость: во всю ширину ---------------------------------
+       Когортной таблице нужно 12 колонок возраста плюс легенда-регулятор.
+       Рядом с ней больше ничего не стоит — частота уехала к каталогу,
+       которому она и сестра по смыслу. */
     const cohorts = cohortRows();
     const retTitle = isRep ? 'Закрепляемость отчёта' : 'Закрепляемость Proteus';
     const retSub = isRep
-      ? 'когорта — месяц, в который человек открыл этот отчёт впервые ⟳'
+      ? 'когорта — месяц, в который человек открыл этот отчёт впервые ' + SRV_TXT
       : 'когорта — месяц первого визита в Proteus; фильтр периода на этот блок не действует';
-    const fr = freqRows();
-    const frTot = fr.reduce((a, b) => a + b.users, 0);
+    const retSubKey = isRep ? 'subHtml' : 'sub';
 
-    h += '<div class="split ret">' +
-      U.panel({
-        cls: 'split-l', title: retTitle, sub: retSub,
+    h += '<div class="rows" style="margin-top:var(--s8)">' +
+      U.panel(Object.assign({
+        title: retTitle,
         tabKey: 'retView',
         tabs: [{ key: 'cohort', label: 'Когорты', on: S.retView === 'cohort' },
           { key: 'curve', label: 'Кривая', on: S.retView === 'curve' }],
         body: S.retView === 'cohort'
           ? U.cohortTable({
-            rows: cohorts, maxAge: 11,
+            rows: cohorts, maxAge: 11, uid: 'ret',
+            base: S.ctBase, span: S.ctSpan,
             firstTip: isRep ? 'Месяц, в который человек открыл этот отчёт впервые'
               : 'Месяц первого визита в Proteus',
             sizeNote: isRep ? 'Столько человек открыли этот отчёт впервые в этом месяце'
               : 'Столько человек впервые зашли в Proteus в этом месяце',
-            note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Цвет — отклонение от медианы ' +
-              'своего столбца: голубой — выше медианы, жёлтый — ниже. «м» в шапке — медиана закрытых ячеек ' +
-              'столбца. Медиана — не норма и не цель, это середина других когорт в том же возрасте. ' +
-              'Серый курсив — месяц ещё не закрыт, значение дорастёт и в медиану с раскраской не входит. ' +
-              'Столбца «старт» нет: в нём всегда 100%.',
+            note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Чем меряет цвет и какой у шкалы ' +
+              'размах — переключается в легенде над таблицей; наведите ступень шкалы, чтобы на таблице ' +
+              'остались только её ячейки. Серый курсив — месяц ещё не закрыт: значение дорастёт и в ' +
+              'раскраске не участвует. Столбца «старт» нет: в нём всегда 100%.',
           })
           : chart('h-tall', () => CH.retentionCurve(retentionPoints(cohorts), {
             title: isRep ? 'Средняя кривая удержания отчёта' : 'Средняя кривая удержания по всем когортам',
           })),
-      }) +
-      U.panel({
-        cls: 'split-r', title: 'Как часто заходят',
-        sub: 'сколько разных дней заходили за период',
-        body: U.barTable({
-          firstH: 'Дней', firstW: '30%', colW: '24%', barH: 'Доля',
-          dense: true,
-          cols: [{ label: 'Человек' }],
-          total: { cells: [U.nf(frTot)] },
-          rows: fr.map((r) => ({
-            key: r.bucket, label: r.bucket,
-            cells: [U.nf(r.users)],
-            bar: r.users,
-            tip: {
-              title: r.bucket,
-              rows: [{ label: 'Человек', value: U.nf(r.users), color: CH.C.ret },
-                { label: 'Доля аудитории', value: U.pct(frTot ? r.users / frTot * 100 : 0) }],
-            },
-          })),
-          note: 'Разовые визиты — первая строка. Чем она толще, тем хуже удерживаются пришедшие.',
-        }),
-      }) +
+      }, { [retSubKey]: retSub })) +
       '</div>';
 
     return h;
   }
 
   /* ======================================================================
-     ВКЛАДКА 2 — «Аудитория отчёта»
-     ==================================================================== */
-  function renderAudience() {
-    const cur = currentReport();
-    if (!cur) return head('Аудитория отчёта', '') + '<div class="empty"><b>Нет отчётов по текущим фильтрам</b>Снимите часть фильтров слева.</div>';
+     ВКЛАДКА 2 — «Аудитория»
 
-    const meta = D.audienceMeta[cur.dashboard_id];
-    const persons = D.audiencePersons(cur.dashboard_id);
-    const sampleOf = persons.length ? persons[0].sample_of : 0;
-    const scale = sampleOf / Math.max(1, persons.length);
-    const came = persons.filter((p) => p.came);
+     Два независимых вопроса, которые раньше были склеены в один:
+
+       ОБЛАСТЬ — чью аудиторию смотрим. Это не обязательно один отчёт:
+       владельцу нужна и группа своих отчётов, и коллекция целиком.
+
+       ЦЕЛЕВАЯ АУДИТОРИЯ — с чем сравниваем охват. По умолчанию берём то,
+       как роздан доступ (AD-группы или поимённый список), но это лишь
+       умолчание, а не закон: доступ часто раздан широкой группой, которая
+       не описывает, для кого отчёт делали. Поэтому целевую аудиторию можно
+       собрать руками по управленческой структуре, специализации, стриму и
+       стажу — и настройка доступна ВСЕГДА, а не только когда группа широкая.
+       В этом и был смысл исходного отчёта: накликать структуру, взять
+       оттуда всех людей и посмотреть, сколько из них дошло.
+     ==================================================================== */
+
+  const DIM_ORDER = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq'];
+  const SEGMENTS = [
+    { key: 'Постоянный',    plural: 'Постоянные',    color: CH.C.seg3, note: '8+ активных дней' },
+    { key: 'Эпизодический', plural: 'Эпизодические', color: CH.C.seg2, note: '2–7 активных дней' },
+    { key: 'Разовый',       plural: 'Разовые',       color: CH.C.seg1, note: 'ровно один день' },
+    { key: 'Не заходил',    plural: 'Не заходили',   color: CH.C.seg0, note: 'доступ есть, визитов нет' },
+    /* Появляется только у настроенной ЦА: когда аудиторию задаёт структура,
+       часть людей может вообще не иметь прав на отчёт. */
+    { key: 'Нет доступа',   plural: 'Нет доступа',   color: '#eceef1', note: 'под условия попал, но прав на отчёт нет', accessOnly: true },
+  ];
+
+  /* --- Область: какие отчёты попали под выбор ---------------------------- */
+  function scopeIds() {
+    const sc = S.audScope;
+    const all = reportRows();
+    if (sc.kind === 'collection') {
+      return all.filter((r) => r.collection === sc.collection).map((r) => r.dashboard_id);
+    }
+    if (sc.kind === 'many') {
+      const set = {}; sc.ids.forEach((id) => { set[id] = 1; });
+      const ids = all.filter((r) => set[r.dashboard_id]).map((r) => r.dashboard_id);
+      return ids.length ? ids : (all[0] ? [all[0].dashboard_id] : []);
+    }
+    /* По умолчанию открываем не просто «свежий», а свежий с нормальной
+       AD-группой: на отчёте с поимённым списком или с группой «весь банк»
+       экран показывает краевой случай и читается как сломанный. */
+    const normal = (r) => {
+      const m = D.audienceMeta[r.dashboard_id];
+      return m && !m.is_wide && m.audience_type === 'ad';
+    };
+    const one = all.find((r) => r.dashboard_id === S.selectedReport)
+      || all.filter(normal).find((r) => r.is_new) || all.find(normal) || all[0];
+    if (one) S.selectedReport = one.dashboard_id;
+    return one ? [one.dashboard_id] : [];
+  }
+  function scopeTitle(ids) {
+    const sc = S.audScope;
+    if (sc.kind === 'collection') return 'Коллекция «' + sc.collection + '»';
+    if (sc.kind === 'many') return U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов');
+    const r = reportById(ids[0]);
+    return r ? r.dashboard_nm : 'Отчёт';
+  }
+
+  /* --- Целевая аудитория: как роздан доступ или как собрано руками ------- */
+  function audienceDef(ids) {
+    const metas = ids.map((id) => D.audienceMeta[id]).filter(Boolean);
+    if (S.audDef.mode === 'custom') {
+      const people = D.customAudience(S.audDef.filters);
+      return { mode: 'custom', people, metas };
+    }
+    return { mode: 'access', people: D.accessAudience(ids), metas };
+  }
+
+  /* Какая структура стоит за нынешним доступом: самый крупный блок среди
+     тех, кому права уже розданы. Нужен, чтобы конструктор открывался с
+     осмысленного предложения, а не пустым. */
+  function suggestAudience(ids) {
+    const acc = D.accessAudience(ids);
+    if (!acc.length) return null;
+    const by = {};
+    acc.forEach((p) => { by[p.lvl3] = (by[p.lvl3] || 0) + 1; });
+    const top = Object.keys(by).sort((a, b) => by[b] - by[a])[0];
+    if (!top || by[top] / acc.length < .25) return null;
+    return { lvl3: [top] };
+  }
+
+  /* Сколько всего условий накликано в конструкторе */
+  function audDefCount() {
+    return DIM_ORDER.reduce((a, k) => a + ((S.audDef.filters[k] || []).length), 0);
+  }
+
+  function renderAudience() {
+    const ids = scopeIds();
+    if (!ids.length) {
+      return head('Аудитория', '') +
+        '<div class="empty"><b>Нет отчётов по текущим фильтрам</b>Снимите часть фильтров слева.</div>';
+    }
+    const def = audienceDef(ids);
+    /* Разрез из правой панели — настоящий кросс-фильтр: он СУЖАЕТ целевую
+       аудиторию, поэтому пересчитывает и карточки, и воронку, и динамику.
+       Сегмент устроен иначе (см. ниже) и на них не влияет. */
+    const unit = S.audUnit;
+    const basePeople = def.people;
+    const people = unit ? basePeople.filter((p) => p[unit.key] === unit.val) : basePeople;
+
+    const rowsAll = D.audienceRows(ids, basePeople);
+    const rows = unit ? rowsAll.filter((r) => r[unit.key] === unit.val) : rowsAll;
+    const W = D.POP_W;
+    const cnt = (f) => Math.round(rows.filter(f).length * W);
+
     const st = {
-      audience: sampleOf,
-      came: Math.round(came.length * scale),
-      never: Math.round((persons.length - came.length) * scale),
-      once: Math.round(persons.filter((p) => p.segment === 'Разовый').length * scale),
-      episodic: Math.round(persons.filter((p) => p.segment === 'Эпизодический').length * scale),
-      regular: Math.round(persons.filter((p) => p.segment === 'Постоянный').length * scale),
+      audience: Math.round(rows.length * W),
+      access: cnt((r) => r.has_access),
+      noAccess: cnt((r) => !r.has_access),
+      came: cnt((r) => r.came),
+      never: cnt((r) => !r.came),
+      once: cnt((r) => r.segment === 'Разовый'),
+      episodic: cnt((r) => r.segment === 'Эпизодический'),
+      regular: cnt((r) => r.segment === 'Постоянный'),
     };
     st.reachPct = st.audience ? st.came / st.audience * 100 : 0;
+    st.accessPct = st.audience ? st.access / st.audience * 100 : 0;
     st.returned = st.came - st.once;
+    /* «Широкая» — не свойство группы, а свойство знаменателя: если в целевой
+       аудитории почти весь банк, доля покрытия ничего не измеряет. Правило
+       одно и то же и для одного отчёта, и для коллекции. */
+    const wide = def.mode === 'access' && st.audience >= D.HC_TOTAL * .3;
 
-    let h = head('Аудитория отчёта: ' + cur.dashboard_nm,
-      'Кому отчёт был роздан, кто из них дошёл, кто закрепился и кто не заходил ни разу. ' +
-      'Отчёт выбирается в каталоге на вкладке «Отчёты» или списком ниже.');
+    const dyn = D.audienceDynamics(rows, S.grain, rows.length);
+    const scTitle = scopeTitle(ids);
 
-    /* Плашка источника ЦА — честно говорит, откуда взялась «целевая аудитория».
-       Два ПОДПИСАННЫХ блока: слева источник доступа, справа выбор отчёта —
-       голый выпадающий список без подписи читался как «выбор группы». */
-    const srcTitle = meta.is_wide
-      ? 'Доступ почти всей компании'
-      : (meta.audience_type === 'acl' ? 'Поимённый список доступа' : 'Доступ через AD-группы');
-    const srcText = meta.is_wide
-      ? 'Группа <b>' + U.esc(meta.ad_groups[0]) + '</b> — в ней <b>' + U.nf(st.audience) + '</b> человек, практически весь банк. Такая группа не описывает, для кого делали отчёт, поэтому долю покрытия по ней мы не считаем: она всегда будет выглядеть провальной.'
-      : (meta.audience_type === 'acl'
-        ? 'Отчёт роздан <b>' + U.nf(st.audience) + '</b> сотрудникам поимённо. Это самый точный вид целевой аудитории: покрытие и список «не заходил» считаются без допущений.'
-        : 'Права выданы группам: <b>' + meta.ad_groups.map(U.esc).join('</b>, <b>') + '</b> — всего <b>' + U.nf(st.audience) + '</b> человек. Считаем их целевой аудиторией.');
+    let h = head('Аудитория: ' + scTitle,
+      'Кому область была роздана, кто из них дошёл, кто закрепился и кто не заходил ни разу. ' +
+      'Слева выбирается <b>область</b> — отчёт, набор отчётов или коллекция; справа — <b>целевая аудитория</b>, ' +
+      'с которой сравниваем охват. Период — <b>' + U.periodLabel(S.grain) + '</b>.');
 
-    h += '<div class="aud-src' + (meta.is_wide ? ' wide' : '') + '">' +
-      '<span class="as-i" aria-hidden="true">' + (meta.is_wide ? '!' : 'i') + '</span>' +
-      '<div class="as-b">' +
-        '<div class="as-cap">Откуда целевая аудитория</div>' +
-        '<div class="as-t">' + U.esc(srcTitle) +
-          (meta.is_wide ? '<span class="sig-chip warn">покрытие не считаем</span>' : '<span class="sig-chip info">' + U.nf(st.audience) + ' человек</span>') +
-        '</div>' +
-        '<div class="as-x">' + srcText + '</div>' +
-      '</div>' +
-      '<div class="as-pick">' +
-        '<label class="as-cap" for="audRep">Отчёт</label>' +
-        '<select id="audRep" class="aud-pick" aria-label="Отчёт, чью аудиторию смотрим">' +
-          reportRows().map((r) => '<option value="' + r.dashboard_id + '"' + (r.dashboard_id === cur.dashboard_id ? ' selected' : '') + '>' + U.esc(r.dashboard_nm) + '</option>').join('') +
-        '</select>' +
-        '<div class="as-cap2">аудитория показана для выбранного</div>' +
-      '</div>' +
-      '</div>';
+    /* Плашка источника описывает ЦЕЛЕВУЮ АУДИТОРИЮ ЦЕЛИКОМ, а не срез: иначе
+       чип показывал число после кросс-фильтра, а текст рядом — до него. */
+    const audTotal = Math.round(basePeople.length * W);
+    h += scopeBar(ids, def, audTotal, st, wide);
 
     h += U.kpis([
       U.kpi({
         label: 'Целевая аудитория', value: U.nf(st.audience),
-        hint: { title: 'Откуда число', text: meta.audience_type === 'acl' ? 'Поимённый список доступа к отчёту.' : 'Сотрудники, состоящие в AD-группах доступа отчёта.' },
-        delta: '', sub: meta.is_wide ? '<b>широкая группа</b>' : 'человек с доступом',
+        tag: def.mode === 'custom' ? 'настроена' : '',
+        hint: {
+          title: 'Откуда число',
+          text: def.mode === 'custom'
+            ? 'Сотрудники, попавшие под накликанные условия в конструкторе.'
+            : 'Сотрудники, которым роздан доступ: состав AD-групп плюс поимённые права.',
+        },
+        delta: '', sub: wide ? '<b>почти весь банк</b>' : 'человек в знаменателе',
       }),
       U.kpi({
         label: 'Дошли', value: U.nf(st.came),
-        hint: { title: 'Дошли', text: 'Открывали отчёт хотя бы раз за период.' },
-        delta: meta.is_wide ? '' : U.delta(st.reachPct - 100, { neutral: true, vs: 'до полного охвата', unit: ' п.п.', dec: 0, tip: { title: 'Охват', rows: [{ label: 'Дошли', value: U.nf(st.came), color: CH.C.new }, { label: 'Целевая аудитория', value: U.nf(st.audience), dash: true, color: CH.C.bench }] } }),
-        sub: meta.is_wide ? 'доля по широкой группе не считается' : 'охват <b>' + U.pct(st.reachPct) + '</b>',
+        hint: { title: 'Дошли', text: 'Открывали хотя бы один отчёт области за период.' },
+        delta: wide ? '' : U.delta(st.reachPct - 100, {
+          neutral: true, vs: 'до полного охвата', unit: ' п.п.', dec: 0,
+          tip: { title: 'Охват', rows: [{ label: 'Дошли', value: U.nf(st.came), color: CH.C.act }, { label: 'Целевая аудитория', value: U.nf(st.audience), dash: true, color: CH.C.bench }] },
+        }),
+        sub: wide ? 'доля по такому знаменателю не считается' : 'охват <b>' + U.pct(st.reachPct) + '</b>',
       }),
       U.kpi({
         label: 'Закрепились', value: U.nf(st.regular),
-        hint: { title: 'Постоянные', text: 'Заходили в отчёт 8 и более разных дней за период.' },
+        hint: { title: 'Постоянные', text: 'Заходили 8 и более разных дней за период.' },
         delta: '', sub: 'от дошедших <b>' + U.pct(st.came ? st.regular / st.came * 100 : 0, 0) + '</b>',
       }),
       U.kpi({
@@ -744,80 +970,113 @@
       }),
       U.kpi({
         label: 'Ни разу не заходили', value: U.nf(st.never),
-        hint: { title: 'Кому напомнить', text: 'Есть доступ, но за период не открывали. Список — в таблице ниже, сегмент «Не заходил».' },
-        delta: '', sub: meta.is_wide ? 'по широкой группе не показательно' : '<b>' + U.pct(st.audience ? st.never / st.audience * 100 : 0, 0) + '</b> аудитории',
+        hint: {
+          title: 'Кому напомнить',
+          text: 'Люди целевой аудитории без единого визита за период. Список — в таблице ниже, сегменты «Не заходили» и «Нет доступа».',
+          note: st.noAccess ? 'Из них ' + U.nf(st.noAccess) + ' вообще не имеют прав на область — им нужен доступ, а не напоминание.' : null,
+        },
+        delta: '',
+        sub: wide ? 'по такому знаменателю не показательно'
+          : (st.noAccess
+            ? 'из них <b>' + U.nf(st.noAccess) + '</b> без доступа'
+            : '<b>' + U.pct(st.audience ? st.never / st.audience * 100 : 0, 0) + '</b> аудитории'),
       }),
     ], 5);
 
-    h += U.observations(obsAudience(meta, st), 'aud');
+    h += U.observations(obsAudience(def, st, wide), 'aud');
 
-    /* Воронка + приход после публикации */
-    h += '<div class="grid2">' +
+    /* ---- Воронка + её расшифровка по времени ---------------------------- */
+    const one = ids.length === 1 ? reportById(ids[0]) : null;
+    const bs = D.buckets(S.grain);
+    /* Плашку «создан» рисуем, только если дата попала ВНУТРЬ периода. Если
+       отчёт создан раньше — засечка вставала на нулевой бакет, подпись
+       упиралась в край и обрезалась; такое лучше сказать словами в
+       подзаголовке, чем нарисовать плохо. */
+    const createdIdx = (one && one.created_dt > bs[0] && one.created_dt <= bs[bs.length - 1])
+      ? bs.findIndex((b) => b >= one.created_dt) : -1;
+    const createdBefore = !!one && one.created_dt <= bs[0];
+
+    h += '<div class="split wide-r" style="margin-bottom:var(--s8)">' +
       U.panel({
-        title: 'Путь целевой аудитории',
+        cls: 'split-l', title: 'Путь целевой аудитории',
         sub: 'от выданного доступа до регулярного использования',
-        body: chart('h-mid', () => CH.funnel([
-          { name: 'Есть доступ', value: st.audience, note: meta.audience_type === 'acl' ? 'Поимённый список' : 'Через AD-группы' },
+        bodyCls: 'flexcol',
+        body: chart('fill', () => CH.funnel([
+          { name: 'Целевая аудитория', value: st.audience, note: def.mode === 'custom' ? 'Собрана в конструкторе' : 'Как роздан доступ' },
+          /* У настроенной ЦА ступень «есть доступ» отделяет «не роздали» от
+             «не ходят». Когда ЦА и есть доступ — это одно и то же множество,
+             и рисовать 100%-ную ступень незачем. */
+          def.mode === 'custom'
+            ? { name: 'Есть доступ к области', value: st.access, note: 'права выданы AD-группой или поимённо' }
+            : null,
           { name: 'Открыли хотя бы раз', value: st.came },
           { name: 'Вернулись ещё раз', value: st.returned },
           { name: 'Заходят регулярно', value: st.regular, note: '8+ активных дней за период' },
-        ])) + '<div class="tbl-note">Каждый следующий этап — подмножество предыдущего.</div>',
+        ].filter(Boolean))) +
+          '<div class="tbl-note">Каждый следующий этап — подмножество предыдущего. ' +
+          (def.mode === 'custom'
+            ? 'Ступень <b>«есть доступ»</b> отделяет «не роздали права» от «роздали, но не ходят»: ' +
+              'без неё низкий охват настроенной аудитории не читается. '
+            : '') +
+          '<b>Когда</b> этапы набирались и менялась ли доля — справа: воронка отвечает, чем всё кончилось, ' +
+          'динамика — как к этому шли.</div>',
       }) +
       U.panel({
-        title: 'Когда приходили',
-        sub: cur.is_new ? 'отчёт создан ' + U.fmtDate(cur.created_dt) + ' — виден всплеск после рассылки' : 'первые визиты и накопленный охват',
-        body: chart('h-mid', () => {
-          // накопленный охват должен прийти ровно к «Дошли» — это те же люди
-          const rows = D.audienceReach(cur.dashboard_id, S.grain, { total: st.came });
-          const bs = D.buckets(S.grain);
-          const ci = bs.findIndex((b) => b >= cur.created_dt);
-          return CH.reach(rows, S.grain, { createdIdx: ci, audience: meta.is_wide ? null : st.audience });
-        }),
+        cls: 'split-r', title: 'Что происходило по периодам',
+        subHtml: one && createdIdx >= 0
+          ? 'отчёт создан <b>' + U.fmtDate(one.created_dt) + '</b> — отмечено плашкой на графике'
+          : (one && createdBefore
+            ? 'отчёт создан <b>' + U.fmtDate(one.created_dt) + '</b>, раньше начала периода'
+            : 'приход, просмотры и охват целевой аудитории'),
+        body: chart('h-xtall', () => CH.audienceTimeline(dyn, S.grain, {
+          audience: st.audience,
+          createdIdx,
+          createdLabel: one ? 'создан ' + U.fmtDate(one.created_dt) : '',
+          title: 'Заходили из целевой аудитории',
+        })),
       }) +
       '</div>';
 
-    /* Состав + таблица людей */
-    const segs = [
-      { name: 'Постоянные', value: st.regular, color: CH.C.new, note: '8+ активных дней' },
-      { name: 'Эпизодические', value: st.episodic, color: CH.C.ret, note: '2–7 активных дней' },
-      { name: 'Разовые', value: st.once, color: CH.C.retLight, note: 'ровно один день' },
-      { name: 'Не заходили', value: st.never, color: CH.C.bench, note: 'доступ есть, визитов нет' },
-    ];
-
-    const plist = persons
+    /* ---- Люди и разрезы -------------------------------------------------
+       Сегменты переехали к поимённому списку: это разбивка ровно той же
+       целевой аудитории по поведению, и читать её осмысленно рядом с теми,
+       из кого она состоит, а не отдельным барчартом в другой панели.
+       Разрез структуры переехал в шапку своей панели: фильтр, который
+       управляет одним блоком, не должен жить в общем меню слева. */
+    const segRows = SEGMENTS
+      .filter((sg) => !sg.accessOnly || st.noAccess > 0)
+      .map((sg) => ({ seg: sg, value: cnt((r) => r.segment === sg.key) }));
+    const plist = rows
       .filter((p) => !S.audSeg || p.segment === S.audSeg)
       .filter((p) => !S.audQuery || (p.fio + ' ' + p.login).toLowerCase().indexOf(S.audQuery.toLowerCase()) >= 0)
       .sort((a, b) => b.active_days - a.active_days)
       .slice(0, 40);
 
-    const segChips = ['Постоянный', 'Эпизодический', 'Разовый', 'Не заходил'].map((s) =>
-      '<button class="sub-tab' + (S.audSeg === s ? ' active' : '') + '" data-seg="' + s + '">' + s + '</button>').join('');
-
-    /* Разбивка ЦА по подразделениям: сколько человек с доступом и сколько дошло */
+    /* Если разрез зафиксирован условиями ЦА (например, выбран ровно один
+       блок), разбивка по нему выродится в одну строку — молча переключаемся
+       на первый разрез, который ещё что-то различает. */
+    let cut = S.audCut;
+    if (def.mode === 'custom' && (S.audDef.filters[cut] || []).length === 1) {
+      cut = DIM_ORDER.find((k) => (S.audDef.filters[k] || []).length !== 1) || cut;
+    }
     const byUnit = {};
-    persons.forEach((p) => {
-      const key = p[S.audCut] != null ? p[S.audCut] : p.lvl3;
-      const a = (byUnit[key] = byUnit[key] || { key, label: key, aud: 0, came: 0 });
-      a.aud++; if (p.came) a.came++;
+    rowsAll.forEach((p) => {
+      const key = p[cut] != null ? p[cut] : p.lvl3;
+      const u = (byUnit[key] = byUnit[key] || { key, aud: 0, came: 0, reg: 0 });
+      u.aud++; if (p.came) u.came++; if (p.segment === 'Постоянный') u.reg++;
     });
-    const unitRows = Object.values(byUnit).map((a) => ({
-      key: a.key, label: a.label,
-      aud: Math.round(a.aud * scale), came: Math.round(a.came * scale),
-      cov: a.aud ? a.came / a.aud * 100 : 0,
+    const unitRows = Object.values(byUnit).map((u) => ({
+      key: u.key, label: u.key,
+      aud: Math.round(u.aud * W), came: Math.round(u.came * W), reg: Math.round(u.reg * W),
+      cov: u.aud ? u.came / u.aud * 100 : 0,
     })).sort((a, b) => b.aud - a.aud);
 
     h += '<div class="split aud">' +
       U.panel({
         cls: 'split-l', title: 'Кто из целевой аудитории',
-        sub: 'сегмент выбирается кнопками над списком',
+        subHtml: 'полоса сегментов — та же аудитория по поведению; клик по сегменту сужает список',
         right: U.searchBox('audQ', 'Имя или логин', S.audQuery),
-        /* Обе панели сплита одной высоты, длинные списки крутятся внутри —
-           страница не вытягивается на высину таблицы. */
-        body: '<div class="sub-tabs">' +
-            '<button class="sub-tab' + (!S.audSeg ? ' active' : '') + '" data-seg="">Все</button>' + segChips +
-          '</div>' +
-          /* Просмотры на человека убраны в подсказку: шести колонок панель
-             не выдерживает, и чипы сегмента наезжали на даты. */
+        body: segStrip(segRows, st.audience) +
           '<div class="tbl-scroll">' +
           '<table class="ptable dense"><thead><tr>' +
             '<th class="txt">Сотрудник</th><th class="txt">Подразделение</th>' +
@@ -826,45 +1085,220 @@
           (plist.length ? plist.map((p) => '<tr' + U.tip({
             title: p.fio,
             rows: [
-              { label: 'Активных дней', value: U.nf(p.active_days), color: CH.C.new },
+              { label: 'Активных дней', value: U.nf(p.active_days), color: CH.C.act },
               { label: 'Просмотров', value: p.views ? U.nf(p.views) : '—' },
-              { label: 'Специализация', value: p.spec, dash: true, color: CH.C.bench },
             ],
           }) + '>' +
             '<td class="txt">' + U.esc(p.fio) + '<span class="unit-sub">' + U.esc(p.login) + (p.is_head ? ' · руководитель' : '') + '</span></td>' +
             '<td class="txt sec">' + U.esc(p.lvl3) + '<span class="unit-sub">' + U.esc(p.spec) + '</span></td>' +
             '<td class="lead">' + (p.active_days || '<span class="mut">0</span>') + '</td>' +
             '<td>' + (p.last_visit_days == null ? '<span class="mut">нет</span>' : (p.last_visit_days === 0 ? 'сегодня' : U.days(p.last_visit_days))) + '</td>' +
-            '<td class="txt"><span class="sig-chip ' + ({ 'Постоянный': 'good', 'Эпизодический': 'info', 'Разовый': 'neutral', 'Не заходил': 'bad' }[p.segment]) + '">' + p.segment + '</span></td>' +
+            '<td class="txt"><span class="sig-chip ' + ({ 'Постоянный': 'good', 'Эпизодический': 'note', 'Разовый': 'neutral',
+              'Не заходил': 'bad', 'Нет доступа': 'warn' }[p.segment]) + '">' + p.segment + '</span></td>' +
             '</tr>').join('')
             : '<tr><td colspan="5" style="text-align:center;padding:var(--s9);color:var(--muted)">Никто не подходит под выбранный сегмент и поиск.</td></tr>') +
           '</tbody></table></div>' +
-          '<div class="tbl-note">Показаны первые 40 строк; поиск и сегмент сужают список' + (scale > 1.05 ? '. В макете список — выборка из ' + U.nf(sampleOf) + ' человек' : '') + '. В Proteus это серверная пагинация и выгрузка в файл.</div>',
+          '<div class="tbl-note">Показаны первые 40 строк; поиск и сегмент сужают список. ' +
+          'В макете это выборка 1 к ' + U.nf(W, 0) + ' — числа в карточках и таблицах домножены обратно. ' +
+          'В Proteus это серверная пагинация и выгрузка в файл.</div>',
       }) +
       U.panel({
-        cls: 'split-r', title: 'Состав и охват по подразделениям',
-        sub: 'разбивка выбирается в фильтрах слева',
-        body: chart('h-low', () => CH.segmentBar(segs)) +
-          '<div class="tbl-scroll">' +
-          U.barTable({
-            firstH: D.CUTS[S.audCut].label, firstW: '34%', colW: '14%', barH: 'Охват',
-            barClass: 'c-cov', dense: true,
-            cols: [{ label: 'Доступ' }, { label: 'Дошли' }, { label: 'Охват' }],
-            total: {
-              cells: [U.nf(st.audience), U.nf(st.came), meta.is_wide ? '<span class="mut">—</span>' : U.pct(st.reachPct, 0)],
+        cls: 'split-r', title: 'Охват по разрезу',
+        subHtml: S.audUnit
+          ? 'фильтр: <b>' + U.esc(S.audUnit.val) + '</b> — клик по строке снимет'
+          : 'клик по строке сужает всю вкладку до этого подразделения',
+        right: '<div class="ctl inline"><select id="audCutSel" aria-label="Разрез аудитории">' +
+          DIM_ORDER.map((k) => '<option value="' + k + '"' + (k === cut ? ' selected' : '') + '>' +
+            U.esc(D.CUTS[k].label) + '</option>').join('') + '</select></div>',
+        bodyCls: 'tbl-wrap',
+        body: U.barTable({
+          firstH: D.CUTS[cut].label, firstW: '36%', colW: '15%', barH: '',
+          barClass: 'c-cov', dense: true,
+          clickAttr: 'audunit', extraAttr: ' data-audkey="' + cut + '"',
+          selected: S.audUnit ? S.audUnit.val : null,
+          cols: [{ label: 'В ЦА' }, { label: 'Дошли' }, { label: 'Охват' }],
+          total: {
+            cells: [U.nf(Math.round(rowsAll.length * W)), U.nf(Math.round(rowsAll.filter((r) => r.came).length * W)),
+              wide ? '<span class="mut">—</span>' : U.pct(rowsAll.length ? rowsAll.filter((r) => r.came).length / rowsAll.length * 100 : 0, 0)],
+          },
+          rows: unitRows.map((r) => ({
+            key: r.key, label: r.label,
+            cells: [U.nf(r.aud), U.nf(r.came), wide ? '<span class="mut">—</span>' : U.pct(r.cov, 0)],
+            bar: r.cov,
+            tip: {
+              title: r.label,
+              rows: [{ label: 'В целевой аудитории', value: U.nf(r.aud), dash: true, color: CH.C.bench },
+                { label: 'Дошли', value: U.nf(r.came), color: CH.C.act },
+                { label: 'Закрепились', value: U.nf(r.reg) },
+                { label: 'Охват', value: U.pct(r.cov) }],
+              note: S.audUnit && S.audUnit.val === r.key ? 'Клик снимет фильтр' : 'Клик сузит всю вкладку до этой строки',
             },
-            rows: unitRows.map((r) => ({
-              key: r.key, label: r.label,
-              cells: [U.nf(r.aud), U.nf(r.came), meta.is_wide ? '<span class="mut">—</span>' : U.pct(r.cov, 0)],
-              bar: r.cov,
-              tip: { title: r.label, rows: [{ label: 'С доступом', value: U.nf(r.aud), dash: true, color: CH.C.bench }, { label: 'Дошли', value: U.nf(r.came), color: CH.C.new }, { label: 'Охват', value: U.pct(r.cov) }] },
-            })),
-            note: meta.is_wide ? 'Доля охвата по широкой группе не показывается: знаменатель не отражает целевую аудиторию.' : 'Полоса — доля дошедших внутри подразделения, а не вклад в общий охват.',
-          }) + '</div>',
+          })),
+          note: wide
+            ? 'Долю охвата не показываем: в целевой аудитории почти весь банк, знаменатель ничего не измеряет. Настройте целевую аудиторию выше — доли вернутся.'
+            : 'Полоса — доля дошедших ВНУТРИ строки, а не вклад строки в общий охват. ИТОГО считается по всей целевой аудитории.',
+        }),
       }) +
       '</div>';
 
     return h;
+  }
+
+  /* ---------------------- Полоса сегментов + фильтр -----------------------
+     Одно целое (вся ЦА), разложенное по поведению. Стоит над поимённым
+     списком, потому что это его же разбивка: клик по сегменту — фильтр
+     списка. На карточки и воронку сегмент НЕ влияет: они описывают
+     поведение, и фильтровать их поведением значило бы смотреть в зеркало. */
+  function segStrip(segRows, total) {
+    const t = Math.max(1, total);
+    return '<div class="segstrip" role="group" aria-label="Сегменты целевой аудитории">' +
+      segRows.map((r) => {
+        const on = S.audSeg === r.seg.key;
+        const w = Math.max(2.5, r.value / t * 100);
+        return '<button class="seg-part' + (on ? ' on' : '') + (S.audSeg && !on ? ' off' : '') + '"' +
+          ' data-seg="' + U.esc(r.seg.key) + '" style="flex:' + w.toFixed(2) + ' 1 0"' +
+          U.tip({
+            title: r.seg.plural,
+            rows: [{ label: 'Человек', value: U.nf(r.value), color: r.seg.color },
+              { label: 'Доля ЦА', value: U.pct(r.value / t * 100) }],
+            note: r.seg.note + (on ? ' · клик снимет фильтр' : ' · клик отфильтрует список'),
+          }) + '>' +
+          '<span class="sp-bar" style="background:' + r.seg.color + '"></span>' +
+          '<span class="sp-v">' + U.nf(r.value) + '</span>' +
+          '<span class="sp-l">' + U.esc(r.seg.plural) + '</span>' +
+          '</button>';
+      }).join('') + '</div>';
+  }
+
+  /* -------------- Панель «область + целевая аудитория» --------------------
+     Два подписанных блока в одной строке. Раньше здесь заголовок наезжал на
+     чип с числом: заголовок и чип лежали в одном потоке без права на
+     перенос. Теперь это grid из двух колонок, каждая со своим переносом. */
+  function scopeBar(ids, def, audTotal, st, wide) {
+    const sc = S.audScope;
+    const all = reportRows();
+
+    const kinds = [
+      { key: 'one', label: 'Отчёт' },
+      { key: 'many', label: 'Несколько' },
+      { key: 'collection', label: 'Коллекция' },
+    ];
+    let picker;
+    if (sc.kind === 'collection') {
+      picker = '<select id="audColl" class="aud-pick" aria-label="Коллекция">' +
+        D.COLLECTIONS.map((c) => '<option value="' + U.esc(c) + '"' + (c === sc.collection ? ' selected' : '') + '>' + U.esc(c) + '</option>').join('') +
+        '</select>' +
+        '<div class="as-cap2">' + U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов') + ' в коллекции</div>';
+    } else if (sc.kind === 'many') {
+      picker = '<div class="pickbox" role="group" aria-label="Отчёты области">' +
+        all.slice(0, 40).map((r) => '<label class="pickrow"><input type="checkbox" data-audrep="' + r.dashboard_id + '"' +
+          (sc.ids.indexOf(r.dashboard_id) >= 0 ? ' checked' : '') + '><span>' + U.esc(r.dashboard_nm) + '</span></label>').join('') +
+        '</div>' +
+        '<div class="as-cap2">выбрано ' + U.nf(sc.ids.length) + ' ' + U.plural(sc.ids.length, 'отчёт', 'отчёта', 'отчётов') + '</div>';
+    } else {
+      picker = '<select id="audRep" class="aud-pick" aria-label="Отчёт">' +
+        all.map((r) => '<option value="' + r.dashboard_id + '"' + (r.dashboard_id === ids[0] ? ' selected' : '') + '>' + U.esc(r.dashboard_nm) + '</option>').join('') +
+        '</select>' +
+        '<div class="as-cap2">аудитория показана для выбранного</div>';
+    }
+
+    /* Правый блок: откуда взялась целевая аудитория и как её переопределить */
+    const metas = def.metas;
+    const groups = {};
+    metas.forEach((m) => (m.ad_groups || []).forEach((g) => { groups[g] = 1; }));
+    const gList = Object.keys(groups);
+    const hasAcl = metas.some((m) => m.audience_type === 'acl');
+
+    let audTitle, audText, audChip;
+    if (def.mode === 'custom') {
+      audTitle = 'Собрана в конструкторе';
+      audChip = '<span class="sig-chip note">' + U.nf(audTotal) + ' ' + U.plural(audTotal, 'человек', 'человека', 'человек') + '</span>';
+      audText = 'Условия: ' + DIM_ORDER.filter((k) => (S.audDef.filters[k] || []).length)
+        .map((k) => '<b>' + U.esc(D.CUTS[k].label) + '</b>: ' + (S.audDef.filters[k].map(U.esc).join(', ')))
+        .join(' <span class="mut">и</span> ') +
+        '. Берём из управленческой структуры всех, кто под них попадает, и смотрим, сколько из них дошло до области.';
+    } else if (wide) {
+      audTitle = 'Доступ роздан почти всей компании';
+      audChip = '<span class="sig-chip warn">покрытие не считаем</span>';
+      audText = 'Права выданы через <b>' + (gList.map(U.esc).join('</b>, <b>') || 'широкую группу') +
+        '</b> — это <b>' + U.nf(audTotal) + '</b> человек, практически весь банк. Такой знаменатель не описывает, ' +
+        'для кого делали отчёт, поэтому долю покрытия по нему мы не показываем. ' +
+        '<b>Соберите целевую аудиторию по структуре</b> — и доли вернутся.';
+    } else if (hasAcl && !gList.length) {
+      audTitle = 'Поимённый список доступа';
+      audChip = '<span class="sig-chip note">' + U.nf(audTotal) + ' ' + U.plural(audTotal, 'человек', 'человека', 'человек') + '</span>';
+      audText = 'Права выданы поимённо. Это самый точный вид целевой аудитории: покрытие и список «не заходил» считаются без допущений.';
+    } else {
+      audTitle = 'Доступ через AD-группы';
+      audChip = '<span class="sig-chip note">' + U.nf(audTotal) + ' ' + U.plural(audTotal, 'человек', 'человека', 'человек') + '</span>';
+      audText = 'Права выданы ' + U.plural(gList.length, 'группе', 'группам', 'группам') + ' <b>' +
+        gList.map(U.esc).join('</b>, <b>') + '</b>' +
+        (hasAcl ? ' плюс поимённые права' : '') + ' — всего <b>' + U.nf(audTotal) + '</b> ' +
+        U.plural(audTotal, 'человек', 'человека', 'человек') + '. Считаем их целевой аудиторией, пока не задана своя.';
+    }
+
+    return '<div class="scopebar' + (wide ? ' wide' : '') + '">' +
+      '<div class="sb-col">' +
+        '<div class="as-cap">Область — чью аудиторию смотрим</div>' +
+        '<div class="sub-tabs">' + kinds.map((kd) =>
+          '<button class="sub-tab' + (kd.key === sc.kind ? ' active' : '') + '" data-audkind="' + kd.key + '">' +
+          U.esc(kd.label) + '</button>').join('') + '</div>' +
+        '<div class="sb-pick">' + picker + '</div>' +
+      '</div>' +
+      '<div class="sb-col sb-aud">' +
+        '<div class="as-cap">Целевая аудитория — с чем сравниваем охват</div>' +
+        '<div class="as-t">' + U.esc(audTitle) + audChip + '</div>' +
+        '<div class="as-x">' + audText +
+          (S.audUnit
+            ? ' <b>На экране срез: ' + U.esc(S.audUnit.val) + '</b> — ' + U.nf(st.audience) + ' ' +
+              U.plural(st.audience, 'человек', 'человека', 'человек') + ' из них.'
+            : '') + '</div>' +
+        '<div class="sb-act">' +
+          '<button class="btn' + (def.mode === 'custom' ? '' : ' primary') + '" id="audCfgOpen">' +
+            (def.mode === 'custom' ? 'Изменить условия' : 'Настроить целевую аудиторию') + '</button>' +
+          (def.mode === 'custom'
+            ? '<button class="btn ghost" id="audCfgReset">Вернуть «как роздан доступ»</button>'
+            : '') +
+        '</div>' +
+      '</div>' +
+      '</div>' + audienceModal();
+  }
+
+  /* Конструктор целевой аудитории. Те же поля, что в mdm_employee_daily_proteus:
+     ничего сверх витрины накликать нельзя. */
+  function audienceModal() {
+    if (!S._audCfg) return '';
+    const f = S.audDef.draft;
+    const people = D.customAudience(f);
+    const n = people.length;
+    /* Главный вопрос конструктора не «сколько человек попало», а «сколько из
+       них вообще могут открыть отчёт»: структура шире прав, и если условия
+       захватывают людей без доступа, охват просядет не от того, что не ходят. */
+    const ids = scopeIds();
+    const withAcc = people.filter((p) => ids.some((id) => D.hasAccess(p, id))).length;
+    return '<div class="ovl" id="audCfg">' +
+      '<div class="modal" role="dialog" aria-modal="true" aria-labelledby="audCfgT">' +
+        '<div class="modal-h"><h3 id="audCfgT">Целевая аудитория</h3>' +
+        '<p>Накликайте структуру — возьмём оттуда всех сотрудников и посмотрим, сколько из них дошло до области. ' +
+        'Внутри разреза условия складываются по ИЛИ, между разрезами — по И. Пустой разрез ничего не ограничивает.</p></div>' +
+        '<div class="modal-b">' +
+          DIM_ORDER.map((k) => '<div class="hgrp"><h4>' + U.esc(D.CUTS[k].label) + '</h4>' +
+            '<div class="pickchips">' + D.CUTS[k].vals.map((v) =>
+              '<button class="pchip' + ((f[k] || []).indexOf(v) >= 0 ? ' on' : '') + '"' +
+              ' data-auddim="' + k + '" data-audval="' + U.esc(v) + '">' + U.esc(v) + '</button>').join('') +
+            '</div></div>').join('') +
+        '</div>' +
+        '<div class="modal-f">' +
+          '<span class="as-x">Под условия попадает <b>' + U.nf(Math.round(n * D.POP_W)) + '</b> ' +
+          U.plural(Math.round(n * D.POP_W), 'сотрудник', 'сотрудника', 'сотрудников') +
+          (n ? ', доступ к области есть у <b>' + U.nf(Math.round(withAcc * D.POP_W)) + '</b> (' +
+            U.pct(withAcc / n * 100, 0) + ')' : '') + '</span>' +
+          '<span class="sp"></span>' +
+          '<button class="btn" id="audCfgClear">Очистить</button>' +
+          '<button class="btn" id="audCfgCancel">Отмена</button>' +
+          '<button class="btn primary" id="audCfgApply">Применить</button>' +
+        '</div>' +
+      '</div></div>';
   }
 
   /* ============================ Общий заголовок ========================== */
@@ -872,6 +1306,15 @@
     const chips = [];
     chips.push(U.benchChip('Период: <b>' + D.GRAINS[S.grain].label + '</b>'));
     if (S.sel) chips.push(U.chip(MODE(S.sel.mode).one + ': ' + selection().title, 'sel'));
+    if (S.freqSel && S.tab === 'reports') chips.push(U.chip('Частота: ' + S.freqSel, 'freqSel'));
+    if (S.tab === 'audience') {
+      if (S.audDef.mode === 'custom') {
+        const n = audDefCount();
+        chips.push(U.chip('ЦА настроена: ' + n + ' ' + U.plural(n, 'условие', 'условия', 'условий'), 'audDef'));
+      }
+      if (S.audUnit) chips.push(U.chip(D.CUTS[S.audUnit.key].label + ': ' + S.audUnit.val, 'audUnit'));
+      if (S.audSeg) chips.push(U.chip('Сегмент: ' + S.audSeg, 'audSeg'));
+    }
     if (S.filters.collection) chips.push(U.chip('Коллекция: ' + S.filters.collection, 'collection'));
     if (S.filters.owner) chips.push(U.chip('Владелец: ' + S.filters.owner, 'owner'));
     if (S.filters.certified) chips.push(U.chip('Только сертифицированные', 'certified'));
@@ -883,7 +1326,7 @@
   /* ================================ Рендер =============================== */
   const TABS = [
     { key: 'reports', label: 'Отчёты', fn: renderReports },
-    { key: 'audience', label: 'Аудитория отчёта', fn: renderAudience },
+    { key: 'audience', label: 'Аудитория', fn: renderAudience },
   ];
 
   function render(keepScroll) {
@@ -921,7 +1364,7 @@
 
     const md = cl('[data-mode]');
     if (md) {
-      if (S.mode !== md.dataset.mode) { S.mode = md.dataset.mode; S.sel = null; }
+      if (S.mode !== md.dataset.mode) { S.mode = md.dataset.mode; S.sel = null; S.freqSel = null; }
       render(true); return;
     }
 
@@ -929,7 +1372,66 @@
     if (stab) { S[stab.dataset.stab] = stab.dataset.val; render(true); return; }
 
     const seg = cl('[data-seg]');
-    if (seg) { S.audSeg = seg.dataset.seg || null; render(true); return; }
+    if (seg) { S.audSeg = S.audSeg === (seg.dataset.seg || null) ? null : (seg.dataset.seg || null); render(true); return; }
+
+    /* --- Аудитория: область, кросс-фильтр разреза, конструктор ЦА --- */
+    const ak = cl('[data-audkind]');
+    if (ak) {
+      const kind = ak.dataset.audkind;
+      if (kind === 'many' && !S.audScope.ids.length) {
+        S.audScope.ids = reportRows().slice(0, 3).map((r) => r.dashboard_id);
+      }
+      S.audScope.kind = kind; S.audUnit = null; S.audSeg = null; render(true); return;
+    }
+    const au = cl('[data-audunit]');
+    if (au) {
+      const v = au.dataset.audunit;
+      S.audUnit = (S.audUnit && S.audUnit.val === v) ? null : { key: au.dataset.audkey || S.audCut, val: v };
+      render(true); return;
+    }
+    if (t.id === 'audCfgOpen') {
+      S._audCfg = true;
+      S.audDef.draft = JSON.parse(JSON.stringify(S.audDef.filters || {}));
+      /* Чистый лист — плохое начало: «настройте целевую аудиторию» без
+         подсказки означает выбрать наугад из семи разрезов. Подставляем то
+         подразделение, в котором уже сидит большинство обладателей доступа:
+         это почти всегда и есть та структура, которую имели в виду. */
+      if (!DIM_ORDER.some((k) => (S.audDef.draft[k] || []).length)) {
+        const sug = suggestAudience(scopeIds());
+        if (sug) S.audDef.draft = sug;
+      }
+      render(true); return;
+    }
+    const pc = cl('[data-auddim]');
+    if (pc) {
+      const k = pc.dataset.auddim, v = pc.dataset.audval;
+      const arr = (S.audDef.draft[k] = S.audDef.draft[k] || []);
+      const i = arr.indexOf(v);
+      if (i >= 0) arr.splice(i, 1); else arr.push(v);
+      render(true); return;
+    }
+    if (t.id === 'audCfgClear') { S.audDef.draft = {}; render(true); return; }
+    if (t.id === 'audCfgCancel' || t.id === 'audCfg') { S._audCfg = false; render(true); return; }
+    if (t.id === 'audCfgApply') {
+      const d = S.audDef.draft || {};
+      const any = DIM_ORDER.some((k) => (d[k] || []).length);
+      S.audDef.filters = JSON.parse(JSON.stringify(d));
+      S.audDef.mode = any ? 'custom' : 'access';
+      S._audCfg = false; S.audUnit = null; render(true); return;
+    }
+    if (t.id === 'audCfgReset') {
+      S.audDef.mode = 'access'; S.audDef.filters = {}; S.audUnit = null; render(true); return;
+    }
+
+    /* Частота визитов — кросс-фильтр: повторный клик снимает */
+    const fq = cl('[data-freq]');
+    if (fq) { S.freqSel = S.freqSel === fq.dataset.freq ? null : fq.dataset.freq; render(true); return; }
+
+    /* Легенда когорт: чем меряем цвет и какой размах у шкалы */
+    const ctb = cl('[data-ctbase]');
+    if (ctb) { S.ctBase = ctb.dataset.ctbase; render(true); return; }
+    const cts = cl('[data-ctspan]');
+    if (cts) { S.ctSpan = cts.dataset.ctspan === '' ? null : +cts.dataset.ctspan; render(true); return; }
 
     const grp = cl('[data-grp]');
     if (grp) {
@@ -945,6 +1447,10 @@
     if (un) {
       const k = un.dataset.unchip;
       if (k === 'sel') S.sel = null;
+      else if (k === 'freqSel') S.freqSel = null;
+      else if (k === 'audSeg') S.audSeg = null;
+      else if (k === 'audUnit') S.audUnit = null;
+      else if (k === 'audDef') { S.audDef.mode = 'access'; S.audDef.filters = {}; }
       else S.filters[k] = (typeof S.filters[k] === 'boolean') ? false : '';
       render(true); return;
     }
@@ -956,7 +1462,11 @@
     if (rep) { pick('report', +rep.dataset.rep); render(true); return; }
 
     const go = cl('[data-goaud]');
-    if (go) { S.selectedReport = +go.dataset.goaud; S.tab = 'audience'; S.audSeg = null; render(); return; }
+    if (go) {
+      S.selectedReport = +go.dataset.goaud; S.tab = 'audience';
+      S.audScope.kind = 'one'; S.audSeg = null; S.audUnit = null;
+      render(); return;
+    }
 
     const sortTh = cl('th[data-sort]');
     if (sortTh) {
@@ -977,7 +1487,8 @@
     }
 
     if (t.id === 'fltReset') {
-      S.sel = null; S.repQuery = ''; S.audQuery = ''; S.audSeg = null;
+      S.sel = null; S.repQuery = ''; S.audQuery = ''; S.audSeg = null; S.freqSel = null;
+      S.audUnit = null; S.audDef = { mode: 'access', filters: {}, draft: {} }; S._audCfg = false;
       S.filters = { collection: '', owner: '', published: true, actual: true, certified: false, excludeOwners: true };
       render(); return;
     }
@@ -997,8 +1508,16 @@
 
   document.addEventListener('change', (e) => {
     const t = e.target;
-    if (t.id === 'audCutSel') { S.audCut = t.value; render(true); return; }
-    if (t.id === 'audRep') { S.selectedReport = +t.value; render(true); return; }
+    if (t.id === 'audCutSel') { S.audCut = t.value; S.audUnit = null; render(true); return; }
+    if (t.id === 'audRep') { S.selectedReport = +t.value; S.audUnit = null; render(true); return; }
+    if (t.id === 'audColl') { S.audScope.collection = t.value; S.audUnit = null; render(true); return; }
+    if (t.dataset && t.dataset.audrep) {
+      const id = +t.dataset.audrep;
+      const i = S.audScope.ids.indexOf(id);
+      if (t.checked && i < 0) S.audScope.ids.push(id);
+      if (!t.checked && i >= 0) S.audScope.ids.splice(i, 1);
+      S.audUnit = null; render(true); return;
+    }
     if (t.dataset && t.dataset.f) {
       S.filters[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value;
       // выбранный отчёт мог выпасть из фильтра — тогда снимаем выбор
@@ -1024,6 +1543,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (S._audCfg) { S._audCfg = false; render(true); return; }
       document.getElementById('howModal').hidden = true;
       document.getElementById('sideNav').classList.remove('open');
       document.getElementById('navScrim').classList.remove('open');
@@ -1033,6 +1553,38 @@
       e.target.click();
     }
   });
+
+  /* --------- Легенда когорт: наведение на ступень гасит всё лишнее --------
+     Держим это на слушателях документа, а не на inline-обработчиках: таблица
+     перерисовывается целиком при каждом действии, привязанные к узлам
+     обработчики пришлось бы навешивать заново. */
+  document.addEventListener('mouseover', (e) => {
+    const st = e.target.closest ? e.target.closest('.ct-st') : null;
+    if (!st) return;
+    const wrap = document.querySelector('.ct-wrap[data-ctuid="' + st.dataset.ctuid + '"]');
+    if (!wrap) return;
+    const band = st.dataset.ctband;
+    wrap.classList.add('band-on');
+    wrap.querySelectorAll('td.ct-cell').forEach((td) => {
+      td.classList.toggle('band-hit', td.dataset.band === band);
+    });
+  });
+  document.addEventListener('mouseout', (e) => {
+    const st = e.target.closest ? e.target.closest('.ct-st') : null;
+    if (!st) return;
+    const wrap = document.querySelector('.ct-wrap[data-ctuid="' + st.dataset.ctuid + '"]');
+    if (!wrap) return;
+    wrap.classList.remove('band-on');
+    wrap.querySelectorAll('td.band-hit').forEach((td) => td.classList.remove('band-hit'));
+  });
+
+  /* Тень под закреплённой шапкой появляется, только когда под ней
+     действительно что-то уехало: иначе она висит над неподвижной таблицей. */
+  document.addEventListener('scroll', (e) => {
+    const t = e.target;
+    if (!t || !t.classList || !(t.classList.contains('tbl-wrap') || t.classList.contains('tbl-scroll'))) return;
+    t.classList.toggle('scrolled', t.scrollTop > 2);
+  }, true);
 
   /* ================================ Старт ================================ */
   document.getElementById('freshDate').innerHTML = 'данные на <b>' + U.fmtDate(D.MAX_DATE) + '</b>';

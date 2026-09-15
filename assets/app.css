@@ -33,15 +33,20 @@
   --warn:#f59300;  --warn-bg:#ffe6a0;  --warn-tx:#9a6500;
 
   /* ---------- Акцент: голубой ----------
-     Один активный цвет на весь макет. Им же нарисованы барчарты: то,
-     что активно в интерфейсе, и то, что активно в данных, — один тон.
-     Отдельного синего больше нет. */
-  --act:#0e7ab0;        /* активный: кнопки, выбор строки, фокус, полосы */
-  --act-ink:#0a6791;    /* тот же тон на ступень темнее — текст на светлом */
+     Тона взяты из присланных палитр (#218DAE / #2BBBD7 / #62CDFF и
+     #C9EEFF / #97DEFF / #AA77FF). Часть ступеней притемлена: на белой
+     панели #62CDFF даёт контраст 1,8:1, а марка ниже 2:1 растворяется
+     в фоне — читатель видит пустое место там, где стоит столбик.
+     Притемнение минимальное, тон палитры сохранён. */
+  --act:#17677F;        /* активный: кнопки, выбор строки, фокус, полосы */
+  --act-ink:#0F4F63;    /* тот же тон темнее — текст на светлом */
   --blue:var(--act);
-  --blue-bg:#e7f3fa;    /* мягкая заливка активного тона */
-  --act-line:#c6e2f1;   /* граница на заливке */
+  --blue-bg:#E8F4F9;    /* мягкая заливка активного тона */
+  --act-line:#C4E2ED;   /* граница на заливке */
   --bench:#9aa0ac;
+  --accent-new:#AA77FF; /* фиолетовый из палитры — только для метки «новый» */
+  --accent-new-bg:#F1E9FF;
+  --accent-new-tx:#6C36C9;
 
   /* ---------- Расстояния ---------- */
   --s1:2px;  --s2:4px;  --s3:6px;  --s4:8px;  --s5:10px;
@@ -79,23 +84,23 @@
      хуй на них означал бы «разные сущности», которых тут нет. Порядок
      снизу вверх: новые (темнее всего) → вернувшиеся → продолжающие.
      Проверено scripts/validate_palette.js --ordinal: 4/4 PASS. */
-  --se-new:#0a6791;     /* новые — самая тёмная ступень, стоит в основании */
-  --se-react:#1b93c9;   /* вернувшиеся — средняя */
-  --se-ret:#64bde4;     /* продолжающие — самая светлая, её больше всего */
+  --se-new:#17677F;     /* новые — самая тёмная ступень, стоит в основании */
+  --se-react:#2BA8C6;   /* вернувшиеся — средняя */
+  --se-ret:#5CC0EE;     /* продолжающие — самая светлая, её больше всего */
   --se-views:#5b6478;   /* просмотры — не серия, вторая панель: графит */
   --se-bench:#c7c8cc;
 
-  /* Порядковая шкала вовлечённости: темнее = глубже вовлечён.
-     Проверено --ordinal: монотонная светлота, один тон, светлый конец 2,1:1. */
-  --seg-3:#0a6791;      /* постоянные */
-  --seg-2:#1b93c9;      /* эпизодические */
-  --seg-1:#64bde4;      /* разовые */
+  /* Порядковая шкала вовлечённости: темнее = глубже вовлечён. */
+  --seg-3:#17677F;      /* постоянные */
+  --seg-2:#218DAE;      /* эпизодические */
+  --seg-1:#5CC0EE;      /* разовые */
   --seg-0:#d9dce1;      /* не заходили — вне шкалы, серый */
 
-  /* Дивергентная шкала когорт: оранжевый ← белый → голубой.
-     Те же два полюса, что и у серий: ниже медианы тёплый, выше — голубой. */
-  --div-lo:#f4b174;
-  --div-hi:#64bde4;
+  /* Дивергентная шкала когорт: жёлтый ← белый → голубой. Полюса взяты из
+     палитр как есть: это заливка ячейки под тёмным текстом, там нужен не
+     контраст с фоном, а различимость полюсов между собой. */
+  --div-lo:#FFD758;
+  --div-hi:#62CDFF;
 }
 
 *{box-sizing:border-box}
@@ -209,9 +214,9 @@ button{font-family:inherit}
   padding:5px var(--s6);font-size:12px;font-weight:var(--fw-lead);
   background:var(--blue-bg);color:var(--act-ink);border:1px solid var(--act-line)}
 .chip .x{width:14px;height:14px;border-radius:50%;border:0;padding:0;cursor:pointer;
-  background:rgba(14,122,176,.16);color:var(--act-ink);font-size:11px;line-height:1;
+  background:rgba(23,103,127,.16);color:var(--act-ink);font-size:11px;line-height:1;
   display:inline-flex;align-items:center;justify-content:center}
-.chip .x:hover{background:rgba(14,122,176,.3)}
+.chip .x:hover{background:rgba(23,103,127,.3)}
 .chip.bench{background:#f4f5f7;color:var(--ink2);border-color:var(--line);
   font-weight:var(--fw-med)}
 .chip.bench b{color:var(--ink);font-weight:var(--fw-lead)}
@@ -387,7 +392,8 @@ button{font-family:inherit}
   font-style:normal;line-height:1;padding:2px 4px;border-radius:var(--r1);
   vertical-align:1px;cursor:help}
 .rflag.cert{background:var(--green-bg);color:var(--green-tx)}
-.rflag.new{background:#fdead9;color:#a14e08;text-transform:uppercase;letter-spacing:.3px}
+.rflag.new{background:var(--accent-new-bg);color:var(--accent-new-tx);
+  text-transform:uppercase;letter-spacing:.3px}
 .tbl-wrap{overflow:auto}
 
 .btable td.barcell,.btable th.bar-th{text-align:left;padding-left:var(--pad-cell)}
@@ -802,7 +808,7 @@ button{font-family:inherit}
 .dslist dd{margin:2px 0 0;font-weight:var(--fw-body)}
 
 /* ============================== Доступность ============================== */
-:focus-visible{outline:3px solid rgba(14,122,176,.34);outline-offset:2px}
+:focus-visible{outline:3px solid rgba(23,103,127,.34);outline-offset:2px}
 button:focus-visible,a:focus-visible,select:focus-visible{outline-color:var(--act)}
 .skip-link{position:fixed;left:12px;top:-60px;z-index:9999;background:var(--ink);
   color:#fff;padding:var(--s5) var(--s7);border-radius:var(--r3);font-weight:var(--fw-lead);
@@ -811,7 +817,7 @@ button:focus-visible,a:focus-visible,select:focus-visible{outline-color:var(--ac
 .sr-only{position:absolute!important;width:1px!important;height:1px!important;
   padding:0!important;margin:-1px!important;overflow:hidden!important;
   clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
-.urow:focus{outline:3px solid rgba(14,122,176,.26);outline-offset:-3px;background:var(--blue-bg)}
+.urow:focus{outline:3px solid rgba(23,103,127,.26);outline-offset:-3px;background:var(--blue-bg)}
 @media (prefers-reduced-motion:reduce){
   *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;
     animation-iteration-count:1!important;transition-duration:.01ms!important}

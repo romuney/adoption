@@ -27,28 +27,30 @@
      соперничают друг с другом: это доли одного целого, и разный хуй на них
      означал бы «разные сущности», которых тут нет. Оранжевый остался только
      в дивергентной шкале когорт, где он противопоставлен голубому по
-     смыслу — «хуже» против «лучше» медианы.
+     смыслу — «хуже» против «лучше» медианы; теперь это жёлтый.
+     Тона взяты из присланных палитр, часть ступеней притемлена: ниже 2:1
+     к белой панели марка растворяется в фоне.
      Проверено scripts/validate_palette.js (dataviz) --ordinal: 4/4 PASS.
      Зеркало --se-* / --seg-* / --div-* в app.css. */
   const C = {
-    act:   '#0e7ab0',           // активный тон интерфейса
-    ret:   '#64bde4',           // продолжающие — самая светлая ступень
-    react: '#1b93c9',           // вернувшиеся — средняя
-    new:   '#0a6791',           // новые — самая тёмная, стоит в основании
+    act:   '#17677F',           // активный тон интерфейса
+    ret:   '#5CC0EE',           // продолжающие — самая светлая ступень
+    react: '#2BA8C6',           // вернувшиеся — средняя
+    new:   '#17677F',           // новые — самая тёмная, стоит в основании
     views: '#5b6478',           // просмотры: вторая панель, не серия
     bench: '#c7c8cc',
     /* Порядковая шкала вовлечённости (--ordinal PASS): темнее = глубже */
-    seg3:  '#0a6791',           // постоянные
-    seg2:  '#1b93c9',           // эпизодические
-    seg1:  '#64bde4',           // разовые
+    seg3:  '#17677F',           // постоянные
+    seg2:  '#218DAE',           // эпизодические
+    seg1:  '#5CC0EE',           // разовые
     seg0:  '#d9dce1',           // не заходили
-    covered: '#0e7ab0',
+    covered: '#17677F',
     label: '#2b2b2b',
     axis:  '#808080',
     axisLine: 'rgb(155, 164, 181)',
     split: '#f0f1f3',
-    divLo: '#f4b174',           // ниже медианы — оранжевый
-    divHi: '#64bde4',           // выше медианы — голубой
+    divLo: '#FFD758',           // ниже медианы — жёлтый
+    divHi: '#62CDFF',           // выше медианы — голубой
   };
 
   const FONT = 'Inter, Helvetica, Arial, sans-serif';
@@ -88,7 +90,7 @@
   /* Общая обёртка тултипа — тот же вид, что у HTML-подсказок отчёта */
   const TOOLTIP_BASE = {
     trigger: 'axis',
-    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(14,122,176,.06)' } },
+    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(23,103,127,.06)' } },
     backgroundColor: '#fff',
     borderColor: '#e7e9ee',
     borderWidth: 1,
@@ -286,7 +288,7 @@
         type: 'line', smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { width: 2, color: C.act },
         itemStyle: { color: C.act, borderColor: '#fff', borderWidth: 2 },
-        areaStyle: { color: 'rgba(14,122,176,.08)' },
+        areaStyle: { color: 'rgba(23,103,127,.08)' },
         label: valueLabel((p) => U.pct(p.value, 0), n),
         labelLayout: LABEL_LAYOUT,
         data: points.map((p) => +p.pct.toFixed(1)),
@@ -360,7 +362,7 @@
       legend: {
         top: 2, right: 4, itemWidth: 11, itemHeight: 9, itemGap: 12,
         icon: 'roundRect', textStyle: LEGEND_STYLE,
-        data: ['Заходили не впервые', 'Пришли впервые'],
+        data: ['Пришли впервые', 'Заходили не впервые'],
       },
       title: [
         { text: o.title || 'Заходили из целевой аудитории, человек', left: 0, top: 0, textStyle: TITLE_STYLE },
@@ -391,25 +393,28 @@
         valAxis(1, { max: pctMax, grid: true }),
       ],
       series: [
-        {
-          name: 'Заходили не впервые', type: 'bar', stack: 'a', xAxisIndex: 0, yAxisIndex: 0,
-          barWidth: bw, barMaxWidth: BAR_MAX, itemStyle: { color: C.ret },
-          data: rest, markLine,
-        },
+        /* Порядок тот же, что в динамике на вкладке «Отчёты»: приток стоит
+           в основании столбика. Иначе две одинаковые по смыслу картинки
+           читались бы по-разному. */
         {
           name: 'Пришли впервые', type: 'bar', stack: 'a', xAxisIndex: 0, yAxisIndex: 0,
+          barWidth: bw, barMaxWidth: BAR_MAX, itemStyle: { color: C.new },
+          data: firsts, markLine,
+        },
+        {
+          name: 'Заходили не впервые', type: 'bar', stack: 'a', xAxisIndex: 0, yAxisIndex: 0,
           barWidth: bw, barMaxWidth: BAR_MAX,
-          itemStyle: { color: C.new, borderRadius: [3, 3, 0, 0] },
+          itemStyle: { color: C.ret, borderRadius: [3, 3, 0, 0] },
           label: valueLabel((p) => (users[p.dataIndex] ? U.compact(users[p.dataIndex]) : ''), n),
           labelLayout: LABEL_LAYOUT,
-          data: firsts,
+          data: rest,
         },
         {
           name: 'Накоплено к дате', type: 'line', xAxisIndex: 1, yAxisIndex: 1,
           symbol: 'circle', symbolSize: 5, smooth: false,
           lineStyle: { width: 2, color: C.act },
           itemStyle: { color: C.act, borderColor: '#fff', borderWidth: 2 },
-          areaStyle: { color: 'rgba(14,122,176,.08)' },
+          areaStyle: { color: 'rgba(23,103,127,.08)' },
           label: valueLabel((p) => (p.value ? U.pct(p.value, 0) : ''), n),
           labelLayout: LABEL_LAYOUT,
           data: rows.map((r) => +r.reach_pct.toFixed(1)),

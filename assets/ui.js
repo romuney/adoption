@@ -254,9 +254,9 @@
 
      Столбца «старт» нет: в нём по построению всегда 100% и та же самая
      когорта — смотреть не на что. */
-  const DIV_LOW = [244, 177, 116];   // оранжевый: ниже медианы
+  const DIV_LOW = [255, 215, 88];    // жёлтый #FFD758: ниже медианы
   const DIV_MID = [255, 255, 255];   // белый: медиана
-  const DIV_HIGH = [100, 189, 228];  // голубой: выше медианы
+  const DIV_HIGH = [98, 205, 255];   // голубой #62CDFF: выше медианы
   const BANDS = 3;                   // ступеней в каждую сторону от середины
 
   function medianOf(vals) {
@@ -388,7 +388,7 @@
       h += '<tr><td class="txt"' + tip({ title: MONTHS_FULL[d.getUTCMonth()] + ' ' + d.getUTCFullYear(), text: o.firstTip || 'Месяц первого визита' }) + '>' + esc(lbl) + '</td>' +
         '<td class="ct-size"' + tip({
           title: MONTHS_FULL[d.getUTCMonth()] + ' ' + d.getUTCFullYear(),
-          rows: [{ label: 'Пришли впервые', value: nf(r.size), color: '#0e7ab0' }],
+          rows: [{ label: 'Пришли впервые', value: nf(r.size), color: '#17677F' }],
         }) + '><div class="ct-sz">' +
           '<span class="ct-bar"><i style="width:' + (100 * r.size / maxSize).toFixed(1) + '%"></i></span>' +
           '<b>' + nf(r.size) + '</b></div></td>';
@@ -400,7 +400,7 @@
         const tipObj = {
           title: lbl + ' → +' + a + ' мес',
           rows: [
-            { label: 'Вернулись', value: nf(c.active) + ' из ' + nf(r.size), color: '#0e7ab0' },
+            { label: 'Вернулись', value: nf(c.active) + ' из ' + nf(r.size), color: '#17677F' },
             { label: 'Удержание', value: pct(p) },
           ],
           note: [],
@@ -443,7 +443,7 @@
      Рисуем сами, а не библиотекой: SVG на полсотни строк точнее описывает
      эту фигуру, чем настройка чужого сборщика, и переносится дословно.
      ==================================================================== */
-  const FUNNEL_COLORS = ['#9ad4ee', '#64bde4', '#1b93c9', '#0a6791', '#08506f'];
+  const FUNNEL_COLORS = ['#5CC0EE', '#2BA8C6', '#218DAE', '#17677F', '#0F4F63'];
   /* Высота ступени фиксирована, как в TeamPulse, и НЕ зависит от того,
      сколько места дала панель. Растянутая на всю высоту воронка
      превращается в стопку плит: бар в полтораста пикселей высотой уже не

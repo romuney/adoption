@@ -388,7 +388,7 @@
       h += '<tr><td class="txt"' + tip({ title: MONTHS_FULL[d.getUTCMonth()] + ' ' + d.getUTCFullYear(), text: o.firstTip || 'Месяц первого визита' }) + '>' + esc(lbl) + '</td>' +
         '<td class="ct-size"' + tip({
           title: MONTHS_FULL[d.getUTCMonth()] + ' ' + d.getUTCFullYear(),
-          rows: [{ label: 'Пришли впервые', value: nf(r.size), color: '#17677F' }],
+          rows: [{ label: 'Пришли впервые', value: nf(r.size), color: '#0073A0' }],
         }) + '><div class="ct-sz">' +
           '<span class="ct-bar"><i style="width:' + (100 * r.size / maxSize).toFixed(1) + '%"></i></span>' +
           '<b>' + nf(r.size) + '</b></div></td>';
@@ -400,7 +400,7 @@
         const tipObj = {
           title: lbl + ' → +' + a + ' мес',
           rows: [
-            { label: 'Вернулись', value: nf(c.active) + ' из ' + nf(r.size), color: '#17677F' },
+            { label: 'Вернулись', value: nf(c.active) + ' из ' + nf(r.size), color: '#0073A0' },
             { label: 'Удержание', value: pct(p) },
           ],
           note: [],
@@ -443,7 +443,7 @@
      Рисуем сами, а не библиотекой: SVG на полсотни строк точнее описывает
      эту фигуру, чем настройка чужого сборщика, и переносится дословно.
      ==================================================================== */
-  const FUNNEL_COLORS = ['#5CC0EE', '#2BA8C6', '#218DAE', '#17677F', '#0F4F63'];
+  const FUNNEL_COLORS = ['#5CC0EE', '#2BA8C6', '#218DAE', '#0073A0', '#015A7D'];
   /* Высота ступени фиксирована, как в TeamPulse, и НЕ зависит от того,
      сколько места дала панель. Растянутая на всю высоту воронка
      превращается в стопку плит: бар в полтораста пикселей высотой уже не
@@ -460,9 +460,15 @@
     if (!n || !w) return '';
     const H = Math.max(FN_MIN_H, n * FN_ROW);
     const rowH = (H - 12) / n;
-    /* Масштаб — от ПЕРВОГО этапа, а не от «красивого» максимума: первый
-       этап воронки это и есть 100%, его бар обязан занимать всю ширину. */
-    const max = steps[0].value || 1;
+    /* Масштаб — по САМОМУ БОЛЬШОМУ этапу, а не по первому. Обычно они
+       совпадают, но не всегда: если целевую аудиторию задали структурой,
+       заходить могут и те, кто под неё не попал, и «открыли хотя бы раз»
+       законно превышает «целевую аудиторию». При делении на первый этап
+       такой бар вылезал за край панели. Проценты справа по-прежнему
+       считаются от ПРЕДЫДУЩЕГО этапа — это конверсия, она от масштаба
+       не зависит. */
+    const base = steps[0].value || 1;
+    const max = Math.max.apply(null, steps.map((x) => x.value).concat([1]));
     const cx = w / 2;
     const sideW = 64;                       // колонки под цифры слева и справа
     const maxBar = Math.max(60, Math.min(FN_MAX_BAR, w - sideW * 2 - 20));
@@ -492,7 +498,7 @@
            что на этапе кто-то есть. */
         (bw > 0.5
           ? '<rect class="fn-bar" x="' + r1(cx - bw / 2) + '" y="' + r1(y) + '" width="' + r1(bw) +
-            '" height="' + r1(bh) + '" rx="3" fill="' + color + '"' +
+            '" height="' + r1(bh) + '" rx="2" fill="' + color + '"' +
             ' style="animation-delay:' + (i * 45) + 'ms"/>'
           : '<line x1="' + r1(cx - 9) + '" y1="' + r1(y + bh / 2) + '" x2="' + r1(cx + 9) +
             '" y2="' + r1(y + bh / 2) + '" stroke="#d4d7de" stroke-width="2"/>') +
@@ -541,6 +547,37 @@
       '</div>';
   }
 
+  /* --------------------------- Выпадающий список -------------------------
+     Свой, а не нативный <select>. Список у нативного рисует ОПЕРАЦИОННАЯ
+     СИСТЕМА, а не страница: при тёмной теме он выпадает чёрным с жёлтой
+     подсветкой строки — посреди светлого дашборда это выглядит как чужой
+     элемент, и никакой CSS этого не лечит (color-scheme помогает не везде
+     и не во всех браузерах). Здесь список — обычная разметка, поэтому он
+     всегда такой же, как остальные панели.
+
+     Открытый список лежит в потоке и раздвигает содержимое вниз, а не
+     всплывает поверх: всплывающий слой в таблице накрывал бы строки,
+     ради которых его и открыли. */
+  function dropdown(id, value, items, opt) {
+    const o = opt || {};
+    const open = !!o.open;
+    const cur = items.find((it) => String(it.key) === String(value)) || items[0] || { label: '' };
+    return '<div class="dd' + (open ? ' open' : '') + (o.cls ? ' ' + o.cls : '') + '" data-dd="' + esc(id) + '">' +
+      '<button class="dd-trg" data-ddtoggle="' + esc(id) + '" aria-expanded="' + open + '"' +
+        (o.label ? ' aria-label="' + esc(o.label) + '"' : '') + '>' +
+        '<span class="dd-txt">' + esc(cur.label) + '</span>' +
+        '<span class="dd-c" aria-hidden="true">▾</span>' +
+      '</button>' +
+      (open
+        ? '<div class="dd-body" role="listbox">' + items.map((it) =>
+          '<button class="dd-opt' + (String(it.key) === String(value) ? ' on' : '') + '"' +
+          ' role="option" aria-selected="' + (String(it.key) === String(value)) + '"' +
+          ' data-ddpick="' + esc(id) + '" data-ddval="' + esc(it.key) + '"' +
+          (it.hint ? tip({ text: it.hint }) : '') + '>' + esc(it.label) + '</button>').join('') + '</div>'
+        : '') +
+      '</div>';
+  }
+
   /* ------------------------------ Панель --------------------------------- */
   function panel(o) {
     return '<div class="panel' + (o.cls ? ' ' + o.cls : '') + '">' +
@@ -576,7 +613,7 @@
     THIN, MINUS, esc, nf, pct, plural, compact, signed, days,
     fmtDate, axisLabel, bucketTitle, isoWeek, MONTHS, MONTHS_FULL,
     prevLabel, periodLabel, prevPeriodLabel,
-    tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, CT_BASES, funnelSvg, observations, panel,
+    tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, CT_BASES, funnelSvg, dropdown, observations, panel,
     chip, benchChip, searchBox,
   };
 })(window);

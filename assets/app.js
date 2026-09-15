@@ -69,6 +69,7 @@
     _audCfg: false,              // открыт ли конструктор целевой аудитории
     _audDim: 'lvl3',             // разрез, открытый в конструкторе
     _dimQuery: '',               // поиск по значениям разреза в конструкторе
+    _dd: null,                   // какой выпадающий список сейчас раскрыт
     scopeQuery: '',              // поиск в мультивыборе отчётов
     repSort: { col: 'users', dir: -1 },
     repQuery: '',
@@ -421,12 +422,14 @@
       '</div></div></div></div>';
 
     h += grp('rep', 'Отчёты', (f.collection ? 1 : 0) + (f.owner ? 1 : 0) + (f.certified ? 1 : 0),
-      '<div class="ctl"><label>Коллекция ' + SRV + '</label><select data-f="collection">' +
-        opt('', f.collection, 'Все коллекции') + D.COLLECTIONS.map((c) => opt(c, f.collection)).join('') +
-      '</select></div>' +
-      '<div class="ctl"><label>Владелец ' + SRV + '</label><select data-f="owner">' +
-        opt('', f.owner, 'Все владельцы') + D.OWNERS.map((c) => opt(c, f.owner)).join('') +
-      '</select></div>' +
+      '<div class="ctl"><label>Коллекция ' + SRV + '</label>' +
+        U.dropdown('f-collection', f.collection,
+          [{ key: '', label: 'Все коллекции' }].concat(D.COLLECTIONS.map((c) => ({ key: c, label: c }))),
+          { open: S._dd === 'f-collection', label: 'Коллекция' }) + '</div>' +
+      '<div class="ctl"><label>Владелец ' + SRV + '</label>' +
+        U.dropdown('f-owner', f.owner,
+          [{ key: '', label: 'Все владельцы' }].concat(D.OWNERS.map((c) => ({ key: c, label: c }))),
+          { open: S._dd === 'f-owner', label: 'Владелец' }) + '</div>' +
       swt('published', 'Только опубликованные', f.published) +
       swt('actual', 'Только актуальные', f.actual) +
       swt('certified', 'Только сертифицированные', f.certified));
@@ -1388,11 +1391,10 @@
           : (S.audUnit
             ? 'фильтр: <b>' + U.esc(S.audUnit.val) + '</b> — клик по строке снимет'
             : 'клик по строке сужает всю вкладку до этой строки'),
-        right: '<div class="ctl inline"><select id="audCutSel" aria-label="Разрез аудитории">' +
-          DIM_ORDER.map((k) => '<option value="' + k + '"' + (k === cut ? ' selected' : '') + '>' +
-            U.esc(D.CUTS[k].label) + '</option>').join('') +
-          '<option value="report"' + (byReport ? ' selected' : '') + '>Отчёты области</option>' +
-          '</select></div>',
+        right: U.dropdown('audCut', byReport ? 'report' : cut,
+          DIM_ORDER.map((k) => ({ key: k, label: D.CUTS[k].label }))
+            .concat([{ key: 'report', label: 'Отчёты области', hint: 'Какие отчёты области смотрят эти люди' }]),
+          { open: S._dd === 'audCut', cls: 'sm', label: 'Разрез аудитории' }),
         bodyCls: 'tbl-wrap',
         body: U.barTable({
           firstH: byReport ? 'Отчёт' : D.CUTS[cut].label, firstW: '36%', colW: '15%', barH: '',
@@ -1727,6 +1729,26 @@
     const t = e.target;
     const cl = (sel) => t.closest ? t.closest(sel) : null;
 
+    /* Свои выпадающие списки: открыть/закрыть и выбрать значение */
+    const ddT = cl('[data-ddtoggle]');
+    if (ddT) {
+      const id = ddT.dataset.ddtoggle;
+      S._dd = S._dd === id ? null : id;
+      render(true); return;
+    }
+    const ddP = cl('[data-ddpick]');
+    if (ddP) {
+      const id = ddP.dataset.ddpick, v = ddP.dataset.ddval;
+      S._dd = null;
+      if (id === 'audCut') { S.audCut = v; S.audUnit = null; }
+      else if (id === 'f-collection') { S.filters.collection = v; }
+      else if (id === 'f-owner') { S.filters.owner = v; }
+      if (S.sel && MODE(S.sel.mode).axis === 'rep' && !reportById(S.sel.val)) S.sel = null;
+      render(true); return;
+    }
+    /* Клик мимо закрывает раскрытые списки */
+    if (S._dd && !cl('.dd')) { S._dd = null; render(true); return; }
+
     const tab = cl('[data-tab]');
     if (tab) { S.tab = tab.dataset.tab; render(); return; }
 
@@ -1899,7 +1921,6 @@
       if (!t.checked && i >= 0) arr.splice(i, 1);
       render(true); return;
     }
-    if (t.id === 'audCutSel') { S.audCut = t.value; S.audUnit = null; render(true); return; }
 
     if (t.dataset && t.dataset.audcoll) {
       const ids = reportRows().filter((r) => r.collection === t.dataset.audcoll).map((r) => r.dashboard_id);
@@ -1943,6 +1964,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (S._dd) { S._dd = null; render(true); return; }
       if (S._audCfg) { S._audCfg = false; render(true); return; }
       document.getElementById('howModal').hidden = true;
       document.getElementById('sideNav').classList.remove('open');

@@ -33,18 +33,18 @@
      Проверено scripts/validate_palette.js (dataviz) --ordinal: 4/4 PASS.
      Зеркало --se-* / --seg-* / --div-* в app.css. */
   const C = {
-    act:   '#17677F',           // активный тон интерфейса
+    act:   '#0073A0',           // активный тон интерфейса
     ret:   '#5CC0EE',           // продолжающие — самая светлая ступень
-    react: '#2BA8C6',           // вернувшиеся — средняя
-    new:   '#17677F',           // новые — самая тёмная, стоит в основании
+    react: '#AA77FF',           // вернувшиеся — фиолетовый: отдельная история
+    new:   '#0073A0',           // новые — насыщенный голубой, в основании
     views: '#5b6478',           // просмотры: вторая панель, не серия
     bench: '#c7c8cc',
     /* Порядковая шкала вовлечённости (--ordinal PASS): темнее = глубже */
-    seg3:  '#17677F',           // постоянные
+    seg3:  '#0073A0',           // постоянные
     seg2:  '#218DAE',           // эпизодические
     seg1:  '#5CC0EE',           // разовые
     seg0:  '#d9dce1',           // не заходили
-    covered: '#17677F',
+    covered: '#0073A0',
     label: '#2b2b2b',
     axis:  '#808080',
     axisLine: 'rgb(155, 164, 181)',
@@ -90,7 +90,7 @@
   /* Общая обёртка тултипа — тот же вид, что у HTML-подсказок отчёта */
   const TOOLTIP_BASE = {
     trigger: 'axis',
-    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(23,103,127,.06)' } },
+    axisPointer: { type: 'shadow', shadowStyle: { color: 'rgba(0,115,160,.06)' } },
     backgroundColor: '#fff',
     borderColor: '#e7e9ee',
     borderWidth: 1,
@@ -224,20 +224,29 @@
         { text: o.title || 'Пользователи по периодам', left: 0, top: 0, textStyle: TITLE_STYLE },
         { text: viewsTitle, left: 0, top: '61%', textStyle: Object.assign({}, TITLE_STYLE, { fontSize: 12 }) },
       ],
+      /* У каждой панели СВОЙ тултип. Панели связаны только осью X, а
+         показывают разное: наверху состав пользователей, внизу просмотры.
+         Сшитый тултип (axisPointer.link) вываливал всё сразу — читателю
+         приходилось выбирать глазами нужные две строки из пяти. */
       tooltip: Object.assign({}, TOOLTIP_BASE, {
-        axisPointer: { type: 'shadow', link: [{ xAxisIndex: 'all' }] },
+        axisPointer: { type: 'shadow' },
         formatter(ps) {
           if (!ps.length) return '';
           const i = ps[0].dataIndex, r = rows[i];
+          const head = tipHead(U.bucketTitle(r.bucket, grain));
+          /* Нижняя панель — просмотры и только они */
+          if (ps[0].axisIndex === 1 || ps[0].seriesIndex === 3) {
+            return head +
+              tipRow(C.views, viewsTitle, perUser ? U.nf(r.users ? r.views / r.users : 0, 1) : U.nf(r.views)) +
+              (perUser ? tipRow(null, 'Просмотров всего', U.nf(r.views), true) : '') +
+              tipEnd;
+          }
           const share = r.users ? (r.new_users / r.users) * 100 : 0;
-          /* Определения сегментов живут в легенде и в «Как это устроено»,
-             а не в каждой подсказке: длинный тултип перекрывал каталог. */
-          return tipHead(U.bucketTitle(r.bucket, grain)) +
+          return head +
             tipRow(null, 'Всего', U.nf(r.users)) +
             tipRow(C.new, newLabel, U.nf(r.new_users) + ' · ' + U.pct(share, 0)) +
             tipRow(C.react, 'Вернувшиеся', U.nf(r.react_users)) +
             tipRow(C.ret, 'Продолжающие', U.nf(r.ret_users)) +
-            tipRow(C.views, viewsTitle, perUser ? U.nf(r.users ? r.views / r.users : 0, 1) : U.nf(r.views), true) +
             tipEnd;
         },
       }),
@@ -288,7 +297,7 @@
         type: 'line', smooth: true, symbol: 'circle', symbolSize: 7,
         lineStyle: { width: 2, color: C.act },
         itemStyle: { color: C.act, borderColor: '#fff', borderWidth: 2 },
-        areaStyle: { color: 'rgba(23,103,127,.08)' },
+        areaStyle: { color: 'rgba(0,115,160,.08)' },
         label: valueLabel((p) => U.pct(p.value, 0), n),
         labelLayout: LABEL_LAYOUT,
         data: points.map((p) => +p.pct.toFixed(1)),
@@ -374,16 +383,22 @@
           subtextStyle: { fontFamily: FONT, fontSize: 10.5, color: '#8a909c', fontWeight: 400 },
         },
       ],
+      /* Свой тултип у каждой панели: наверху люди, внизу проценты. */
       tooltip: Object.assign({}, TOOLTIP_BASE, {
-        axisPointer: { type: 'shadow', link: [{ xAxisIndex: 'all' }] },
+        axisPointer: { type: 'shadow' },
         formatter(ps) {
           if (!ps.length) return '';
           const r = rows[ps[0].dataIndex];
-          return tipHead(U.bucketTitle(r.bucket, grain)) +
+          const head = tipHead(U.bucketTitle(r.bucket, grain));
+          if (ps[0].axisIndex === 1 || ps[0].seriesIndex >= 2) {
+            return head +
+              tipRow(C.act, 'Накоплено охвачено', U.pct(r.reach_pct, 0) + ' · ' + U.nf(r.cum_reach)) +
+              tipRow(C.seg1, 'Заходили в этом периоде', U.pct(r.active_pct, 0)) +
+              tipEnd;
+          }
+          return head +
             tipRow(C.ret, 'Заходили', U.nf(r.users)) +
             tipRow(C.new, 'из них впервые', U.nf(r.first_time)) +
-            tipRow(C.act, 'Накоплено охвачено', U.nf(r.cum_reach) + ' · ' + U.pct(r.reach_pct, 0)) +
-            tipRow(C.seg1, 'Заходили в периоде', U.pct(r.active_pct, 0)) +
             tipEnd;
         },
       }),
@@ -404,7 +419,7 @@
         {
           name: 'Заходили не впервые', type: 'bar', stack: 'a', xAxisIndex: 0, yAxisIndex: 0,
           barWidth: bw, barMaxWidth: BAR_MAX,
-          itemStyle: { color: C.ret, borderRadius: [3, 3, 0, 0] },
+          itemStyle: { color: C.ret, borderRadius: [2, 2, 0, 0] },
           label: valueLabel((p) => (users[p.dataIndex] ? U.compact(users[p.dataIndex]) : ''), n),
           labelLayout: LABEL_LAYOUT,
           data: rest,
@@ -414,7 +429,7 @@
           symbol: 'circle', symbolSize: 5, smooth: false,
           lineStyle: { width: 2, color: C.act },
           itemStyle: { color: C.act, borderColor: '#fff', borderWidth: 2 },
-          areaStyle: { color: 'rgba(23,103,127,.08)' },
+          areaStyle: { color: 'rgba(0,115,160,.08)' },
           label: valueLabel((p) => (p.value ? U.pct(p.value, 0) : ''), n),
           labelLayout: LABEL_LAYOUT,
           data: rows.map((r) => +r.reach_pct.toFixed(1)),

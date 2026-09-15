@@ -38,8 +38,8 @@
      панели #62CDFF даёт контраст 1,8:1, а марка ниже 2:1 растворяется
      в фоне — читатель видит пустое место там, где стоит столбик.
      Притемнение минимальное, тон палитры сохранён. */
-  --act:#17677F;        /* активный: кнопки, выбор строки, фокус, полосы */
-  --act-ink:#0F4F63;    /* тот же тон темнее — текст на светлом */
+  --act:#0073A0;        /* активный: кнопки, выбор строки, фокус, полосы */
+  --act-ink:#015A7D;    /* тот же тон темнее — текст на светлом */
   --blue:var(--act);
   --blue-bg:#E8F4F9;    /* мягкая заливка активного тона */
   --act-line:#C4E2ED;   /* граница на заливке */
@@ -80,18 +80,19 @@
 
   /* ---------- Серии графиков (зеркало CHART_COLORS в charts.js) ----------
      Стек — ОДИН тон разными ступенями светлоты, а не разные хуи. Части
-     стека не соперничают друг с другом: это доли одного целого, и разный
-     хуй на них означал бы «разные сущности», которых тут нет. Порядок
-     снизу вверх: новые (темнее всего) → вернувшиеся → продолжающие.
-     Проверено scripts/validate_palette.js --ordinal: 4/4 PASS. */
-  --se-new:#17677F;     /* новые — самая тёмная ступень, стоит в основании */
-  --se-react:#2BA8C6;   /* вернувшиеся — средняя */
-  --se-ret:#5CC0EE;     /* продолжающие — самая светлая, её больше всего */
+     стека — доли одного целого, поэтому голубой тон разной светлоты.
+     Исключение — ВЕРНУВШИЕСЯ: это не «чуть больше тех же», а отдельная
+     история (человек уходил и пришёл снова), и по цвету она отделена.
+     Порядок снизу вверх: новые → вернувшиеся → продолжающие.
+     Проверено scripts/validate_palette.js: 5/5 PASS, adjacent. */
+  --se-new:#0073A0;     /* новые — насыщенный голубой, стоит в основании */
+  --se-react:#AA77FF;   /* вернувшиеся — фиолетовый: отдельная категория */
+  --se-ret:#5CC0EE;     /* продолжающие — светлый, их больше всего */
   --se-views:#5b6478;   /* просмотры — не серия, вторая панель: графит */
   --se-bench:#c7c8cc;
 
   /* Порядковая шкала вовлечённости: темнее = глубже вовлечён. */
-  --seg-3:#17677F;      /* постоянные */
+  --seg-3:#0073A0;      /* постоянные */
   --seg-2:#218DAE;      /* эпизодические */
   --seg-1:#5CC0EE;      /* разовые */
   --seg-0:#d9dce1;      /* не заходили — вне шкалы, серый */
@@ -398,10 +399,10 @@ button{font-family:inherit}
 
 .btable td.barcell,.btable th.bar-th{text-align:left;padding-left:var(--pad-cell)}
 .cellbar{display:block;width:100%;height:13px;background:#f1f3f6;
-  border-radius:var(--r1);overflow:hidden;cursor:help}
-.cellbar i{display:block;height:100%;border-radius:var(--r1);background:var(--act);min-width:2px}
-.cellbar.c-cov i{background:var(--act)}
-.cellbar.c-rep i{background:var(--act)}
+  border-radius:2px;overflow:hidden;cursor:help}
+.cellbar i{display:block;height:100%;border-radius:2px;background:var(--se-ret);min-width:2px}
+.cellbar.c-cov i{background:var(--se-ret)}
+.cellbar.c-rep i{background:var(--se-ret)}
 .btable tr.total td{border-bottom:2px solid var(--line)}
 
 .cell{display:inline-block;min-width:54px;border-radius:var(--r3);padding:5px var(--s4);
@@ -480,10 +481,10 @@ button{font-family:inherit}
 .cttable td.txt{font-weight:var(--fw-lead);color:var(--ink);padding-left:var(--s2)}
 .cttable td.ct-size{cursor:help;padding:0 var(--s2)}
 .cttable .ct-sz{display:flex;align-items:center;gap:var(--s4)}
-.cttable .ct-bar{flex:1;height:12px;background:#f1f3f6;border-radius:var(--r1);
+.cttable .ct-bar{flex:1;height:12px;background:#f1f3f6;border-radius:2px;
   overflow:hidden;min-width:34px}
-.cttable .ct-bar i{display:block;height:100%;border-radius:var(--r1);
-  background:var(--act);min-width:2px}
+.cttable .ct-bar i{display:block;height:100%;border-radius:2px;
+  background:var(--se-ret);min-width:2px}
 .cttable .ct-sz b{font-weight:var(--fw-lead);color:var(--ink2);
   font-variant-numeric:tabular-nums;font-size:var(--fs-note);min-width:38px;text-align:right}
 .cttable td.ct-cell{text-align:center;padding:7px 3px;border-radius:var(--r2);
@@ -630,6 +631,36 @@ button{font-family:inherit}
 .as-x .mut{color:var(--muted2)}
 .sb-act{display:flex;gap:var(--s4);flex-wrap:wrap;margin-top:var(--s2)}
 .aud-pick{max-width:100%;width:100%}
+/* ========================= Выпадающий список =============================
+   Свой, а не нативный <select>. Список у нативного рисует ОПЕРАЦИОННАЯ
+   СИСТЕМА: при тёмной теме он выпадает чёрным с жёлтой подсветкой строки —
+   посреди светлого дашборда это чужой элемент, и CSS его не лечит.
+   Здесь список — обычная разметка, поэтому он всегда в стиле панелей. */
+.dd{position:relative;min-width:0}
+.dd-trg{display:flex;align-items:center;gap:var(--s4);width:100%;
+  border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
+  border-radius:var(--r3);padding:var(--s4) var(--s6);cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:var(--fw-lead);color:var(--ink);
+  text-align:left}
+.dd-trg:hover{border-color:#d8dce4}
+.dd.open .dd-trg{border-color:var(--act)}
+.dd-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-c{flex:0 0 auto;color:var(--muted2);font-size:10px;transition:transform .16s}
+.dd.open .dd-c{transform:rotate(180deg)}
+/* Список всплывает НАД содержимым: в шапке панели он иначе растянул бы её
+   и сдвинул таблицу, ради которой его открыли. */
+.dd-body{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:100%;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r3);
+  box-shadow:var(--shadow-lg);padding:var(--s3);max-height:280px;overflow:auto;
+  display:flex;flex-direction:column;gap:1px}
+.dd.sm .dd-trg{padding:6px var(--s5);font-size:12px}
+.dd.sm .dd-body{right:0;left:auto}
+.dd-opt{border:0;background:transparent;border-radius:var(--r2);
+  padding:6px var(--s5);cursor:pointer;font-family:inherit;font-size:12.5px;
+  font-weight:var(--fw-med);color:var(--ink2);text-align:left;white-space:nowrap}
+.dd-opt:hover{background:#f4f6f9;color:var(--ink)}
+.dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:var(--fw-lead)}
+
 /* ================= Область: один иерархический выбор ====================
    Триггер показывает, что выбрано, и раскрывает список ВНИЗ, в потоке
    страницы: всплывающий слой накрывал бы и поиск, и всё вокруг, и было бы
@@ -723,7 +754,7 @@ button{font-family:inherit}
 .seg-part{flex:1 1 0;min-width:88px;border:0;background:transparent;padding:0;
   cursor:pointer;font-family:inherit;text-align:left;display:flex;
   flex-direction:column;gap:var(--s2);transition:opacity .15s}
-.seg-part .sp-bar{display:block;height:10px;border-radius:var(--r1)}
+.seg-part .sp-bar{display:block;height:10px;border-radius:2px}
 .seg-part .sp-v{font-size:var(--fs-body);font-weight:var(--fw-bold);color:var(--ink);
   font-variant-numeric:tabular-nums;line-height:1.1}
 .seg-part .sp-l{font-size:var(--fs-cap);color:var(--muted);font-weight:var(--fw-med);

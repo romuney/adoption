@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Proteus Adoption — макет</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<a class="skip-link" href="#view">Перейти к отчёту</a>
+<div class="nav-scrim" id="navScrim"></div>
+
+<header class="apphead">
+  <div class="apphead-top">
+    <button class="nav-toggle" id="navToggle" aria-label="Открыть фильтры" aria-expanded="false">☰</button>
+    <div class="logo"><span class="mark" aria-hidden="true">P</span>Proteus Adoption</div>
+    <div class="spacer"></div>
+    <div class="freshness"><span class="dot" aria-hidden="true"></span><span id="freshDate"></span></div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="nav" id="sideNav" aria-label="Фильтры отчёта"></nav>
+
+  <div class="main-col">
+    <div class="tabbar" id="tabsHost"></div>
+    <main class="content" id="view" tabindex="-1"></main>
+  </div>
+</div>
+
+<!-- ======================= Как это устроено ======================= -->
+<div class="ovl" id="howModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="howTitle">
+    <div class="modal-h">
+      <h3 id="howTitle">Как это устроено</h3>
+      <p>Несколько вещей, которые стоит знать до того, как верить цифрам на экране.</p>
+    </div>
+    <div class="modal-b">
+      <div class="hgrp">
+        <h4>Данные в макете придуманы</h4>
+        <p>Числа синтетические. Настоящая здесь — структура: каждая строка данных имеет
+        ровно тот набор полей, который вернёт SQL из <code>prod_proteus</code>. Поэтому
+        макет переносится в Proteus без переделки логики — меняется источник,
+        а не расчёт.</p>
+      </div>
+
+      <div class="hgrp">
+        <h4>Обзор и каталог — это один экран</h4>
+        <p>Владелец отчёта приходит с одной задачей: посмотреть динамику по своему
+        отчёту или по своим отчётам целиком. Поэтому «обзор» не вынесен отдельно —
+        это то же самое, просто без выбора. Подшапка над таблицей отвечает, <i>в разрезе
+        чего</i> смотрим: отчёты, коллекции, владельцы, подразделения, специализация.
+        Выбранная строка задаёт контекст всей вкладке: карточки, динамика, частота
+        и закрепляемость пересчитываются под неё.</p>
+      </div>
+
+      <div class="hgrp">
+        <h4>Одна вкладка — один датасет</h4>
+        <p>Вкладка забирает свой датасет целиком и дальше считает всё в браузере.
+        Мгновенно, без запроса в базу, работают: <b>период</b> (все четыре грануляции
+        лежат внутри), <b>разрез</b> (данные в длинном формате — строка на «бакет ×
+        разрез × значение»), <b>выбор строки</b> в каталоге и переключение
+        видов панели.</p>
+      </div>
+
+      <div class="hgrp">
+        <h4>Пользователи группы не складываются</h4>
+        <p>Когда выбрана коллекция или владелец, «пользователей» — это
+        <code>COUNT(DISTINCT user_id)</code> по всей группе: человек, открывший три
+        отчёта коллекции, посчитан один раз. Поэтому строки таблицы не дают в сумме
+        ИТОГО. Просмотры складываются точно — они аддитивны.</p>
+      </div>
+
+      <div class="hgrp">
+        <h4>Что осталось серверным и почему</h4>
+        <p>Фильтры, помеченные значком пересчёта, меняют SQL-запрос. Длинный формат
+        даёт дешёвое переключение разреза, но не даёт <i>пересечения</i> двух разрезов
+        сразу: чтобы фильтровать «стрим И уровень 4 И стаж» одновременно, нужен широкий
+        куб, а он на порядок тяжелее и в браузер не поедет. Поимённые списки аудитории
+        тоже тянутся по выбранному отчёту, а не по всем сразу.</p>
+      </div>
+
+      <div class="hgrp">
+        <h4>Подсказки считает не языковая модель</h4>
+        <p>Блок «Что видно в данных» — это отбор фактов по фиксированным порогам
+        (например: изменение к прошлому периоду ≥10%, доля не заходивших больше
+        30 дней ≥15%). Порог, по которому факт попал в список, всегда назван внизу
+        блока. В Proteus языковая модель не подключена, поэтому текстовых выводов
+        «от нейросети» здесь нет и не будет — только арифметика, воспроизводимая в SQL.</p>
+      </div>
+
+      <div class="hgrp">
+        <h4>Датасеты по вкладкам</h4>
+        <dl class="dslist">
+          <dt>Отчёты → ds_overview</dt>
+          <dd>Картина без выбора и по срезам людей. Секции <code>ts</code> (динамика),
+          <code>kpi</code> (периодные итоги плюс предыдущий период),
+          <code>freq</code> (частота визитов), <code>cohort</code> (закрепляемость
+          Proteus). Один UNION ALL, около 5 тыс. строк.</dd>
+          <dt>Отчёты → ds_reports</dt>
+          <dd>Секции <code>report</code> (карточка отчёта), <code>rts</code> (динамика
+          отчёта), <code>rfreq</code> (частота внутри отчёта) и их групповые двойники
+          <code>gkpi</code> / <code>gts</code> / <code>gfreq</code> — то же самое
+          с <code>GROUP BY</code> коллекция либо владелец.</dd>
+          <dt>Когорты отчёта → запрос по выбранному отчёту ⟳</dt>
+          <dd>Куб «отчёт × когорта × возраст» по всем отчётам — миллионы строк,
+          в браузер не поедет. Тянется по одному выбранному отчёту.</dd>
+          <dt>Аудитория отчёта → ds_audience</dt>
+          <dd>Секции <code>meta</code> (тип аудитории, широкая ли группа),
+          <code>person</code> (поимённо, с сегментом), <code>reach</code> (первые
+          визиты и накопленный охват). Фильтр по отчёту — серверный.</dd>
+        </dl>
+      </div>
+
+      <div class="hgrp">
+        <h4>Пороги и определения</h4>
+        <p><b>Постоянный</b> — 8 и более разных дней с визитом за период (примерно раз
+        в неделю и чаще). <b>Эпизодический</b> — 2–7 дней. <b>Разовый</b> — ровно один
+        день. <b>Спящий</b> — заходил раньше, но не открывал ничего более 30 дней.
+        <b>Широкая AD-группа</b> — охватывает 30% численности и больше; долю покрытия
+        по таким группам мы не показываем, потому что знаменатель не описывает
+        целевую аудиторию.</p>
+      </div>
+    </div>
+    <div class="modal-f">
+      <span class="sp"></span>
+      <button class="btn primary" id="howClose">Понятно</button>
+    </div>
+  </div>
+</div>
+
+<script src="vendor/echarts.min.js"></script>
+<script src="assets/ui.js"></script>
+<script src="assets/data.js"></script>
+<script src="assets/charts.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

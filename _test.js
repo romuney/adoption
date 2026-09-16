@@ -152,6 +152,15 @@ console.log('\nПереключение периода');
 
 /* Подшапка «в разрезе чего»: каждый режим и выбор строки в нём */
 console.log('\nВ разрезе чего смотрим');
+/* change-событие: чекбоксы мультивыбора и переключатели фильтров */
+function fireChange(dataset, checked) {
+  const target = { dataset, type: 'checkbox', checked: !!checked,
+    closest() { return null; }, id: '', matches() { return false; } };
+  let err = null;
+  try { changeHandlers.forEach((h) => h({ target })); } catch (e) { err = e; }
+  return err;
+}
+
 function fire(sel, dataset) {
   const target = { closest(s2) { return s2 === sel ? { dataset } : null; }, id: '', dataset: {}, matches() { return false; } };
   let err = null;
@@ -441,6 +450,75 @@ console.log('\nНакопительный выбор в каталоге');
   resetPicks();
   ok(viewHtml().indexOf('Отчёт: ' + nm) < 0, 'сброс не очистил накопленный выбор');
   console.log('· накопление, переключение разреза, снятие по одному → ок');
+})();
+
+/* Фильтры слева: отчётные мультивыборы и атрибуты сотрудников */
+console.log('\nФильтры слева');
+(function () {
+  fireTab('reports');
+  resetPicks();
+  const D = ctx.PA_DATA;
+  const usersNow = () => {
+    const m = viewHtml().match(/Пользователей за период[\s\S]{0,400}?class="k-val">([^<]+)</);
+    return m ? m[1].replace(/\s|&nbsp;|\u00a0/g, '') : null;
+  };
+  const base = usersNow();
+  ok(base, 'не нашли карточку «Пользователей за период»');
+
+  /* Мультивыбор коллекций сужает каталог */
+  let err = fireChange({ mval: 'f-collection', mkey: D.COLLECTIONS[0] }, true);
+  ok(!err, 'выбор коллекции: ' + (err && err.message));
+  let html = viewHtml();
+  ok(html.indexOf('Коллекции: ' + D.COLLECTIONS[0]) >= 0, 'нет чипа фильтра коллекции');
+  ok(usersNow() !== base, 'фильтр коллекции не изменил цифры');
+
+  /* Второе значение того же фильтра складывается по ИЛИ */
+  const two = usersNow();
+  err = fireChange({ mval: 'f-collection', mkey: D.COLLECTIONS[1] }, true);
+  ok(!err, 'вторая коллекция: ' + (err && err.message));
+  ok(viewHtml().indexOf('Коллекции: 2') >= 0, 'мультивыбор не сложил два значения');
+  ok(usersNow() !== two, 'вторая коллекция ничего не изменила');
+  fireChange({ mval: 'f-collection', mkey: D.COLLECTIONS[0] }, false);
+  fireChange({ mval: 'f-collection', mkey: D.COLLECTIONS[1] }, false);
+  ok(usersNow() === base, 'снятие коллекций не вернуло исходные цифры');
+  console.log('· мультивыбор коллекций → ок');
+
+  /* Иерархия управленческой структуры: блок и департамент — одно поле */
+  const block = D.CUTS.lvl3.vals[0];
+  const dept = D.ORG_TREE[block][0][0];
+  ok(D.population.every((p) => !p.lvl4 || D.ORG_PARENT[p.lvl4] === p.lvl3),
+    'департамент сотрудника не принадлежит его блоку');
+  err = fireChange({ mval: 'f-org', mkey: dept }, true);
+  ok(!err, 'выбор департамента: ' + (err && err.message));
+  html = viewHtml();
+  ok(html.indexOf(dept) >= 0, 'нет чипа департамента');
+  ok(html.indexOf('фильтр по сотрудникам') >= 0, 'экран не признался, что показывает срез сотрудников');
+  const dOnly = usersNow();
+  ok(dOnly !== base, 'фильтр по департаменту не изменил цифры');
+
+  err = fireChange({ mgrp: 'f-org', mkey: block }, true);
+  ok(!err, 'выбор блока: ' + (err && err.message));
+  html = viewHtml();
+  ok(html.indexOf(block) >= 0, 'нет чипа блока');
+  ok(usersNow() !== dOnly, 'блок поверх департамента ничего не расширил');
+  ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке при фильтре по структуре');
+  console.log('· иерархия блок → департамент → ок');
+
+  /* Пересечение с выбором в каталоге: оба условия живы одновременно */
+  fire('[data-mode]', { mode: 'report' });
+  const nm = D.reportMeta[0].dashboard_nm;
+  err = fire('[data-rep]', { rep: String(D.reportMeta[0].dashboard_id) });
+  ok(!err, 'выбор отчёта поверх фильтра: ' + (err && err.message));
+  html = viewHtml();
+  ok(html.indexOf('Отчёт: ' + nm) >= 0, 'выбор отчёта не пережил фильтр по сотрудникам');
+  ok(html.indexOf(block) >= 0, 'фильтр по блоку пропал после выбора отчёта');
+  ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке при пересечении');
+  console.log('· пересечение фильтра и выбора → ок');
+
+  resetPicks();
+  ok(usersNow() === base, 'сброс не вернул исходные цифры');
+  ok(viewHtml().indexOf('data-unchip="flt:emp.lvl3"') < 0, 'сброс не снял фильтр по структуре');
+  console.log('· сброс → ок');
 })();
 
 console.log('\n' + (fails ? fails + ' проверок провалено' : 'Все проверки пройдены'));

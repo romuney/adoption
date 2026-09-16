@@ -161,8 +161,11 @@ button{font-family:inherit}
 .fgroup .gb[hidden]{display:none}
 
 .ctl{display:flex;flex-direction:column;gap:5px}
-.ctl label{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
+.ctl>label{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
   color:var(--muted);font-weight:var(--fw-lead)}
+/* Строки внутри мультивыбора — обычный текст, а не подпись контрола:
+   заголовочный стиль .ctl>label капслочил весь список. */
+.ctl .pickrow{text-transform:none;letter-spacing:0}
 .ctl select,select.aud-pick{appearance:none;border:1px solid var(--line);background:var(--card);
   box-shadow:var(--shadow);
   border-radius:var(--r3);padding:var(--s4) 30px var(--s4) var(--s6);font-size:13px;
@@ -715,6 +718,22 @@ button{font-family:inherit}
 .pcount{font-style:normal;margin-left:auto;font-size:var(--fs-micro);font-weight:var(--fw-lead);
   color:var(--muted2);background:#f2f4f7;border-radius:var(--r-pill);padding:1px 6px;flex:0 0 auto}
 .pcount.on{background:var(--blue-bg);color:var(--act-ink)}
+
+/* Мультивыбор в панели фильтров — тот же список, только компактнее и во
+   всю ширину узкой колонки. */
+.scopepick.mini .scope-trg{padding:6px var(--s5);font-size:12px;font-weight:var(--fw-med)}
+.scopepick.mini .st-n{padding:1px var(--s4);background:var(--blue-bg);color:var(--act-ink)}
+.scopepick.mini .scope-body{z-index:60;padding:var(--s4);min-width:210px}
+.scopepick.mini .pickbox{max-height:196px;box-shadow:none}
+.scopepick.mini .pickrow:not(.head){padding-left:var(--s7)}
+
+/* Текстовые фильтры (название отчёта, логин сотрудника) */
+.ftext{width:100%;border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
+  border-radius:var(--r3);padding:6px var(--s5);font-family:inherit;font-size:12px;
+  color:var(--ink);appearance:none;min-width:0}
+.ftext::placeholder{color:var(--muted2)}
+.ftext:hover{border-color:#d8dce4}
+.ftext:focus{outline:none;border-color:var(--act)}
 
 /* ================== Конструктор целевой аудитории =======================
    Разрезы списком слева, значения выбранного — справа. Восемь разрезов

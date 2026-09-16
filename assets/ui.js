@@ -611,11 +611,83 @@
       '</div>';
   }
 
+  /* --------------------- Мультивыбор с поиском ---------------------------
+     Один элемент и для плоского списка (коллекции, стримы, специализации),
+     и для иерархии (блок → департамент): иерархия — тот же список, просто
+     с родительскими строками, у которых свой ключ выбора.
+
+     Чипами такое не сделать: специализаций полсотни, AD-групп ещё больше,
+     и простыня чипов занимает экран целиком. Поэтому свёрнутый триггер
+     показывает, сколько условий набрано, а список живёт в оверлее. */
+  function multi(id, o) {
+    const open = !!o.open;
+    const sel = o.value || [];             // выбранные листья
+    const selG = o.groupValue || [];       // выбранные родители (иерархия)
+    const q = (o.query || '').toLowerCase();
+    const hit = (lbl) => !q || String(lbl).toLowerCase().indexOf(q) >= 0;
+
+    const n = sel.length + selG.length;
+    const one = sel.length === 1 && !selG.length ? sel[0]
+      : (selG.length === 1 && !sel.length ? selG[0] : null);
+    const txt = n === 0 ? (o.allLabel || 'Все')
+      : (one != null ? String(one) : n + ' ' + plural(n, 'условие', 'условия', 'условий'));
+
+    let body = '';
+    if (open) {
+      let list;
+      if (o.groups) {
+        /* Родитель в иерархии — самостоятельное условие («весь блок»), а
+           не «отметить всех детей»: так фильтр переживает появление нового
+           департамента, которого в момент клика ещё не было. */
+        list = o.groups.map((g) => {
+          const kids = g.items.filter((it) => hit(it.label) || hit(g.label));
+          if (!kids.length && !hit(g.label)) return '';
+          const gon = selG.some((v) => String(v) === String(g.key));
+          const kn = kids.filter((it) => sel.some((v) => String(v) === String(it.key))).length;
+          return '<div class="pickgrp">' +
+            '<label class="pickrow head"><input type="checkbox" data-mgrp="' + esc(id) + '"' +
+              ' data-mkey="' + esc(g.key) + '"' + (gon ? ' checked' : '') + '>' +
+              '<span>' + esc(g.label) + '</span>' +
+              (kn ? '<i class="pcount on">' + kn + '</i>' : '') + '</label>' +
+            kids.map((it) => '<label class="pickrow"><input type="checkbox" data-mval="' + esc(id) + '"' +
+              ' data-mkey="' + esc(it.key) + '"' +
+              (sel.some((v) => String(v) === String(it.key)) ? ' checked' : '') + '>' +
+              '<span>' + esc(it.label) + '</span></label>').join('') +
+            '</div>';
+        }).join('');
+      } else {
+        list = o.items.filter((it) => hit(it.label)).map((it) =>
+          '<label class="pickrow"><input type="checkbox" data-mval="' + esc(id) + '"' +
+          ' data-mkey="' + esc(it.key) + '"' +
+          (sel.some((v) => String(v) === String(it.key)) ? ' checked' : '') + '>' +
+          '<span>' + esc(it.label) + '</span>' +
+          (it.note ? '<i class="pcount">' + esc(it.note) + '</i>' : '') + '</label>').join('');
+      }
+      body = '<div class="scope-body">' +
+        (o.noSearch ? '' : '<div class="psearch"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" ' +
+          'stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/>' +
+          '<path d="M20 20l-3.5-3.5"/></svg><input type="search" data-msearch="' + esc(id) + '"' +
+          ' placeholder="' + esc(o.search || 'Найти') + '" value="' + esc(o.query || '') + '"></div>') +
+        '<div class="pickbox" role="group" aria-label="' + esc(o.label || '') + '">' +
+          (list || '<div class="pickempty">Ничего не найдено</div>') + '</div>' +
+        (n ? '<div class="scope-act"><button class="btn ghost xs" data-mclear="' + esc(id) + '">Снять всё</button></div>' : '') +
+        '</div>';
+    }
+
+    return '<div class="scopepick mini' + (open ? ' open' : '') + '">' +
+      '<button class="scope-trg" data-mtoggle="' + esc(id) + '" aria-expanded="' + open + '"' +
+        (o.label ? ' aria-label="' + esc(o.label) + '"' : '') + '>' +
+        '<span class="st-txt">' + esc(txt) + '</span>' +
+        (n > 1 ? '<span class="st-n">' + n + '</span>' : '') +
+        '<span class="st-c" aria-hidden="true">▾</span>' +
+      '</button>' + body + '</div>';
+  }
+
   global.UI = {
     THIN, MINUS, esc, nf, pct, plural, compact, signed, days,
     fmtDate, axisLabel, bucketTitle, isoWeek, MONTHS, MONTHS_FULL,
     prevLabel, periodLabel, prevPeriodLabel,
     tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, CT_BASES, funnelSvg, dropdown, observations, panel,
-    chip, benchChip, searchBox,
+    chip, benchChip, searchBox, multi,
   };
 })(window);

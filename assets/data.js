@@ -52,7 +52,11 @@
     stream: { label: 'Стрим',              vals: ['Розничный бизнес', 'Кредитные продукты', 'Платежи и переводы', 'МСБ', 'Инвестиции', 'Технологии', 'Риски', 'Поддержка клиентов'], w: [19, 15, 12, 9, 8, 17, 10, 10] },
     spec:   { label: 'Специализация',      vals: ['Аналитик', 'Разработчик', 'Менеджер продукта', 'Руководитель', 'Специалист поддержки', 'Маркетинг', 'Финансы', 'HR', 'Операционист'], w: [21, 16, 12, 11, 9, 8, 8, 5, 10] },
     lvl3:   { label: 'Управл. структура, ур. 3', vals: ['Блок «Розница»', 'Блок «Технологии»', 'Блок «Корпоративный»', 'Блок «Риски»', 'Блок «Финансы»', 'Блок «Операции»', 'Блок «Люди»'], w: [24, 21, 14, 12, 10, 12, 7] },
-    lvl4:   { label: 'Управл. структура, ур. 4', vals: ['Департамент продаж', 'Департамент разработки', 'Департамент данных', 'Департамент маркетинга', 'Департамент кредитов', 'Департамент казначейства', 'Департамент поддержки', 'Департамент HR', 'Департамент безопасности', 'Департамент логистики'], w: [16, 18, 13, 9, 11, 7, 10, 6, 5, 5] },
+    /* Департаменты заполняются из ORG_TREE ниже: четвёртый уровень —
+       не самостоятельный справочник, а дети третьего. Раньше он
+       разыгрывался независимо, и «Департамент HR» мог оказаться в блоке
+       «Технологии» — иерархический фильтр на таких данных врёт. */
+    lvl4:   { label: 'Управл. структура, ур. 4', vals: [], w: [] },
     it:     { label: 'IT | non-IT',        vals: ['IT', 'non-IT'],                            w: [38, 62] },
     hq:     { label: 'HQ | non-HQ',        vals: ['HQ', 'non-HQ'],                            w: [57, 43] },
     exp:    { label: 'Стаж в компании',    vals: ['до 1 года', '1–3 года', '3–5 лет', '5–10 лет', '10+ лет'], w: [18, 29, 22, 20, 11] },
@@ -60,6 +64,23 @@
        разрезов объявлен раньше, чем AD_GROUPS. */
     adgroup: { label: 'AD-группа',         vals: [],                                          w: [] },
   };
+  /* Управленческая структура: третий уровень → четвёртый. Веса
+     департаментов внутри блока заданы явно, чтобы блоки не выглядели
+     одинаково нарезанными. */
+  const ORG_TREE = {
+    'Блок «Розница»':        [['Департамент продаж', 11], ['Департамент отделений', 8], ['Департамент маркетинга', 5]],
+    'Блок «Технологии»':     [['Департамент разработки', 11], ['Департамент данных', 6], ['Департамент инфраструктуры', 4]],
+    'Блок «Корпоративный»':  [['Департамент корпоративных продаж', 9], ['Департамент МСБ', 5]],
+    'Блок «Риски»':          [['Департамент кредитных рисков', 7], ['Департамент безопасности', 5]],
+    'Блок «Финансы»':        [['Департамент казначейства', 6], ['Департамент отчётности', 4]],
+    'Блок «Операции»':       [['Департамент поддержки', 7], ['Департамент логистики', 5]],
+    'Блок «Люди»':           [['Департамент HR', 4], ['Департамент обучения', 3]],
+  };
+  const ORG_PARENT = {};        // департамент → блок
+  CUTS.lvl3.vals.forEach((b) => (ORG_TREE[b] || []).forEach(([d, w]) => {
+    ORG_PARENT[d] = b; CUTS.lvl4.vals.push(d); CUTS.lvl4.w.push(w);
+  }));
+
   const CUT_KEYS = Object.keys(CUTS);
   const HC_TOTAL_REF = 27400;                    // активная численность банка
 
@@ -281,6 +302,9 @@
       dashboard_nm: nm,
       dashboard_url: 'https://proteus.tcsbank.ru/superset/dashboard/' + id,
       owner_login: OWNERS[i % OWNERS.length],
+      /* Автор — кто отчёт собрал, владелец — кто за него отвечает. Чаще
+         это один человек, но не всегда: разработчик ушёл, отчёт остался. */
+      author_login: R() < .62 ? OWNERS[i % OWNERS.length] : OWNERS[(i * 5 + 3) % OWNERS.length],
       collection: COLLECTIONS[i % COLLECTIONS.length],
       certified_by: R() < .34 ? 'Data Office' : null,
       published: R() < .93 ? 1 : 0,
@@ -570,7 +594,7 @@
   const population = (function buildPopulation() {
     const rp = rng(777001);
     const byCut = {};
-    ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq'].forEach((ck) => {
+    ['lvl3', 'stream', 'spec', 'exp', 'it', 'hq'].forEach((ck) => {
       const c = CUTS[ck];
       const counts = alloc(POP_N, c.w);
       const bag = [];
@@ -581,6 +605,17 @@
       }
       byCut[ck] = bag;
     });
+    /* Департамент выбирается ВНУТРИ блока человека — иначе иерархия
+       остаётся только на картинке. */
+    function pickDept(block) {
+      const kids = ORG_TREE[block] || [];
+      if (!kids.length) return '';
+      const tot = kids.reduce((a, b) => a + b[1], 0);
+      let x = rp() * tot;
+      for (let i = 0; i < kids.length; i++) { x -= kids[i][1]; if (x <= 0) return kids[i][0]; }
+      return kids[kids.length - 1][0];
+    }
+
     const out = [];
     for (let i = 0; i < POP_N; i++) {
       const woman = rp() < .52;
@@ -590,7 +625,7 @@
         pid: i,
         fio: fn + ' ' + ln,
         login: (fn[0] + '.' + ln + (i % 23 ? '' : i)).toLowerCase().replace('ё', 'e'),
-        lvl3: byCut.lvl3[i], lvl4: byCut.lvl4[i], stream: byCut.stream[i],
+        lvl3: byCut.lvl3[i], lvl4: pickDept(byCut.lvl3[i]), stream: byCut.stream[i],
         spec: byCut.spec[i], exp: byCut.exp[i], it: byCut.it[i], hq: byCut.hq[i],
         is_head: rp() < .12 ? 1 : 0,
       });
@@ -894,6 +929,6 @@
     reportCohorts, globalCohorts,
     buckets,
     HC_TOTAL: HC_TOTAL_REF,
-    OWNERS, COLLECTIONS, AD_GROUPS, GROUP_KEYS,
+    OWNERS, COLLECTIONS, AD_GROUPS, GROUP_KEYS, ORG_TREE, ORG_PARENT,
   };
 })(window);

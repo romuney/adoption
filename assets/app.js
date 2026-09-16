@@ -78,7 +78,16 @@
     repSort: { col: 'users', dir: -1 },
     repQuery: '',
     audQuery: '',
-    filters: { collection: '', owner: '', published: true, actual: true, certified: false, excludeOwners: true },
+    /* Фильтры слева. Отчётные — про сам отчёт, людские (emp) — про того,
+       кто в него ходит: «покажи, как блоком «Розница» пользуются отчёты
+       Финансов» — это одно условие оттуда и одно отсюда. */
+    filters: {
+      repName: '', collection: [], owner: [], author: [],
+      published: true, actual: true, certified: false, excludeOwners: true,
+      emp: { lvl3: [], lvl4: [], stream: [], spec: [], adgroup: [], login: '', heads: false },
+    },
+    _mq: {},                     // поиск внутри каждого мультивыбора
+    _mopen: null,                // какой мультивыбор раскрыт
   };
 
   const OV = D.ds_overview;
@@ -99,8 +108,10 @@
       .filter((r) => (!f.published || r.published === 1))
       .filter((r) => (!f.actual || r.actual_flg === 1))
       .filter((r) => (!f.certified || !!r.certified_by))
-      .filter((r) => (!f.collection || r.collection === f.collection))
-      .filter((r) => (!f.owner || r.owner_login === f.owner));
+      .filter((r) => (!f.collection.length || f.collection.indexOf(r.collection) >= 0))
+      .filter((r) => (!f.owner.length || f.owner.indexOf(r.owner_login) >= 0))
+      .filter((r) => (!f.author.length || f.author.indexOf(r.author_login) >= 0))
+      .filter((r) => (!f.repName || r.dashboard_nm.toLowerCase().indexOf(f.repName.toLowerCase()) >= 0));
   }
   function reportById(id) {
     return RP.find((r) => r.section === 'report' && r.grain === S.grain && r.dashboard_id === id);
@@ -143,20 +154,65 @@
     if (pickList('owner').length) rows = rows.filter((r) => pickList('owner').indexOf(r.owner_login) >= 0);
     return rows.map((r) => r.dashboard_id);
   }
-  /* Люди под людскими разрезами (пересечение непустых) */
+  /* Атрибуты сотрудника, по которым фильтруют слева. Управленческая
+     структура иерархическая: блок и департамент — один фильтр, но два
+     условия, и они складываются по ИЛИ («весь блок Розница и ещё
+     департамент данных из Технологий»). */
+  const EMP_DIMS = ['stream', 'spec', 'adgroup'];
+  /* Короткие имена: «Управл. структура, ур. 4» в чипе не читается */
+  const EMP_LABEL = {
+    lvl3: 'Блок', lvl4: 'Департамент', stream: 'Стрим',
+    spec: 'Специализация', adgroup: 'AD-группа',
+  };
+  function empOn() {
+    const e = S.filters.emp;
+    return !!(e.lvl3.length || e.lvl4.length || e.login.trim() || e.heads ||
+      EMP_DIMS.some((k) => e[k].length));
+  }
+  /* Есть ли вообще условие на людей — из каталога или из фильтров */
+  const hasPeople = () => hasCutPick() || empOn();
+
+  /* Сузили ли отчёты фильтрами слева. Переключатели «опубликованные» и
+     «актуальные» сюда не входят: они включены по умолчанию и описывают
+     тот же «весь Proteus», что и общая секция обзора. А вот коллекция,
+     владелец, автор, поиск и «сертифицированные» — сужение, и после них
+     карточка «весь Proteus» была бы неправдой. */
+  function repFltOn() {
+    const f = S.filters;
+    return !!(f.repName || f.collection.length || f.owner.length || f.author.length || f.certified);
+  }
+
+  /* Люди под людскими условиями (пересечение непустых) */
   function pickedPeople() {
-    if (!hasCutPick()) return null;
-    return D.population.filter((p) => CUT_DIMS.every((k) =>
-      !pickList(k).length || pickList(k).indexOf(p[k]) >= 0));
+    if (!hasPeople()) return null;
+    const e = S.filters.emp;
+    const q = e.login.trim().toLowerCase();
+    const orgOn = e.lvl3.length || e.lvl4.length;
+    return D.population.filter((p) =>
+      CUT_DIMS.every((k) => !pickList(k).length || pickList(k).indexOf(p[k]) >= 0) &&
+      (!orgOn || e.lvl3.indexOf(p.lvl3) >= 0 || e.lvl4.indexOf(p.lvl4) >= 0) &&
+      EMP_DIMS.every((k) => !e[k].length || (k === 'adgroup'
+        ? e[k].some((g) => D.inAdGroup(p, g))
+        : e[k].indexOf(p[k]) >= 0)) &&
+      (!q || p.login.indexOf(q) >= 0 || p.fio.toLowerCase().indexOf(q) >= 0) &&
+      (!e.heads || !!p.is_head));
   }
 
   /* Подпись людской части выбора: одно значение — само значение,
      несколько — «разрез: N». */
   function cutTitle() {
-    return CUT_DIMS.filter((k) => pickList(k).length).map((k) => {
+    const e = S.filters.emp;
+    const parts = CUT_DIMS.filter((k) => pickList(k).length).map((k) => {
       const v = pickList(k);
       return v.length === 1 ? String(v[0]) : MODE(k).label.toLowerCase() + ': ' + v.length;
-    }).join(' · ');
+    });
+    ['lvl3', 'lvl4'].concat(EMP_DIMS).forEach((k) => {
+      const v = e[k];
+      if (v && v.length) parts.push(v.length === 1 ? String(v[0]) : EMP_LABEL[k].toLowerCase() + ': ' + v.length);
+    });
+    if (e.login.trim()) parts.push('логин ~ ' + e.login.trim());
+    if (e.heads) parts.push('только тим-лиды');
+    return parts.join(' · ') || 'выбранный срез';
   }
 
   const DEDUP = (n) => 1 / (1 + .16 * Math.log(1 + n));
@@ -180,6 +236,17 @@
       return v.length === 1 ? String(v[0]) : m.label.toLowerCase() + ': ' + v.length;
     });
     if (!pickCount()) {
+      /* Слева могли отфильтровать сотрудников — тогда «все отчёты» на
+         экране, но люди в них уже не все, и молчать об этом нельзя. */
+      if (empOn() || repFltOn()) {
+        return {
+          kind: 'mix', ids,
+          title: (repFltOn() ? U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов') +
+            ' по фильтру' : 'Все отчёты') + (empOn() ? ' · ' + cutTitle() : ''),
+          sub: (empOn() ? 'фильтр по сотрудникам ⟳ · на экране только их визиты'
+            : 'отобрано фильтрами слева · снять можно чипом сверху'),
+        };
+      }
       return {
         kind: 'all', ids, title: 'Все отчёты',
         sub: 'клик по строке слева добавляет условие; условия накапливаются',
@@ -211,7 +278,7 @@
     return {
       kind: 'mix', ids,
       title: parts.join(' · '),
-      sub: (hasCutPick() ? 'пересечение разрезов ⟳ · ' : '') +
+      sub: (hasPeople() ? 'пересечение разрезов ⟳ · ' : '') +
         U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов') + ' в выборе',
     };
   }
@@ -220,7 +287,7 @@
   function series() {
     const sl = selection();
     let rows;
-    if (sl.kind === 'all' && !hasCutPick()) {
+    if (sl.kind === 'all') {
       rows = OV.filter((r) => r.section === 'ts' && r.grain === S.grain && r.cut_key === 'all');
     } else if (sl.kind === 'rep') {
       rows = RP.filter((r) => r.section === 'rts' && r.grain === S.grain && r.dashboard_id === sl.ids[0]);
@@ -246,7 +313,7 @@
       }));
     }
     rows = rows.slice().sort((a, b) => a.bucket - b.bucket);
-    const k = hasCutPick() ? cutShare(sl.ids) : 1;
+    const k = hasPeople() ? cutShare(sl.ids) : 1;
     if (k === 1) return rows;
     return rows.map((r) => ({
       bucket: r.bucket,
@@ -263,7 +330,7 @@
   function kpiRow() {
     const sl = selection();
     let k;
-    if (sl.kind === 'all' && !hasCutPick()) {
+    if (sl.kind === 'all') {
       k = OV.find((r) => r.section === 'kpi' && r.grain === S.grain && r.cut_key === 'all');
     } else if (sl.kind === 'rep') {
       k = reportById(sl.ids[0]);
@@ -284,7 +351,7 @@
       };
     }
     if (!k) return k;
-    const sh = hasCutPick() ? cutShare(sl.ids) : 1;
+    const sh = hasPeople() ? cutShare(sl.ids) : 1;
     if (sh === 1) return k;
     const scale = (v) => (v == null ? v : Math.round(v * sh));
     return Object.assign({}, k, {
@@ -302,7 +369,7 @@
   function mauRow() {
     const sl = selection();
     let m;
-    if (sl.kind === 'all' && !hasCutPick()) {
+    if (sl.kind === 'all') {
       m = OV.find((r) => r.section === 'mau' && r.cut_key === 'all');
     } else if (sl.kind === 'rep') {
       m = RP.find((r) => r.section === 'rmau' && r.dashboard_id === sl.ids[0]);
@@ -317,7 +384,7 @@
       m = { users: Math.round(S_('users') * d), users_prev: Math.round(S_('users_prev') * d) };
     }
     if (!m) return m;
-    const sh = hasCutPick() ? cutShare(sl.ids) : 1;
+    const sh = hasPeople() ? cutShare(sl.ids) : 1;
     if (sh === 1) return m;
     return Object.assign({}, m, {
       users: Math.round(m.users * sh),
@@ -332,7 +399,7 @@
       bucket: fb, users: rows.filter((r) => r.freq_bucket === fb).reduce((a, b) => a + b.users, 0),
     }));
     let out;
-    if (sl.kind === 'all' && !hasCutPick()) {
+    if (sl.kind === 'all') {
       out = pick(OV.filter((r) => r.section === 'freq' && r.grain === S.grain && r.cut_key === 'all'));
     } else if (sl.kind === 'rep') {
       out = pick(RP.filter((r) => r.section === 'rfreq' && r.grain === S.grain && r.dashboard_id === sl.ids[0]));
@@ -345,7 +412,7 @@
       const raw = pick(RP.filter((r) => r.section === 'rfreq' && r.grain === S.grain && set[r.dashboard_id]));
       out = raw.map((r) => ({ bucket: r.bucket, users: Math.round(r.users * d) }));
     }
-    const sh = hasCutPick() ? cutShare(sl.ids) : 1;
+    const sh = hasPeople() ? cutShare(sl.ids) : 1;
     return sh === 1 ? out : out.map((r) => ({ bucket: r.bucket, users: Math.round(r.users * sh) }));
   }
 
@@ -578,18 +645,61 @@
           '<button data-grain="' + g + '"' + (g === S.grain ? ' class="on"' : '') + '>' + D.GRAINS[g].label + '</button>').join('') +
       '</div></div></div></div>';
 
-    h += grp('rep', 'Отчёты', (f.collection ? 1 : 0) + (f.owner ? 1 : 0) + (f.certified ? 1 : 0),
-      '<div class="ctl"><label>Коллекция ' + SRV + '</label>' +
-        U.dropdown('f-collection', f.collection,
-          [{ key: '', label: 'Все коллекции' }].concat(D.COLLECTIONS.map((c) => ({ key: c, label: c }))),
-          { open: S._dd === 'f-collection', label: 'Коллекция' }) + '</div>' +
-      '<div class="ctl"><label>Владелец ' + SRV + '</label>' +
-        U.dropdown('f-owner', f.owner,
-          [{ key: '', label: 'Все владельцы' }].concat(D.OWNERS.map((c) => ({ key: c, label: c }))),
-          { open: S._dd === 'f-owner', label: 'Владелец' }) + '</div>' +
+    /* --- Отчёты: что показываем --------------------------------------- */
+    const e = f.emp;
+    const items = (arr) => arr.map((v) => ({ key: v, label: v }));
+    const m = (id, val, opt) => U.multi(id, Object.assign({
+      value: val, open: S._mopen === id, query: S._mq[id] || '',
+    }, opt));
+
+    h += grp('rep', 'Отчёты',
+      (f.repName ? 1 : 0) + f.collection.length + f.owner.length + f.author.length + (f.certified ? 1 : 0),
+      '<div class="ctl"><label>Название отчёта</label>' +
+        '<input class="ftext" type="search" data-ftext="repName" placeholder="Найти отчёт" value="' +
+        U.esc(f.repName) + '"></div>' +
+      '<div class="ctl"><label>Коллекции ' + SRV + '</label>' +
+        m('f-collection', f.collection, { items: items(D.COLLECTIONS), allLabel: 'Все коллекции',
+          label: 'Коллекции', search: 'Найти коллекцию' }) + '</div>' +
+      '<div class="ctl"><label>Владельцы ' + SRV + '</label>' +
+        m('f-owner', f.owner, { items: items(D.OWNERS), allLabel: 'Все владельцы',
+          label: 'Владельцы', search: 'Найти владельца' }) + '</div>' +
+      '<div class="ctl"><label>Авторы ' + SRV +
+        '<span class="info" data-tip="' + U.esc(U.tipHtml({ text: 'Кто отчёт собрал. С владельцем совпадает не всегда: автор ушёл — отчёт остался.' })) + '">i</span></label>' +
+        m('f-author', f.author, { items: items(D.OWNERS), allLabel: 'Все авторы',
+          label: 'Авторы', search: 'Найти автора' }) + '</div>' +
       swt('published', 'Только опубликованные', f.published) +
       swt('actual', 'Только актуальные', f.actual) +
       swt('certified', 'Только сертифицированные', f.certified));
+
+    /* --- Сотрудники: кто ходит ------------------------------------------
+       Второй вход в те же цифры. «Отчёты» отвечают на «что смотрят»,
+       «Сотрудники» — на «кто смотрит»; вместе они дают пересечение,
+       которого в витрине нет, поэтому оно помечено ⟳. */
+    h += grp('emp', 'Сотрудники',
+      e.lvl3.length + e.lvl4.length + EMP_DIMS.reduce((a, k) => a + e[k].length, 0) +
+        (e.login.trim() ? 1 : 0) + (e.heads ? 1 : 0),
+      '<div class="ctl"><label>Логин или ФИО</label>' +
+        '<input class="ftext" type="search" data-ftext="emp.login" placeholder="Найти сотрудника" value="' +
+        U.esc(e.login) + '"></div>' +
+      '<div class="ctl"><label>Управленческая структура ' + SRV + '</label>' +
+        U.multi('f-org', {
+          value: e.lvl4, groupValue: e.lvl3, open: S._mopen === 'f-org', query: S._mq['f-org'] || '',
+          allLabel: 'Вся компания', label: 'Управленческая структура', search: 'Найти блок или департамент',
+          groups: D.CUTS.lvl3.vals.map((b) => ({
+            key: b, label: b, items: (D.ORG_TREE[b] || []).map((x) => ({ key: x[0], label: x[0] })),
+          })),
+        }) + '</div>' +
+      '<div class="ctl"><label>Стрим ' + SRV + '</label>' +
+        m('f-stream', e.stream, { items: items(D.CUTS.stream.vals), allLabel: 'Все стримы',
+          label: 'Стрим', search: 'Найти стрим' }) + '</div>' +
+      '<div class="ctl"><label>Специализация ' + SRV + '</label>' +
+        m('f-spec', e.spec, { items: items(D.CUTS.spec.vals), allLabel: 'Все специализации',
+          label: 'Специализация', search: 'Найти специализацию' }) + '</div>' +
+      '<div class="ctl"><label>AD-группа ' + SRV + '</label>' +
+        m('f-adgroup', e.adgroup, { items: items(D.AD_GROUPS), allLabel: 'Все группы',
+          label: 'AD-группа', search: 'Найти группу' }) + '</div>' +
+      swt('emp.heads', 'Только тим-лиды', e.heads,
+        'Руководитель команды по управленческой структуре. Смотрят отчётность иначе: реже, но регулярнее.'));
 
     h += grp('opt', 'Опции', f.excludeOwners ? 1 : 0,
       swt('excludeOwners', 'Исключить владельцев из просмотров', f.excludeOwners,
@@ -1097,7 +1207,7 @@
       group('split main', [
         zone('catalog', () => U.panel({
           cls: 'split-l', title: 'Каталог', sub: 'клик по строке задаёт контекст вкладки',
-          right: U.searchBox('repQ', S.mode === 'report' ? 'Отчёт, коллекция, владелец'
+          right: U.searchBox('repQ', S.mode === 'report' ? 'Найти в каталоге'
             : 'Найти: ' + MODE(S.mode).one.toLowerCase(), S.repQuery),
           under: cutBar(), bodyCls: 'tbl-wrap', body: table,
         })),
@@ -1141,7 +1251,7 @@
          приходит от своего блока и хочет увидеть, чем блок пользуется.
          Зона существует всегда (пустая ничего не занимает), чтобы её
          появление не пересобирало соседние графики. */
-      zone('cutreps', () => (hasCutPick() ? cutReportsPanel() : '')),
+      zone('cutreps', () => (hasPeople() ? cutReportsPanel() : '')),
 
       group('split ret', [
         zone('ret', () => U.panel({
@@ -1730,9 +1840,21 @@
             ? ' <b>На экране срез: ' + U.esc(S.audUnit.val) + '</b> — ' + U.nf(st.audience) + ' ' +
               U.plural(st.audience, 'человек', 'человека', 'человек') + ' из них.'
             : '') + '</div>' +
+        /* Фильтр сотрудников слева сужает ВИЗИТЫ на вкладке «Отчёты», но
+           целевую аудиторию здесь задаёт конструктор. Молча игнорировать
+           набранные слева условия нельзя — человек решит, что фильтр
+           сломался. Поэтому говорим прямо и предлагаем их перенести. */
+        (fltTransferable().length
+          ? '<div class="as-x mut">Слева набран фильтр по сотрудникам (' +
+              fltTransferable().map((k) => U.esc(EMP_LABEL[k].toLowerCase())).join(', ') +
+              '). Здесь он не действует: целевую аудиторию задаёт конструктор.</div>'
+          : '') +
         '<div class="sb-act">' +
           '<button class="btn' + (def.mode === 'custom' ? '' : ' primary') + '" id="audCfgOpen">' +
             (def.mode === 'custom' ? 'Изменить условия' : 'Настроить целевую аудиторию') + '</button>' +
+          (fltTransferable().length
+            ? '<button class="btn ghost" id="audFromFlt">Собрать ЦА из фильтра слева</button>'
+            : '') +
           (def.mode === 'custom'
             ? '<button class="btn ghost" id="audCfgReset">Вернуть «как роздан доступ»</button>'
             : '') +
@@ -1740,6 +1862,10 @@
       '</div>' +
       '</div>' + audienceModal();
   }
+
+  /* Какие условия фильтра сотрудников конструктор ЦА умеет повторить */
+  const fltTransferable = () => ['lvl3', 'lvl4'].concat(EMP_DIMS)
+    .filter((k) => S.filters.emp[k].length);
 
   /* Конструктор целевой аудитории. Те же поля, что в mdm_employee_daily_proteus:
      ничего сверх витрины накликать нельзя. */
@@ -1861,8 +1987,25 @@
       if (S.audUnit) chips.push(U.chip(D.CUTS[S.audUnit.key].label + ': ' + S.audUnit.val, 'audUnit'));
       if (S.audSeg) chips.push(U.chip('Сегмент: ' + S.audSeg, 'audSeg'));
     }
-    if (S.filters.collection) chips.push(U.chip('Коллекция: ' + S.filters.collection, 'collection'));
-    if (S.filters.owner) chips.push(U.chip('Владелец: ' + S.filters.owner, 'owner'));
+    /* Фильтры слева тоже показываем чипами: иначе непонятно, почему в
+       каталоге восемь отчётов вместо сорока — левая панель бывает свёрнута. */
+    const fchip = (key, one, arr) => {
+      if (!arr.length) return;
+      /* «Блок: Блок «Розница»» — тавтология: значение уже называет уровень */
+      const lbl = arr.length > 1 ? one + ': ' + arr.length
+        : (String(arr[0]).toLowerCase().indexOf(one.toLowerCase()) === 0 ? arr[0] : one + ': ' + arr[0]);
+      chips.push(U.chip(lbl, 'flt:' + key));
+    };
+    if (S.filters.repName) chips.push(U.chip('Отчёт ~ ' + S.filters.repName, 'flt:repName'));
+    fchip('collection', 'Коллекции', S.filters.collection);
+    fchip('owner', 'Владельцы', S.filters.owner);
+    fchip('author', 'Авторы', S.filters.author);
+    const emp = S.filters.emp;
+    if (emp.login.trim()) chips.push(U.chip('Сотрудник ~ ' + emp.login.trim(), 'flt:emp.login'));
+    fchip('emp.lvl3', EMP_LABEL.lvl3, emp.lvl3);
+    fchip('emp.lvl4', EMP_LABEL.lvl4, emp.lvl4);
+    EMP_DIMS.forEach((k) => fchip('emp.' + k, EMP_LABEL[k], emp[k]));
+    if (emp.heads) chips.push(U.chip('Только тим-лиды', 'flt:emp.heads'));
     if (S.filters.certified) chips.push(U.chip('Только сертифицированные', 'certified'));
     return '<div class="page-h"><div class="ph-row"><h2>' + U.esc(title) + '</h2></div>' +
       (text ? '<p>' + text + '</p>' : '') +
@@ -1911,10 +2054,43 @@
     S.picks.report = pickList('report').filter((id) => !!reportById(id));
   }
 
+  /* Куда пишет мультивыбор. Иерархия управленческой структуры — один
+     элемент на два списка: родители в lvl3, листья в lvl4. */
+  const M_FLT = {
+    'f-collection': ['collection'], 'f-owner': ['owner'], 'f-author': ['author'],
+    'f-org': ['emp', 'lvl4'], 'f-stream': ['emp', 'stream'],
+    'f-spec': ['emp', 'spec'], 'f-adgroup': ['emp', 'adgroup'],
+  };
+  const M_GRP = { 'f-org': ['emp', 'lvl3'] };
+  function mArr(id, isGroup) {
+    const path = (isGroup ? M_GRP : M_FLT)[id];
+    if (!path) return null;
+    return path.length === 1 ? S.filters[path[0]] : S.filters[path[0]][path[1]];
+  }
+  /* Ключ фильтра может быть вложенным: emp.heads, emp.login */
+  function setFlt(key, val) {
+    const p = key.split('.');
+    if (p.length === 1) S.filters[p[0]] = val;
+    else S.filters[p[0]][p[1]] = val;
+  }
+
   /* ============================== События ================================ */
   document.addEventListener('click', (e) => {
     const t = e.target;
     const cl = (sel) => t.closest ? t.closest(sel) : null;
+
+    /* Мультивыбор: раскрыть, закрыть, очистить */
+    const mT = cl('[data-mtoggle]');
+    if (mT) { const id = mT.dataset.mtoggle; S._mopen = S._mopen === id ? null : id; render(true); return; }
+    const mC = cl('[data-mclear]');
+    if (mC) {
+      const id = mC.dataset.mclear;
+      const a = mArr(id, false); if (a) a.length = 0;
+      const g = mArr(id, true); if (g) g.length = 0;
+      prunePicks(); render(true); return;
+    }
+    /* Клик по самому списку не должен его закрывать */
+    if (S._mopen && !cl('.scopepick.mini')) { S._mopen = null; render(true); return; }
 
     /* Свои выпадающие списки: открыть/закрыть и выбрать значение */
     const ddT = cl('[data-ddtoggle]');
@@ -1928,8 +2104,6 @@
       const id = ddP.dataset.ddpick, v = ddP.dataset.ddval;
       S._dd = null;
       if (id === 'audCut') { S.audCut = v; S.audUnit = null; }
-      else if (id === 'f-collection') { S.filters.collection = v; }
-      else if (id === 'f-owner') { S.filters.owner = v; }
       prunePicks();
       render(true); return;
     }
@@ -1972,6 +2146,16 @@
     if (au) {
       const v = au.dataset.audunit;
       S.audUnit = (S.audUnit && S.audUnit.val === v) ? null : { key: au.dataset.audkey || S.audCut, val: v };
+      render(true); return;
+    }
+    /* Перенос фильтра сотрудников в конструктор ЦА. Переносится только то,
+       что конструктор умеет: структурные разрезы. Поиск по логину и
+       «только тим-лиды» условиями ЦА не являются. */
+    if (t.id === 'audFromFlt') {
+      const flt = {};
+      fltTransferable().forEach((k) => { flt[k] = S.filters.emp[k].slice(); });
+      S.audDef.mode = 'custom'; S.audDef.filters = flt; S.audDef.draft = flt;
+      S.audUnit = null; S.audSeg = null;
       render(true); return;
     }
     if (t.id === 'audCfgOpen') {
@@ -2037,6 +2221,12 @@
       if (k.indexOf('pick:') === 0) {
         const parts = k.split(':'); const dim = parts[1]; const val = parts.slice(2).join(':');
         S.picks[dim] = pickList(dim).filter((x) => String(x) !== val);
+      } else if (k.indexOf('flt:') === 0) {
+        const fk = k.slice(4);
+        const p2 = fk.split('.');
+        const cur = p2.length === 1 ? S.filters[p2[0]] : S.filters[p2[0]][p2[1]];
+        setFlt(fk, Array.isArray(cur) ? [] : (typeof cur === 'boolean' ? false : ''));
+        prunePicks();
       }
       else if (k === 'freqSel') S.freqSel = null;
       else if (k === 'audSeg') S.audSeg = null;
@@ -2085,7 +2275,12 @@
       S.repQuery = ''; S.audQuery = ''; S.audSeg = null; S.freqSel = null;
       S.audUnit = null; S.audDef = { mode: 'access', filters: {}, draft: {} };
       S._audCfg = false; S.scopeQuery = ''; S.audScope = { ids: [] }; S._scopeOpen = false;
-      S.filters = { collection: '', owner: '', published: true, actual: true, certified: false, excludeOwners: true };
+      S.filters = {
+        repName: '', collection: [], owner: [], author: [],
+        published: true, actual: true, certified: false, excludeOwners: true,
+        emp: { lvl3: [], lvl4: [], stream: [], spec: [], adgroup: [], login: '', heads: false },
+      };
+      S._mq = {}; S._mopen = null;
       render(); return;
     }
     if (t.id === 'btnHow') { document.getElementById('howModal').hidden = false; return; }
@@ -2129,8 +2324,19 @@
       S.audScope.ids = cur;
       S.audUnit = null; render(true); return;
     }
+    /* Мультивыбор: лист и родитель иерархии живут в разных списках, но
+       переключаются одинаково. */
+    if (t.dataset && (t.dataset.mval || t.dataset.mgrp)) {
+      const arr = mArr(t.dataset.mval || t.dataset.mgrp, !!t.dataset.mgrp);
+      if (!arr) return;
+      const v = t.dataset.mkey;
+      const i = arr.indexOf(v);
+      if (t.checked && i < 0) arr.push(v);
+      if (!t.checked && i >= 0) arr.splice(i, 1);
+      prunePicks(); render(true); return;
+    }
     if (t.dataset && t.dataset.f) {
-      S.filters[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value;
+      setFlt(t.dataset.f, t.type === 'checkbox' ? t.checked : t.value);
       // выбранный отчёт мог выпасть из фильтра — тогда снимаем выбор
       prunePicks();
       render(true); return;
@@ -2140,11 +2346,40 @@
   let qTimer = null;
   document.addEventListener('input', (e) => {
     const t = e.target;
+    const v = t.value;
+
+    /* Поиск внутри раскрытого мультивыбора. Фокус возвращаем по data-атрибуту:
+       id у этих полей нет, они живут внутри своего списка. */
+    if (t.dataset && t.dataset.msearch) {
+      const mid = t.dataset.msearch;
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => {
+        S._mq[mid] = v;
+        render(true);
+        const el = document.querySelector('[data-msearch="' + mid + '"]');
+        if (el) { el.focus(); el.setSelectionRange(v.length, v.length); }
+      }, 260);
+      return;
+    }
+    /* Текстовые фильтры слева: название отчёта, логин сотрудника */
+    if (t.dataset && t.dataset.ftext) {
+      const fk = t.dataset.ftext;
+      clearTimeout(qTimer);
+      qTimer = setTimeout(() => {
+        setFlt(fk, v);
+        prunePicks();
+        render(true);
+        const el = document.querySelector('[data-ftext="' + fk + '"]');
+        if (el) { el.focus(); el.setSelectionRange(v.length, v.length); }
+      }, 260);
+      return;
+    }
+
     const FIELDS = { repQ: 'repQuery', audQ: 'audQuery', scopeQ: 'scopeQuery', dimQ: '_dimQuery' };
     const key = FIELDS[t.id];
     if (!key) return;
     clearTimeout(qTimer);
-    const id = t.id, v = t.value;
+    const id = t.id;
     qTimer = setTimeout(() => {
       S[key] = v;
       render(true);
@@ -2155,6 +2390,7 @@
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (S._mopen) { S._mopen = null; render(true); return; }
       if (S._dd) { S._dd = null; render(true); return; }
       if (S._audCfg) { S._audCfg = false; render(true); return; }
       document.getElementById('howModal').hidden = true;

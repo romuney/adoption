@@ -116,6 +116,14 @@
     return out;
   }
 
+  /* MAU считается за последний ЗАКРЫТЫЙ месяц. Текущий месяц в витрине
+     неполный (данные на MAX_DATE), и брать его — значит каждый день
+     показывать разное число и сравнивать огрызок с целым месяцем.
+     Отсюда два якоря: сам месяц и предыдущий, с которым сравниваем. */
+  const M_BUCKETS = buckets('m');
+  const MAU_BUCKET = M_BUCKETS[M_BUCKETS.length - 2];
+  const MAU_PREV_BUCKET = M_BUCKETS[M_BUCKETS.length - 3];
+
   /* Базовый уровень активности: рост + сезонность + провалы на выходных */
   function baseUsers(grain, idx, n) {
     const g = { d: 1180, w: 2350, m: 3450, q: 4900 }[grain];
@@ -247,21 +255,23 @@
     });
   });
 
-  /* MAU — уникальные пользователи за последний закрытый месяц. Отдельная
-     строка, а не производная от периода: её смысл в том, чтобы быть
-     сравнимой всегда, какой бы период ни выбрали на экране. В SQL это тот
-     же COUNT(DISTINCT user_id) с фиксированным окном в месяц. */
-  Object.keys(GRAINS).forEach(() => {});
+  /* MAU — уникальные пользователи за последний ЗАКРЫТЫЙ месяц. Это НЕ
+     отдельный ряд чисел: это ровно тот столбик месячной динамики, и берётся
+     он оттуда же. Раньше MAU считался как доля от годовых уникальных
+     пользователей — красивое число, которого не было ни в одном месяце на
+     графике. Теперь переключите период на 12 месяцев, найдите месяц из
+     подписи карточки — увидите ту же цифру. */
   (function buildMau() {
-    const m = ds_overview.filter((r) => r.section === 'kpi' && r.grain === 'm');
-    m.forEach((r) => {
-      ds_overview.push({
-        section: 'mau', cut_key: r.cut_key, cut_val: r.cut_val,
-        /* Месячная аудитория — доля от годовой: за год людей набирается
-           больше, чем бывает в любом отдельном месяце. */
-        users: Math.round(r.users * 0.46 * jit(.05)),
-        users_prev: Math.round(r.users * 0.46 * jit(.05) / (1 + .03 * jit(.6))),
-      });
+    const at = {};
+    ds_overview.forEach((r) => {
+      if (r.section !== 'ts' || r.grain !== 'm') return;
+      if (r.bucket !== MAU_BUCKET && r.bucket !== MAU_PREV_BUCKET) return;
+      const k = r.cut_key + '|' + r.cut_val;
+      (at[k] = at[k] || { cut_key: r.cut_key, cut_val: r.cut_val })[
+        r.bucket === MAU_BUCKET ? 'users' : 'users_prev'] = r.users;
+    });
+    Object.keys(at).forEach((k) => {
+      ds_overview.push(Object.assign({ section: 'mau', bucket: MAU_BUCKET }, at[k]));
     });
   })();
 
@@ -367,13 +377,18 @@
     });
   });
 
+  /* То же для отчётов: MAU отчёта — его столбик за последний закрытый
+     месяц в месячной динамике, а не производная от годовой цифры. */
   (function buildReportMau() {
-    ds_reports.filter((r) => r.section === 'report' && r.grain === 'm').forEach((r) => {
-      ds_reports.push({
-        section: 'rmau', dashboard_id: r.dashboard_id,
-        users: Math.max(1, Math.round(r.users * 0.46 * jit(.06))),
-        users_prev: Math.max(1, Math.round(r.users * 0.46 * jit(.06) / (1 + .04 * jit(.6)))),
-      });
+    const at = {};
+    ds_reports.forEach((r) => {
+      if (r.section !== 'rts' || r.grain !== 'm') return;
+      if (r.bucket !== MAU_BUCKET && r.bucket !== MAU_PREV_BUCKET) return;
+      (at[r.dashboard_id] = at[r.dashboard_id] || { dashboard_id: r.dashboard_id })[
+        r.bucket === MAU_BUCKET ? 'users' : 'users_prev'] = r.users;
+    });
+    Object.keys(at).forEach((id) => {
+      ds_reports.push(Object.assign({ section: 'rmau', bucket: MAU_BUCKET }, at[id]));
     });
   })();
 
@@ -433,11 +448,16 @@
           });
 
           if (grain === 'm') {
-            const mau = ds_reports.filter((r) => r.section === 'rmau' && ids[r.dashboard_id]);
+            /* MAU группы — её же столбик gts за последний закрытый месяц:
+               берём из только что построенного ряда, чтобы карточка и
+               график не могли разойтись. */
+            const at = ds_reports.filter((r) => r.section === 'gts' && r.grain === 'm' &&
+              r.group_key === gk && r.group_val === gv &&
+              (r.bucket === MAU_BUCKET || r.bucket === MAU_PREV_BUCKET));
+            const pick = (b) => { const x = at.find((r) => r.bucket === b); return x ? x.users : 0; };
             ds_reports.push({
-              section: 'gmau', group_key: gk, group_val: gv,
-              users: Math.round(mau.reduce((a, b) => a + b.users, 0) * dedup),
-              users_prev: Math.round(mau.reduce((a, b) => a + b.users_prev, 0) * dedup),
+              section: 'gmau', group_key: gk, group_val: gv, bucket: MAU_BUCKET,
+              users: pick(MAU_BUCKET), users_prev: pick(MAU_PREV_BUCKET),
             });
           }
           const fr = (idxFrq[grain] || []).filter((r) => ids[r.dashboard_id]);
@@ -928,7 +948,7 @@
     scopeUsers, scopeVisitors, visitorsOf, reportsForPeople,
     reportCohorts, globalCohorts,
     buckets,
-    HC_TOTAL: HC_TOTAL_REF,
+    HC_TOTAL: HC_TOTAL_REF, MAU_BUCKET, MAU_PREV_BUCKET,
     OWNERS, COLLECTIONS, AD_GROUPS, GROUP_KEYS, ORG_TREE, ORG_PARENT,
   };
 })(window);

@@ -95,7 +95,12 @@
     borderColor: '#e7e9ee',
     borderWidth: 1,
     padding: [7, 10],
-    extraCssText: 'border-radius:9px;box-shadow:0 10px 30px rgba(24,33,50,.18),0 2px 6px rgba(24,33,50,.08);',
+    /* ECharts ставит контейнеру white-space:nowrap — и подпись под
+       разделителем уезжает за правый край плашки, потому что переноситься
+       ей нечем. Возвращаем обычный перенос: max-width на содержимом тогда
+       начинает работать, а строки «метка — значение» держат себя сами. */
+    extraCssText: 'border-radius:9px;white-space:normal;' +
+      'box-shadow:0 10px 30px rgba(24,33,50,.18),0 2px 6px rgba(24,33,50,.08);',
     textStyle: { fontFamily: FONT, fontSize: 11.5, color: '#3a3f4a', fontWeight: 500 },
     confine: true,      // не вылезать за пределы канвы
   };
@@ -109,7 +114,8 @@
       ? '<i style="display:inline-block;width:10px;height:9px;border-radius:3px;background:' + color + ';margin-right:8px;flex:0 0 auto"></i>'
       : '<i style="display:inline-block;width:10px;margin-right:8px;flex:0 0 auto"></i>';
     return '<div style="display:flex;align-items:center;gap:7px;margin-top:3px">' + mk +
-      '<span style="font-size:11px;font-weight:500;color:#8a909c">' + U.esc(label) + '</span>' +
+      '<span style="font-size:11px;font-weight:500;color:#8a909c;white-space:nowrap;' +
+      'overflow:hidden;text-overflow:ellipsis">' + U.esc(label) + '</span>' +
       '<b style="margin-left:auto;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:' +
       (muted ? '#8a909c' : '#1f1f1f') + '">' + U.esc(value) + '</b></div>';
   }

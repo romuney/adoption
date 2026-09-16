@@ -1118,15 +1118,26 @@
        выбранного периода. Всё остальное на экране меняется вместе с
        периодом, и не за что зацепиться, когда период переключают. */
     const mau = mauRow();
+    /* Месяц называем прямо в карточке. Без имени MAU — число из ниоткуда:
+       на графике месячной динамики его не найти, потому что непонятно, в
+       каком столбике искать. С именем — проверяемо в два клика. */
+    const mauM = U.monthName(D.MAU_BUCKET);
+    const mauPrevM = U.monthName(D.MAU_PREV_BUCKET);
     const fifth = U.kpi({
-      label: 'MAU', value: mau ? U.nf(mau.users) : '—',
+      label: 'MAU · ' + mauM, value: mau ? U.nf(mau.users) : '—',
       hint: {
-        title: 'Месячная аудитория',
-        text: 'Уникальные пользователи за последний закрытый месяц.',
-        note: 'Не зависит от периода на экране: её можно сравнивать между любыми состояниями отчёта.',
+        title: 'Месячная аудитория за ' + mauM,
+        text: 'Уникальные пользователи за последний ЗАКРЫТЫЙ месяц — это ровно тот столбик, ' +
+          'что стоит на графике динамики, если переключить период на 12 месяцев.',
+        rows: [
+          { label: mauM, value: mau ? U.nf(mau.users) : '—', color: CH.C.ret },
+          { label: mauPrevM, value: mau ? U.nf(mau.users_prev) : '—', dash: true, color: CH.C.bench },
+        ],
+        note: 'Текущий месяц не берём: он неполный, и цифра менялась бы каждый день. ' +
+          'От периода на экране MAU не зависит — её можно сравнивать между любыми состояниями отчёта.',
       },
-      delta: mau ? U.delta(dPct(mau.users, mau.users_prev), { vs: 'к пред. месяцу' }) : '',
-      sub: 'предыдущий месяц: <b>' + (mau ? U.nf(mau.users_prev) : '—') + '</b>',
+      delta: mau ? U.delta(dPct(mau.users, mau.users_prev), { vs: 'к ' + mauPrevM }) : '',
+      sub: mauPrevM + ': <b>' + (mau ? U.nf(mau.users_prev) : '—') + '</b>',
     });
 
     const table = S.mode === 'report' ? reportTable()

@@ -683,9 +683,16 @@
       '</button>' + body + '</div>';
   }
 
+  /* «август 2026» — так месяц называют вслух. Нужен там, где число надо
+     потом найти глазами на графике: «MAU» без имени месяца проверить нельзя. */
+  function monthName(ts) {
+    const d = new Date(ts);
+    return MONTHS_FULL[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+
   global.UI = {
     THIN, MINUS, esc, nf, pct, plural, compact, signed, days,
-    fmtDate, axisLabel, bucketTitle, isoWeek, MONTHS, MONTHS_FULL,
+    fmtDate, axisLabel, bucketTitle, isoWeek, MONTHS, MONTHS_FULL, monthName,
     prevLabel, periodLabel, prevPeriodLabel,
     tip, tipHtml, delta, kpi, kpis, barTable, matrix, cohortTable, CT_BASES, funnelSvg, dropdown, observations, panel,
     chip, benchChip, searchBox, multi,

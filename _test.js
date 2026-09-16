@@ -358,7 +358,11 @@ console.log('\nАудитория: область и целевая аудито
   ok(viewHtml().indexOf('data-auddim') >= 0, 'конструктор ЦА не отрисован');
   ok(viewHtml().indexOf('доступ к области есть у') >= 0, 'конструктор не показывает, у скольких есть доступ');
 
-  err = fire('[data-auddim]', { auddim: 'spec', audval: 'Аналитик' });
+  /* Условие ставится чекбоксом в списке значений разреза. Раньше здесь
+     кликали по селектору 'button[data-auddim]' мимо, а проверка всё равно
+     проходила: конструктор подставляет подсказку при открытии, и она
+     случайно делала ЦА настроенной. Теперь кликаем то, что кликает человек. */
+  err = fireChange({ auddim: 'spec', audval: 'Аналитик' }, true);
   ok(!err, 'выбор условия ЦА: ' + (err && err.message));
 
   const applyTarget = { closest() { return null; }, id: 'audCfgApply', dataset: {}, matches() { return false; } };
@@ -519,6 +523,59 @@ console.log('\nФильтры слева');
   ok(usersNow() === base, 'сброс не вернул исходные цифры');
   ok(viewHtml().indexOf('data-unchip="flt:emp.lvl3"') < 0, 'сброс не снял фильтр по структуре');
   console.log('· сброс → ок');
+})();
+
+/* MAU — не отдельное число, а столбик месячной динамики за последний
+   ЗАКРЫТЫЙ месяц. Если это перестанет сходиться, карточку нельзя будет
+   проверить глазами по графику — ровно та жалоба, из-за которой это и
+   переделывалось. */
+console.log('\nMAU сходится с месячной динамикой');
+(function () {
+  const D = ctx.PA_DATA;
+  const ms = D.buckets('m');
+  ok(D.MAU_BUCKET === ms[ms.length - 2], 'MAU считается не за предпоследний месяц');
+  ok(D.MAU_PREV_BUCKET === ms[ms.length - 3], 'предыдущий месяц MAU выбран неверно');
+  ok(D.MAU_BUCKET !== ms[ms.length - 1], 'MAU берёт текущий, ещё не закрытый месяц');
+
+  const at = (rows, pred, bucket) => {
+    const r = rows.find((x) => pred(x) && x.bucket === bucket);
+    return r ? r.users : null;
+  };
+
+  /* Весь Proteus */
+  const mAll = D.ds_overview.find((r) => r.section === 'mau' && r.cut_key === 'all');
+  ok(mAll, 'нет строки MAU по всему Proteus');
+  ok(mAll.users === at(D.ds_overview, (r) => r.section === 'ts' && r.grain === 'm' && r.cut_key === 'all', D.MAU_BUCKET),
+    'MAU всего Proteus не равен столбику месячной динамики');
+  ok(mAll.users_prev === at(D.ds_overview, (r) => r.section === 'ts' && r.grain === 'm' && r.cut_key === 'all', D.MAU_PREV_BUCKET),
+    'предыдущий MAU всего Proteus не равен своему столбику');
+
+  /* Каждый отчёт */
+  let badRep = 0;
+  D.reportMeta.forEach((m) => {
+    const mr = D.ds_reports.find((r) => r.section === 'rmau' && r.dashboard_id === m.dashboard_id);
+    const ts = at(D.ds_reports, (r) => r.section === 'rts' && r.grain === 'm' && r.dashboard_id === m.dashboard_id, D.MAU_BUCKET);
+    if (!mr || mr.users !== ts) badRep++;
+  });
+  ok(badRep === 0, badRep + ' отчётов: MAU не равен столбику своей месячной динамики');
+
+  /* Каждая группа */
+  let badGrp = 0;
+  D.ds_reports.filter((r) => r.section === 'gmau').forEach((g) => {
+    const ts = at(D.ds_reports, (r) => r.section === 'gts' && r.grain === 'm' &&
+      r.group_key === g.group_key && r.group_val === g.group_val, D.MAU_BUCKET);
+    if (g.users !== ts) badGrp++;
+  });
+  ok(badGrp === 0, badGrp + ' групп: MAU не равен столбику своей месячной динамики');
+
+  /* И это видно на экране: карточка называет месяц, а не «последний закрытый» */
+  fireTab('reports');
+  resetPicks();
+  const html = viewHtml();
+  ok(html.indexOf('MAU · ') >= 0, 'карточка MAU не называет месяц');
+  ok(html.indexOf(ctx.UI.nf(mAll.users)) >= 0, 'числа MAU нет на экране');
+  console.log('· ' + new Date(D.MAU_BUCKET).toISOString().slice(0, 7) +
+    ' → карточка и график дают одно число (' + ctx.UI.nf(mAll.users) + ')');
 })();
 
 console.log('\n' + (fails ? fails + ' проверок провалено' : 'Все проверки пройдены'));

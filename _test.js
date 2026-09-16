@@ -158,6 +158,13 @@ function fire(sel, dataset) {
   try { clickHandlers.forEach((h) => h({ target })); } catch (e) { err = e; }
   return err;
 }
+/* Выбор накопительный и сам не гаснет — между блоками сбрасываем его
+   кнопкой «сбросить», иначе следующий блок стартует с чужими условиями. */
+function resetPicks() {
+  const target = { closest() { return null; }, id: 'fltReset', dataset: {}, matches() { return false; } };
+  try { clickHandlers.forEach((h) => h({ target })); } catch (e) { /* фильтров нет — ок */ }
+}
+
 fireTab('reports');
 [['report', null], ['collection', 'Розница'], ['owner', 'a.petrova'],
  ['lvl3', 'Блок «Технологии»'], ['spec', 'Аналитик']].forEach(([mode, val]) => {
@@ -174,6 +181,7 @@ fireTab('reports');
 /* Выбор конкретного отчёта */
 console.log('\nВыбор отчёта');
 (function () {
+  resetPicks();
   fire('[data-mode]', { mode: 'report' });
   const id = ctx.PA_DATA.reportMeta[0].dashboard_id;
   chartOptions.length = 0;
@@ -236,6 +244,7 @@ console.log('\nШирокая AD-группа');
 console.log('\nЧастота визитов как кросс-фильтр');
 (function () {
   fireTab('reports');
+  resetPicks();
   fire('[data-mode]', { mode: 'report' });
   ['1 день', '8–15 дней', '16+ дней'].forEach((fb) => {
     chartOptions.length = 0;
@@ -380,6 +389,58 @@ console.log('\nАудитория: область и целевая аудито
   ok(viewHtml().indexOf('Сегмент: Постоянный') >= 0, 'нет чипа снятия сегмента');
   fire('[data-seg]', { seg: 'Постоянный' });
   console.log('· кросс-фильтры разреза и сегмента → ок');
+})();
+
+/* Накопительный выбор: условия из разных разрезов складываются, переключение
+   разреза ничего не теряет, повторный клик снимает своё условие. */
+console.log('\nНакопительный выбор в каталоге');
+(function () {
+  fireTab('reports');
+  resetPicks();
+  const D = ctx.PA_DATA;
+  const id = D.reportMeta[0].dashboard_id;
+  const nm = D.reportMeta[0].dashboard_nm;
+
+  fire('[data-mode]', { mode: 'report' });
+  let err = fire('[data-rep]', { rep: String(id) });
+  ok(!err, 'выбор отчёта: ' + (err && err.message));
+  ok(viewHtml().indexOf('Отчёт: ' + nm) >= 0, 'нет чипа выбранного отчёта');
+
+  /* Главное: переключение разреза НЕ сбрасывает уже набранное */
+  err = fire('[data-mode]', { mode: 'collection' });
+  ok(!err, 'переключение разреза: ' + (err && err.message));
+  let html = viewHtml();
+  ok(html.indexOf('Отчёт: ' + nm) >= 0, 'выбор отчёта потерян при переключении разреза');
+
+  /* И добавление второго условия работает как пересечение */
+  const coll = D.reportMeta[0].collection;
+  err = fire('[data-slice]', { slice: 'collection', val: coll });
+  ok(!err, 'выбор коллекции: ' + (err && err.message));
+  html = viewHtml();
+  ok(html.indexOf('Отчёт: ' + nm) >= 0, 'отчёт пропал после выбора коллекции');
+  ok(html.indexOf('Коллекция: ' + coll) >= 0, 'нет чипа выбранной коллекции');
+  ok(html.indexOf('<span class="sub-cnt">1</span>') >= 0, 'нет счётчика условий на вкладке разреза');
+  ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке при накопительном выборе');
+
+  /* Людской разрез поверх отчётного — пересечение, помеченное ⟳ */
+  err = fire('[data-mode]', { mode: 'lvl3' });
+  err = err || fire('[data-slice]', { slice: 'lvl3', val: D.CUTS.lvl3.vals[0] });
+  ok(!err, 'выбор подразделения: ' + (err && err.message));
+  html = viewHtml();
+  ok(html.indexOf('Отчёт: ' + nm) >= 0, 'отчёт пропал после выбора подразделения');
+  ok(html.indexOf('Что смотрит') >= 0, 'нет панели «что смотрит срез»');
+  ok(html.indexOf('NaN') < 0 && html.indexOf('undefined') < 0, 'мусор в разметке при пересечении разрезов');
+
+  /* Повторный клик снимает своё условие и не трогает чужие */
+  err = fire('[data-slice]', { slice: 'lvl3', val: D.CUTS.lvl3.vals[0] });
+  ok(!err, 'снятие подразделения: ' + (err && err.message));
+  html = viewHtml();
+  ok(html.indexOf('Отчёт: ' + nm) >= 0, 'снятие подразделения задело отчёт');
+  ok(html.indexOf('Что смотрит') < 0, 'панель среза осталась после снятия');
+
+  resetPicks();
+  ok(viewHtml().indexOf('Отчёт: ' + nm) < 0, 'сброс не очистил накопленный выбор');
+  console.log('· накопление, переключение разреза, снятие по одному → ок');
 })();
 
 console.log('\n' + (fails ? fails + ' проверок провалено' : 'Все проверки пройдены'));

@@ -290,6 +290,11 @@ button{font-family:inherit}
   display:inline-flex;align-items:center;gap:7px;transition:background .15s,color .15s}
 .sub-tab:hover{color:var(--ink2)}
 .sub-tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+/* Цифра набранных условий на вкладке разреза */
+.sub-tab.has{color:var(--act-ink)}
+.sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;
+  padding:0 4px;border-radius:8px;background:var(--act);color:#fff;
+  font-size:10px;font-weight:var(--fw-lead);line-height:1;margin-left:-2px}
 
 .rows{display:flex;flex-direction:column;gap:var(--s8)}
 /* Зоны рендера (см. paint() в app.js). Внутри сетки обёртка зоны
@@ -303,11 +308,15 @@ button{font-family:inherit}
 
 .split{display:grid;grid-template-columns:minmax(500px,.95fr) minmax(440px,1.05fr);
   gap:var(--s8);align-items:stretch}
-/* Левая панель ряда — по содержимому: воронка имеет собственную высоту и
-   растягивать под неё панель значит открыть под воронкой пустую полосу. */
+/* Панели ряда одной высоты. Воронка имеет собственную высоту и не тянется,
+   поэтому она центрируется в оставшемся месте, а примечание прижимается к
+   низу панели: иначе под фигурой зияла полоса, про которую непонятно, что
+   она означает — пустое место читается как «здесь что-то не загрузилось». */
 .split.wide-r{grid-template-columns:minmax(420px,.78fr) minmax(520px,1.22fr);
-  align-items:start}
-.split.wide-r .panel{height:auto}
+  align-items:stretch}
+.panel-b.flexcol .chart.fn-box{flex:1 1 auto;display:flex;align-items:center;
+  justify-content:center;min-height:0}
+.panel-b.flexcol>.tbl-note{margin-top:auto;padding-top:var(--s5)}
 /* Главный экран: слева каталог ЦЕЛИКОМ, справа динамика.
    Каталог ничего не делит: это список, и ценность его — в числе видимых
    строк. Всё, что раньше стояло под ним, уехало вниз. Правой колонке
@@ -665,22 +674,26 @@ button{font-family:inherit}
    Триггер показывает, что выбрано, и раскрывает список ВНИЗ, в потоке
    страницы: всплывающий слой накрывал бы и поиск, и всё вокруг, и было бы
    непонятно, что вообще выбираешь. */
-.scopepick{min-width:0}
+.scopepick{position:relative;min-width:0}
 .scope-trg{display:flex;align-items:center;gap:var(--s5);width:100%;
   border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
   border-radius:var(--r3);padding:var(--s4) var(--s6);cursor:pointer;
   font-family:inherit;font-size:13px;font-weight:var(--fw-lead);color:var(--ink);
   text-align:left}
 .scope-trg:hover{border-color:#d8dce4}
-.scopepick.open .scope-trg{border-color:var(--act);border-bottom-left-radius:0;border-bottom-right-radius:0}
+.scopepick.open .scope-trg{border-color:var(--act)}
 .st-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
 .st-n{flex:0 0 auto;font-size:var(--fs-cap);font-weight:var(--fw-med);color:var(--muted);
   background:#f2f4f7;border-radius:var(--r-pill);padding:2px var(--s5)}
 .st-c{flex:0 0 auto;color:var(--muted2);font-size:10px;transition:transform .16s}
 .scopepick.open .st-c{transform:rotate(180deg)}
-.scope-body{border:1px solid var(--act);border-top:0;border-radius:0 0 var(--r3) var(--r3);
+/* Список ВСПЛЫВАЕТ над содержимым, а не раздвигает его. Раскрытие в потоке
+   растягивало всю верхнюю плашку, и экран прыгал на полсотни пикселей от
+   одного клика — а раскрыли-то список, чтобы посмотреть, что в нём. */
+.scope-body{position:absolute;z-index:40;top:calc(100% + 4px);left:0;right:0;
+  border:1px solid var(--line);border-radius:var(--r3);
   background:var(--card);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4);
-  box-shadow:var(--shadow)}
+  box-shadow:var(--shadow-lg)}
 .scope-body .psearch input{width:100%;box-shadow:none}
 .scope-act{display:flex;gap:var(--s5)}
 

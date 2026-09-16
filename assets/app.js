@@ -54,7 +54,11 @@
     tab: 'reports',
     grain: 'd',
     mode: 'report',
-    sel: null,                   // {mode, val} — что выбрано в левой таблице
+    /* Выбор в каталоге НАКОПИТЕЛЬНЫЙ: по каждому разрезу свой список. Клик
+       по строке добавляет условие, повторный снимает. Переключение разреза
+       ничего не сбрасывает — можно накликать «этот отчёт» и сверху «этот
+       блок», и экран покажет их пересечение. */
+    picks: { report: [], collection: [], owner: [], lvl3: [], spec: [] },
     selectedReport: null,        // последний выбранный отчёт (нужен вкладке «Аудитория»)
     retView: 'cohort',
     viewsMode: 'total',          // нижняя панель динамики: всего | на пользователя
@@ -108,52 +112,148 @@
     return r;
   }
 
-  /* --- Что выбрано: заголовок, подпись, способ достать цифры -------------- */
+  /* ======================================================================
+     ЧТО ВЫБРАНО
+
+     Разрезы делятся на два вида, и это определяет всю арифметику:
+       ОТЧЁТНЫЕ (отчёт, коллекция, владелец) сужают МНОЖЕСТВО ОТЧЁТОВ;
+       ЛЮДСКИЕ  (подразделение, специализация) сужают МНОЖЕСТВО ЛЮДЕЙ.
+
+     Внутри разреза условия складываются по ИЛИ, между разрезами — по И.
+     Пока выбраны только отчётные разрезы, всё считается точно по
+     ds_reports. Как только добавлен людской — это пересечение двух
+     разрезов, которого в длинном формате нет: считаем через выборку
+     сотрудников и честно помечаем ⟳.
+     ==================================================================== */
+  const REP_DIMS = ['report', 'collection', 'owner'];
+  const CUT_DIMS = ['lvl3', 'spec'];
+  const pickList = (k) => S.picks[k] || [];
+  const pickCount = () => MODES.reduce((a, m) => a + pickList(m.key).length, 0);
+  const hasCutPick = () => CUT_DIMS.some((k) => pickList(k).length);
+  const hasRepPick = () => REP_DIMS.some((k) => pickList(k).length);
+
+  /* Множество отчётов под отчётными разрезами (пересечение непустых) */
+  function pickedIds() {
+    let rows = reportRows();
+    if (pickList('report').length) {
+      const set = {}; pickList('report').forEach((id) => { set[id] = 1; });
+      rows = rows.filter((r) => set[r.dashboard_id]);
+    }
+    if (pickList('collection').length) rows = rows.filter((r) => pickList('collection').indexOf(r.collection) >= 0);
+    if (pickList('owner').length) rows = rows.filter((r) => pickList('owner').indexOf(r.owner_login) >= 0);
+    return rows.map((r) => r.dashboard_id);
+  }
+  /* Люди под людскими разрезами (пересечение непустых) */
+  function pickedPeople() {
+    if (!hasCutPick()) return null;
+    return D.population.filter((p) => CUT_DIMS.every((k) =>
+      !pickList(k).length || pickList(k).indexOf(p[k]) >= 0));
+  }
+
+  /* Подпись людской части выбора: одно значение — само значение,
+     несколько — «разрез: N». */
+  function cutTitle() {
+    return CUT_DIMS.filter((k) => pickList(k).length).map((k) => {
+      const v = pickList(k);
+      return v.length === 1 ? String(v[0]) : MODE(k).label.toLowerCase() + ': ' + v.length;
+    }).join(' · ');
+  }
+
+  const DEDUP = (n) => 1 / (1 + .16 * Math.log(1 + n));
+
+  /* Доля выбранных людей среди тех, кто вообще заходил в выбранные отчёты.
+     Ею и масштабируются все числа в режиме пересечения. */
+  function cutShare(ids) {
+    const people = pickedPeople();
+    if (!people || !ids.length) return 1;
+    const vis = D.visitorsOf(ids, S.grain);
+    if (!vis.count) return 0;
+    let n = 0;
+    people.forEach((p) => { if (vis.set[p.pid]) n++; });
+    return n / vis.count;
+  }
+
   function selection() {
-    const s = S.sel;
-    if (!s) {
+    const ids = pickedIds();
+    const parts = MODES.filter((m) => pickList(m.key).length).map((m) => {
+      const v = pickList(m.key);
+      return v.length === 1 ? String(v[0]) : m.label.toLowerCase() + ': ' + v.length;
+    });
+    if (!pickCount()) {
       return {
-        kind: 'all', title: 'Все отчёты',
-        sub: 'выберите строку слева, чтобы посмотреть динамику по ней',
+        kind: 'all', ids, title: 'Все отчёты',
+        sub: 'клик по строке слева добавляет условие; условия накапливаются',
       };
     }
-    const m = MODE(s.mode);
-    if (m.axis === 'rep') {
-      const r = reportById(s.val);
-      if (!r) return { kind: 'all', title: 'Все отчёты', sub: '' };
-      return {
-        kind: 'rep', report: r, title: r.dashboard_nm,
-        sub: 'владелец ' + r.owner_login + ' · ' + r.collection,
-      };
+    /* Ровно один отчёт и больше ничего — особый случай: у него есть
+       собственная карточка, когорты и переход в аудиторию. */
+    const onlyRep = pickList('report').length === 1 && pickCount() === 1;
+    if (onlyRep) {
+      const r = reportById(pickList('report')[0]);
+      if (r) {
+        return {
+          kind: 'rep', report: r, ids: [r.dashboard_id], title: r.dashboard_nm,
+          sub: 'владелец ' + r.owner_login + ' · ' + r.collection,
+        };
+      }
     }
-    if (m.axis === 'grp') {
-      const g = RP.find((r) => r.section === 'gkpi' && r.grain === S.grain && r.group_key === s.mode && r.group_val === s.val);
+    const onlyGrp = pickCount() === 1 && (pickList('collection').length === 1 || pickList('owner').length === 1);
+    if (onlyGrp) {
+      const gk = pickList('collection').length ? 'collection' : 'owner';
+      const gv = pickList(gk)[0];
+      const g = RP.find((r) => r.section === 'gkpi' && r.grain === S.grain && r.group_key === gk && r.group_val === gv);
       return {
-        kind: 'grp', group: g, title: s.val,
-        sub: m.one.toLowerCase() + ' · ' + U.nf(g ? g.reports : 0) + ' ' +
-          U.plural(g ? g.reports : 0, 'отчёт', 'отчёта', 'отчётов'),
+        kind: 'grp', group: g, gk, gv, ids, title: gv,
+        sub: MODE(gk).one.toLowerCase() + ' · ' + U.nf(ids.length) + ' ' +
+          U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов'),
       };
     }
     return {
-      kind: 'cut', title: s.val,
-      sub: D.CUTS[s.mode].label.toLowerCase() + ' · все отчёты Proteus',
+      kind: 'mix', ids,
+      title: parts.join(' · '),
+      sub: (hasCutPick() ? 'пересечение разрезов ⟳ · ' : '') +
+        U.nf(ids.length) + ' ' + U.plural(ids.length, 'отчёт', 'отчёта', 'отчётов') + ' в выборе',
     };
   }
 
   /* --- Динамика по бакетам ----------------------------------------------- */
   function series() {
-    const s = S.sel;
+    const sl = selection();
     let rows;
-    if (!s) {
+    if (sl.kind === 'all' && !hasCutPick()) {
       rows = OV.filter((r) => r.section === 'ts' && r.grain === S.grain && r.cut_key === 'all');
-    } else if (MODE(s.mode).axis === 'rep') {
-      rows = RP.filter((r) => r.section === 'rts' && r.grain === S.grain && r.dashboard_id === s.val);
-    } else if (MODE(s.mode).axis === 'grp') {
-      rows = RP.filter((r) => r.section === 'gts' && r.grain === S.grain && r.group_key === s.mode && r.group_val === s.val);
+    } else if (sl.kind === 'rep') {
+      rows = RP.filter((r) => r.section === 'rts' && r.grain === S.grain && r.dashboard_id === sl.ids[0]);
+    } else if (sl.kind === 'grp') {
+      rows = RP.filter((r) => r.section === 'gts' && r.grain === S.grain &&
+        r.group_key === sl.gk && r.group_val === sl.gv);
     } else {
-      rows = OV.filter((r) => r.section === 'ts' && r.grain === S.grain && r.cut_key === s.mode && r.cut_val === s.val);
+      /* Произвольный набор отчётов: складываем их динамику и гасим
+         пересечение аудиторий тем же коэффициентом, что и группы. */
+      const set = {}; sl.ids.forEach((id) => { set[id] = 1; });
+      const d = DEDUP(sl.ids.length || 1);
+      const by = {};
+      RP.forEach((r) => {
+        if (r.section !== 'rts' || r.grain !== S.grain || !set[r.dashboard_id]) return;
+        const t = (by[r.bucket] = by[r.bucket] || { bucket: r.bucket, users: 0, new_users: 0, react_users: 0, ret_users: 0, views: 0 });
+        t.users += r.users; t.new_users += r.new_users; t.react_users += r.react_users;
+        t.ret_users += r.ret_users; t.views += r.views;
+      });
+      rows = Object.values(by).map((t) => ({
+        bucket: t.bucket, views: t.views,
+        users: Math.round(t.users * d), new_users: Math.round(t.new_users * d),
+        react_users: Math.round(t.react_users * d), ret_users: Math.round(t.ret_users * d),
+      }));
     }
-    return rows.slice().sort((a, b) => a.bucket - b.bucket);
+    rows = rows.slice().sort((a, b) => a.bucket - b.bucket);
+    const k = hasCutPick() ? cutShare(sl.ids) : 1;
+    if (k === 1) return rows;
+    return rows.map((r) => ({
+      bucket: r.bucket,
+      users: Math.round(r.users * k), new_users: Math.round(r.new_users * k),
+      react_users: Math.round(r.react_users * k), ret_users: Math.round(r.ret_users * k),
+      views: Math.round(r.views * k),
+    }));
   }
 
   /* --- Итоги за период ---------------------------------------------------
@@ -161,36 +261,98 @@
      период НЕ складываются из уникальных по дням — один человек заходит
      в разные дни. В SQL это два оконных фильтра, текущий и предыдущий. */
   function kpiRow() {
-    const s = S.sel;
-    if (!s) return OV.find((r) => r.section === 'kpi' && r.grain === S.grain && r.cut_key === 'all');
-    if (MODE(s.mode).axis === 'rep') return reportById(s.val);
-    if (MODE(s.mode).axis === 'grp') {
-      return RP.find((r) => r.section === 'gkpi' && r.grain === S.grain && r.group_key === s.mode && r.group_val === s.val);
+    const sl = selection();
+    let k;
+    if (sl.kind === 'all' && !hasCutPick()) {
+      k = OV.find((r) => r.section === 'kpi' && r.grain === S.grain && r.cut_key === 'all');
+    } else if (sl.kind === 'rep') {
+      k = reportById(sl.ids[0]);
+    } else if (sl.kind === 'grp' && sl.group) {
+      k = sl.group;
+    } else {
+      const set = {}; sl.ids.forEach((id) => { set[id] = 1; });
+      const d = DEDUP(sl.ids.length || 1);
+      const reps = RP.filter((r) => r.section === 'report' && r.grain === S.grain && set[r.dashboard_id]);
+      const S_ = (f) => reps.reduce((a, b) => a + (b[f] || 0), 0);
+      k = {
+        users: Math.round(S_('users') * d), users_prev: Math.round(S_('users_prev') * d),
+        views: S_('views'), views_prev: S_('views_prev'),
+        new_users: Math.round(S_('new_users') * d), new_users_prev: Math.round(S_('new_users_prev') * d),
+        regular_users: Math.round(S_('regular_users') * d), regular_users_prev: Math.round(S_('regular_users_prev') * d),
+        sleeping_users: Math.round(S_('sleeping_users') * d),
+        reports: reps.length,
+      };
     }
-    return OV.find((r) => r.section === 'kpi' && r.grain === S.grain && r.cut_key === s.mode && r.cut_val === s.val);
+    if (!k) return k;
+    const sh = hasCutPick() ? cutShare(sl.ids) : 1;
+    if (sh === 1) return k;
+    const scale = (v) => (v == null ? v : Math.round(v * sh));
+    return Object.assign({}, k, {
+      users: scale(k.users), users_prev: scale(k.users_prev),
+      views: scale(k.views), views_prev: scale(k.views_prev),
+      new_users: scale(k.new_users), new_users_prev: scale(k.new_users_prev),
+      regular_users: scale(k.regular_users), regular_users_prev: scale(k.regular_users_prev),
+      sleeping_users: scale(k.sleeping_users),
+    });
   }
 
-  /* --- MAU: месячная аудитория, не зависящая от выбранного периода ------- */
+  /* --- MAU: месячная аудитория, не зависящая от выбранного периода -------
+     Считается тем же способом, что и kpiRow: точно там, где секция есть,
+     и агрегатом с поправкой на пересечение — там, где её нет. */
   function mauRow() {
-    const sl = S.sel;
-    if (!sl) return OV.find((r) => r.section === 'mau' && r.cut_key === 'all');
-    if (MODE(sl.mode).axis === 'rep') return RP.find((r) => r.section === 'rmau' && r.dashboard_id === sl.val);
-    if (MODE(sl.mode).axis === 'grp') {
-      return RP.find((r) => r.section === 'gmau' && r.group_key === sl.mode && r.group_val === sl.val);
+    const sl = selection();
+    let m;
+    if (sl.kind === 'all' && !hasCutPick()) {
+      m = OV.find((r) => r.section === 'mau' && r.cut_key === 'all');
+    } else if (sl.kind === 'rep') {
+      m = RP.find((r) => r.section === 'rmau' && r.dashboard_id === sl.ids[0]);
+    } else if (sl.kind === 'grp') {
+      m = RP.find((r) => r.section === 'gmau' && r.group_key === sl.gk && r.group_val === sl.gv);
+    } else {
+      const set = {}; sl.ids.forEach((id) => { set[id] = 1; });
+      const d = DEDUP(sl.ids.length || 1);
+      const rows = RP.filter((r) => r.section === 'rmau' && set[r.dashboard_id]);
+      if (!rows.length) return null;
+      const S_ = (f) => rows.reduce((a, b) => a + (b[f] || 0), 0);
+      m = { users: Math.round(S_('users') * d), users_prev: Math.round(S_('users_prev') * d) };
     }
-    return OV.find((r) => r.section === 'mau' && r.cut_key === sl.mode && r.cut_val === sl.val);
+    if (!m) return m;
+    const sh = hasCutPick() ? cutShare(sl.ids) : 1;
+    if (sh === 1) return m;
+    return Object.assign({}, m, {
+      users: Math.round(m.users * sh),
+      users_prev: m.users_prev == null ? m.users_prev : Math.round(m.users_prev * sh),
+    });
   }
 
   /* --- Частота визитов ---------------------------------------------------- */
   function freqRows() {
-    const s = S.sel;
+    const sl = selection();
     const pick = (rows) => D.FREQ.map((fb) => ({
       bucket: fb, users: rows.filter((r) => r.freq_bucket === fb).reduce((a, b) => a + b.users, 0),
     }));
-    if (!s) return pick(OV.filter((r) => r.section === 'freq' && r.grain === S.grain && r.cut_key === 'all'));
-    if (MODE(s.mode).axis === 'rep') return pick(RP.filter((r) => r.section === 'rfreq' && r.grain === S.grain && r.dashboard_id === s.val));
-    if (MODE(s.mode).axis === 'grp') return pick(RP.filter((r) => r.section === 'gfreq' && r.grain === S.grain && r.group_key === s.mode && r.group_val === s.val));
-    return pick(OV.filter((r) => r.section === 'freq' && r.grain === S.grain && r.cut_key === s.mode && r.cut_val === s.val));
+    let out;
+    if (sl.kind === 'all' && !hasCutPick()) {
+      out = pick(OV.filter((r) => r.section === 'freq' && r.grain === S.grain && r.cut_key === 'all'));
+    } else if (sl.kind === 'rep') {
+      out = pick(RP.filter((r) => r.section === 'rfreq' && r.grain === S.grain && r.dashboard_id === sl.ids[0]));
+    } else if (sl.kind === 'grp') {
+      out = pick(RP.filter((r) => r.section === 'gfreq' && r.grain === S.grain &&
+        r.group_key === sl.gk && r.group_val === sl.gv));
+    } else {
+      const set = {}; sl.ids.forEach((id) => { set[id] = 1; });
+      const d = DEDUP(sl.ids.length || 1);
+      const raw = pick(RP.filter((r) => r.section === 'rfreq' && r.grain === S.grain && set[r.dashboard_id]));
+      out = raw.map((r) => ({ bucket: r.bucket, users: Math.round(r.users * d) }));
+    }
+    const sh = hasCutPick() ? cutShare(sl.ids) : 1;
+    return sh === 1 ? out : out.map((r) => ({ bucket: r.bucket, users: Math.round(r.users * sh) }));
+  }
+
+  /* --- Когорты ------------------------------------------------------------ */
+  function cohortRows() {
+    const sl = selection();
+    return sl.kind === 'rep' ? D.reportCohorts(sl.ids[0]) : D.globalCohorts();
   }
 
   /* --- Кросс-фильтр «как часто заходят» ⟳ ---------------------------------
@@ -259,11 +421,6 @@
     return { ts: rows, k: k2, sliced: true };
   }
 
-  /* --- Когорты ------------------------------------------------------------ */
-  function cohortRows() {
-    const s = S.sel;
-    return (s && MODE(s.mode).axis === 'rep') ? D.reportCohorts(s.val) : D.globalCohorts();
-  }
   /* Средняя кривая: складываем числители и знаменатели по всем когортам,
      а не усредняем проценты — иначе маленькая когорта весит как большая. */
   function retentionPoints(rows) {
@@ -591,9 +748,16 @@
   function cutBar() {
     return '<div class="cutbar">' +
       '<span class="cb-l">В разрезе</span>' +
-      '<div class="sub-tabs">' + MODES.map((m) =>
-        '<button class="sub-tab' + (m.key === S.mode ? ' active' : '') + '" data-mode="' + m.key + '">' +
-        U.esc(m.label) + '</button>').join('') + '</div>' +
+      /* Цифра на вкладке — сколько условий набрано в этом разрезе. Без неё
+         накопительный выбор невидим: переключил разрез и не понимаешь,
+         почему цифры не сходятся с тем, что видно в списке. */
+      '<div class="sub-tabs">' + MODES.map((m) => {
+        const n = pickList(m.key).length;
+        return '<button class="sub-tab' + (m.key === S.mode ? ' active' : '') + (n ? ' has' : '') +
+          '" data-mode="' + m.key + '"' +
+          (n ? U.tip({ text: n + ' ' + U.plural(n, 'условие', 'условия', 'условий') + ' в этом разрезе' }) : '') + '>' +
+          U.esc(m.label) + (n ? '<span class="sub-cnt">' + n + '</span>' : '') + '</button>';
+      }).join('') + '</div>' +
       '</div>';
   }
 
@@ -604,7 +768,8 @@
     const rows = reportRows()
       .filter((r) => matchQ(r.dashboard_nm) || matchQ(r.collection) || matchQ(r.owner_login));
     const sorted = rows.slice().sort((a, b) => (a[S.repSort.col] > b[S.repSort.col] ? 1 : -1) * S.repSort.dir);
-    const curId = S.sel && MODE(S.sel.mode).axis === 'rep' ? S.sel.val : null;
+    const picked = pickList('report');
+    const isSel = (id) => picked.indexOf(id) >= 0;
 
     const th = (col, label, hint) => '<th data-sort="' + col + '"' + (S.repSort.col === col ? ' class="on"' : '') +
       (hint ? U.tip(hint) : '') + '>' + U.esc(label) + '<span class="sa">' + (S.repSort.dir < 0 ? '▼' : '▲') + '</span></th>';
@@ -621,8 +786,8 @@
       th('regular_users', 'Пост.', { text: 'Доля тех, кто заходил в отчёт 8+ дней за период' }) +
       th('last_view_days', 'Тишина', { text: 'Дней с последнего просмотра' }) +
       '</tr></thead><tbody>' +
-      sorted.map((r) => '<tr class="urow' + (r.dashboard_id === curId ? ' sel' : '') + '"' +
-        ' data-rep="' + r.dashboard_id + '" tabindex="0" role="button" aria-pressed="' + (r.dashboard_id === curId) + '"' +
+      sorted.map((r) => '<tr class="urow' + (isSel(r.dashboard_id) ? ' sel' : '') + '"' +
+        ' data-rep="' + r.dashboard_id + '" tabindex="0" role="button" aria-pressed="' + isSel(r.dashboard_id) + '"' +
         /* Подсказка строки — три числа и дата. Всё остальное про отчёт
            читается на самом экране, когда строка выбрана; раньше здесь
            стояло шесть строк, и подсказка накрывала полкаталога. */
@@ -678,7 +843,7 @@
     const totUsers = sum('users');
     if (!rows.length) return emptyRows();
     return U.barTable({
-      cutKey: gk, selected: S.sel && S.sel.mode === gk ? S.sel.val : null,
+      cutKey: gk, selected: pickList(gk),
       firstH: MODE(gk).one, firstW: '34%', colW: '15%', barH: 'Доля пользователей',
       barClass: 'c-rep', dense: true,
       cols: [
@@ -727,7 +892,7 @@
     const tot = rows.reduce((a, b) => a + b.users, 0);
     if (!rows.length) return emptyRows();
     return U.barTable({
-      cutKey: ck, selected: S.sel && S.sel.mode === ck ? S.sel.val : null,
+      cutKey: ck, selected: pickList(ck),
       firstH: D.CUTS[ck].label, firstW: '38%', colW: '15%', barH: 'Доля пользователей',
       barClass: 'c-rep', dense: true,
       cols: [{ label: 'Польз.' }, { label: 'Просм.' }, { label: 'Постоян.' }],
@@ -753,10 +918,14 @@
   }
 
   /* Что смотрит выбранный срез людей. Считается тем же множеством
-     зашедших, что и вкладка аудитории, поэтому числа сходятся. */
-  function cutReportsPanel(cutKey, cutVal) {
-    const people = D.population.filter((p) => p[cutKey] === cutVal);
-    const ids = reportRows().map((r) => r.dashboard_id);
+     зашедших, что и вкладка аудитории, поэтому числа сходятся.
+     Срез берётся из накопленного выбора: людские условия задают людей,
+     отчётные — в каких отчётах их искать. */
+  function cutReportsPanel() {
+    const people = pickedPeople();
+    if (!people || !people.length) return '';
+    const cutVal = cutTitle();
+    const ids = hasRepPick() ? pickedIds() : reportRows().map((r) => r.dashboard_id);
     const list = D.reportsForPeople(people, S.grain, ids).slice(0, 12);
     const head = Math.round(people.length * D.POP_W);
     if (!list.length) {
@@ -972,7 +1141,7 @@
          приходит от своего блока и хочет увидеть, чем блок пользуется.
          Зона существует всегда (пустая ничего не занимает), чтобы её
          появление не пересобирало соседние графики. */
-      zone('cutreps', () => (sl.kind !== 'cut' || !S.sel ? '' : cutReportsPanel(S.sel.mode, S.sel.val))),
+      zone('cutreps', () => (hasCutPick() ? cutReportsPanel() : '')),
 
       group('split ret', [
         zone('ret', () => U.panel({
@@ -1677,7 +1846,12 @@
   function head(title, text) {
     const chips = [];
     chips.push(U.benchChip('Период: <b>' + D.GRAINS[S.grain].label + '</b>'));
-    if (S.sel) chips.push(U.chip(MODE(S.sel.mode).one + ': ' + selection().title, 'sel'));
+    /* Выбор накопительный, поэтому чип на каждое условие: иначе не видно,
+       что именно сейчас держит экран, и нечего снять по одному. */
+    MODES.forEach((m) => pickList(m.key).forEach((v) => {
+      const lbl = m.key === 'report' ? ((reportById(v) || {}).dashboard_nm || v) : v;
+      chips.push(U.chip(m.one + ': ' + lbl, 'pick:' + m.key + ':' + v));
+    }));
     if (S.freqSel && S.tab === 'reports') chips.push(U.chip('Частота: ' + S.freqSel, 'freqSel'));
     if (S.tab === 'audience') {
       if (S.audDef.mode === 'custom') {
@@ -1718,10 +1892,23 @@
     if (keepScroll) window.scrollTo(0, y);
   }
 
-  /* Выбор строки: повторный клик по выбранному снимает выбор */
+  /* Выбор строки НАКОПИТЕЛЬНЫЙ: клик добавляет условие в свой разрез,
+     повторный клик по той же строке снимает. Разрезы не гасят друг друга —
+     переключение вкладки разреза ничего не теряет, и можно набрать
+     «этот отчёт» + «этот блок» и получить пересечение. */
   function pick(mode, val) {
-    S.sel = (S.sel && S.sel.mode === mode && String(S.sel.val) === String(val)) ? null : { mode, val };
-    if (S.sel && MODE(mode).axis === 'rep') S.selectedReport = val;
+    const list = S.picks[mode] || (S.picks[mode] = []);
+    const i = list.findIndex((x) => String(x) === String(val));
+    if (i >= 0) list.splice(i, 1);
+    else {
+      list.push(val);
+      if (mode === 'report') S.selectedReport = val;
+    }
+  }
+  /* Отчёт мог выпасть из фильтров слева — тогда условие про него больше
+     ничего не значит и должно уйти само. */
+  function prunePicks() {
+    S.picks.report = pickList('report').filter((id) => !!reportById(id));
   }
 
   /* ============================== События ================================ */
@@ -1743,7 +1930,7 @@
       if (id === 'audCut') { S.audCut = v; S.audUnit = null; }
       else if (id === 'f-collection') { S.filters.collection = v; }
       else if (id === 'f-owner') { S.filters.owner = v; }
-      if (S.sel && MODE(S.sel.mode).axis === 'rep' && !reportById(S.sel.val)) S.sel = null;
+      prunePicks();
       render(true); return;
     }
     /* Клик мимо закрывает раскрытые списки */
@@ -1757,7 +1944,7 @@
 
     const md = cl('[data-mode]');
     if (md) {
-      if (S.mode !== md.dataset.mode) { S.mode = md.dataset.mode; S.sel = null; S.freqSel = null; }
+      S.mode = md.dataset.mode;   // выбор накопительный: разрез только меняет, что показано слева
       render(true); return;
     }
 
@@ -1847,7 +2034,10 @@
     const un = cl('[data-unchip]');
     if (un) {
       const k = un.dataset.unchip;
-      if (k === 'sel') S.sel = null;
+      if (k.indexOf('pick:') === 0) {
+        const parts = k.split(':'); const dim = parts[1]; const val = parts.slice(2).join(':');
+        S.picks[dim] = pickList(dim).filter((x) => String(x) !== val);
+      }
       else if (k === 'freqSel') S.freqSel = null;
       else if (k === 'audSeg') S.audSeg = null;
       else if (k === 'audUnit') S.audUnit = null;
@@ -1891,7 +2081,8 @@
     }
 
     if (t.id === 'fltReset') {
-      S.sel = null; S.repQuery = ''; S.audQuery = ''; S.audSeg = null; S.freqSel = null;
+      S.picks = { report: [], collection: [], owner: [], lvl3: [], spec: [] };
+      S.repQuery = ''; S.audQuery = ''; S.audSeg = null; S.freqSel = null;
       S.audUnit = null; S.audDef = { mode: 'access', filters: {}, draft: {} };
       S._audCfg = false; S.scopeQuery = ''; S.audScope = { ids: [] }; S._scopeOpen = false;
       S.filters = { collection: '', owner: '', published: true, actual: true, certified: false, excludeOwners: true };
@@ -1941,7 +2132,7 @@
     if (t.dataset && t.dataset.f) {
       S.filters[t.dataset.f] = t.type === 'checkbox' ? t.checked : t.value;
       // выбранный отчёт мог выпасть из фильтра — тогда снимаем выбор
-      if (S.sel && MODE(S.sel.mode).axis === 'rep' && !reportById(S.sel.val)) S.sel = null;
+      prunePicks();
       render(true); return;
     }
   });

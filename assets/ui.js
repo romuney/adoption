@@ -199,7 +199,9 @@
         '<td class="barcell"></td></tr>';
     }
     rows.forEach((r) => {
-      const sel = o.selected === r.key ? ' sel' : '';
+      /* selected — либо одно значение, либо список: выбор накопительный */
+      const selv = o.selected == null ? [] : [].concat(o.selected);
+      const sel = selv.some((v) => String(v) === String(r.key)) ? ' sel' : '';
       /* Строки кликабельны там, где клик что-то делает: либо это выбор
          разреза (cutKey → data-slice), либо кросс-фильтр (clickAttr). */
       const act = o.cutKey

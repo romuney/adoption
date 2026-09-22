@@ -50,7 +50,8 @@
 {% if loginf %}{% set _ = SJ.append('"login":' ~ jal(loginf)) %}{% endif %}
 {% if freqf %}{% set _ = SJ.append('"freq":' ~ jal(freqf)) %}{% endif %}
 WITH
-  maxd AS (SELECT max(md) AS md FROM prod_proteus.pa_pair),
+  {# Дата свежести: md пары; запасной источник — последний визит (при пустом md gp_to_click). #}
+  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   dash_ok AS (
     SELECT dashboard_id
     FROM prod_proteus.pa_dash_meta
@@ -60,9 +61,10 @@ WITH
     {#- Пары области: маска бакетов msk_<g>, просмотры окна v_<g>, за жизнь v_life, последний визит dmax.
         own_flg = 1 — зритель среди владельцев отчёта (свиток «без просмотров владельцев»). -#}
     SELECT e.dashboard_id AS did, e.login AS login,
-      toUInt64(e.msk_{{ grain }}) AS msk, e.v_{{ grain }} AS v_cur, e.v_life AS v_life, e.dmax AS dmax
+      {#- ifNull: gp_to_click создаёт колонки Nullable; NULL в сумме доехал бы до CAST и уронил запрос (Code 349). -#}
+      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax
     FROM prod_proteus.pa_pair e
-    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok){% if excv == '1' %} AND e.own_flg = 0{% endif %}
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
     {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% endif %}){% endif %}
     {%- if freqf %}
@@ -72,9 +74,9 @@ WITH
         {%- if v == '1' %}{% set _ = FB.append('nb = 1') %}{% elif v == '2' %}{% set _ = FB.append('nb BETWEEN 2 AND 3') %}{% elif v == '3' %}{% set _ = FB.append('nb BETWEEN 4 AND 7') %}{% elif v == '4' %}{% set _ = FB.append('nb BETWEEN 8 AND 15') %}{% elif v == '5' %}{% set _ = FB.append('nb >= 16') %}{% endif -%}
       {%- endfor %} AND e.login IN (
         SELECT login FROM (
-          SELECT f.login AS login, bitCount(bitAnd(groupBitOr(toUInt64(f.msk_{{ grain }})), {{ CUR }})) AS nb
+          SELECT f.login AS login, bitCount(bitAnd(groupBitOr(toUInt64(ifNull(f.msk_{{ grain }}, 0))), {{ CUR }})) AS nb
           FROM prod_proteus.pa_pair f
-          WHERE f.dashboard_id IN (SELECT dashboard_id FROM dash_ok){% if excv == '1' %} AND f.own_flg = 0{% endif %}
+          WHERE f.dashboard_id IN (SELECT dashboard_id FROM dash_ok){% if excv == '1' %} AND ifNull(f.own_flg, 0) = 0{% endif %}
           GROUP BY f.login
         ) WHERE {{ FB|join(' OR ') }})
     {%- endif %}
@@ -118,10 +120,10 @@ SELECT
   CAST(if(kd = 1, m.published, NULL) AS Nullable(Int32)) AS published,
   CAST(if(kd = 1, m.certified_by, NULL) AS Nullable(String)) AS certified,
   CAST(if(kd = 1, m.created_dt, NULL) AS Nullable(DateTime)) AS created_dt,
-  CAST(users AS UInt64) AS users,
-  CAST(views AS Int64) AS views,
-  CAST(regular_users AS UInt64) AS regular_users,
-  CAST(last_view_days AS Int64) AS last_view_days,
+  CAST(ifNull(users, 0) AS UInt64) AS users,
+  CAST(ifNull(views, 0) AS Int64) AS views,
+  CAST(ifNull(regular_users, 0) AS UInt64) AS regular_users,
+  CAST(ifNull(last_view_days, 0) AS Int64) AS last_view_days,
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))

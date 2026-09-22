@@ -1,6 +1,6 @@
 -- SQL Lab: тело v7 запасное (файл 2b), 30 дней, свитки по умолчанию. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 1
+-- 2
 WITH
   maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
   dash_ok AS (
@@ -54,10 +54,10 @@ SELECT
   CAST(if(kd = 1, m.published, NULL) AS Nullable(Int32)) AS published,
   CAST(if(kd = 1, m.certified_by, NULL) AS Nullable(String)) AS certified,
   CAST(if(kd = 1, m.created_dt, NULL) AS Nullable(DateTime)) AS created_dt,
-  CAST(users AS UInt64) AS users,
-  CAST(views AS Int64) AS views,
-  CAST(regular_users AS UInt64) AS regular_users,
-  CAST(last_view_days AS Int64) AS last_view_days,
+  CAST(ifNull(users, 0) AS UInt64) AS users,
+  CAST(ifNull(views, 0) AS Int64) AS views,
+  CAST(ifNull(regular_users, 0) AS UInt64) AS regular_users,
+  CAST(ifNull(last_view_days, 0) AS Int64) AS last_view_days,
   CAST(if(kd = 0, '{"period":"d"}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))

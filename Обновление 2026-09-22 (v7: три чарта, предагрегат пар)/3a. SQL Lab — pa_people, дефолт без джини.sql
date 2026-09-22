@@ -1,6 +1,6 @@
 -- SQL Lab: pa_people (файл 3), 30 дней, без выбора в каталоге. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 1
+-- 2
 WITH
   maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
   dash_ok AS (
@@ -93,19 +93,19 @@ SELECT
   CAST(days AS Nullable(UInt32)) AS days,
   CAST(last_dt AS Nullable(Date)) AS last_dt,
   CAST(bin AS Nullable(UInt8)) AS bin,
-  CAST(users AS UInt64) AS users,
-  CAST(users_prev AS UInt64) AS users_prev,
-  CAST(views AS Int64) AS views,
-  CAST(views_prev AS Int64) AS views_prev,
-  CAST(new_u AS UInt64) AS new_u,
-  CAST(new_prev AS UInt64) AS new_prev,
-  CAST(react_u AS UInt64) AS react_u,
-  CAST(regular AS UInt64) AS regular,
-  CAST(regular_prev AS UInt64) AS regular_prev,
-  CAST(sleeping AS UInt64) AS sleeping,
-  CAST(mau AS UInt64) AS mau,
-  CAST(mau_prev AS UInt64) AS mau_prev,
-  CAST(cnt AS UInt64) AS cnt,
+  CAST(ifNull(users, 0) AS UInt64) AS users,
+  CAST(ifNull(users_prev, 0) AS UInt64) AS users_prev,
+  CAST(ifNull(views, 0) AS Int64) AS views,
+  CAST(ifNull(views_prev, 0) AS Int64) AS views_prev,
+  CAST(ifNull(new_u, 0) AS UInt64) AS new_u,
+  CAST(ifNull(new_prev, 0) AS UInt64) AS new_prev,
+  CAST(ifNull(react_u, 0) AS UInt64) AS react_u,
+  CAST(ifNull(regular, 0) AS UInt64) AS regular,
+  CAST(ifNull(regular_prev, 0) AS UInt64) AS regular_prev,
+  CAST(ifNull(sleeping, 0) AS UInt64) AS sleeping,
+  CAST(ifNull(mau, 0) AS UInt64) AS mau,
+  CAST(ifNull(mau_prev, 0) AS UInt64) AS mau_prev,
+  CAST(ifNull(cnt, 0) AS UInt64) AS cnt,
   CAST(ages AS Array(Int64)) AS ages,
   CAST(acts AS Array(UInt64)) AS acts
 FROM (

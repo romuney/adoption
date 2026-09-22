@@ -60,11 +60,11 @@ WITH
   evd AS (
     {#- Пары области: маска бакетов msk_<g>, просмотры окна v_<g>, за жизнь v_life, последний визит dmax.
         own_flg = 1 — зритель среди владельцев отчёта (свиток «без просмотров владельцев»). -#}
-    SELECT e.dashboard_id AS did, e.login AS login,
+    SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,
       {#- ifNull: gp_to_click создаёт колонки Nullable; NULL в сумме доехал бы до CAST и уронил запрос (Code 349). -#}
       toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax
     FROM prod_proteus.pa_pair e
-    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
     {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% endif %}){% endif %}
     {%- if freqf %}
@@ -88,10 +88,12 @@ WITH
       groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax
     FROM (
       SELECT arrayJoin(arrayConcat(
+          {# Все элементы — строго Tuple(UInt8, String): arrayConcat в CH 24 приводит массивы к типу
+             первого, и Nullable-значение с NULL (owner_login меты) роняло запрос — Code 349. #}
           [(toUInt8(0), '')],
           [(toUInt8(1), toString(p.did))],
-          arrayFilter(t -> t.2 != '', [(toUInt8(2), mm.owner_login)]),
-          arrayMap(c -> (toUInt8(3), c), mm.collection_names)
+          arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
+          arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
         p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax
       FROM evd p

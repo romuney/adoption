@@ -89,8 +89,8 @@ WITH
       SELECT arrayJoin(arrayConcat(
           [(toUInt8(0), '')],
           [(toUInt8(1), toString(p.did))],
-          arrayFilter(t -> t.2 != '', [(toUInt8(2), mm.owner_login)]),
-          arrayMap(c -> (toUInt8(3), c), mm.collection_names)
+          arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
+          arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
         p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax
       FROM evd p

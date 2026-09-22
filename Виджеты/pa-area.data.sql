@@ -46,7 +46,7 @@ WITH
   ),
   evd AS (
     {#- Одна строка на зрителя области. msk: bit k = активен в бакете возраста k (k < 2n). -#}
-    SELECT e.login AS login,
+    SELECT toString(ifNull(e.login, '')) AS login,
       groupBitOr(if({{ kx('e.log_dttm') }} < {{ 2 * g.n }}, toUInt64(bitShiftLeft(toUInt64(1), toUInt8({{ kx('e.log_dttm') }}))), toUInt64(0))) AS msk,
       uniqExactIf(toDate(e.log_dttm), {{ kx('e.log_dttm') }} < {{ g.n }}) AS days,
       sumIf(e.views, {{ kx('e.log_dttm') }} < {{ g.n }}) AS v_cur,
@@ -71,10 +71,12 @@ WITH
       bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
       bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
       multiIf(nb_cur <= 1, 1, nb_cur <= 3, 2, nb_cur <= 7, 3, nb_cur <= 15, 4, 5) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
-      a.lvl3_management_unit_nm AS lvl3, a.lvl4_management_unit_nm AS lvl4,
-      a.emp_specialization_desc AS spec, a.emp_stream_desc AS stream,
-      toUInt8(a.management_head_flg = 1) AS is_head,
-      {% if HAS_FIO %}a.fio AS fio, a.exp_nm AS exp{% else %}'' AS fio, '' AS exp{% endif %},
+      {# Атрибуты — строго не-Nullable: при join_use_nulls = 1 LEFT JOIN даёт NULL у логинов без атрибутов,
+         а arrayConcat ролей в CH 24 приводит массивы к типу первого — NULL ронял запрос (Code 349). #}
+      toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,
+      toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
+      toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,
+      {% if HAS_FIO %}toString(ifNull(a.fio, '')) AS fio, toString(ifNull(a.exp_nm, '')) AS exp{% else %}'' AS fio, '' AS exp{% endif %},
       toInt64(dateDiff('month', p.c0, toStartOfMonth((SELECT md FROM maxd)))) AS gm,
       p.c0 AS c0,
       arrayFilter(x -> x >= 1 AND x <= 11, arrayMap(y -> toInt64(dateDiff('month', p.c0, toStartOfMonth((SELECT md FROM maxd)))) - y, p.bms)) AS ags,
@@ -87,8 +89,8 @@ WITH
         if((cur OR prv) AND spec != '', [('ctx', 'spec', spec, '', toInt64(-1))], []),
         if((cur OR prv) AND stream != '', [('ctx', 'stream', stream, '', toInt64(-1))], []),
         if((cur OR prv) AND is_head = 1, [('ctx', 'head', '1', '', toInt64(-1))], []),
-        if(cur OR prv, arrayMap(x -> ('ctx', 'adg', x, '', toInt64(-1)), arrayFilter(x -> x != '', a.ad_groups)), []),
-        if(cur, [('list', '', p.login, '', toInt64(-1))], []),
+        if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),
+        if(cur, [('list', '', toString(p.login), '', toInt64(-1))], []),
         if(gm < 12, [('coh', '', toString(p.c0), '', toInt64(-1))], []),
         if(cur, arrayMap(t -> ('ts', '', toString(t), '', t), (p.kv).1), [])
       )) AS rk

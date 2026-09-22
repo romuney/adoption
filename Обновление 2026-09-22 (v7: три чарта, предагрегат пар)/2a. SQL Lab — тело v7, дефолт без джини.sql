@@ -1,6 +1,6 @@
 -- SQL Lab: тело v7 (файл 2), 30 дней, свитки по умолчанию, без людской шины. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 2
+-- 3
 WITH
   maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   dash_ok AS (
@@ -8,9 +8,9 @@ WITH
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1 AND published = 1 AND actual_flg = 1
   ),
-  evd AS (SELECT e.dashboard_id AS did, e.login AS login,toUInt64(ifNull(e.msk_d, 0)) AS msk, ifNull(e.v_d, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax
+  evd AS (SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,toUInt64(ifNull(e.msk_d, 0)) AS msk, ifNull(e.v_d, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax
     FROM prod_proteus.pa_pair e
-    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND ifNull(e.own_flg, 0) = 0
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
   ),
   kx AS (SELECT kd, k0, login,
       groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax
@@ -18,8 +18,8 @@ WITH
       SELECT arrayJoin(arrayConcat(
           [(toUInt8(0), '')],
           [(toUInt8(1), toString(p.did))],
-          arrayFilter(t -> t.2 != '', [(toUInt8(2), mm.owner_login)]),
-          arrayMap(c -> (toUInt8(3), c), mm.collection_names)
+          arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
+          arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
         p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax
       FROM evd p

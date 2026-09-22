@@ -767,7 +767,7 @@ function reportTableHtml() {
     '<th class="txt" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">▲</span></th>' +
     th('users', 'Польз.') + th('views', 'Просм.') +
     th('regular_users', 'Пост.', { text: 'Доля тех, кто заходил в отчёт 8+ раз за период' }) +
-    th('last_view_days', 'Тишина', { text: 'Дней с последнего просмотра' }) +
+    th('last_view_days', 'Тишина', { text: 'Сколько дней назад был последний просмотр (данные — по вчерашний день)' }) +
     '</tr></thead><tbody>';
   for (var r = 0; r < pageRows.length; r++) {
     var x = pageRows[r], sel = indexOfId(picked, x.id) >= 0;
@@ -789,7 +789,8 @@ function reportTableHtml() {
       '<td class="lead">' + nf(x.k.users) + '</td>' +
       '<td>' + compact(x.k.views) + '</td>' +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
-      '<td>' + (x.k.last_view_days === 0 ? '<span class="mut">сегодня</span>' : days(x.k.last_view_days)) + '</td>' +
+      // last_view_days отсчитан от последнего дня данных (вчера): 0 — смотрели вчера.
+      '<td>' + (x.k.last_view_days === 0 ? '<span class="mut">вчера</span>' : days(x.k.last_view_days + 1)) + '</td>' +
       '</tr>';
   }
   return { html: h + '</tbody></table>', total: total };

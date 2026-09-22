@@ -34,14 +34,13 @@
 {% set sel = [] %}{% for v in selr %}{% if v|string != '' %}{% set _ = sel.append(v|string) %}{% endif %}{% endfor %}
 {% set have = pmode != '' and sel|length > 0 %}
 {% set repids = [] %}{% if have and pmode == 'report' %}{% for v in sel %}{% if v|int > 0 %}{% set _ = repids.append(v|int) %}{% endif %}{% endfor %}{% endif %}
-{% set have = have and (pmode != 'report' or repids|length > 0) %}
 WITH
   maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
   dash_ok AS (
     SELECT dashboard_id, owners_string
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %}
-    {%- if have and pmode == 'report' %} AND dashboard_id IN ({{ repids|join(', ') }}){% endif %}
+    {%- if have and pmode == 'report' %} AND dashboard_id IN ({{ repids|join(', ') if repids else '0' }}){#- мусор / пустое пересечение каталога → пустая область -#}{% endif %}
     {%- if have and pmode == 'owner' %} AND owner_login IN {{ q(sel) }}{% endif %}
     {%- if have and pmode == 'collection' %} AND hasAny(collection_names, {{ qa(sel) }}){% endif %}
   ),

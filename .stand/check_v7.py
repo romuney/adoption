@@ -9,6 +9,8 @@
 4. Людская шина: корзина / группа из pa_people → ИТОГО тела совпадает с числом
    людей корзины / группы (клик в правой панели даёт ровно столько людей слева).
 5. Каждый датасет читает дневной факт не больше одного раза (сканы ≤ 1,05).
+6. Старый анализатор ClickHouse (enable_analyzer = 0, как может стоять на боевом 24)
+   даёт те же строки, что новый.
 """
 import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -57,5 +59,13 @@ for g, col in [('lvl3', 'lvl3_f'), ('spec', 'spec_f'), ('adg', 'adg_f'), ('strea
     for r in [x for x in p if x['section'] == 'ctx' and x['g'] == g][:3]:
         t = [x for x in run(BODY, {col: [r['k']]})[0] if x['section'] == 'total'][0]
         ok(str(t['users']) == str(r['users']), f'группа {g}={r["k"]}: людей {r["users"]} → ИТОГО тела {t["users"]}')
+import json
+norm = lambda rows: sorted(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in rows)
+for pth in [BODY, FALL, PPL]:
+    for c in [{}, {'period_param': 'q'}, {'mode_param': 'collection', 'sel_f': ['Колл 5', 'Колл 7']}, {'freq_f': ['2'], 'login_f': ['u3']}]:
+        sql = stand.render(pth, c)
+        a = json.loads(stand.S.query(sql, 'JSON').bytes())['data']
+        b = json.loads(stand.S.query(sql + '\nSETTINGS enable_analyzer = 0', 'JSON').bytes())['data']
+        ok(norm(a) == norm(b), f'старый анализатор == новый: {os.path.basename(pth)[:24]} {c}')
 print('\nИТОГ:', 'всё сходится' if not bad else f'{bad} расхождений')
 sys.exit(1 if bad else 0)

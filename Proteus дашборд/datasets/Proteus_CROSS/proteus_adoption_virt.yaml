@@ -1,0 +1,592 @@
+table_name: proteus_adoption_virt
+main_dttm_col: log_dttm
+description: null
+default_endpoint: null
+offset: 0
+cache_timeout: null
+schema: prod_proteus
+sql: "with\n(select groupArray((ad_logn))\nfrom prod_proteus.cross_data_logins )\n\
+  as cross_array,\n\n(select '{{   cache_key_wrapper(current_username()) }}')\nas\
+  \ prot_login\n\n\nselect\n*\n,min(log_dttm) over (partition by user_id) as first_action\n\
+  ,max(log_dttm) over (partition by user_id) as last_action\n,min(log_dttm) over (partition\
+  \ by user_id, dashboard_nm) as first_action_dash\n,{% if filter_values('period_column')|first\
+  \ == '30 \u0434\u043D\u0435\u0439'%} \nlog_dttm between date_add(DAY, -30,  max_date)\
+  \ and max_date\n{% elif filter_values('period_column')|first == '20 \u043D\u0435\
+  \u0434\u0435\u043B\u044C'%} \nlog_dttm between date_add(WEEk, -20, max_date) and\
+  \ max_date\n{% elif filter_values('period_column')|first == '12 \u043C\u0435\u0441\
+  \u044F\u0446\u0435\u0432'%} \nlog_dttm between date_add(MONTH, -11 , max_date) and\
+  \ max_date\n{% elif filter_values('period_column')|first == '8 \u043A\u0432\u0430\
+  \u0440\u0442\u0430\u043B\u043E\u0432'%} \nlog_dttm between date_add(QUARTER, -8\
+  \ , max_date) and max_date\n{% else %}\nlog_dttm between date_add(DAY, -30, max_date)\
+  \ and max_date\n{% endif %} as date_filter,\ncoalesce({% if filter_values('group_column')|first\
+  \ == '\u0421\u0442\u0440\u0438\u043C'%} \nemp_stream_desc\n{% elif filter_values('group_column')|first\
+  \ == '\u0421\u043F\u0435\u0446\u0438\u0430\u043B\u0438\u0437\u0430\u0446\u0438\u044F\
+  '%} \nemp_specialization_desc\n{% elif filter_values('group_column')|first == 'HQ|nonHQ'%}\
+  \ \nemp_specialization_oper_code\n{% elif filter_values('group_column')|first ==\
+  \ 'IT|nonIT'%} \nemp_specialization_it_code\n{% elif filter_values('group_column')|first\
+  \ == '\u0423\u0421-3'%} \nlvl3_management_unit_nm\n{% elif filter_values('group_column')|first\
+  \ == '\u0423\u0421-4'%} \nlvl4_management_unit_nm\n{% elif filter_values('group_column')|first\
+  \ == '\u0423\u0421-5'%} \nlvl5_management_unit_nm\n{% elif filter_values('group_column')|first\
+  \ == '\u0423\u0421-6'%} \nlvl6_management_unit_nm\n{% elif filter_values('group_column')|first\
+  \ == '\u0423\u0421-7'%} \nlvl7_management_unit_nm\n{% elif filter_values('group_column')|first\
+  \ == '\u0421\u0435\u0433\u043C\u0435\u043D\u0442\u0430\u0446\u0438\u044F (only Cross\
+  \ Data)'%} \nif( hasAny([prot_login],cross_array), current_head_lvl_segment, '\u041D\
+  \u0435\u0442 \u0434\u043E\u0441\u0442\u0443\u043F\u0430')\n{% else %}\nlvl3_management_unit_nm\n\
+  {% endif %},'-') as group_users\n, CONCAT('<a href=\"', dashboard_url,'\" target=\"\
+  _blank\">',toString(dashboard_nm),'</a>') as dash_url_new\nfrom prod_proteus.proteus_adoption\n\
+  \nwhere\n true\n and dashboard_id <> 13040\n and login != 'svc_mon_otpp'\n{% if\
+  \ filter_values('owner_column')|first == '\u0414\u0430'%} \nand  hasAny(arrayMap(x\
+  \ -> replaceAll(replaceRegexpAll(x, '^\"|\"$', ''), '\\\\\"', '\"'), owners_string),\
+  \ [login]) = 0 \n{% else %}\nand true\n{% endif %}\n\n--{% if filter_values('owner_login_column')%}\n\
+  --and hasAny(splitByString(',',\n--assumeNotNull(owners_string)), {{filter_values('owner_login_column')}})\
+  \ \n--{% endif %}\n\n{% if filter_values('owner_login_column')%}\nand hasAny(arrayMap(x\
+  \ -> replaceAll(replaceRegexpAll(x, '^\"|\"$', ''), '\\\\\"', '\"'), owners_string),\
+  \ {{filter_values('owner_login_column')}}) \n{% endif %}\n\n{% if filter_values('collection_nm')%}\n\
+  and hasAny(arrayMap(x -> replaceAll(replaceRegexpAll(x, '^\"|\"$', ''), '\\\\\"\
+  ', '\"'), collection_names), {{filter_values('collection_nm')}})\n{% endif %}\n\n\
+  \ {%if filter_values('dashboard_nm')%}\n and dashboard_nm in {{filter_values('dashboard_nm')|where_in}}\n\
+  \ {%endif%}\n{%if filter_values('management_head_flg')%}\n and management_head_flg\
+  \ in {{filter_values('management_head_flg')|where_in}}\n {%endif%}\n {%if filter_values('actual_flg')%}\n\
+  \ and actual_flg in {{filter_values('actual_flg')|where_in}}\n {%endif%}\n {%if\
+  \ filter_values('published')%}\n and published in {{filter_values('published')|where_in}}\n\
+  \ {%endif%}\n  {%if filter_values('certified_by')%}\n and certified_by in {{filter_values('certified_by')|where_in}}\n\
+  \ {%endif%}\n   {%if filter_values('emp_specialization_it_code')%}\n and emp_specialization_it_code\
+  \ in {{filter_values('emp_specialization_it_code')|where_in}}\n {%endif%}\n    {%if\
+  \ filter_values('emp_specialization_oper_code')%}\n and emp_specialization_oper_code\
+  \ in {{filter_values('emp_specialization_oper_code')|where_in}}\n {%endif%}\n  \
+  \   {%if filter_values('emp_specialization_desc')%}\n and emp_specialization_desc\
+  \ in {{filter_values('emp_specialization_desc')|where_in}}\n {%endif%}\n      {%if\
+  \ filter_values('emp_stream_desc')%}\n and emp_stream_desc in {{filter_values('emp_stream_desc')|where_in}}\n\
+  \ {%endif%}\n       {%if filter_values('lvl3_management_unit_nm')%}\n and lvl3_management_unit_nm\
+  \ in {{filter_values('lvl3_management_unit_nm')|where_in}}\n {%endif%}\n       \
+  \ {%if filter_values('lvl4_management_unit_nm')%}\n and lvl4_management_unit_nm\
+  \ in {{filter_values('lvl4_management_unit_nm')|where_in}}\n {%endif%}\n       \
+  \  {%if filter_values('lvl5_management_unit_nm')%}\n and lvl5_management_unit_nm\
+  \ in {{filter_values('lvl5_management_unit_nm')|where_in}}\n {%endif%}\n       \
+  \   {%if filter_values('lvl6_management_unit_nm')%}\n and lvl6_management_unit_nm\
+  \ in {{filter_values('lvl6_management_unit_nm')|where_in}}\n {%endif%}\n       \
+  \    {%if filter_values('lvl7_management_unit_nm')%}\n and lvl7_management_unit_nm\
+  \ in {{filter_values('lvl7_management_unit_nm')|where_in}}\n {%endif%}\n       \
+  \     {%if filter_values('login')%}\n and login in {{filter_values('login')|where_in}}\n\
+  \ {%endif%}\n             {%if filter_values('group_users')%}\n and group_users\
+  \ in {{filter_values('group_users')|where_in}}\n {%endif%}\n              {%if filter_values('dash_url_new')%}\n\
+  \ and dash_url_new in {{filter_values('dash_url_new')|where_in}}\n {%endif%}\n \
+  \              {%if filter_values('owner_login')%}\n and owner_login in {{filter_values('owner_login')|where_in}}\n\
+  \ {%endif%}\n{% if filter_values('ad_group')%}\nand hasAny(arrayMap(x -> replaceAll(replaceRegexpAll(x,\
+  \ '^\"|\"$', ''), '\\\\\"', '\"'), ad_groups), {{filter_values('ad_group')}})\n\
+  {% endif %}\n"
+params: null
+template_params: {}
+filter_select_enabled: false
+fetch_values_predicate: null
+extra: null
+uuid: a4adb736-93d4-41ec-aeb9-1225df92a779
+metrics:
+- metric_name: count
+  verbose_name: COUNT(*)
+  metric_type: null
+  expression: COUNT(*)
+  description: null
+  d3format: null
+  extra:
+    warning_markdown: ''
+  warning_text: null
+columns:
+- column_name: lvl3_management_unit_nm
+  verbose_name: "3-\u0439 \u0443\u0440\u043E\u0432\u0435\u043D\u044C \u0423\u0421"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl4_management_unit_nm
+  verbose_name: "4-\u0439 \u0443\u0440\u043E\u0432\u0435\u043D\u044C \u0423\u0421"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl5_management_unit_nm
+  verbose_name: "5-\u0439 \u0443\u0440\u043E\u0432\u0435\u043D\u044C \u0423\u0421"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: management_head_flg
+  verbose_name: "\u0424\u043B\u0430\u0433 \u0440\u0443\u043A-\u043B\u044F"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(INT16)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: user_id
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(DECIMAL(28, 10))
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_specialization_oper_code
+  verbose_name: HQ|nonHQ
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_specialization_it_code
+  verbose_name: IT|nonIT
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_specialization_desc
+  verbose_name: "\u0421\u043F\u0435\u0446\u0438\u0430\u043B\u0438\u0437\u0430\u0446\
+    \u0438\u044F"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_stream_desc
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: "\u0421\u043F\u0435\u0446\u0438\u0430\u043B\u0438\u0437\u0430\u0446\
+    \u0438\u044F"
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: dash_url_new
+  verbose_name: "\u041E\u0442\u0447\u0435\u0442"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: dashboard_nm
+  verbose_name: ''
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: group_users
+  verbose_name: "\u0413\u0440\u0443\u043F\u043F\u0438\u0440\u043E\u0432\u043A\u0430"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: login
+  verbose_name: "\u041B\u043E\u0433\u0438\u043D"
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: company_fire_flg
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(INT16)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: mdm_employee_rk
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(INT32)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: dashboard_id
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(INT32)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: actual_flg
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(INT32)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: action_count
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(INT64)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: owner_id
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(INT64)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl6_management_unit_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl7_management_unit_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: date_filter
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(UINT8)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: first_action_dash
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: NULLABLE(DATETIME)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: last_action
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: NULLABLE(DATETIME)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: max_date
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: NULLABLE(DATETIME)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: created_dt
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: NULLABLE(DATETIME)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: first_action
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: NULLABLE(DATETIME)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: log_dttm
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: NULLABLE(DATETIME)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: current_head_lvl_segment
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: dashboard_url
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: certified_by
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: owner_login
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: owners_string
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: system_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: action
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: published
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: slug
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: json
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: NULLABLE(STRING)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+version: 1.0.0
+database_uuid: f3cf662e-9267-42ad-85d9-a009bacb4736

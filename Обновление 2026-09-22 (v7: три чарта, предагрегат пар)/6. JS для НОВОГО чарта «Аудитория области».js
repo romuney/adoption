@@ -247,12 +247,34 @@ function isoWeekOf(t) {
   var y0 = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   return { week: Math.ceil((((d - y0) / 86400000) + 1) / 7), year: d.getUTCFullYear() };
 }
-function axisLabel(t, grain) {
-  if (!t) return '';
-  if (grain === 'd') return p2(t.d) + '.' + p2(t.m + 1);
-  if (grain === 'w') return 'W' + p2(isoWeekOf(t).week);
-  if (grain === 'm') return MONTHS[t.m];
-  return 'Q' + (Math.floor(t.m / 3) + 1) + ' ' + String(t.y).slice(2);
+// Ось периодов «как календарь» (макет charts.js periodAxisLabels): метка на
+// КАЖДОЙ точке, без прореживания. Верхняя строка — сам период (день, номер
+// недели, месяц, квартал), нижняя — метка СМЕНЫ: у дней и недель это месяц,
+// у месяцев и кварталов — год. В точке смены верхняя метка жирная.
+function calLabel(ts, i, grain) {
+  var t = tsDate(ts[i].k, grain), pv = i ? tsDate(ts[i - 1].k, grain) : null;
+  if (grain === 'd') {
+    var chD = t.d === 1 || (pv && pv.m !== t.m);
+    return { main: String(t.d), bold: chD, sub: chD ? MONTHS[t.m] : '' };
+  }
+  if (grain === 'w') {
+    var chW = !!pv && pv.m !== t.m;
+    return { main: 'W' + isoWeekOf(t).week, bold: chW, sub: chW ? MONTHS[t.m] : '' };
+  }
+  var chY = !!pv && pv.y !== t.y;
+  return { main: grain === 'm' ? MONTHS[t.m] : 'Q' + (Math.floor(t.m / 3) + 1), bold: chY, sub: chY ? String(t.y) : '' };
+}
+function calAxisSvg(ts, grain, xOf, y0) {
+  var out = '';
+  for (var i = 0; i < ts.length; i++) {
+    var L = calLabel(ts, i, grain), x = r1(xOf(i));
+    out += '<text x="' + x + '" y="' + (y0 + 12) + '" font-size="10.5" text-anchor="middle" font-weight="' + (L.bold ? 700 : 400) +
+      '" fill="' + (L.bold ? '#3a3f4a' : CFG.colors.axis) + '">' + esc(L.main) + '</text>';
+    if (L.sub) {
+      out += '<text x="' + x + '" y="' + (y0 + 25) + '" font-size="9.5" text-anchor="middle" font-weight="600" fill="#8a909c">' + esc(L.sub) + '</text>';
+    }
+  }
+  return out;
 }
 function bucketTitle(t, grain) {
   if (!t) return '';
@@ -1584,11 +1606,10 @@ function usersChartSvg(ts, grain) {
   var padL = 6, padR = 26, inner = SVG_W - padL - padR;
   var step = inner / n;
   var bw = svgBarWidth(n);
-  var top = 14, pH = 164, axH = 20;
+  var top = 14, pH = 164, axH = 32;
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
   var fsVal = dense ? CFG.fonts.dense : CFG.fonts.val;
-  var ls = labelStep(n);
   var body = '', bk = [];
   for (i = 0; i < n; i++) {
     var p = ts[i];
@@ -1612,16 +1633,12 @@ function usersChartSvg(ts, grain) {
         : '<rect x="' + r1(x) + '" y="' + r1(sy) + '" width="' + r1(bw) + '" height="' + r1(segs[sj].h) + '" fill="' + segs[sj].c + '"/>';
       yy = sy;
     }
-    if (i % ls === 0 || i === n - 1) {
-      body += '<text x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
-        '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(compact(aU)) + '</text>';
-    }
+    // Подпись значения — у КАЖДОГО столбика (макет: valueLabel без пропусков).
+    body += '<text x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
+      '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(compact(aU)) + '</text>';
     bk.push({ k: p.k, u: p.users, nu: p.new_u, re: p.react_u, rt: p.ret, v: p.views });
-    if (i % ls === 0 || i === n - 1) {
-      body += '<text x="' + r1(padL + i * step + step / 2) + '" y="' + (top + pH + 13) + '" font-size="11" text-anchor="middle" fill="' + C.axis + '">' +
-        esc(axisLabel(tsDate(p.k, grain), grain)) + '</text>';
-    }
   }
+  body += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
   body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent" data-dyn="users" data-n="' + n +
     '" data-colw="' + r1(step) + '" data-grain="' + esc(grain) + '"' +
     '" data-bk="' + esc(JSON.stringify(bk)) + '"/>';
@@ -1640,11 +1657,10 @@ function viewsChartSvg(ts, grain) {
   var topV = svgHeadroom(maxV, n);
   var padL = 6, padR = 26, inner = SVG_W - padL - padR;
   var step = inner / n;
-  var top = 14, pH = 112, axH = 20;
+  var top = 14, pH = 112, axH = 32;
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
   var fsVal = dense ? CFG.fonts.dense : CFG.fonts.val;
-  var ls = labelStep(n);
   var y2 = function (v) { return top + pH - (v / topV) * pH; };
   var labels = '', bk = [];
   var pts = [], cps = [];
@@ -1653,13 +1669,10 @@ function viewsChartSvg(ts, grain) {
     var cy = y2(viewsOf(ts[i]));
     pts.push([cx, cy]);
     bk.push({ k: ts[i].k, u: ts[i].users, v: ts[i].views });
-    if (i % ls === 0 || i === n - 1) {
-      labels += '<text x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
-        '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(fmtV(ts[i])) + '</text>';
-      labels += '<text x="' + r1(cx) + '" y="' + (top + pH + 13) + '" font-size="11" text-anchor="middle" fill="' + C.axis + '">' +
-        esc(axisLabel(tsDate(ts[i].k, grain), grain)) + '</text>';
-    }
+    labels += '<text x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
+      '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(fmtV(ts[i])) + '</text>';
   }
+  labels += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
   for (i = 0; i < pts.length; i++) {
     if (!i) { cps.push([pts[0][0], pts[0][1]]); continue; }
     var dx = (pts[i][0] - pts[i - 1][0]) / 2;

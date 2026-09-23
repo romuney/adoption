@@ -60,9 +60,9 @@
 {% if loginf %}{% set _ = SJ.append('"login":' ~ jal(loginf)) %}{% endif %}
 {% if exlf %}{% set _ = SJ.append('"exl":' ~ jal(exlf)) %}{% endif %}
 {% if freqf %}{% set _ = SJ.append('"freq":' ~ jal(freqf)) %}{% endif %}
-{#- Ритм пользователя отчёта (не зависит от периода полоски): 4 — ежедневно (12+ активных дней
-    из последних 30), 3 — еженедельно (6+ недель из 8), 2 — ежемесячно (2+ из последних 3 месяцев),
-    1 — эпизодически (заходил за 3 месяца реже), 0 — не заходил 3 месяца (в ритм не входит). -#}
+{#- Ритм пользователя отчёта (не зависит от периода полоски): 4 — Daily (12+ активных дней
+    из последних 30), 3 — Weekly (6+ недель из 8), 2 — Monthly (2+ из последних 3 месяцев),
+    1 — Rare (заходил за 3 месяца реже), 0 — не заходил 3 месяца (в ритм не входит; все 0 — Dead). -#}
 {% set RC = "multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0)" %}
 WITH
   {# Дата свежести: md пары; запасной источник — последний визит (при пустом md gp_to_click). #}
@@ -128,7 +128,7 @@ WITH
       countIf(bitCount(bitAnd(msk, {{ CUR }})) >= {{ REG }}) AS regular_users,
       dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
       sum(v_life) AS v_tot,
-      {#- Ритм отчёта: людей каждого ритма «ежедневно, еженедельно, ежемесячно, эпизодически». -#}
+      {#- Ритм отчёта: людей каждого ритма «Daily, Weekly, Monthly, Rare»; «0,0,0,0» — Dead. -#}
       arrayStringConcat([toString(countIf({{ RC }} = 4)), toString(countIf({{ RC }} = 3)), toString(countIf({{ RC }} = 2)), toString(countIf({{ RC }} = 1))], ',') AS rhythm
     FROM kx GROUP BY kd, k0
   )

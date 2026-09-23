@@ -24,7 +24,7 @@
 {#- Корзины частоты — верхние границы корзин 1–4 по АКТИВНЫМ периодам, своя шкала у каждой гранулярности
     (в 12 месяцах и 8 кварталах нет недостижимых «8–15» / «16+»). Та же таблица — в SQL каталога. -#}
 {% set FBIN = {'d': [1, 3, 7, 15], 'w': [1, 3, 7, 15], 'm': [1, 3, 6, 9], 'q': [1, 2, 3, 4]}[grain] %}
-{% set LIST_N = 3000 %}{% set ADG_N = 100 %}
+{% set ADG_N = 100 %}
 {% set WITH_ADG = false %}{#- true — вид «AD-группа» в «Кто смотрит». На бою у человека сотни AD-групп: их разворот
     давал ~2 с на КАЖДЫЙ клик (стенд: 1 отчёт 0,16 → 1,2 с, весь Proteus 0,5 → 2,7 с). -#}
 {% macro q(values) -%}
@@ -118,7 +118,7 @@ WITH
       countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }})) AS new_u,
       countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }}) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(rk.5 + 1)))) = 0) AS react_u,
-      countIf(nb_cur >= 8) AS regular, countIf(nb_prev >= 8) AS regular_prev,
+      countIf(nb_cur > {{ FBIN[2] }}) AS regular, countIf(nb_prev > {{ FBIN[2] }}) AS regular_prev,
       countIf(prv AND NOT cur) AS sleeping,
       countIf(m1 = 1) AS mau, countIf(m2 = 1) AS mau_prev,
       count() AS cnt,
@@ -194,7 +194,30 @@ FROM (
     sleeping, mau, mau_prev, cnt, (am).1 AS ages, (am).2 AS acts
   FROM rnk
   LEFT JOIN bv b ON b.bk = rnk.tk
-  WHERE (role != 'list' OR rn <= {{ LIST_N }}) AND (g != 'adg' OR rn <= {{ ADG_N }})
+  WHERE role != 'list' AND (g != 'adg' OR rn <= {{ ADG_N }})
+
+  UNION ALL
+  {# Поимённый список — ВСЕ зрители области, упакованные: одна строка на подразделение
+     (parent = путь «УС-3 › … › УС-7»), в k — сотрудники через \n, поля через \t:
+     логин, ФИО, специализация, стрим, стаж, рук., активных периодов, просмотров, последний визит, корзина.
+     Путь не повторяется у каждого человека, 30 пустых колонок на человека не едут —
+     ответ в ~6 раз легче построчного (весь Proteus: 21 МБ → ~3 МБ). cnt — людей в строке. #}
+  SELECT 'list' AS section, '' AS g,
+    arrayStringConcat(groupArray(concat(
+      replaceRegexpAll(ifNull(toString(lp.login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.fio), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(lp.spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.stream), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(lp.exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(lp.is_head), ''), '\t', ifNull(toString(lp.days), ''), '\t',
+      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''))), '\n') AS k,
+    lp.parent AS parent,
+    NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
+    NULL AS days, NULL AS last_dt, NULL AS bin,
+    toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
+    toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
+    toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,
+    count() AS cnt, CAST([], 'Array(Int64)') AS ages, CAST([], 'Array(UInt64)') AS acts
+  FROM agg lp
+  WHERE lp.role = 'list'
+  GROUP BY lp.parent
 
   UNION ALL
   {# Эхо области: что выбрано (g = режим, k = значения через \n, fio = имя одиночного отчёта), parent = грануляция.

@@ -9,6 +9,7 @@
 {% set grain = grain if grain in GRAINS else 'd' %}
 {% set g = GRAINS[grain] %}
 {% set CUR = 2 ** g.n - 1 %}
+{% set REG = {'d': 8, 'w': 8, 'm': 7, 'q': 4}[grain] %}{#- «постоянный» = корзина частоты 4+ (≥ FBIN[2]+1 активных периодов): 8 дней/недель, 7 месяцев, 4 квартала — как сегмент «Постоянный» в «Кто смотрит» -#}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% macro q(values) -%}
 {%- set out = [] -%}
@@ -113,7 +114,7 @@ WITH
     SELECT kd, k0,
       countIf(bitAnd(msk, {{ CUR }}) != 0) AS users,
       sum(v_cur) AS views,
-      countIf(bitCount(bitAnd(msk, {{ CUR }})) >= 8) AS regular_users,
+      countIf(bitCount(bitAnd(msk, {{ CUR }})) >= {{ REG }}) AS regular_users,
       dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
       sum(v_life) AS v_tot
     FROM kx GROUP BY kd, k0

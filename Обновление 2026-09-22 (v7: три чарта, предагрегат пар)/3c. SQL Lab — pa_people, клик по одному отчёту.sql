@@ -1,7 +1,7 @@
 -- SQL Lab: pa_people ровно как при КЛИКЕ ПО ОДНОМУ ОТЧЁТУ (30 дней). Только для замера — в датасет НЕ вставлять.
 -- 1) Замените 987654321 на id отчёта, по которому кликали на борде (число из адреса /superset/dashboard/<id>/).
 -- 2) Засеките время ПЕРВОГО прогона. Повтор — поменяйте цифру в строке ниже (SQL Lab кэширует ответ).
--- 2
+-- 3
 WITH
   maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   dash_ok AS (
@@ -54,7 +54,7 @@ WITH
       countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < 30)) AS new_u,
       countIf(prv AND fd_k >= 30 AND fd_k < 60) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64(127), toUInt8(rk.5 + 1)))) = 0) AS react_u,
-      countIf(nb_cur >= 8) AS regular, countIf(nb_prev >= 8) AS regular_prev,
+      countIf(nb_cur > 7) AS regular, countIf(nb_prev > 7) AS regular_prev,
       countIf(prv AND NOT cur) AS sleeping,
       countIf(m1 = 1) AS mau, countIf(m2 = 1) AS mau_prev,
       count() AS cnt,
@@ -119,7 +119,24 @@ FROM (
     sleeping, mau, mau_prev, cnt, (am).1 AS ages, (am).2 AS acts
   FROM rnk
   LEFT JOIN bv b ON b.bk = rnk.tk
-  WHERE (role != 'list' OR rn <= 3000) AND (g != 'adg' OR rn <= 100)
+  WHERE role != 'list' AND (g != 'adg' OR rn <= 100)
+  UNION ALL
+  SELECT 'list' AS section, '' AS g,
+    arrayStringConcat(groupArray(concat(
+      replaceRegexpAll(ifNull(toString(lp.login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.fio), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(lp.spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.stream), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(lp.exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(lp.is_head), ''), '\t', ifNull(toString(lp.days), ''), '\t',
+      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''))), '\n') AS k,
+    lp.parent AS parent,
+    NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
+    NULL AS days, NULL AS last_dt, NULL AS bin,
+    toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
+    toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
+    toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,
+    count() AS cnt, CAST([], 'Array(Int64)') AS ages, CAST([], 'Array(UInt64)') AS acts
+  FROM agg lp
+  WHERE lp.role = 'list'
+  GROUP BY lp.parent
   UNION ALL
   SELECT 'area' AS section, 'report' AS g,
     ('987654321') AS k, 'd' AS parent,

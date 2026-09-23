@@ -76,10 +76,10 @@ var CFG = {
   fbins: { d: [1, 3, 7, 15], w: [1, 3, 7, 15], m: [1, 3, 6, 9], q: [1, 2, 3, 4] },
   fopen: { d: true, q: true },
   grains: {
-    d: { n: 30, unit: 'день',    units: 'дней',     label: 'за 30 дней' },
-    w: { n: 20, unit: 'неделя',  units: 'недель',   label: 'за 20 недель' },
-    m: { n: 12, unit: 'месяц',   units: 'месяцев',  label: 'за 12 месяцев' },
-    q: { n: 8,  unit: 'квартал', units: 'кварталов', label: 'за 8 кварталов' }
+    d: { n: 30, reg: 8, unit: 'день',    units: 'дней',     label: 'за 30 дней' },
+    w: { n: 20, reg: 8, unit: 'неделя',  units: 'недель',   label: 'за 20 недель' },
+    m: { n: 12, reg: 7, unit: 'месяц',   units: 'месяцев',  label: 'за 12 месяцев' },
+    q: { n: 8, reg: 4,  unit: 'квартал', units: 'кварталов', label: 'за 8 кварталов' }
   },
   prevLabel: { d: 'к пред. 30 дням', w: 'к пред. 20 неделям', m: 'к пред. 12 месяцам', q: 'к пред. 8 кварталам' },
   colors: {
@@ -251,7 +251,7 @@ function buildModel() {
     stateJ: null          // JSON активных условий из total-строки (или null)
   };
 
-  // Метрики строки каталога: пользователи, просмотры, постоянные (8+ активных
+  // Метрики строки каталога: пользователи, просмотры, постоянные (корзина 4+: 8/8/7/4 активных
   // периодов), дни с последнего просмотра. Остальные KPI — в правой панели.
   function kpiOf(r) {
     return {
@@ -893,7 +893,7 @@ function reportTableHtml() {
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
     th('users', 'Польз.') + th('views', 'Просм.') +
-    th('regular_users', 'Пост.', { text: 'Доля тех, кто заходил в отчёт 8+ раз за период' }) +
+    th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 4 и 5)' }) +
     th('last_view_days', 'Тишина', { text: 'Сколько дней назад был последний просмотр (данные — по вчерашний день)' }) +
     '</tr></thead><tbody>';
   for (var r = 0; r < pageRows.length; r++) {

@@ -84,7 +84,7 @@ var CFG = {
     { key: 'dUsers', label: 'Δ к пред.', hint: 'Изменение числа людей к предыдущему периоду той же длины', prevOnly: true },
     { key: 'views', label: 'Просмотров', hint: 'Открытия отчётов области за период' },
     { key: 'vpu', label: 'На чел.', hint: 'Просмотров на одного человека группы' },
-    { key: 'regShare', label: 'Постоянных', hint: 'Доля заходивших 8+ разных периодов (число — во всплывашке)' },
+    { key: 'regShare', label: 'Постоянных', hint: 'Доля постоянных — корзины частоты 4 и 5: 8+ дней или недель, 7+ месяцев, 4+ квартала (число — во всплывашке)' },
     { key: 'new_u', label: 'Новых', hint: 'Первый визит в отчёты области пришёлся на этот период' }
   ],
   // Колонки поимённого списка (сортировка — по ключу).
@@ -105,10 +105,10 @@ var CFG = {
   fbins: { d: [1, 3, 7, 15], w: [1, 3, 7, 15], m: [1, 3, 6, 9], q: [1, 2, 3, 4] },
   fopen: { d: true, q: true },
   grains: {
-    d: { n: 30, unit: 'день',    units: 'дней',     us: 'дн',  label: 'за 30 дней',    vs: 'к пред. 30 дням',     prev: true },
-    w: { n: 20, unit: 'неделя',  units: 'недель',   us: 'нед', label: 'за 20 недель',  vs: 'к пред. 20 неделям',  prev: true },
-    m: { n: 12, unit: 'месяц',   units: 'месяцев',  us: 'мес', label: 'за 12 месяцев', vs: 'к пред. 12 месяцам',  prev: false },
-    q: { n: 8,  unit: 'квартал', units: 'кварталов', us: 'кв', label: 'за 8 кварталов', vs: 'к пред. 8 кварталам', prev: false }
+    d: { n: 30, reg: 8, unit: 'день',    units: 'дней',     us: 'дн',  label: 'за 30 дней',    vs: 'к пред. 30 дням',     prev: true },
+    w: { n: 20, reg: 8, unit: 'неделя',  units: 'недель',   us: 'нед', label: 'за 20 недель',  vs: 'к пред. 20 неделям',  prev: true },
+    m: { n: 12, reg: 7, unit: 'месяц',   units: 'месяцев',  us: 'мес', label: 'за 12 месяцев', vs: 'к пред. 12 месяцам',  prev: false },
+    q: { n: 8, reg: 4,  unit: 'квартал', units: 'кварталов', us: 'кв', label: 'за 8 кварталов', vs: 'к пред. 8 кварталам', prev: false }
   },
   // Подписи режимов области (mode_param каталога и cut:* панели «Аудитория»).
   areaLabels: {
@@ -144,8 +144,9 @@ var CFG = {
     headroom: 1.3, headroomDense: 1.22   // воздух над марками под подписи
   },
   // Поимённый список: строк на странице; людей внутри раскрытой группы —
-  // первые subShow, по «ещё» — до subMax. В ответе датасета — топ-3 000 по дням.
-  pageSize: 50, subShow: 15, subMax: 300, listCap: 3000
+  // первые subShow, по «ещё» — до subMax. В ответе датасета — ВСЕ зрители области
+  // (упакованы по подразделениям, см. parseListPack).
+  pageSize: 50, subShow: 15, subMax: 300
 };
 
 // ---------- БЛОК 2: ВХОД + СОСТОЯНИЕ + ХЕЛПЕРЫ ----------
@@ -386,6 +387,23 @@ function freqLabels(grain) {
     CFG.fopen[grain] ? top + '+ ' + f[2] : rg(top, n)];
 }
 
+// Упакованный список (pa_people, секция list): строка на подразделение, parent — его путь
+// «УС-3 › … › УС-7», в k — сотрудники через \n, поля через \t: логин, ФИО, специализация,
+// стрим, стаж, рук. 1/0, активных периодов, просмотров, последний визит, корзина 1–5.
+function parseListPack(txt, path, out) {
+  var lines = txt.split('\n'), ps = path ? path.split(CFG.orgSep) : [];
+  for (var i = 0; i < lines.length; i++) {
+    var f = lines[i].split('\t');
+    if (f.length < 10 || !f[0]) continue;
+    var bin = num(f[9]) || 1, seg = segOf(bin);
+    out.push({
+      login: f[0], fio: f[1], lvl3: ps[0] || '', lvl4: ps[1] || '', org: path,
+      spec: f[2], stream: f[3], exp: f[4], is_head: num(f[5]) || 0,
+      days: num(f[6]) || 0, views: num(f[7]) || 0, last_dt: toDate(f[8]),
+      bin: bin, seg: seg.key, segCls: seg.cls
+    });
+  }
+}
 // Сегмент человека по корзине (макет data.js SEG_OF: ≥8 Постоянный, ≥2
 // Эпизодический, иначе Разовый; в чарт приходит уже готовый bin).
 function segOf(bin) {
@@ -407,7 +425,8 @@ function segOf(bin) {
 //   freq  — корзины частоты (k = 1..5, users) по всей области;
 //   ctx   — группы людей области с полными метриками (g = org/spec/stream/head/adg;
 //           org: k = путь «УС-3 › … › УС-7», parent = путь родителя);
-//   list  — поимённый список (топ-3 000 по активным дням), parent = путь человека;
+//   list  — поимённый список: ВСЕ зрители, строка на подразделение (parent = путь),
+//           в k — люди через \n, поля через \t (parseListPack);
 //   ts    — динамика: k = возраст бакета, users / new_u / react_u / views;
 //   coh   — когорты: k = месяц первого визита, cnt = размер, ages/acts.
 function buildModel() {
@@ -464,6 +483,8 @@ function buildModel() {
       };
       m.gm[gg][kk] = grp;
       if (gg === 'org') (m.orgKids[grp.parent] = m.orgKids[grp.parent] || []).push(kk);
+    } else if (sec === 'list' && String(r[F.k] || '').indexOf('\t') >= 0) {
+      parseListPack(String(r[F.k]), String(r[F.parent] || ''), m.list);
     } else if (sec === 'list') {
       var bin = num(r[F.bin]) || 1;
       var seg = segOf(bin);
@@ -613,7 +634,7 @@ function obsList(k, G, what) {
   if (shReg < 25) {
     out.push({ sev: 'mid',
       lead: 'Постоянных ' + pct(shReg) + ' — меньше четверти',
-      body: 'Только ' + nf(k.regular) + ' человек заходили 8 и более ' + G.units + ' за период.',
+      body: 'Только ' + nf(k.regular) + ' человек заходили ' + G.reg + ' и более ' + G.units + ' за период.',
       rule: 'доля постоянных <25%' });
   }
   var ord = { high: 0, mid: 1, good: 2 };
@@ -1115,11 +1136,7 @@ function pagerHtml(total) {
     '<span class="' + CFG.ns + '-pgnum">' + (state.page + 1) + ' / ' + pages + '</span>' +
     '<button type="button" class="' + CFG.ns + '-pgbtn" data-pg="next"' + (state.page >= pages - 1 ? ' disabled' : '') + ' aria-label="Следующая страница">›</button></div>';
 }
-// Корзина есть в области, но в топ-3 000 списка никто из неё не вошёл (частые вытесняют
-// редких) — не «никто не подходит»: каталог слева всё равно сужен сервером.
 function emptyPeopleText() {
-  if (state.freqSel && !state.q && MODEL.list.length >= CFG.listCap)
-    return 'В поимённый список входят ' + nf(CFG.listCap) + ' самых активных зрителей — из этой корзины в него никто не попал. Каталог слева сужен по всей корзине.';
   return 'Никто не подходит под корзину частоты, поиск и настройки.';
 }
 function peopleTableHtml(plist) {
@@ -1142,7 +1159,7 @@ function peopleTableHtml(plist) {
 
 // --- Сводная таблица групп ---------------------------------------------------
 // Итоги групп — серверные (ctx pa_people): точные уникальные люди по области,
-// не сумма строк списка. Людей внутри группы показывает список (топ-3 000).
+// не сумма строк списка. Людей внутри группы показывает список (все зрители).
 var ZERO_M = { users: 0, users_prev: 0, views: 0, views_prev: 0, new_u: 0, regular: 0, sleeping: 0 };
 function gMetrics(g) {
   g = g || ZERO_M;
@@ -1448,7 +1465,7 @@ function freqStripHtml(shown) {
           { label: 'Во всей области', value: nf(areaCnt) }]
       }) + '>' +
       '<span class="sp-bar" style="background:' + CFG.colors.freq[i] + '"></span>' +
-      '<span class="sp-v">' + nf(cnt) + '<i class="sp-p">· ' + pct(cnt / tot * 100, 0) + '</i></span>' +
+      '<span class="sp-v">' + nf(cnt) + '<i class="sp-p">· ' + pct(cnt / tot * 100, cnt / tot < 0.1 ? 1 : 0) + '</i></span>' +
       '<span class="sp-l">' + esc(MODEL.labels[i]) + '</span>' +
       '</button>';
   }
@@ -1550,7 +1567,7 @@ function whoTableHtml() {
       ? 'Итоги групп — точные уникальные люди по всей области; ▸ раскрывает вглубь' + (cut === 'org' ? ' (УС-3 › … › УС-7)' : '') +
         ', сотрудники — во вложенной таблице. Клик по строке — людская шина (каталог слева сузится), Shift накапливает; клик по заголовку — сортировка.'
       : 'Клик по заголовку — сортировка; клик по человеку — людская шина (каталог слева сузится до его отчётов), Shift накапливает.') +
-    (MODEL.list.length >= CFG.listCap ? ' В ответе — топ-' + nf(CFG.listCap) + ' зрителей области по активным дням.' : '') + '</div>';
+    '</div>';
 }
 // Тулбар «Кто смотрит»: слева — ЧТО показать (вид, настройки, поиск),
 // справа — счётчик и действия с результатом (раскрытие, копирование, CSV).
@@ -1959,7 +1976,7 @@ function kpisHtml() {
       delta: dl(dPct(k.new_u, k.new_prev), { vs: G.vs, unit: '%' }),
       sub: 'доля аудитории: <b>' + pct(k.users ? k.new_u / k.users * 100 : 0) + '</b>' }) +
     kpiCard({ label: 'Постоянных', value: pct(shReg),
-      hint: { title: 'Постоянные', text: 'Заходили 8 и более разных ' + G.units + ' за период — та же мера, что столбец «Пост.» каталога.' },
+      hint: { title: 'Постоянные', text: 'Заходили ' + G.reg + ' и более разных ' + G.units + ' за период — та же мера, что столбец «Пост.» каталога.' },
       delta: dl(shReg - shRegPrev, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
       sub: '<b>' + nf(k.regular) + '</b> ' + plural(k.regular, 'человек', 'человека', 'человек') }) +
     kpiCard({ label: 'MAU · ' + mM, value: nf(k.mau),

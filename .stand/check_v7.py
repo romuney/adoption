@@ -61,9 +61,20 @@ for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'
           {'mode_param': 'report', 'sel_f': ['1', '2', '5']}, {'mode_param': 'collection', 'sel_f': ['Колл 5']},
           {'mode_param': 'owner', 'sel_f': ['own3']}, {'pub_f': '0', 'act_f': '0', 'exc_f': '0', 'period_param': 'w'},
           {'mode_param': 'cut:spec', 'sel_f': ['Спец 3']}]:
-    A = {pkey(r): r for r in run(PPL, c)[0]}; B = {pkey(r): r for r in run(PFALL, c)[0]}
+    # Упакованный список: порядок людей внутри строки подразделения не задан — сравниваем множеством.
+    srt = lambda rows: [dict(r, k='\n'.join(sorted(r['k'].split('\n')))) if r['section'] == 'list' else r for rows_ in [rows] for r in rows_]
+    A = {pkey(r): r for r in srt(run(PPL, c)[0])}; B = {pkey(r): r for r in srt(run(PFALL, c)[0])}
     diff = [k for k in A.keys() | B.keys() if A.get(k) != B.get(k)]
     ok(not diff, f'pa_people == запасной на факте {c}' + (f'  расхождений: {len(diff)}, напр. {sorted(diff)[:2]}' if diff else ''))
+# Список «Кто смотрит» — ВСЕ зрители (не топ-N): людей в упакованных строках == users; постоянные == корзины 4–5.
+for g in ['d', 'w', 'm', 'q']:
+    pr_ = run(PPL, {'period_param': g})[0]
+    tot_ = [r for r in pr_ if r['section'] == 'total'][0]
+    ppl_ = [ln.split('\t') for r in pr_ if r['section'] == 'list' for ln in r['k'].split('\n')]
+    ok(len(ppl_) == int(tot_['users']) and len({x[0] for x in ppl_}) == len(ppl_),
+       f'список «Кто смотрит» — все зрители: {len(ppl_)} == users {tot_["users"]} [{g}]')
+    ok(sum(1 for x in ppl_ if int(x[9]) >= 4) == int(tot_['regular']),
+       f'постоянные KPI == людей корзин 4–5: {tot_["regular"]} [{g}]')
 cube = run(BODY, {})[0]
 for r in [x for x in cube if x['section'] == 'rep'][:5]:
     pt = [x for x in run(PPL, {'mode_param': 'report', 'sel_f': [str(r['dashboard_id'])]})[0] if x['section'] == 'total'][0]

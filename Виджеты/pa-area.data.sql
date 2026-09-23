@@ -25,6 +25,8 @@
     (в 12 месяцах и 8 кварталах нет недостижимых «8–15» / «16+»). Та же таблица — в SQL каталога. -#}
 {% set FBIN = {'d': [1, 3, 7, 15], 'w': [1, 3, 7, 15], 'm': [1, 3, 6, 9], 'q': [1, 2, 3, 4]}[grain] %}
 {% set LIST_N = 3000 %}{% set ADG_N = 100 %}
+{% set WITH_ADG = false %}{#- true — вид «AD-группа» в «Кто смотрит». На бою у человека сотни AD-групп: их разворот
+    давал ~2 с на КАЖДЫЙ клик (стенд: 1 отчёт 0,16 → 1,2 с, весь Proteus 0,5 → 2,7 с). -#}
 {% macro q(values) -%}
 {%- set out = [] -%}
 {%- for v in values -%}{%- set _ = out.append(v|string|replace('\\', '\\\\')) -%}{%- endfor -%}
@@ -99,7 +101,7 @@ WITH
         if((cur OR prv) AND spec != '', [('ctx', 'spec', spec, '', toInt64(-1))], []),
         if((cur OR prv) AND stream != '', [('ctx', 'stream', stream, '', toInt64(-1))], []),
         if((cur OR prv) AND is_head = 1, [('ctx', 'head', '1', '', toInt64(-1))], []),
-        if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),
+        {% if WITH_ADG %}if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),{% endif %}
         if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
         if(gm < 12, [('coh', '', toString(c0), '', toInt64(-1))], []),
         {#- Динамика: строка на каждый активный бакет текущего окна (просмотры — из pa_dash_bkt ниже). -#}

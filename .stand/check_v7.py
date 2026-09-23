@@ -88,8 +88,16 @@ kids = {}
 for x in orgs: kids.setdefault(x['parent'], []).append(x)
 top = [x for x in orgs if x['parent'] == ''][0]
 ok(sum(int(x['users']) for x in kids.get(top['k'], [])) <= int(top['users']), f'дочерние узлы «{top["k"]}» не больше родителя')
+# AD-группы в pa_people выключены по умолчанию (WITH_ADG = false): запрос не читает ad_groups.
+ok('ad_groups' not in stand.render(PPL, {}) and not [x for x in p if x['g'] == 'adg'],
+   'pa_people по умолчанию не читает ad_groups (вид «AD-группа» выключен)')
+import tempfile
+PPL_ADG = os.path.join(tempfile.mkdtemp(), 'ppl_adg.sql')
+open(PPL_ADG, 'w').write(open(PPL).read().replace('{% set WITH_ADG = false %}', '{% set WITH_ADG = true %}'))
+pa = run(PPL_ADG, {})[0]
+ok(len([x for x in pa if x['g'] == 'adg']) > 0, 'WITH_ADG = true возвращает группы AD')
 for g, col in [('spec', 'spec_f'), ('adg', 'adg_f'), ('stream', 'stream_f')]:
-    for r in [x for x in p if x['section'] == 'ctx' and x['g'] == g][:3]:
+    for r in [x for x in (pa if g == 'adg' else p) if x['section'] == 'ctx' and x['g'] == g][:3]:
         t = [x for x in run(BODY, {col: [r['k']]})[0] if x['section'] == 'total'][0]
         ok(str(t['users']) == str(r['users']), f'группа {g}={r["k"]}: людей {r["users"]} → ИТОГО тела {t["users"]}')
 # Шапка pa_strip: одна строка эха; без выбора таблиц не читает; подписи пилюль.

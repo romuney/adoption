@@ -71,7 +71,7 @@ ts_new, ts_react, ts_views.
 | Поле | Тип | Секции | Назначение | В «Измерениях» |
 |---|---|---|---|---|
 | section | abc | все | area / total / freq / ctx / list / ts / coh | [ ] |
-| g | abc | area, ctx | режим области (area); разрез группы org/spec/stream/head/adg (ctx) | [ ] |
+| g | abc | area, ctx | режим области (area); разрез группы org/spec/stream/head (ctx); adg — только при `WITH_ADG = true` (по умолчанию выключено: дорого) | [ ] |
 | k | abc | все, кроме total | значения области через перевод строки (area); корзина 1–5; группа (org — путь узла «УС-3 › … › УС-7»); логин; возраст бакета; месяц когорты | [ ] |
 | parent | abc | area, ctx, list | грануляция периода (area); путь родительского узла (ctx org, у УС-3 — `''`); путь человека в оргструктуре (list) | [ ] |
 | login | abc | list | логин | [ ] |

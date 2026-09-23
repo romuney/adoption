@@ -1544,11 +1544,21 @@ function whoTableHtml() {
 // справа — счётчик и действия с результатом (раскрытие, копирование, CSV).
 // none — поимённый список с сортировкой и пагинацией; любая группировка —
 // сводная таблица групп, свёрнутая до верхнего уровня (правка владельца 2026-09-23).
+// Вид «AD-группа» — только если датасет вернул группы: в pa_people они выключены
+// по умолчанию (WITH_ADG = false — разворот сотен групп на человека стоил секунды).
+function groupsNow() {
+  var hasAdg = false;
+  for (var k in (MODEL.gm.adg || {})) if (Object.prototype.hasOwnProperty.call(MODEL.gm.adg, k)) { hasAdg = true; break; }
+  return CFG.groups.filter(function (g) { return g.key !== 'adgroup' || hasAdg; });
+}
 function listZoneHtml() {
+  var views = groupsNow(), known = false;
+  for (var v = 0; v < views.length; v++) if (views[v].key === state.whoCut) known = true;
+  if (!known) state.whoCut = 'none';
   var cut = state.whoCut, grouped = cut !== 'none', N = CFG.ns;
   return '<div class="' + N + '-who-bar">' +
     '<div class="' + N + '-bar-g">' +
-      dropdownHtml('whoCut', cut, CFG.groups) +
+      dropdownHtml('whoCut', cut, views) +
       optsDropHtml(MODEL.list) +
       searchBoxHtml('whoQ', 'Имя или логин', state.q) +
     '</div>' +

@@ -71,6 +71,12 @@ var CFG = {
   // (правка владельца 2026-09-23: «уровни УС-3…УС-7 — в одну опцию»).
   groups: [
     { key: 'none', label: 'Люди' }, { key: 'org', label: 'Оргструктура (УС-3…УС-7)' },
+    // Один уровень УС плоской таблицей — подпункты дерева (в меню с отступом).
+    { key: 'org3', label: 'УС-3', trg: 'Оргструктура · УС-3', sub: true },
+    { key: 'org4', label: 'УС-4', trg: 'Оргструктура · УС-4', sub: true },
+    { key: 'org5', label: 'УС-5', trg: 'Оргструктура · УС-5', sub: true },
+    { key: 'org6', label: 'УС-6', trg: 'Оргструктура · УС-6', sub: true },
+    { key: 'org7', label: 'УС-7', trg: 'Оргструктура · УС-7', sub: true },
     { key: 'spec', label: 'Специализация' }, { key: 'stream', label: 'Стрим' },
     { key: 'adgroup', label: 'AD-группа' }, { key: 'heads', label: 'Тим-лиды' }
   ],
@@ -811,6 +817,8 @@ function buildCSS() {
     '  cursor:pointer;font-family:inherit;white-space:nowrap;}',
     P + '-dd-opt:hover{background:#f4f6f9;color:var(--ink);}',
     P + '-dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:500;}',
+    // Подпункт (уровень УС под «Оргструктурой»): отступ слева — видно, что это часть дерева.
+    P + '-dd-opt.sub{padding-left:26px;}',
 
     // ── Настройки списка (поповер) ──
     P + '-who-opts ' + P + '-dd-trg{width:auto;}',
@@ -1188,8 +1196,10 @@ function minusM(a, b) {
 function makeNode(cut, k, name, depth, g, sub) {
   return { id: cut + ':' + k, cut: cut, k: k, name: name, depth: depth, m: gMetrics(g), sub: sub || '' };
 }
+// Вид «один уровень УС»: whoCut = org3…org7 → номер уровня (0 — не он).
+function orgLevelOf(cut) { var m = /^org([3-7])$/.exec(cut || ''); return m ? +m[1] : 0; }
 function nodeKids(nd) {
-  if (nd.cut !== 'org') return [];
+  if (nd.cut !== 'org' || nd.flat) return [];
   var ks = MODEL.orgKids[nd.k] || [], out = [];
   for (var i = 0; i < ks.length; i++) out.push(orgNode(ks[i]));
   return out;
@@ -1199,8 +1209,18 @@ function orgNode(path) {
   return makeNode('org', path, ps[ps.length - 1], ps.length - 1, MODEL.gm.org[path], 'УС-' + (ps.length + 2));
 }
 function rootNodes(cut) {
-  var out = [], k, src;
-  if (cut === 'org') {
+  var out = [], k, src, L = orgLevelOf(cut);
+  if (L) {
+    // Плоско: все узлы уровня УС-L; вторая строка — путь до него. Шина та же (org_f путём).
+    for (k in MODEL.gm.org) {
+      if (!Object.prototype.hasOwnProperty.call(MODEL.gm.org, k)) continue;
+      var pp = orgParts(k);
+      if (pp.length !== L - 2) continue;
+      var fn = makeNode('org', k, pp[pp.length - 1], 0, MODEL.gm.org[k], 'УС-' + L + (pp.length > 1 ? ' · ' + pp.slice(0, -1).join(CFG.orgSep) : ''));
+      fn.id = cut + ':' + k; fn.flat = true;
+      out.push(fn);
+    }
+  } else if (cut === 'org') {
     var ks = MODEL.orgKids[''] || [];
     for (var i = 0; i < ks.length; i++) out.push(orgNode(ks[i]));
   } else if (cut === 'heads') {
@@ -1217,9 +1237,14 @@ function rootNodes(cut) {
 // сотрудники нижних уровней живут в дочерних узлах).
 function peopleIndex(plist, cut) {
   var ix = {}, key;
+  var L = orgLevelOf(cut);
   for (var i = 0; i < plist.length; i++) {
     var p = plist[i];
-    if (cut === 'org') key = p.org;
+    if (L) {                           // уровень УС-L: все сотрудники поддерева узла
+      var lp = orgParts(p.org);
+      if (lp.length < L - 2) continue;
+      key = lp.slice(0, L - 2).join(CFG.orgSep);
+    } else if (cut === 'org') key = p.org;
     else if (cut === 'heads') key = p.is_head ? 'Тим-лиды' : 'Остальные';
     else if (cut === 'spec' || cut === 'stream') key = p[cut];
     else continue;                     // AD-группы: членств в ответе нет
@@ -1283,7 +1308,7 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
   var dim = local && !sel && !cN;
   var m = nd.m;
   // Вторая строка, как у отчёта (владелец) и человека (логин): уровень и состав.
-  var nk = nd.cut === 'org' ? (MODEL.orgKids[nd.k] || []).length : 0;
+  var nk = nd.cut === 'org' && !nd.flat ? (MODEL.orgKids[nd.k] || []).length : 0;
   var sub = nd.cut === 'org'
     ? nd.sub + (nk ? ' · ' + nk + ' ' + plural(nk, 'подразделение', 'подразделения', 'подразделений') : '')
     : '';
@@ -1328,7 +1353,7 @@ function nestPeopleHtml(nd, people, span) {
 function groupTableHtml(plist, cut) {
   var cols = gColsNow(), local = localActive();
   var span = cols.length + 1 + (local ? 1 : 0);
-  var pix = peopleIndex(plist, cut), lc = local ? localCounts(plist, cut) : null;
+  var pix = peopleIndex(plist, cut), lc = local ? localCounts(plist, orgLevelOf(cut) ? 'org' : cut) : null;
   var out = [], visible = [];
   function walk(nodes) {
     var s = sortNodes(nodes);
@@ -1348,7 +1373,7 @@ function groupTableHtml(plist, cut) {
   for (var ri = 0; ri < roots.length; ri++) if (roots[ri].m.share > MAX_SHARE) MAX_SHARE = roots[ri].m.share;
   walk(roots);
   VISIBLE_NODES = visible;
-  var tot = gMetrics(MODEL.kpi || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
+  var tot = gMetrics(MODEL.kpi || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' || orgLevelOf(cut) ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
   for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c], state.gSort);
   if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всей области.' }) + '>В выборке</th>';
   // Общая каретка (ДС 4.6c) — в строке итога, на вертикали строчных кареток:
@@ -1388,7 +1413,8 @@ function exportRows() {
     return { head: head, rows: rows };
   }
   var cols = gColsNow();
-  head = [cut === 'org' ? 'Уровень' : 'Разрез', cut === 'org' ? 'Путь' : 'Группа', 'Название'];
+  var isOrg = cut === 'org' || orgLevelOf(cut) > 0;
+  head = [isOrg ? 'Уровень' : 'Разрез', isOrg ? 'Путь' : 'Группа', 'Название'];
   for (c = 0; c < cols.length; c++) head.push(cols[c].label + (cols[c].key === 'share' || cols[c].key === 'dUsers' || cols[c].key === 'regShare' ? ', %' : ''));
   head.push('Постоянных, чел.');
   var cutLabel = '';
@@ -1492,7 +1518,7 @@ function freqStripHtml(shown) {
 // для дым-проверки поповеров, опции — data-ddopt.
 function dropdownHtml(id, curKey, opts) {
   var cur = '';
-  for (var i = 0; i < opts.length; i++) if (opts[i].key === curKey) cur = opts[i].label;
+  for (var i = 0; i < opts.length; i++) if (opts[i].key === curKey) cur = opts[i].trg || opts[i].label;
   var open = state.dd === id;
   var h = '<div class="' + CFG.ns + '-dd sm' + (open ? ' open' : '') + '">' +
     '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="' + esc(id) + '" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button">' +
@@ -1501,7 +1527,7 @@ function dropdownHtml(id, curKey, opts) {
   if (open) {
     h += '<div class="' + CFG.ns + '-dd-body">';
     for (var o = 0; o < opts.length; o++) {
-      h += '<button class="' + CFG.ns + '-dd-opt' + (opts[o].key === curKey ? ' on' : '') + '" data-ddopt="' + esc(id) +
+      h += '<button class="' + CFG.ns + '-dd-opt' + (opts[o].sub ? ' sub' : '') + (opts[o].key === curKey ? ' on' : '') + '" data-ddopt="' + esc(id) +
         '" data-val="' + esc(opts[o].key) + '" type="button">' + esc(opts[o].label) + '</button>';
     }
     h += '</div>';
@@ -1567,7 +1593,9 @@ function whoCountHtml() {
   var cut = state.whoCut, cnt;
   if (cut !== 'none') {
     var nRoot = rootNodes(cut).length;
-    cnt = nf(nRoot) + ' ' + plural(nRoot, 'группа', 'группы', 'групп') + (cut === 'org' ? ' верхнего уровня' : '');
+    cnt = orgLevelOf(cut)
+      ? nf(nRoot) + ' ' + plural(nRoot, 'подразделение', 'подразделения', 'подразделений') + ' УС-' + orgLevelOf(cut)
+      : nf(nRoot) + ' ' + plural(nRoot, 'группа', 'группы', 'групп') + (cut === 'org' ? ' верхнего уровня' : '');
   } else {
     var n = shownList().length;
     cnt = nf(n) + ' ' + plural(n, 'человек', 'человека', 'человек') + (MODEL.total > n ? ' из ' + nf(MODEL.total) : '');
@@ -1580,7 +1608,9 @@ function whoTableHtml() {
   var cut = state.whoCut, grouped = cut !== 'none', plist = shownList();
   return (grouped ? groupTableHtml(plist, cut) : peopleTableHtml(plist)) +
     '<div class="' + CFG.ns + '-tbl-note">' + (grouped
-      ? 'Итоги групп — точные уникальные люди по всей области; ▸ раскрывает вглубь' + (cut === 'org' ? ' (УС-3 › … › УС-7)' : '') +
+      ? (orgLevelOf(cut)
+        ? 'Подразделения уровня УС-' + orgLevelOf(cut) + ' — точные уникальные люди; ▸ — все сотрудники подразделения вместе с нижними уровнями; кто не дошёл до УС-' + orgLevelOf(cut) + ' в оргструктуре, в таблицу не входит'
+        : 'Итоги групп — точные уникальные люди по всей области; ▸ раскрывает вглубь' + (cut === 'org' ? ' (УС-3 › … › УС-7)' : '')) +
         ', сотрудники — во вложенной таблице. Клик по строке — людская шина (каталог слева сузится), Shift накапливает; клик по заголовку — сортировка.'
       : 'Клик по заголовку — сортировка; клик по человеку — людская шина (каталог слева сузится до его отчётов), Shift накапливает.') +
     '</div>';
@@ -1594,7 +1624,13 @@ function whoTableHtml() {
 function groupsNow() {
   var hasAdg = false;
   for (var k in (MODEL.gm.adg || {})) if (Object.prototype.hasOwnProperty.call(MODEL.gm.adg, k)) { hasAdg = true; break; }
-  return CFG.groups.filter(function (g) { return g.key !== 'adgroup' || hasAdg; });
+  var lv = {};
+  for (var pk in (MODEL.gm.org || {})) if (Object.prototype.hasOwnProperty.call(MODEL.gm.org, pk)) lv[orgParts(pk).length + 2] = true;
+  return CFG.groups.filter(function (g) {
+    if (g.key === 'adgroup') return hasAdg;
+    var L = orgLevelOf(g.key);
+    return !L || !!lv[L];              // уровень УС без узлов в данных в меню не показываем
+  });
 }
 var COPY_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 var EXPAND_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';

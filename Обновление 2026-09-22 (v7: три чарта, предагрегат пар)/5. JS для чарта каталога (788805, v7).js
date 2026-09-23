@@ -822,17 +822,27 @@ function isFresh(created) {
   return days <= 90;
 }
 // Адрес отчёта: origin страницы борда (referrer iframe), иначе dashHost.
-// Ритм отчёта (колонка rhythm: людей «daily,weekly,monthly,rare»; все нули — Dead):
-// тот ритм, которого придерживается хотя бы половина пользователей (медиана по частоте).
+// Ритм отчёта (колонка rhythm: людей «daily,weekly,monthly,rare»; все нули — Dead).
+// Считается по ЯДРУ — тем, кто возвращается (Daily + Weekly + Monthly): разовые визиты
+// после массовой рассылки иначе топили популярные отчёты в Rare. Ритм = ритм хотя бы
+// половины ядра; Rare — если ядро меньше RH_CORE_MIN всех, кто заходил за 3 месяца.
+var RH_CORE_MIN = 0.1;
 function rhythmOf(raw) {
   // Подписи — внутри: функция зовётся при сборке модели, раньше строки с var (подъём даст undefined).
   var RH_LABELS = ['Rare', 'Monthly', 'Weekly', 'Daily'];
   var a = String(raw == null ? '' : raw).split(','), d = num(a[0]) || 0, w = num(a[1]) || 0, m = num(a[2]) || 0, o = num(a[3]) || 0;
-  var n = d + w + m + o, half = n / 2, cum = [d, d + w, d + w + m, n], rank = 0;
-  for (var i = 0; i < 4 && n; i++) if (cum[i] >= half) { rank = 4 - i; break; }
+  var n = d + w + m + o, core = d + w + m, rank = 0, share = 0;
+  if (n) {
+    if (!core || core < n * 0.1) { rank = 1; share = n ? o / n : 0; }
+    else {
+      var half = core / 2;
+      if (d >= half) { rank = 4; share = d / core; }
+      else if (d + w >= half) { rank = 3; share = (d + w) / core; }
+      else { rank = 2; share = 1; }
+    }
+  }
   // n = 0 — за 3 месяца в отчёт не заходил никто (в пределах фильтров): Dead.
-  return { d: d, w: w, m: m, o: o, n: n, rank: rank, label: rank ? RH_LABELS[rank - 1] : 'Dead',
-    share: n && rank ? cum[4 - rank] / n : 0 };
+  return { d: d, w: w, m: m, o: o, n: n, core: core, rank: rank, label: rank ? RH_LABELS[rank - 1] : 'Dead', share: share };
 }
 // Подсказка скрепки: действие + ID отчёта (адрес целиком в подсказку не помещается).
 function linkTip(id) { return { text: 'Скопировать ссылку на отчёт', rows: [{ label: 'ID отчёта', value: String(id) }] }; }
@@ -925,7 +935,7 @@ function reportTableHtml() {
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
     th('users', 'Польз.') + th('views', 'Просм.') +
     th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
-    th('rhythm', 'Ритм', { title: 'Ритм отчёта', text: 'Как пользуется отчётом хотя бы половина его пользователей: Daily — 12+ дней из последних 30, Weekly — 6+ недель из 8, Monthly — 2 из последних 3 месяцев, Rare — реже; Dead — за 3 месяца не заходил никто. Не зависит от периода полоски.' }) +
+    th('rhythm', 'Ритм', { title: 'Ритм отчёта', text: 'Как пользуется отчётом его ядро — те, кто возвращается (разовые визиты не в счёт): Daily — хотя бы половина ядра заходит 12+ дней из последних 30, Weekly — 6+ недель из 8, Monthly — 2 из последних 3 месяцев. Rare — возвращающихся меньше 10% всех зрителей, Dead — за 3 месяца не заходил никто. Не зависит от периода полоски.' }) +
     '</tr></thead><tbody>';
   for (var r = 0; r < pageRows.length; r++) {
     var x = pageRows[r], sel = indexOfId(picked, x.id) >= 0;
@@ -939,9 +949,10 @@ function reportTableHtml() {
           { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) }
         ].concat(x.k.rh.n ? [
           { label: 'Daily', value: nf(x.k.rh.d) }, { label: 'Weekly', value: nf(x.k.rh.w) },
-          { label: 'Monthly', value: nf(x.k.rh.m) }, { label: 'Rare', value: nf(x.k.rh.o) }
+          { label: 'Monthly', value: nf(x.k.rh.m) }, { label: 'Rare', value: nf(x.k.rh.o) },
+          { label: 'Ядро (возвращаются)', value: nf(x.k.rh.core) + ' · ' + pct(x.k.rh.core / x.k.rh.n * 100, 0) }
         ] : []),
-        note: (x.k.rh.n ? 'Ритм — людей, заходивших за 3 месяца. ' : 'Dead — за 3 месяца не заходил никто. ') + (x.m.created_dt ? 'Создан ' + fmtDate(x.m.created_dt) : '')
+        note: (x.k.rh.n ? 'Ритм — по ядру: как пользуется хотя бы половина возвращающихся за 3 месяца. ' : 'Dead — за 3 месяца не заходил никто. ') + (x.m.created_dt ? 'Создан ' + fmtDate(x.m.created_dt) : '')
       }) + '>' +
       // Скрепка слева, текст — отдельным блоком справа: вторая строка длинного
       // названия и строка владельца выровнены по первой, а не уходят под иконку.

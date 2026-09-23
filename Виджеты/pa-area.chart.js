@@ -22,7 +22,7 @@
 // ШИНЫ.
 //   Слушает: полоску (period_param, pub_f/act_f/exc_f) и каталог слева
 //     (mode_param + sel_f — ОБЛАСТЬ: отчёты/коллекции/владельцы, мультивыбор).
-//   Пишет: людскую шину (lvl3_f/lvl4_f/spec_f/stream_f/adg_f/heads_f/login_f/
+//   Пишет: людскую шину (lvl3_f/lvl4_f/spec_f/stream_f/adg_f/heads_f/login_f/exl_f/
 //     freq_f) → каталог слева перезапрашивается и сужается. Себя панель НЕ
 //     сужает (самовлияние выключено, BI-паттерн: источник держит контекст):
 //     выбор подсвечивается, пустые группы гаснут, KPI и когорты — по области.
@@ -151,13 +151,48 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
 var state = __S[CFG.ns];
 
 // Массив из data приходит и массивом, и JSON-строкой '[1,2,3]'.
+// Массив из ответа датасета. Proteus отдаёт Array-колонку по-разному: живым
+// массивом, JSON-строкой ["a","b"] или Python-представлением ['a', 'b']
+// (строковые массивы ClickHouse проходят через str() результата). JSON.parse
+// на втором виде падал, и у отчётов «не было коллекций» — вкладки каталога
+// переставали фильтровать друг друга. Разбираем все три вида.
 function arr(v) {
   if (v == null) return [];
   if (Object.prototype.toString.call(v) === '[object Array]') return v;
   var s = String(v).trim();
-  if (!s || s === '[]') return [];
-  try { var p = JSON.parse(s); return Object.prototype.toString.call(p) === '[object Array]' ? p : []; }
-  catch (e) { return []; }
+  if (!s || s === '[]' || s === '()') return [];
+  try { var p = JSON.parse(s); if (Object.prototype.toString.call(p) === '[object Array]') return p; }
+  catch (e) { /* не JSON — разбираем как Python/ClickHouse-литерал ниже */ }
+  var out = [], i = 0, n = s.length, ch, q, buf, tok;
+  var ESC = { n: '\n', t: '\t', r: '\r', '0': '\0', b: '\b', f: '\f' };
+  if (s.charAt(0) === '[' || s.charAt(0) === '(') { i = 1; n = s.length - 1; }
+  while (i < n) {
+    ch = s.charAt(i);
+    if (ch === ',' || ch === ' ') { i++; continue; }
+    if (ch === "'" || ch === '"') {
+      q = ch; buf = ''; i++;
+      while (i < n && s.charAt(i) !== q) {
+        if (s.charAt(i) === '\\' && i + 1 < n) {
+          var e2 = s.charAt(i + 1);
+          if (e2 === 'x' || e2 === 'u') {
+            var len = e2 === 'x' ? 2 : 4, hex = s.substr(i + 2, len);
+            if (/^[0-9a-fA-F]+$/.test(hex) && hex.length === len) { buf += String.fromCharCode(parseInt(hex, 16)); i += 2 + len; continue; }
+          }
+          buf += ESC.hasOwnProperty(e2) ? ESC[e2] : e2;
+          i += 2;
+          continue;
+        }
+        buf += s.charAt(i); i++;
+      }
+      out.push(buf); i++;
+      continue;
+    }
+    tok = '';
+    while (i < n && s.charAt(i) !== ',') { tok += s.charAt(i); i++; }
+    tok = tok.trim();
+    if (tok && tok !== 'None' && tok !== 'NULL' && tok !== 'null') out.push(isFinite(+tok) ? +tok : tok);
+  }
+  return out;
 }
 
 function esc(s) {
@@ -545,9 +580,9 @@ function buildCSS() {
 
     // ── Поиск ──
     P + '-psearch{position:relative;flex:0 0 auto;color:var(--muted);}',
-    P + '-psearch input{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px 5px 28px;font-size:12px;color:var(--ink);width:190px;font-family:inherit;}',
+    P + '-psearch input{box-sizing:border-box;height:34px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 14px 0 32px;font-size:13px;color:var(--ink);width:230px;font-family:inherit;}',
     P + '-psearch input:focus{outline:none;border-color:var(--act);}',
-    P + '-psearch svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none;}',
+    P + '-psearch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}',
 
     // ── Сигаретка частоты (app.css .segstrip.freq) ──
     P + '-segstrip{display:flex;gap:6px;margin-bottom:10px;min-width:0;}',
@@ -597,7 +632,7 @@ function buildCSS() {
     // ── Настройки списка (поповер) ──
     P + '-who-opts ' + P + '-dd-trg{width:auto;}',
     P + '-who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px;}',
-    P + '-who-opts-pop ' + P + '-psearch input{width:100%;}',
+    P + '-who-opts-pop ' + P + '-psearch input{width:100%;height:30px;}',
     P + '-wo-h{font-size:11px;font-weight:500;color:var(--muted);',
     '  text-transform:uppercase;letter-spacing:.4px;}',
     P + '-wo-ex{max-height:224px;overflow:auto;}',
@@ -753,7 +788,7 @@ function matchesPicks(p) {
   if (pk.lvl4.length && pk.lvl4.indexOf(p.lvl4) < 0) return false;
   if (pk.spec.length && pk.spec.indexOf(p.spec) < 0) return false;
   if (pk.stream.length && pk.stream.indexOf(p.stream) < 0) return false;
-  if (pk.heads.length && !p.is_head) return false;
+  if (pk.heads.length === 1 && (pk.heads[0] === 'Тим-лиды') !== !!p.is_head) return false;
   // Выбор ЛЮДЕЙ список не сужает: человек — строка самого списка, он
   // подсвечивается, остальные остаются — иначе Shift-добавить второго некуда.
   return true;
@@ -992,14 +1027,14 @@ function exPoolHtml(area) {
   return h;
 }
 
-// Поповер настроек списка (порт app.js 1103–1139): локальные условия,
-// на каталог и динамику не действуют.
+// Поповер настроек списка (порт app.js 1103–1139): условия уходят в людскую
+// шину (heads_f, exl_f) — сужают каталог и KPI шапки; динамику панели не трогают.
 function optsDropHtml(area) {
   var open = state.dd === 'whoOpts';
   var active = state.headsOnly || state.excl.length;
   var h = '<div class="' + CFG.ns + '-dd sm ' + CFG.ns + '-who-opts' + (open ? ' open' : '') + '">' +
     '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="whoOpts" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button"' +
-      tip({ title: 'Настройки списка', text: 'Локальные условия этого списка: только руководители и исключённые логины. На каталог не действуют.' }) + '>' +
+      tip({ title: 'Настройки списка', text: 'Только руководители и исключённые логины. Действуют на список, каталог слева и KPI в шапке.' }) + '>' +
       (active ? '<i class="' + CFG.ns + '-wo-dot" aria-hidden="true"></i>' : '') +
       '<span class="' + CFG.ns + '-dd-txt">Настройки</span><span class="' + CFG.ns + '-dd-c" aria-hidden="true">▾</span>' +
     '</button>';
@@ -1805,8 +1840,13 @@ function dynTipHtml(el, i) {
       if (pk.spec.length) fl.push({ column: 'spec_f', operator: 'IN', value: pk.spec.slice() });
       if (pk.stream.length) fl.push({ column: 'stream_f', operator: 'IN', value: pk.stream.slice() });
       if (pk.adgroup.length) fl.push({ column: 'adg_f', operator: 'IN', value: pk.adgroup.slice() });
-      if (pk.heads.length) fl.push({ column: 'heads_f', operator: 'IN', value: ['1'] });
+      // heads_f: '1' — только руководители (настройка или группа «Тим-лиды»),
+      // 'n' — только группа «Остальные»; обе группы сразу = без условия.
+      var hv = state.headsOnly ? '1' : (pk.heads.length === 1 ? (pk.heads[0] === 'Тим-лиды' ? '1' : 'n') : '');
+      if (hv) fl.push({ column: 'heads_f', operator: 'IN', value: [hv] });
       if (pk.login.length) fl.push({ column: 'login_f', operator: 'IN', value: pk.login.slice() });
+      // Исключённые логины настроек списка — выпадают и из каталога, и из шапки.
+      if (state.excl.length) fl.push({ column: 'exl_f', operator: 'IN', value: state.excl.slice() });
       if (state.freqSel) fl.push({ column: 'freq_f', operator: 'IN', value: [state.freqSel] });
       return fl;
     }
@@ -1937,6 +1977,7 @@ function dynTipHtml(el, i) {
       if (headCb) {
         state.headsOnly = !!headCb.checked;
         render();
+        emitBus();
         return;
       }
       var exCb = trigger(e.target, 'data-woex');
@@ -1946,12 +1987,14 @@ function dynTipHtml(el, i) {
         if (exCb.checked && xi < 0) state.excl.push(exl);
         if (!exCb.checked && xi >= 0) state.excl.splice(xi, 1);
         render();
+        emitBus();
         return;
       }
       var exClear = trigger(e.target, 'data-woexclear');
       if (exClear) {
         state.excl = [];
         render();
+        emitBus();
         return;
       }
       // Строка группы или человека: людская шина (разрез = data-whocut).

@@ -514,7 +514,18 @@ function filtersHtml() {
       esc(sj.login.length === 1 ? nm(sj.login[0]) : String(sj.login.length)) + '</span>';
     n++;
   }
-  if (sj.heads === '1') { h += '<span class="' + N + '-pill ppl"' + tip({ title: 'Руководители', text: fromWho }) + '>Только руководители</span>'; n++; }
+  if (sj.heads === '1' || sj.heads === 'n') {
+    h += '<span class="' + N + '-pill ppl"' + tip({ title: 'Руководители', text: fromWho }) + '>' + (sj.heads === '1' ? 'Только руководители' : 'Без руководителей') + '</span>';
+    n++;
+  }
+  if (sj.exl && sj.exl.length) {
+    var nx = function (l) { return MODEL.ppl[l] || l; };
+    h += '<span class="' + N + '-pill ppl"' + tip({ title: 'Исключены из всех чисел',
+      text: 'Задано в «Кто смотрит» → Настройки → Исключить логины; снимается там же.',
+      rows: sj.exl.slice(0, 12).map(function (x) { return { label: nx(x), value: x }; }) }) + '>' +
+      '<span class="' + N + '-pill-k">Исключено:</span> ' + esc(sj.exl.length === 1 ? nx(sj.exl[0]) : String(sj.exl.length)) + '</span>';
+    n++;
+  }
   if (sj.freq && sj.freq.length) {
     var G = grainOf(MODEL.grain), fl = [];
     for (var f = 0; f < sj.freq.length; f++) fl.push(freqLabel(parseInt(sj.freq[f], 10) - 1, G.units));

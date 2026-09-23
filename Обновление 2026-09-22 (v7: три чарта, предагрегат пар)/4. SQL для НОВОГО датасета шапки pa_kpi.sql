@@ -1,6 +1,6 @@
 {#- pa_kpi — шапка листа «Отчёты» (чарт полоски pa-strip): KPI ВСЕГО экрана + эхо активных условий.
     Одна строка: итоги по области каталога (mode_param + sel_f) ∩ людской шине панели
-    (lvl3_f/lvl4_f/stream_f/spec_f/adg_f/heads_f/login_f/freq_f) под свитками и периодом полоски.
+    (lvl3_f/lvl4_f/stream_f/spec_f/adg_f/heads_f/login_f/exl_f/freq_f) под свитками и периодом полоски.
     Источник — только предагрегат пар prod_proteus.pa_pair: дневной факт не читается.
     Числа сходятся: без людской шины == total pa_people (правая панель); без области ==
     total куба каталога; область «один отчёт» + шина == строка этого отчёта в каталоге.
@@ -37,22 +37,25 @@
 {% set strm = filter_values('stream_f') or [] %}
 {% set spcf = filter_values('spec_f') or [] %}
 {% set adgf = filter_values('adg_f') or [] %}
-{% set headsv = filter_values('heads_f')|first|default('0', true) %}{% set headsv = headsv if headsv in ['0', '1'] else '0' %}
+{% set headsv = filter_values('heads_f')|first|default('0', true) %}{% set headsv = headsv if headsv in ['0', '1', 'n'] else '0' %}
 {% set loginf = filter_values('login_f') or [] %}
+{#- Исключённые логины (настройки «Кто смотрит»): люди выпадают из всех чисел. -#}
+{% set exlf = [] %}{% for v in (filter_values('exl_f') or []) %}{% if v|string != '' %}{% set _ = exlf.append(v|string) %}{% endif %}{% endfor %}
 {% set freqr = filter_values('freq_f') or [] %}
 {% set freqf = [] %}{% for v in freqr %}{% if v|string in ['1', '2', '3', '4', '5'] %}{% set _ = freqf.append(v|string) %}{% endif %}{% endfor %}
-{% set attrson = lv3 or lv4 or strm or spcf or adgf or headsv == '1' %}
+{% set attrson = lv3 or lv4 or strm or spcf or adgf or headsv != '0' %}
 {% set SJ = ['"period":"' ~ grain ~ '"'] %}
 {% if pubv == '0' %}{% set _ = SJ.append('"pub":"0"') %}{% endif %}
 {% if actv == '0' %}{% set _ = SJ.append('"act":"0"') %}{% endif %}
 {% if excv == '0' %}{% set _ = SJ.append('"exc":"0"') %}{% endif %}
-{% if headsv == '1' %}{% set _ = SJ.append('"heads":"1"') %}{% endif %}
+{% if headsv != '0' %}{% set _ = SJ.append('"heads":"' ~ headsv ~ '"') %}{% endif %}
 {% if lv3 %}{% set _ = SJ.append('"lvl3":' ~ jal(lv3)) %}{% endif %}
 {% if lv4 %}{% set _ = SJ.append('"lvl4":' ~ jal(lv4)) %}{% endif %}
 {% if strm %}{% set _ = SJ.append('"stream":' ~ jal(strm)) %}{% endif %}
 {% if spcf %}{% set _ = SJ.append('"spec":' ~ jal(spcf)) %}{% endif %}
 {% if adgf %}{% set _ = SJ.append('"adg":' ~ jal(adgf)) %}{% endif %}
 {% if loginf %}{% set _ = SJ.append('"login":' ~ jal(loginf)) %}{% endif %}
+{% if exlf %}{% set _ = SJ.append('"exl":' ~ jal(exlf)) %}{% endif %}
 {% if freqf %}{% set _ = SJ.append('"freq":' ~ jal(freqf)) %}{% endif %}
 {% if have %}{% set _ = SJ.append('"area_mode":"' ~ pmode ~ '"') %}{% set _ = SJ.append('"area":' ~ jal(sel)) %}{% endif %}
 WITH
@@ -78,7 +81,8 @@ WITH
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
-    {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% endif %}){% endif %}
+    {%- if exlf %} AND e.login NOT IN {{ q(exlf) }}{% endif %}
+    {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% elif headsv == 'n' %} AND management_head_flg = 0{% endif %}){% endif %}
     {%- if freqf %}
       {#- Корзина частоты — активные периоды зрителя по ВСЕМ отчётам (как в каталоге). -#}
       {%- set FB = [] -%}
@@ -107,8 +111,8 @@ SELECT
   CAST(countIf(bitAnd(msk, {{ PREV }}) != 0 AND bitAnd(msk, {{ CUR }}) = 0) AS UInt64) AS sleeping,
   CAST(countIf(bitTest(mon, 1)) AS UInt64) AS mau,
   CAST(countIf(bitTest(mon, 2)) AS UInt64) AS mau_prev,
-  {#- Подписи для пилюль: имена отчётов области и ФИО выбранных людей (перевод строки — разделитель). #}
+  {#- Подписи для пилюль: имена отчётов области и ФИО выбранных и исключённых людей (перевод строки — разделитель). #}
   CAST({% if have and pmode == 'report' and repids %}ifNull((SELECT arrayStringConcat(groupArray(20)(toString(ifNull(dashboard_nm, ''))), '\n') FROM prod_proteus.pa_dash_meta WHERE dashboard_id IN ({{ repids|join(', ') }})), ''){% else %}''{% endif %} AS String) AS area_nm,
-  CAST({% if loginf %}ifNull((SELECT arrayStringConcat(groupArray(concat(toString(login), '\t', toString(ifNull(fio, '')))), '\n') FROM prod_proteus.pa_emp_attrs WHERE login IN {{ q(loginf) }}), ''){% else %}''{% endif %} AS String) AS ppl_nm,
+  CAST({% if loginf or exlf %}ifNull((SELECT arrayStringConcat(groupArray(concat(toString(login), '\t', toString(ifNull(fio, '')))), '\n') FROM prod_proteus.pa_emp_attrs WHERE login IN {{ q(loginf + exlf) }}), ''){% else %}''{% endif %} AS String) AS ppl_nm,
   CAST('{{ "{" ~ SJ|join(", ") ~ "}" }}' AS String) AS state_j
 FROM pl

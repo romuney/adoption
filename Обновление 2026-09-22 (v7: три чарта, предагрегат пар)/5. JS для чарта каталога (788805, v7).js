@@ -137,13 +137,48 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
 var state = __S[CFG.ns];
 
 // Массив из data приходит и массивом, и JSON-строкой '[1,2,3]'.
+// Массив из ответа датасета. Proteus отдаёт Array-колонку по-разному: живым
+// массивом, JSON-строкой ["a","b"] или Python-представлением ['a', 'b']
+// (строковые массивы ClickHouse проходят через str() результата). JSON.parse
+// на втором виде падал, и у отчётов «не было коллекций» — вкладки каталога
+// переставали фильтровать друг друга. Разбираем все три вида.
 function arr(v) {
   if (v == null) return [];
   if (Object.prototype.toString.call(v) === '[object Array]') return v;
   var s = String(v).trim();
-  if (!s || s === '[]') return [];
-  try { var p = JSON.parse(s); return Object.prototype.toString.call(p) === '[object Array]' ? p : []; }
-  catch (e) { return []; }
+  if (!s || s === '[]' || s === '()') return [];
+  try { var p = JSON.parse(s); if (Object.prototype.toString.call(p) === '[object Array]') return p; }
+  catch (e) { /* не JSON — разбираем как Python/ClickHouse-литерал ниже */ }
+  var out = [], i = 0, n = s.length, ch, q, buf, tok;
+  var ESC = { n: '\n', t: '\t', r: '\r', '0': '\0', b: '\b', f: '\f' };
+  if (s.charAt(0) === '[' || s.charAt(0) === '(') { i = 1; n = s.length - 1; }
+  while (i < n) {
+    ch = s.charAt(i);
+    if (ch === ',' || ch === ' ') { i++; continue; }
+    if (ch === "'" || ch === '"') {
+      q = ch; buf = ''; i++;
+      while (i < n && s.charAt(i) !== q) {
+        if (s.charAt(i) === '\\' && i + 1 < n) {
+          var e2 = s.charAt(i + 1);
+          if (e2 === 'x' || e2 === 'u') {
+            var len = e2 === 'x' ? 2 : 4, hex = s.substr(i + 2, len);
+            if (/^[0-9a-fA-F]+$/.test(hex) && hex.length === len) { buf += String.fromCharCode(parseInt(hex, 16)); i += 2 + len; continue; }
+          }
+          buf += ESC.hasOwnProperty(e2) ? ESC[e2] : e2;
+          i += 2;
+          continue;
+        }
+        buf += s.charAt(i); i++;
+      }
+      out.push(buf); i++;
+      continue;
+    }
+    tok = '';
+    while (i < n && s.charAt(i) !== ',') { tok += s.charAt(i); i++; }
+    tok = tok.trim();
+    if (tok && tok !== 'None' && tok !== 'NULL' && tok !== 'null') out.push(isFinite(+tok) ? +tok : tok);
+  }
+  return out;
 }
 // Идентификатор значения выбора: dashboard_id числом, группы/срезы строкой.
 function pickId(v) { var n = num(v); return (n == null || String(n) !== String(v)) ? String(v) : n; }
@@ -321,10 +356,10 @@ function pickedIds(excludeMode) {
     if (reps.length && indexOfId(reps, r.id) < 0) ok = false;
     if (ok && cols.length) {
       var hitC = false;
-      for (var c = 0; c < (m.colls || []).length; c++) if (cols.indexOf(String(m.colls[c])) >= 0) hitC = true;
+      for (var c = 0; c < (m.colls || []).length; c++) if (indexOfId(cols, m.colls[c]) >= 0) hitC = true;
       if (!hitC) ok = false;
     }
-    if (ok && own.length && own.indexOf(m.owner_login || '') < 0) ok = false;
+    if (ok && own.length && indexOfId(own, m.owner_login || '') < 0) ok = false;
     if (ok) out.push(r.id);
   }
   return out;
@@ -589,9 +624,9 @@ function buildCSS() {
     P + '-empty{background:var(--card);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:var(--fs-body);}',
     P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
     P + '-psearch{position:relative;flex:0 0 auto;color:var(--muted);margin-left:auto;}',
-    P + '-psearch input{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px 5px 28px;font-size:12px;color:var(--ink);width:190px;font-family:inherit;}',
+    P + '-psearch input{box-sizing:border-box;height:34px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 14px 0 32px;font-size:13px;color:var(--ink);width:230px;font-family:inherit;}',
     P + '-psearch input:focus{outline:none;border-color:var(--act);}',
-    P + '-psearch svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none;}',
+    P + '-psearch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}',
 
     // ТУЛТИП живёт В BODY, вне -root — шрифт ему НЕ наследуется.
     // Повторяем font-family и position:fixed явно, иначе будет другой шрифт.
@@ -1131,16 +1166,19 @@ function buildHTML() {
 
     function togglePick(key, val, additive) {
       var list = state.picks[key] || [];
+      // Группы — всегда строки: логин «12345» или коллекция «2024» числом
+      // переставали совпадать с мета отчёта.
+      if (key !== 'report') val = String(val);
       var idx = indexOfId(list, val);
       if (additive) {
         // Shift+клик — накопительное ИЛИ внутри разреза (прежняя семантика).
         if (idx >= 0) list.splice(idx, 1);
-        else list.push(pickId(val));
+        else list.push(key === 'report' ? pickId(val) : val);
       } else {
         // Переклик: клик по другой строке просто меняет выбор; повторный
         // клик по единственной выбранной строке снимает её.
         if (idx >= 0 && list.length === 1) list = [];
-        else list = [pickId(val)];
+        else list = [key === 'report' ? pickId(val) : val];
       }
       state.picks[key] = list;
     }

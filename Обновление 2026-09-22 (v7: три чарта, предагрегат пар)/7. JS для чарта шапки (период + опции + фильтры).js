@@ -45,9 +45,13 @@ var CFG = {
   ],
   // Свиток эмитит СВОЮ колонку ТОЛЬКО при отличии от дефолта (val при откл.).
   switches: [
-    { key: 'published', label: 'Только опубликованные', def: true, emit: 'pub_f', val: '0', off: 'включая неопубликованные', hint: '' },
-    { key: 'actual', label: 'Только актуальные', def: true, emit: 'act_f', val: '0', off: 'включая неактуальные', hint: '' },
-    { key: 'excludeOwners', label: 'Исключить владельцев из просмотров', def: true, emit: 'exc_f', val: '0', off: 'с просмотрами владельцев',
+    // short — подпись переключателя в строке шапки (без поповера: в шапке ~100 px
+    // выпадающее меню обрезалось iframe-ом Proteus и опции нельзя было включить).
+    { key: 'published', label: 'Только опубликованные', short: 'Опубликованные', def: true, emit: 'pub_f', val: '0', off: 'включая неопубликованные',
+      hint: 'Считать только опубликованные отчёты. Выключите, чтобы видеть и черновики.' },
+    { key: 'actual', label: 'Только актуальные', short: 'Актуальные', def: true, emit: 'act_f', val: '0', off: 'включая неактуальные',
+      hint: 'Считать только отчёты, помеченные актуальными.' },
+    { key: 'excludeOwners', label: 'Исключить владельцев из просмотров', short: 'Без владельцев', def: true, emit: 'exc_f', val: '0', off: 'с просмотрами владельцев',
       hint: 'Владелец открывает свой отчёт при каждой правке — его визиты завышают аудиторию.' }
   ],
   // Подписи условий в пилюлях.
@@ -259,21 +263,19 @@ function buildCSS() {
            + 'font-weight:500;color:' + C.mut + ';cursor:pointer;white-space:nowrap;}',
     P + '-strip-seg button.on{background:#fff;color:' + C.ink + ';box-shadow:0 1px 2px rgba(20,28,45,.12);}',
     P + '-sp{flex:1;}',
-    P + '-opts{position:relative;display:inline-flex;}',
-    P + '-opts-trg{display:inline-flex;align-items:center;gap:6px;border:1px solid ' + C.line + ';background:#fff;border-radius:9px;'
-           + 'padding:5px 12px;font:inherit;font-size:12px;font-weight:500;color:' + C.ink2 + ';cursor:pointer;white-space:nowrap;}',
-    P + '-opts-trg:hover,' + P + '-opts.open ' + P + '-opts-trg{border-color:' + C.act + ';color:' + C.act + ';}',
-    P + '-opts-dot{width:7px;height:7px;border-radius:50%;background:' + C.act + ';display:inline-block;}',
-    P + '-opts-pop{position:absolute;z-index:60;top:calc(100% + 6px);left:0;min-width:300px;background:#fff;border-radius:9px;padding:10px;'
-           + 'border:1px solid ' + C.line + ';box-shadow:0 10px 30px rgba(24,33,50,.14);display:flex;flex-direction:column;gap:2px;}',
-    P + '-st-c{font-size:10px;color:inherit;}',
-    P + '-swt{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:' + C.ink2 + ';font-weight:400;line-height:1.35;padding:4px 2px;}',
-    P + '-swt input{appearance:none;width:32px;height:18px;border-radius:999px;background:#dfe3ea;position:relative;cursor:pointer;flex:0 0 auto;'
-           + 'transition:background .16s;margin:0;}',
-    P + '-swt input:after{content:\'\';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;'
-           + 'transition:transform .16s;box-shadow:0 1px 2px rgba(20,28,45,.25);}',
-    P + '-swt input:checked{background:' + C.act + ';}',
-    P + '-swt input:checked:after{transform:translateX(14px);}',
+    // Переключатели «Считать» прямо в строке шапки (поповер не помещался в ~100 px).
+    P + '-sep{width:1px;height:20px;background:' + C.line + ';margin:0 4px;flex:0 0 auto;}',
+    P + '-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:' + C.mut + ';font-weight:500;}',
+    P + '-togs{display:inline-flex;gap:6px;flex-wrap:wrap;}',
+    P + '-tog{position:relative;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px 0 8px;border:1px solid ' + C.line + ';border-radius:9px;background:#fff;font-size:12px;color:' + C.ink2 + ';cursor:pointer;user-select:none;white-space:nowrap;}',
+    P + '-tog:hover{border-color:#d3d8e0;}',
+    P + '-tog input{position:absolute;opacity:0;width:0;height:0;margin:0;}',
+    P + '-tog i{position:relative;width:26px;height:15px;border-radius:999px;background:#dfe3ea;flex:0 0 auto;transition:background .15s;}',
+    P + '-tog i:after{content:\'\';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,28,45,.2);transition:transform .15s;}',
+    P + '-tog.on i{background:' + C.act + ';}',
+    P + '-tog.on i:after{transform:translateX(11px);}',
+    P + '-tog.dev{border-color:' + C.actLine + ';background:' + C.blueBg + ';}',
+    P + '-tog:focus-within{outline:2px solid ' + C.actLine + ';outline-offset:1px;}',
     P + '-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;flex:0 0 auto;'
            + 'border:1px solid ' + C.line + ';color:' + C.mut + ';font-size:9px;font-style:normal;font-weight:600;cursor:help;vertical-align:middle;}',
     P + '-fresh{font-size:11.5px;color:' + C.mut + ';display:inline-flex;align-items:center;gap:7px;}',
@@ -387,27 +389,20 @@ function buildHTML() {
     h.push('<button type="button" data-grain="' + esc(g.id) + '"' + (g.id === state.grain ? ' class="on"' : '') + '>' + esc(g.label) + '</button>');
   }
   h.push('</div>');
-  var open = !!state.open, dev = false;
-  for (var d = 0; d < CFG.switches.length; d++) if (state.sw[CFG.switches[d].key] !== CFG.switches[d].def) dev = true;
-  h.push('<div class="' + N + '-opts' + (open ? ' open' : '') + '">');
-  h.push('<button type="button" class="' + N + '-opts-trg" data-ddtoggle="opts" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '"' +
-    tip({ title: 'Опции', text: 'Какие отчёты и просмотры считать. Отличия от умолчания видны серыми пилюлями в строке фильтров.' }) + '>' +
-    (dev ? '<i class="' + N + '-opts-dot" aria-hidden="true"></i>' : '') + 'Опции <span class="' + N + '-st-c" aria-hidden="true">▾</span></button>');
-  if (open) {
-    h.push('<div class="' + N + '-opts-pop">');
-    for (var j = 0; j < CFG.switches.length; j++) {
-      var s = CFG.switches[j];
-      h.push('<label class="' + N + '-swt"><input type="checkbox" data-f="' + esc(s.key) + '"' + (state.sw[s.key] ? ' checked' : '') + '><span>' + esc(s.label) +
-        (s.hint ? ' <span class="' + N + '-info"' + tip({ text: s.hint }) + '>i</span>' : '') + '</span></label>');
-    }
-    h.push('</div>');
+  // Опции — переключатели прямо в строке (поповер в шапке высотой ~100 px не помещался).
+  h.push('<span class="' + N + '-sep" aria-hidden="true"></span><span class="' + N + '-lbl">Считать</span>');
+  h.push('<div class="' + N + '-togs" role="group" aria-label="Какие отчёты и просмотры считать">');
+  for (var j = 0; j < CFG.switches.length; j++) {
+    var s = CFG.switches[j], on = !!state.sw[s.key];
+    h.push('<label class="' + N + '-tog' + (on ? ' on' : '') + (on !== s.def ? ' dev' : '') + '"' + tip({ title: s.label, text: s.hint }) + '>' +
+      '<input type="checkbox" data-f="' + esc(s.key) + '"' + (on ? ' checked' : '') + '><i aria-hidden="true"></i>' + esc(s.short) + '</label>');
   }
   h.push('</div>');
   h.push('<span class="' + N + '-sp"></span>');
   h.push('<span class="' + N + '-fresh"' + tip({ title: 'Свежесть данных', text: 'Витрина обновляется ежедневно, данные — по вчерашний день включительно.' }) +
     '><i></i>данные <b>за вчера</b></span>');
   h.push('<button type="button" class="' + N + '-btn-ghost" data-action="resetAll"' +
-    tip({ text: 'Вернуть период и опции к умолчанию. Выбор в каталоге и в «Кто смотрит» снимается там же.' }) + '>Сбросить</button>');
+    tip({ text: 'Вернуть период и переключатели к умолчанию. Выбор в каталоге и в «Кто смотрит» снимается там же, где сделан.' }) + '>Сбросить</button>');
   h.push('</div>');
   h.push(filtersHtml());
   h.push('</div>');

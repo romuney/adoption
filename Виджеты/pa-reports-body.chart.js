@@ -549,7 +549,7 @@ function buildCSS() {
     // ── Панели и сетки ──
     // Раунд 6: панель — белый блок на сером канвасе, без границы и тени.
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;}',
-    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
+    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;}',
     // Подзаголовок панели — одна строка всегда: текст меняется от кликов
     // («· только «1 день»»), перенос не должен раздвигать шапку и сдвигать
     // панель по вертикали (правка владельца 2026-09-18).
@@ -602,7 +602,6 @@ function buildCSS() {
 
     // ── Подшапка разрезов ──
     P + '-cutbar{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0 16px 12px;}',
-    P + '-cb-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;}',
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
     P + '-sub-tab{border:0;background:transparent;padding:6px 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
@@ -636,8 +635,8 @@ function buildCSS() {
     P + '-tbl-note b{color:var(--ink2);font-weight:500;}',
     P + '-empty{background:var(--card);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:var(--fs-body);}',
     P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
-    P + '-psearch{position:relative;flex:0 0 auto;color:var(--muted);margin-left:auto;}',
-    P + '-psearch input{box-sizing:border-box;height:34px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 14px 0 32px;font-size:13px;color:var(--ink);width:230px;font-family:inherit;}',
+    P + '-psearch{position:relative;flex:0 1 230px;min-width:150px;color:var(--muted);margin-left:auto;}',
+    P + '-psearch input{box-sizing:border-box;height:34px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 14px 0 32px;font-size:13px;color:var(--ink);width:100%;font-family:inherit;}',
     P + '-psearch input:focus{outline:none;border-color:var(--act);}',
     P + '-psearch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}',
 
@@ -682,7 +681,7 @@ function searchBoxHtml(id, placeholder, value) {
 // Подшапка «В разрезе»: счётчики накопительного выбора.
 function cutBarHtml() {
   var h = '<div class="' + CFG.ns + '-cutbar">' +
-    '<span class="' + CFG.ns + '-cb-l">В разрезе</span><div class="' + CFG.ns + '-sub-tabs" role="tablist">';
+    '<div class="' + CFG.ns + '-sub-tabs" role="tablist" aria-label="Разрез каталога">';
   for (var i = 0; i < CFG.modes.length; i++) {
     var m = CFG.modes[i], n = pickList(m.key).length;
     h += '<button class="' + CFG.ns + '-sub-tab' + (m.key === state.mode ? ' active' : '') + (n ? ' has' : '') +
@@ -1007,7 +1006,7 @@ function buildHTML() {
     cls: 'cat', title: 'Каталог',
     subHtml: pickCount()
       ? 'выбрано: <b>' + pickCount() + '</b> · <button type="button" class="' + CFG.ns + '-lnk" data-action="clearPicks">снять выбор</button>'
-      : 'клик — область экрана · Shift+клик — несколько',
+      : 'клик — выбрать область · Shift — несколько',
     right: searchBoxHtml('repQ', state.mode === 'report' ? 'Найти в каталоге' : 'Найти: ' + modeInfo.one.toLowerCase(), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
   }));

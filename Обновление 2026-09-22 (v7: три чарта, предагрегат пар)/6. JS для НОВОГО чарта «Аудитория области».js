@@ -566,8 +566,9 @@ function delta(v, o) {
     return '<span class="' + CFG.ns + '-nocmp"' + tip({ title: 'Сравнение', text: o.why || 'Нет предыдущего периода.' }) + '>не сравнивается</span>';
   }
   var cls = Math.abs(v) < (o.dead == null ? 0.05 : o.dead) ? 'flat' : (v > 0 ? 'up' : 'down');
-  return '<span class="' + CFG.ns + '-delta ' + CFG.ns + '-' + cls + '">' + signed(v, 1, o.unit || '') +
-    (o.vs ? ' <span class="' + CFG.ns + '-d-vs">' + esc(o.vs) + '</span>' : '') + '</span>';
+  // «к пред. 30 дням» — во всплывашке: в плашке он переносился в две строки.
+  return '<span class="' + CFG.ns + '-delta ' + CFG.ns + '-' + cls + '"' + (o.vs ? tip({ text: signed(v, 1, o.unit || '') + ' ' + o.vs }) : '') + '>' +
+    signed(v, 1, o.unit || '') + '</span>';
 }
 
 // «Что видно в данных»: пороговый отбор фактов по KPI области.
@@ -659,7 +660,7 @@ function buildCSS() {
 
     // ── KPI области и «Что видно в данных» — над карточкой вкладок, на сером холсте ──
     P + '-top{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;flex:0 0 auto;}',
-    P + '-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}',
+    P + '-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}',
     P + '-kpi{background:var(--card);border-radius:12px;padding:12px 14px;min-width:0;}',
     P + '-k-label{font-size:var(--fs-note);color:var(--muted);font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-k-val{font-size:24px;font-weight:600;letter-spacing:-.4px;line-height:1.15;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums;}',
@@ -735,9 +736,14 @@ function buildCSS() {
     P + '-seg-part.on .sp-bar{box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--ink2);}',
 
     // ── Тулбар «Кто смотрит» ──
-    P + '-who-bar{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;',
+    P + '-who-bar{position:relative;display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;',
     '  margin-bottom:8px;}',
-    P + '-who-cnt{font-size:var(--fs-note);color:var(--muted);font-weight:400;margin-left:auto;}',
+    P + '-who-cnt{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;}',
+    P + '-bar-g{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}',
+    P + '-bar-g.r{margin-left:auto;gap:6px;}',
+    P + '-bar-sep{width:1px;height:18px;background:var(--line);margin:0 2px;}',
+    P + '-who-bar ' + P + '-psearch input{width:200px;height:30px;}',
+    P + '-who-tbl{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
     P + '-who-cnt b{color:var(--ink2);font-weight:500;}',
     P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:500;cursor:help;}',
 
@@ -861,7 +867,8 @@ function buildCSS() {
     P + '-empty-td{text-align:center !important;padding:14px !important;color:var(--muted) !important;}',
     P + '-bar-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;}',
     P + '-exp{display:inline-flex;align-items:center;gap:6px;}',
-    P + '-toast{font-size:var(--fs-note);color:var(--green-tx);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-toast{position:absolute;right:2px;top:calc(100% - 4px);z-index:5;font-size:var(--fs-note);color:var(--green-tx);background:var(--card);padding:0 4px;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-toast:empty{display:none;}',
     P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;',
     '  font-size:10px;width:18px;padding:0;font-family:inherit;line-height:1;}',
     P + '-gh-caret:hover{color:var(--ink);}',
@@ -939,8 +946,6 @@ function buildCSS() {
     P + '-ct-cell.part{background:#f1f3f6 !important;font-style:italic;color:var(--muted);}',
     P + '-panel-h ' + P + '-under{padding:0;margin-left:auto;}',
     P + '-h-area{color:var(--muted);font-weight:400;cursor:help;}',
-    P + '-hsearch{margin-left:auto;flex:0 0 auto;}',
-    P + '-hsearch + ' + P + '-sub-tabs{margin-left:8px;}',
     P + '-panel-h > ' + P + '-sub-tabs{margin-left:auto;}',
     '</style>'
   ].join('\n');
@@ -1487,45 +1492,58 @@ function optsDropHtml(area) {
 // пересобирает ТОЛЬКО эту зону, не трогая поле ввода (RETRO 68).
 // none — поимённый список с сортировкой и пагинацией; любая группировка —
 // сводная таблица групп, свёрнутая до верхнего уровня (правка владельца 2026-09-23).
-function listZoneHtml() {
-  var cut = state.whoCut;
-  var grouped = cut !== 'none';
-  var plist = shownList();
-  var N = CFG.ns, cnt;
-  if (grouped) {
+// Счётчик тулбара и таблица — отдельными функциями: поиск в тулбаре
+// пересобирает только их, поле ввода не трогается (фокус, RETRO 68).
+function whoCountHtml() {
+  var cut = state.whoCut, cnt;
+  if (cut !== 'none') {
     var nRoot = rootNodes(cut).length;
     cnt = nf(nRoot) + ' ' + plural(nRoot, 'группа', 'группы', 'групп') + (cut === 'org' ? ' верхнего уровня' : '');
   } else {
-    cnt = nf(plist.length) + ' ' + plural(plist.length, 'человек', 'человека', 'человек') +
-      (MODEL.total > plist.length ? ' из ' + nf(MODEL.total) : '');
+    var n = shownList().length;
+    cnt = nf(n) + ' ' + plural(n, 'человек', 'человека', 'человек') + (MODEL.total > n ? ' из ' + nf(MODEL.total) : '');
   }
-  var h = '<div class="' + N + '-who-bar">' +
-    '<span class="' + N + '-bar-l">Вид</span>' + dropdownHtml('whoCut', cut, CFG.groups) +
-    optsDropHtml(MODEL.list) +
-    '<span class="' + N + '-who-cnt">' + cnt +
-      (pickCount() ? ' · <b class="who-sel"' +
-        tip({ text: 'Активные условия людской шины: каталог слева сужен; клик по выбранной строке снимает условие' }) +
-        '>выбрано: ' + pickCount() + '</b>' : '') +
-    '</span>' +
-    (grouped
-      ? '<button class="' + N + '-btn ghost xs" data-wofold="level"' + tip({ text: 'Раскрыть все видимые группы на один уровень вглубь' }) + ' type="button">Раскрыть уровень</button>' +
-        '<button class="' + N + '-btn ghost xs" data-wofold="all"' + tip({ text: 'Свернуть до верхнего уровня' }) + ' type="button">Свернуть все</button>'
-      : '') +
-    '<span class="' + N + '-exp">' +
-      '<button class="' + N + '-btn xs" data-wexp="copy" type="button"' + tip({ title: 'Копировать', text: grouped
-        ? 'Все группы всех уровней с итогами — в буфер обмена; вставка в Excel разложит по колонкам.'
-        : 'Все люди списка с учётом поиска, корзины и настроек (не только страница) — в буфер обмена; вставка в Excel разложит по колонкам.' }) + '>Копировать</button>' +
-      '<button class="' + N + '-btn xs" data-wexp="csv" type="button"' + tip({ title: 'CSV', text: 'То же, файлом для Excel (разделитель «;»). Если Proteus запретит скачивание — используйте «Копировать».' }) + '>CSV</button>' +
-      '<span class="' + N + '-toast" role="status">' + esc(state.toast || '') + '</span>' +
-    '</span>' +
-    '</div>' +
-    (grouped ? groupTableHtml(plist, cut) : peopleTableHtml(plist)) +
-    '<div class="' + N + '-tbl-note">' + (grouped
+  return cnt + (pickCount() ? ' · <b class="who-sel"' +
+    tip({ text: 'Активные условия людской шины: каталог слева сужен; клик по выбранной строке снимает условие' }) +
+    '>выбрано: ' + pickCount() + '</b>' : '');
+}
+function whoTableHtml() {
+  var cut = state.whoCut, grouped = cut !== 'none', plist = shownList();
+  return (grouped ? groupTableHtml(plist, cut) : peopleTableHtml(plist)) +
+    '<div class="' + CFG.ns + '-tbl-note">' + (grouped
       ? 'Итоги групп — точные уникальные люди по всей области; ▸ раскрывает вглубь' + (cut === 'org' ? ' (УС-3 › … › УС-7)' : '') +
         ', сотрудники — во вложенной таблице. Клик по строке — людская шина (каталог слева сузится), Shift накапливает; клик по заголовку — сортировка.'
       : 'Клик по заголовку — сортировка; клик по человеку — людская шина (каталог слева сузится до его отчётов), Shift накапливает.') +
     (MODEL.list.length >= CFG.listCap ? ' В ответе — топ-' + nf(CFG.listCap) + ' зрителей области по активным дням.' : '') + '</div>';
-  return h;
+}
+// Тулбар «Кто смотрит»: слева — ЧТО показать (вид, настройки, поиск),
+// справа — счётчик и действия с результатом (раскрытие, копирование, CSV).
+// none — поимённый список с сортировкой и пагинацией; любая группировка —
+// сводная таблица групп, свёрнутая до верхнего уровня (правка владельца 2026-09-23).
+function listZoneHtml() {
+  var cut = state.whoCut, grouped = cut !== 'none', N = CFG.ns;
+  return '<div class="' + N + '-who-bar">' +
+    '<div class="' + N + '-bar-g">' +
+      dropdownHtml('whoCut', cut, CFG.groups) +
+      optsDropHtml(MODEL.list) +
+      searchBoxHtml('whoQ', 'Имя или логин', state.q) +
+    '</div>' +
+    '<div class="' + N + '-bar-g r">' +
+      '<span class="' + N + '-who-cnt">' + whoCountHtml() + '</span>' +
+      (grouped
+        ? '<span class="' + N + '-bar-sep" aria-hidden="true"></span>' +
+          '<button class="' + N + '-btn ghost xs" data-wofold="level"' + tip({ text: 'Раскрыть все видимые группы на один уровень вглубь' }) + ' type="button">Раскрыть уровень</button>' +
+          '<button class="' + N + '-btn ghost xs" data-wofold="all"' + tip({ text: 'Свернуть до верхнего уровня' }) + ' type="button">Свернуть</button>'
+        : '') +
+      '<span class="' + N + '-bar-sep" aria-hidden="true"></span>' +
+      '<button class="' + N + '-btn xs" data-wexp="copy" type="button"' + tip({ title: 'Копировать', text: grouped
+        ? 'Все группы всех уровней с итогами — в буфер обмена; вставка в Excel разложит по колонкам.'
+        : 'Все люди списка с учётом поиска, корзины и настроек (не только страница) — в буфер обмена; вставка в Excel разложит по колонкам.' }) + '>Копировать</button>' +
+      '<button class="' + N + '-btn xs" data-wexp="csv" type="button"' + tip({ title: 'CSV', text: 'То же, файлом для Excel (разделитель «;»). Если Proteus запретит скачивание — используйте «Копировать».' }) + '>CSV</button>' +
+    '</div>' +
+    '<span class="' + N + '-toast" role="status">' + esc(state.toast || '') + '</span>' +
+    '</div>' +
+    '<div class="' + N + '-who-tbl">' + whoTableHtml() + '</div>';
 }
 
 function tabsHtml(tabKey, tabs) {
@@ -1814,8 +1832,8 @@ function kpisHtml() {
   var shRegPrev = k.users_prev ? k.regular_prev / k.users_prev * 100 : 0;
   var mM = closedMonth(1), mP = closedMonth(2);
   return '<div class="' + CFG.ns + '-kpis">' +
-    kpiCard({ label: 'Пользователей ' + G.label, value: nf(k.users),
-      hint: { title: 'Пользователи', text: 'Уникальные люди области каталога. Один человек — один раз, даже если открыл несколько отчётов.' },
+    kpiCard({ label: 'Пользователей', value: nf(k.users),
+      hint: { title: 'Пользователи ' + G.label, text: 'Уникальные люди области каталога. Один человек — один раз, даже если открыл несколько отчётов.' },
       delta: dl(dPct(k.users, k.users_prev), { vs: G.vs, unit: '%' }),
       sub: G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>' }) +
     kpiCard({ label: 'Просмотров', value: compact(k.views),
@@ -1896,7 +1914,6 @@ function buildHTML() {
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
         : (view === 'dyn' ? 'клик по строке каталога задаёт область' : 'когорты первого визита; период на них не действует')) + '</span></div>' +
-    (view === 'who' ? '<div class="' + N + '-hsearch">' + searchBoxHtml('whoQ', 'Имя или логин', state.q) + '</div>' : '') +
     '<div class="' + N + '-sub-tabs" role="tablist">' + tabsHtml('view', tabs) + '</div>' +
     '</div>');
   h.push('<div class="' + N + '-panel-b ' + bodyCls + '">' + body + '</div>');
@@ -2251,6 +2268,9 @@ function dynTipHtml(el, i) {
       if (stb) bandHighlight(stb);
       var el = trigger(e.target, 'data-tip');
       if (!el) return;
+      // Кнопка с раскрытым меню подсказку не показывает: меню и так перед глазами,
+      // а всплывашка его закрывала (Chrome шлёт наведение после перерисовки).
+      if (el.getAttribute('aria-expanded') === 'true') return;
       // Якорь — rect ЦЕЛИ как есть; содержимое — готовый HTML из data-tip.
       state.tip = {
         rect: el.getBoundingClientRect(),
@@ -2382,6 +2402,9 @@ function dynTipHtml(el, i) {
 
       // Дропдауны: раскрытие/закрытие.
       if (ddNode) {
+        // Подсказка кнопки не должна висеть поверх раскрытого меню.
+        state.tip = null;
+        hideTip();
         var dId = ddNode.getAttribute('data-ddtoggle');
         state.dd = state.dd === dId ? null : dId;
         render();
@@ -2579,8 +2602,10 @@ function dynTipHtml(el, i) {
       if (id === 'whoQ') {
         state.q = inp.value || '';
         state.page = 0;
-        var zone = overlay.querySelector('.' + CFG.ns + '-list-zone');
-        if (zone) zone.innerHTML = listZoneHtml();
+        var tz = overlay.querySelector('.' + CFG.ns + '-who-tbl');
+        if (tz) tz.innerHTML = whoTableHtml();
+        var cz = overlay.querySelector('.' + CFG.ns + '-who-cnt');
+        if (cz) cz.innerHTML = whoCountHtml();
       } else if (id === 'woExQ') {
         state.exQ = inp.value || '';
         var box = overlay.querySelector('.' + CFG.ns + '-wo-ex');

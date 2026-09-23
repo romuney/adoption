@@ -35,9 +35,11 @@
 // Все цвета/шрифты/отступы из макета — только здесь, не в разметке.
 var CFG = {
   ns: 'prb',                  // ПРЕФИКС всех CSS-классов и класса overlay
-  // Адрес отчёта для кнопки «ссылка» в строке каталога: база + dashboard_id
-  // (как dashboard_url макета). Другой хост Proteus — поменять здесь.
-  dashUrl: 'https://proteus.tcsbank.ru/superset/dashboard/',
+  // Адрес отчёта для кнопки «ссылка» в строке каталога: <origin Proteus> +
+  // dashPath + dashboard_id + '/'. Origin берётся со страницы борда (iframe
+  // песочницы знает её через document.referrer); dashHost — запасной хост.
+  dashHost: 'proteus.tcsbank.ru',
+  dashPath: '/superset/dashboard/',
   // 16 колонок куба v7 (датасет pa_body_v42, SQL — поставка 2026-09-22, файл 2):
   // каталог rep/grp + total. colls приходит JSON-массивом, парсится в buildModel.
   // state_j — JSON активных условий запроса (только у total-строки).
@@ -698,6 +700,16 @@ function isFresh(created) {
     Date.UTC(created.y, created.m, created.d)) / 86400000);
   return days <= 90;
 }
+// Адрес отчёта: origin страницы борда (referrer iframe), иначе dashHost.
+function dashUrl(id) {
+  var origin = '';
+  try {
+    var m = /^(https?:\/\/[^\/?#]+)/.exec(document.referrer || '') || /^(https?:\/\/[^\/?#]+)/.exec(String(window.location.href || ''));
+    origin = m ? m[1] : '';
+  } catch (e) { origin = ''; }
+  if (!origin) origin = 'https:' + '//' + CFG.dashHost;
+  return origin + CFG.dashPath + id + '/';
+}
 // Иконка «ссылка» (две скобы цепи), рисуется currentColor.
 var LINK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
   '<path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>';
@@ -786,7 +798,7 @@ function reportTableHtml() {
       }) + '>' +
       '<td class="txt">' + esc(x.m.dash_nm) +
         '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' +
-          tip({ title: 'Ссылка на отчёт', text: 'Клик — скопировать адрес в буфер обмена', note: CFG.dashUrl + x.id + '/' }) + '>' + LINK_SVG + '</button>' +
+          tip({ title: 'Ссылка на отчёт', text: 'Клик — скопировать адрес в буфер обмена', note: dashUrl(x.id) }) + '>' + LINK_SVG + '</button>' +
         '<span class="' + CFG.ns + '-unit-sub">' +
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
           esc(x.m.owner_login || '—') + '</span></td>' +
@@ -1249,7 +1261,7 @@ function buildHTML() {
       // Кнопка «ссылка» в строке отчёта: копирует адрес, строку НЕ выбирает.
       var lnk = trigger(e.target, 'data-replink');
       if (lnk) {
-        var url = CFG.dashUrl + lnk.getAttribute('data-replink') + '/';
+        var url = dashUrl(lnk.getAttribute('data-replink'));
         copyText(url, function (ok) {
           lnk.className = CFG.ns + '-lnkbtn ' + (ok ? 'ok' : 'err');
           lnk.innerHTML = ok ? '✓' : '!';

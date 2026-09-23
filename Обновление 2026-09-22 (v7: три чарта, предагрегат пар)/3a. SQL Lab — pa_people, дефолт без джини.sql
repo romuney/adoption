@@ -1,6 +1,6 @@
 -- SQL Lab: pa_people (файл 3), 30 дней, без выбора в каталоге. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 7
+-- 8
 WITH
   maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   dash_ok AS (
@@ -25,8 +25,8 @@ WITH
       addMonths(toStartOfMonth((SELECT md FROM maxd)), -toInt32(gm)) AS c0,
       bitAnd(p.msk, 1073741823) != 0 AS cur, bitAnd(p.msk, 1152921503533105152) != 0 AS prv,
       bitCount(bitAnd(p.msk, 1073741823)) AS nb_cur, bitCount(bitAnd(p.msk, 1152921503533105152)) AS nb_prev,
-      multiIf(nb_cur <= 1, 1, nb_cur <= 3, 2, nb_cur <= 7, 3, nb_cur <= 15, 4, 5) AS bin,
-      toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,[lvl3, lvl4, toString(ifNull(a.lvl5_management_unit_nm, '')), toString(ifNull(a.lvl6_management_unit_nm, '')), toString(ifNull(a.lvl7_management_unit_nm, ''))] AS lv,if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
+      multiIf(nb_cur <= 1, 1, nb_cur <= 5, 2, nb_cur <= 15, 3, 4) AS bin,
+      if(match(toString(ifNull(a.lvl3_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl3_management_unit_nm, ''))) AS lvl3, if(match(toString(ifNull(a.lvl4_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl4_management_unit_nm, ''))) AS lvl4,[lvl3, lvl4, if(match(toString(ifNull(a.lvl5_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(a.lvl6_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(a.lvl7_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl7_management_unit_nm, '')))] AS lv,if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
       arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
       toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,
@@ -53,7 +53,7 @@ WITH
       countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < 30)) AS new_u,
       countIf(prv AND fd_k >= 30 AND fd_k < 60) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64(127), toUInt8(rk.5 + 1)))) = 0) AS react_u,
-      countIf(nb_cur > 7) AS regular, countIf(nb_prev > 7) AS regular_prev,
+      countIf(nb_cur > 5) AS regular, countIf(nb_prev > 5) AS regular_prev,
       countIf(prv AND NOT cur) AS sleeping,
       countIf(m1 = 1) AS mau, countIf(m2 = 1) AS mau_prev,
       count() AS cnt,
@@ -125,7 +125,8 @@ FROM (
       replaceRegexpAll(ifNull(toString(lp.login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.fio), ''), '[\t\n\r]', ' '), '\t',
       replaceRegexpAll(ifNull(toString(lp.spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.stream), ''), '[\t\n\r]', ' '), '\t',
       replaceRegexpAll(ifNull(toString(lp.exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(lp.is_head), ''), '\t', ifNull(toString(lp.days), ''), '\t',
-      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''))), '\n') AS k,
+      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''), '\t',
+      toString(ifNull(lp.new_u, 0)), '\t', toString(ifNull(lp.mau, 0)), '\t', toString(ifNull(lp.mau_prev, 0)))), '\n') AS k,
     lp.parent AS parent,
     NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
     NULL AS days, NULL AS last_dt, NULL AS bin,

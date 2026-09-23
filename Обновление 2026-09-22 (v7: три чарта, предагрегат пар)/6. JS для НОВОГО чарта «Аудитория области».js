@@ -90,7 +90,7 @@ var CFG = {
     { key: 'dUsers', label: 'Δ к пред.', hint: 'Изменение числа людей к предыдущему периоду той же длины', prevOnly: true },
     { key: 'views', label: 'Просмотров', hint: 'Открытия отчётов области за период' },
     { key: 'vpu', label: 'На чел.', hint: 'Просмотров на одного человека группы' },
-    { key: 'regShare', label: 'Постоянных', hint: 'Доля постоянных — корзины частоты 4 и 5: 8+ дней или недель, 7+ месяцев, 4+ квартала (число — во всплывашке)' },
+    { key: 'regShare', label: 'Постоянных', hint: 'Доля постоянных — корзины частоты 3 и 4: 6+ дней или недель, 4+ месяца, 3+ квартала (число — во всплывашке)' },
     { key: 'new_u', label: 'Новых', hint: 'Первый визит в отчёты области пришёлся на этот период' }
   ],
   // Колонки поимённого списка (сортировка — по ключу).
@@ -108,13 +108,13 @@ var CFG = {
   // предыдущий период той же длины (m: 24 мес., q: 16 кв. — нет).
   // Корзины частоты: верхние границы корзин 1–4 по гранулярности (= FBIN в SQL
   // pa_people и каталога); fopen — пятая корзина подписывается «N+», иначе диапазоном до n.
-  fbins: { d: [1, 3, 7, 15], w: [1, 3, 7, 15], m: [1, 3, 6, 9], q: [1, 2, 3, 4] },
-  fopen: { d: true, q: true },
+  fbins: { d: [1, 5, 15], w: [1, 5, 15], m: [1, 3, 6], q: [1, 2, 3] },
+  fopen: { d: true, w: true, q: true },
   grains: {
-    d: { n: 30, reg: 8, unit: 'день',    units: 'дней',     us: 'дн',  label: 'за 30 дней',    vs: 'к пред. 30 дням',     prev: true },
-    w: { n: 20, reg: 8, unit: 'неделя',  units: 'недель',   us: 'нед', label: 'за 20 недель',  vs: 'к пред. 20 неделям',  prev: true },
-    m: { n: 12, reg: 7, unit: 'месяц',   units: 'месяцев',  us: 'мес', label: 'за 12 месяцев', vs: 'к пред. 12 месяцам',  prev: false },
-    q: { n: 8, reg: 4,  unit: 'квартал', units: 'кварталов', us: 'кв', label: 'за 8 кварталов', vs: 'к пред. 8 кварталам', prev: false }
+    d: { n: 30, reg: 6, unit: 'день',    units: 'дней',     us: 'дн',  label: 'за 30 дней',    vs: 'к пред. 30 дням',     prev: true },
+    w: { n: 20, reg: 6, unit: 'неделя',  units: 'недель',   us: 'нед', label: 'за 20 недель',  vs: 'к пред. 20 неделям',  prev: true },
+    m: { n: 12, reg: 4, unit: 'месяц',   units: 'месяцев',  us: 'мес', label: 'за 12 месяцев', vs: 'к пред. 12 месяцам',  prev: false },
+    q: { n: 8, reg: 3,  unit: 'квартал', units: 'кварталов', us: 'кв', label: 'за 8 кварталов', vs: 'к пред. 8 кварталам', prev: false }
   },
   // Подписи режимов области (mode_param каталога и cut:* панели «Аудитория»).
   areaLabels: {
@@ -136,7 +136,7 @@ var CFG = {
     label: '#2b2b2b', axis: '#808080', axisLine: 'rgb(155, 164, 181)',
     split: '#f0f1f3', txt: '#3a3f4a', mut: '#8a909c',
     // Корзины частоты (макет FREQ_COLORS, app.js 71): светлая → тёмная.
-    freq: ['#c3e6f7', '#8fd0ea', '#5cc0ee', '#2ba8c6', '#0073a0']
+    freq: ['#c3e6f7', '#6cc6ec', '#2ba8c6', '#0073a0']
   },
   fonts: {
     // ЕДИНЫЙ стек для ВСЕГО виджета, включая тултип в body.
@@ -177,7 +177,7 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   pSort: { key: 'days', dir: -1 },    // сортировка поимённого списка
   page: 0,                   // страница поимённого списка (с 0)
   toast: '',                 // короткое сообщение после копирования/выгрузки
-  freqSel: null,             // корзина частоты: '1'..'5' | null
+  freqSel: null,             // корзина частоты: '1'..'4' | null
   headsOnly: false,          // настройки: только руководители
   excl: [],                  // настройки: исключённые логины
   exQ: '',                   // поиск в настройках
@@ -196,6 +196,7 @@ var state = __S[CFG.ns];
 (function () {
   var d = { gOpen: {}, gMore: {}, gSort: { key: 'users', dir: -1 }, pSort: { key: 'days', dir: -1 }, page: 0, toast: '', whoFull: false };
   for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k) && state[k] == null) state[k] = d[k];
+  if (state.freqSel && !/^[1-4]$/.test(String(state.freqSel))) state.freqSel = null;   // было 5 корзин
   var pk = state.picks || (state.picks = {});
   var need = ['org', 'spec', 'stream', 'adgroup', 'heads', 'login'];
   for (var i = 0; i < need.length; i++) if (!pk[need[i]]) pk[need[i]] = [];
@@ -382,20 +383,21 @@ function freqLabels(grain) {
   var u = CFG.grains[grain] ? CFG.grains[grain].unit : 'день';
   var f = { 'день': ['день', 'дня', 'дней'], 'неделя': ['неделя', 'недели', 'недель'],
     'месяц': ['месяц', 'месяца', 'месяцев'], 'квартал': ['квартал', 'квартала', 'кварталов'] }[u] || ['день', 'дня', 'дней'];
-  // Шкала корзин — своя у гранулярности (та же таблица FBIN, что в SQL): верхние
-  // границы корзин 1–4, пятая — всё выше. В 12 месяцах нет «16+», в кварталах —
-  // «8–15» (в витрине 13 месяцев истории: больше 5 активных кварталов не бывает).
+  // Четыре корзины (та же таблица FBIN, что в SQL): верхние границы корзин 1–3,
+  // четвёртая — всё выше: 30 дней / 20 недель — 1 · 2–5 · 6–15 · 16+; 12 месяцев —
+  // 1 · 2–3 · 4–6 · 7–12; 8 кварталов — 1 · 2 · 3 · 4+ (в витрине ~5 кварталов истории).
   var b = CFG.fbins[grain] || CFG.fbins.d, n = CFG.grains[grain] ? CFG.grains[grain].n : 30;
   var w = function (x) { return plural(x, f[0], f[1], f[2]); };
   var rg = function (a, c) { return a === c ? a + ' ' + w(a) : a + THIN + '–' + THIN + c + ' ' + w(c); };
-  var top = b[3] + 1;
-  return ['1 ' + f[0], rg(b[0] + 1, b[1]), rg(b[1] + 1, b[2]), rg(b[2] + 1, b[3]),
+  var top = b[2] + 1;
+  return ['1 ' + f[0], rg(b[0] + 1, b[1]), rg(b[1] + 1, b[2]),
     CFG.fopen[grain] ? top + '+ ' + f[2] : rg(top, n)];
 }
 
 // Упакованный список (pa_people, секция list): строка на подразделение, parent — его путь
 // «УС-3 › … › УС-7», в k — сотрудники через \n, поля через \t: логин, ФИО, специализация,
-// стрим, стаж, рук. 1/0, активных периодов, просмотров, последний визит, корзина 1–5.
+// стрим, стаж, рук. 1/0, активных периодов, просмотров, последний визит, корзина 1–4,
+// новый 1/0, MAU 1/0, MAU пред. месяца 1/0.
 function parseListPack(txt, path, out) {
   var lines = txt.split('\n'), ps = path ? path.split(CFG.orgSep) : [];
   for (var i = 0; i < lines.length; i++) {
@@ -406,14 +408,15 @@ function parseListPack(txt, path, out) {
       login: f[0], fio: f[1], lvl3: ps[0] || '', lvl4: ps[1] || '', org: path,
       spec: f[2], stream: f[3], exp: f[4], is_head: num(f[5]) || 0,
       days: num(f[6]) || 0, views: num(f[7]) || 0, last_dt: toDate(f[8]),
-      bin: bin, seg: seg.key, segCls: seg.cls
+      bin: bin, seg: seg.key, segCls: seg.cls,
+      nw: num(f[10]) || 0, m1: num(f[11]) || 0, m2: num(f[12]) || 0   // новый · MAU · MAU пред. месяца
     });
   }
 }
-// Сегмент человека по корзине (макет data.js SEG_OF: ≥8 Постоянный, ≥2
-// Эпизодический, иначе Разовый; в чарт приходит уже готовый bin).
+// Сегмент человека по корзине: 3–4 — Постоянный (от 6 дней/недель, 4 месяцев,
+// 3 кварталов — та же мера, что KPI «Постоянных»), 2 — Эпизодический, 1 — Разовый.
 function segOf(bin) {
-  if (bin >= 4) return { key: 'Постоянный', cls: 'good' };
+  if (bin >= 3) return { key: 'Постоянный', cls: 'good' };
   if (bin >= 2) return { key: 'Эпизодический', cls: 'note' };
   return { key: 'Разовый', cls: 'neutral' };
 }
@@ -1070,7 +1073,43 @@ function pickCount() {
 // Локальные условия списка активны → в сводной таблице появляется колонка
 // «В выборке» (серверные итоги групп — по всей области, выборка — по списку).
 function localActive() {
-  return !!(state.freqSel || state.q || state.headsOnly || state.excl.length || pickCount() - state.picks.login.length > 0);
+  // Корзина частоты и настройки списка теперь пересчитывают сами итоги (localGM),
+  // колонка «В выборке» — только для поиска и выбора групп.
+  return !!(state.q || pickCount() - state.picks.login.length > 0);
+}
+// Фильтр людей панели: корзина частоты + «только руководители» + исключённые логины.
+// Список — все зрители области, поэтому KPI и сводную по нему можно пересчитать в чарте.
+function peopleFilterOn() { return !!(state.freqSel || state.headsOnly || state.excl.length); }
+function filteredPeople() {
+  return baseList().filter(function (p) { return !state.freqSel || String(p.bin) === state.freqSel; });
+}
+function addPerson(g, p) {
+  g.users++; g.views += p.views || 0; g.new_u += p.nw || 0;
+  if (p.bin >= 3) g.regular++;
+  g.mau += p.m1 || 0; g.mau_prev += p.m2 || 0;
+}
+function emptyAgg() { return { users: 0, users_prev: 0, views: 0, views_prev: 0, new_u: 0, new_prev: 0, regular: 0, regular_prev: 0, sleeping: 0, mau: 0, mau_prev: 0 }; }
+// KPI при фильтре людей: по отобранным (прошлого периода для них нет — дельты «не сравнивается»).
+function effKpi() {
+  if (!peopleFilterOn() || !MODEL.kpi) return MODEL.kpi;
+  var ps = filteredPeople(), k = emptyAgg();
+  for (var i = 0; i < ps.length; i++) addPerson(k, ps[i]);
+  k.local = true;
+  return k;
+}
+// Итоги групп по отобранным людям: ключи — как у узлов текущего разреза.
+var LOCAL_GM = null, LOCAL_TOT = 0;
+function localGM(cut) {
+  var ps = filteredPeople(), out = {}, L = orgLevelOf(cut), j;
+  var add = function (key, p) { addPerson(out[key] || (out[key] = emptyAgg()), p); };
+  for (var i = 0; i < ps.length; i++) {
+    var p = ps[i], lp;
+    if (L) { lp = orgParts(p.org); add(lp.length < L - 2 ? ORG_NONE : lp.slice(0, L - 2).join(CFG.orgSep), p); }
+    else if (cut === 'org') { lp = orgParts(p.org); for (j = 1; j <= lp.length; j++) add(lp.slice(0, j).join(CFG.orgSep), p); }
+    else if (cut === 'heads') add(p.is_head ? 'Тим-лиды' : 'Остальные', p);
+    else if ((cut === 'spec' || cut === 'stream') && p[cut]) add(p[cut], p);
+  }
+  return out;
 }
 
 // Визит «вчера / N дн»: витрина за вчера, последняя возможная дата — вчера.
@@ -1177,7 +1216,7 @@ function peopleTableHtml(plist) {
 var ZERO_M = { users: 0, users_prev: 0, views: 0, views_prev: 0, new_u: 0, regular: 0, sleeping: 0 };
 function gMetrics(g) {
   g = g || ZERO_M;
-  var tot = MODEL.total || 1, G = CFG.grains[MODEL.grain] || CFG.grains.d;
+  var tot = (LOCAL_GM ? LOCAL_TOT : MODEL.total) || 1, G = CFG.grains[MODEL.grain] || CFG.grains.d;
   return {
     users: g.users, users_prev: g.users_prev, views: g.views, new_u: g.new_u, regular: g.regular, sleeping: g.sleeping,
     share: g.users / tot * 100,
@@ -1194,6 +1233,7 @@ function minusM(a, b) {
 // Узел таблицы: id (ключ раскрытия), cut/k (людская шина), имя, глубина,
 // метрики, дочерние узлы и люди, прикреплённые к узлу.
 function makeNode(cut, k, name, depth, g, sub) {
+  if (LOCAL_GM) g = LOCAL_GM[k] || ZERO_M;
   return { id: cut + ':' + k, cut: cut, k: k, name: name, depth: depth, m: gMetrics(g), sub: sub || '' };
 }
 // Вид «один уровень УС»: whoCut = org3…org7 → номер уровня (0 — не он).
@@ -1204,7 +1244,7 @@ function nodeKids(nd) {
   if (nd.cut !== 'org' || nd.flat) return [];
   var ks = MODEL.orgKids[nd.k] || [], out = [];
   for (var i = 0; i < ks.length; i++) out.push(orgNode(ks[i]));
-  return out;
+  return LOCAL_GM ? out.filter(function (x) { return x.m.users > 0; }) : out;
 }
 function orgNode(path) {
   var ps = orgParts(path);
@@ -1212,6 +1252,8 @@ function orgNode(path) {
 }
 function rootNodes(cut) {
   var out = [], k, src, L = orgLevelOf(cut), sumL = {};
+  LOCAL_GM = peopleFilterOn() ? localGM(cut) : null;
+  LOCAL_TOT = LOCAL_GM ? filteredPeople().length : 0;
   if (L) {
     // Плоско: все узлы уровня УС-L; вторая строка — путь до него. Шина та же (org_f путём).
     for (k in MODEL.gm.org) {
@@ -1242,6 +1284,7 @@ function rootNodes(cut) {
     src = MODEL.gm[cut === 'adgroup' ? 'adg' : cut] || {};
     for (k in src) if (Object.prototype.hasOwnProperty.call(src, k)) out.push(makeNode(cut, k, k, 0, src[k]));
   }
+  if (LOCAL_GM) out = out.filter(function (x) { return x.m.users > 0; });
   return out;
 }
 // Люди списка, прикреплённые к узлу (для оргструктуры — ровно этот путь;
@@ -1385,7 +1428,7 @@ function groupTableHtml(plist, cut) {
   for (var ri = 0; ri < roots.length; ri++) if (roots[ri].m.share > MAX_SHARE) MAX_SHARE = roots[ri].m.share;
   walk(roots);
   VISIBLE_NODES = visible;
-  var tot = gMetrics(MODEL.kpi || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' || orgLevelOf(cut) ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
+  var tot = gMetrics(effKpi() || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' || orgLevelOf(cut) ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
   for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c], state.gSort);
   if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всей области.' }) + '>В выборке</th>';
   // Общая каретка (ДС 4.6c) — в строке итога, на вертикали строчных кареток:
@@ -1501,7 +1544,7 @@ function freqStripHtml(shown) {
   var tot = shown.length || 1;
   var n = CFG.grains[MODEL.grain] ? CFG.grains[MODEL.grain].n : 30;
   var h = '<div class="' + CFG.ns + '-segstrip freq" role="group" aria-label="Как часто заходят">';
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < 4; i++) {
     var bk = String(i + 1);
     var cnt = 0;
     for (var j = 0; j < shown.length; j++) if (String(shown[j].bin) === bk) cnt++;
@@ -2018,11 +2061,15 @@ function kpiCard(o) {
 // каталоге слева и от периода/опций шапки. Предыдущий период сравнивается
 // только там, где он целиком помещается в 13 месяцев истории (30 дней, 20 недель).
 function kpisHtml() {
-  var k = MODEL.kpi, G = CFG.grains[MODEL.grain] || CFG.grains.d;
+  var k = effKpi(), G = CFG.grains[MODEL.grain] || CFG.grains.d;
   if (!k) return '';
   var dPct = function (a, b) { return b ? (a / b - 1) * 100 : null; };
-  var why = 'В витрине 13 месяцев истории: полного предыдущего периода (' + G.label + ') в ней нет.';
-  var dl = function (v, o) { return G.prev ? delta(v, o) : delta(null, { why: why }); };
+  // KPI по отобранным людям (корзина частоты / настройки списка): прошлого периода
+  // для такой выборки нет — дельты «не сравнивается», в подписи — сколько во всей области.
+  var loc = !!k.local, whyLoc = 'Выбрана корзина частоты или настройки списка: KPI — по отобранным людям, сравнения с прошлым периодом для них нет.';
+  var why = loc ? whyLoc : 'В витрине 13 месяцев истории: полного предыдущего периода (' + G.label + ') в ней нет.';
+  var dl = function (v, o) { return G.prev && !loc ? delta(v, o) : delta(null, { why: why }); };
+  var all = MODEL.kpi || k;
   var shReg = k.users ? k.regular / k.users * 100 : 0;
   var shRegPrev = k.users_prev ? k.regular_prev / k.users_prev * 100 : 0;
   var mM = closedMonth(1), mP = closedMonth(2);
@@ -2030,7 +2077,7 @@ function kpisHtml() {
     kpiCard({ label: 'Пользователей', value: nf(k.users),
       hint: { title: 'Пользователи ' + G.label, text: 'Уникальные люди области каталога. Один человек — один раз, даже если открыл несколько отчётов.' },
       delta: dl(dPct(k.users, k.users_prev), { vs: G.vs, unit: '%' }),
-      sub: G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>' }) +
+      sub: loc ? 'из <b>' + nf(all.users) + '</b> в области' : (G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>') }) +
     kpiCard({ label: 'Просмотров', value: compact(k.views),
       hint: { title: 'Просмотры', text: 'Сумма открытий отчётов области за период.' },
       delta: dl(dPct(k.views, k.views_prev), { vs: G.vs, unit: '%' }),
@@ -2046,8 +2093,8 @@ function kpisHtml() {
     kpiCard({ label: 'MAU · ' + mM, value: nf(k.mau),
       hint: { title: 'Месячная аудитория', text: 'Уникальные люди области за последний закрытый календарный месяц. От периода шапки не зависит.',
         rows: [{ label: mM, value: nf(k.mau), color: CFG.colors.ret }, { label: mP, value: nf(k.mau_prev), color: CFG.colors.bench }] },
-      delta: delta(dPct(k.mau, k.mau_prev), { vs: 'к ' + mP.split(' ')[0], unit: '%' }),
-      sub: mP + ': <b>' + nf(k.mau_prev) + '</b>' }) +
+      delta: loc ? delta(null, { why: whyLoc }) : delta(dPct(k.mau, k.mau_prev), { vs: 'к ' + mP.split(' ')[0], unit: '%' }),
+      sub: loc ? 'среди отобранных людей' : mP + ': <b>' + nf(k.mau_prev) + '</b>' }) +
     '</div>';
 }
 

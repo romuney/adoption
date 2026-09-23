@@ -41,7 +41,7 @@
     при сохранении датасета Proteus отдаёт вместо списка AlwaysTrueObject, «+» с ним падает). -#}
 {% set pplq = [] %}{% for v in loginf %}{% set _ = pplq.append(v) %}{% endfor %}{% for v in exlf %}{% set _ = pplq.append(v) %}{% endfor %}
 {% set freqr = filter_values('freq_f') or [] %}
-{% set freqf = [] %}{% for v in freqr %}{% if v|string in ['1', '2', '3', '4', '5'] %}{% set _ = freqf.append(v|string) %}{% endif %}{% endfor %}
+{% set freqf = [] %}{% for v in freqr %}{% if v|string in ['1', '2', '3', '4'] %}{% set _ = freqf.append(v|string) %}{% endif %}{% endfor %}
 {% set SJ = ['"period":"' ~ grain ~ '"'] %}
 {% if pubv == '0' %}{% set _ = SJ.append('"pub":"0"') %}{% endif %}
 {% if actv == '0' %}{% set _ = SJ.append('"act":"0"') %}{% endif %}

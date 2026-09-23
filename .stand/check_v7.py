@@ -35,9 +35,9 @@ def ok(cond, msg):
 
 CASES = [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'},
          {'pub_f': '0', 'act_f': '0', 'exc_f': '0'}, {'lvl3_f': ['Блок 3'], 'lvl4_f': ['Деп 5.0']},
-         {'adg_f': ['ADG7', 'ALL']}, {'login_f': ['u1', 'u2']}, {'exl_f': ['u1', 'u2', 'u5']}, {'freq_f': ['4', '5'], 'exl_f': ['u7']},
-         {'org_f': ['Блок 3 › Деп 3.3', 'Блок 5']}, {'org_f': ['Блок 1 › Деп 1.1 › Упр 1.1.1 › Отдел 1 › Команда 1'], 'freq_f': ['5']},
-         {'heads_f': '1', 'freq_f': ['5']}, {'heads_f': 'n', 'exl_f': ['u2']}, {'freq_f': ['4', '5']},
+         {'adg_f': ['ADG7', 'ALL']}, {'login_f': ['u1', 'u2']}, {'exl_f': ['u1', 'u2', 'u5']}, {'freq_f': ['3', '4'], 'exl_f': ['u7']},
+         {'org_f': ['Блок 3 › Деп 3.3', 'Блок 5']}, {'org_f': ['Блок 1 › Деп 1.1 › Упр 1.1.1 › Отдел 1 › Команда 1'], 'freq_f': ['4']},
+         {'heads_f': '1', 'freq_f': ['4']}, {'heads_f': 'n', 'exl_f': ['u2']}, {'freq_f': ['3', '4']}, {'freq_f': ['5', 'x']},
          {'freq_f': ['1'], 'period_param': 'w', 'spec_f': ['Спец 3']},
          {'stream_f': ["x'); DROP TABLE t;--"]}, {'lvl3_f': ['a\\b']}]
 for c in CASES:
@@ -73,8 +73,9 @@ for g in ['d', 'w', 'm', 'q']:
     ppl_ = [ln.split('\t') for r in pr_ if r['section'] == 'list' for ln in r['k'].split('\n')]
     ok(len(ppl_) == int(tot_['users']) and len({x[0] for x in ppl_}) == len(ppl_),
        f'список «Кто смотрит» — все зрители: {len(ppl_)} == users {tot_["users"]} [{g}]')
-    ok(sum(1 for x in ppl_ if int(x[9]) >= 4) == int(tot_['regular']),
-       f'постоянные KPI == людей корзин 4–5: {tot_["regular"]} [{g}]')
+    ok(sum(1 for x in ppl_ if int(x[9]) >= 3) == int(tot_['regular']),
+       f'постоянные KPI == людей корзин 3–4: {tot_["regular"]} [{g}]')
+    ok({int(x[9]) for x in ppl_} <= {1, 2, 3, 4}, f'корзины 1–4 (четыре) [{g}]')
 cube = run(BODY, {})[0]
 for r in [x for x in cube if x['section'] == 'rep'][:5]:
     pt = [x for x in run(PPL, {'mode_param': 'report', 'sel_f': [str(r['dashboard_id'])]})[0] if x['section'] == 'total'][0]
@@ -91,6 +92,9 @@ for g in ['d', 'w', 'm', 'q']:
         ok(str(t[0]['users'] if t else 0) == str(r['users']), f'корзина {r["k"]} [{g}]: людей {r["users"]} → ИТОГО тела')
 # Оргструктура: узел любой глубины (УС-3…УС-7) → ИТОГО тела == людям узла в панели.
 orgs = [x for x in p if x['section'] == 'ctx' and x['g'] == 'org' and int(x['users']) > 0]
+import re as _re
+ok(not [x for x in orgs if any(_re.fullmatch(r'[\s\W_]*', part) for part in x['k'].split(' › '))],
+   'в путях оргструктуры нет заглушек («-» на УС-5 обрывает путь, как пустой уровень)')
 for depth in range(1, 6):
     for r in [x for x in orgs if len(x['k'].split(' › ')) == depth][:2]:
         t = [x for x in run(BODY, {'org_f': [r['k']]})[0] if x['section'] == 'total'][0]

@@ -1,6 +1,6 @@
 -- SQL Lab: тело v7 запасное (файл 2b), 30 дней, свитки по умолчанию. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 4
+-- 5
 WITH
   maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
   dash_ok AS (
@@ -37,7 +37,7 @@ WITH
     SELECT kd, k0,
       countIf(bitAnd(msk, 1073741823) != 0) AS users,
       sum(v_cur) AS views,
-      countIf(bitCount(bitAnd(msk, 1073741823)) >= 8) AS regular_users,
+      countIf(bitCount(bitAnd(msk, 1073741823)) >= 6) AS regular_users,
       dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
       sum(v_life) AS v_tot
     FROM kx GROUP BY kd, k0

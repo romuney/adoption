@@ -13,7 +13,7 @@
 {% set grain = grain if grain in GRAINS else 'd' %}
 {% set g = GRAINS[grain] %}
 {% set CUR = 2 ** g.n - 1 %}
-{% set REG = {'d': 8, 'w': 8, 'm': 7, 'q': 4}[grain] %}{#- «постоянный» = корзина частоты 4+ (≥ FBIN[2]+1 активных периодов): 8 дней/недель, 7 месяцев, 4 квартала — как сегмент «Постоянный» в «Кто смотрит» -#}
+{% set REG = {'d': 6, 'w': 6, 'm': 4, 'q': 3}[grain] %}{#- «постоянный» = корзины частоты 3–4 (≥ FBIN[1]+1 активных периодов): 6 дней/недель, 4 месяца, 3 квартала — как сегмент «Постоянный» в «Кто смотрит» -#}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% macro q(values) -%}
 {%- set out = [] -%}
@@ -40,7 +40,7 @@
 {#- Исключённые логины (настройки «Кто смотрит»): люди выпадают из всех чисел. -#}
 {% set exlf = [] %}{% for v in (filter_values('exl_f') or []) %}{% if v|string != '' %}{% set _ = exlf.append(v|string) %}{% endif %}{% endfor %}
 {% set freqr = filter_values('freq_f') or [] %}
-{% set freqf = [] %}{% for v in freqr %}{% if v|string in ['1', '2', '3', '4', '5'] %}{% set _ = freqf.append(v|string) %}{% endif %}{% endfor %}
+{% set freqf = [] %}{% for v in freqr %}{% if v|string in ['1', '2', '3', '4'] %}{% set _ = freqf.append(v|string) %}{% endif %}{% endfor %}
 {% set attrson = lv3 or lv4 or strm or spcf or adgf or headsv != '0' or orgf %}
 {%- set OCOL = ['lvl3_management_unit_nm', 'lvl4_management_unit_nm', 'lvl5_management_unit_nm', 'lvl6_management_unit_nm', 'lvl7_management_unit_nm'] -%}
 {%- set OC = [] -%}
@@ -83,7 +83,7 @@ WITH
       {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n (как в правой панели). -#}
       {%- set FB = [] -%}
       {%- for v in freqf -%}
-        {%- set FBIN = {'d': [1, 3, 7, 15], 'w': [1, 3, 7, 15], 'm': [1, 3, 6, 9], 'q': [1, 2, 3, 4]}[grain] -%}{%- set bi = v|int -%}{%- if bi == 1 %}{% set _ = FB.append('nb BETWEEN 1 AND ' ~ FBIN[0]) %}{% elif bi == 5 %}{% set _ = FB.append('nb > ' ~ FBIN[3]) %}{% else %}{% set _ = FB.append('nb BETWEEN ' ~ (FBIN[bi - 2] + 1) ~ ' AND ' ~ FBIN[bi - 1]) %}{% endif -%}
+        {%- set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] -%}{%- set bi = v|int -%}{%- if bi == 1 %}{% set _ = FB.append('nb BETWEEN 1 AND ' ~ FBIN[0]) %}{% elif bi == 4 %}{% set _ = FB.append('nb > ' ~ FBIN[2]) %}{% elif bi in [2, 3] %}{% set _ = FB.append('nb BETWEEN ' ~ (FBIN[bi - 2] + 1) ~ ' AND ' ~ FBIN[bi - 1]) %}{% endif -%}
       {%- endfor %} AND e.login IN (
         SELECT login FROM (
           SELECT f.login AS login, bitCount(bitAnd(groupBitOr(toUInt64(ifNull(f.msk_{{ grain }}, 0))), {{ CUR }})) AS nb

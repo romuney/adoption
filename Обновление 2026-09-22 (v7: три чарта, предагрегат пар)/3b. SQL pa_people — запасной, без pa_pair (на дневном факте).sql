@@ -14,6 +14,9 @@
     одним GROUP BY. UNION-плеч поверх общего CTE нет. -#}
 {% set HAS_FIO = true %}{#- false — если в pa_emp_attrs ещё нет колонок fio / exp_nm (GP-параграф «PA · атрибуты зрителей» из поставки 2026-09-22) -#}
 {% set HAS_ORG = true %}{#- false — если в pa_emp_attrs ещё нет lvl5…lvl7 (тот же параграф): оргструктура будет до УС-4 -#}
+{#- Уровень УС: заглушки оргструктуры («-», «—», «…», пробелы — только знаки препинания) = пусто;
+    путь «УС-3 › …» обрывается на них, как на пустом уровне (иначе «-» становится отдельным подразделением). -#}
+{% macro ou(col) %}if(match(toString(ifNull(a.{{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.{{ col }}, ''))){% endmacro %}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay', 'gap': 7}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday', 'gap': 1}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth', 'gap': 1}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter', 'gap': 1}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
 {% set grain = grain if grain in GRAINS else 'd' %}
@@ -21,9 +24,9 @@
 {% set CUR = 2 ** g.n - 1 %}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% set GAPM = 2 ** g.gap - 1 %}
-{#- Корзины частоты — верхние границы корзин 1–4 по АКТИВНЫМ периодам, своя шкала у каждой гранулярности
+{#- Корзины частоты — верхние границы корзин 1–3 (четвёртая — открытая «N+») по АКТИВНЫМ периодам, своя шкала у каждой гранулярности
     (в 12 месяцах и 8 кварталах нет недостижимых «8–15» / «16+»). Та же таблица — в SQL каталога. -#}
-{% set FBIN = {'d': [1, 3, 7, 15], 'w': [1, 3, 7, 15], 'm': [1, 3, 6, 9], 'q': [1, 2, 3, 4]}[grain] %}
+{% set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] %}
 {% set ADG_N = 100 %}
 {% set WITH_ADG = false %}{#- true — вид «AD-группа» (дорого: сотни групп на человека, см. файл 3) -#}
 {% macro q(values) -%}
@@ -79,13 +82,13 @@ WITH
       p.kv AS kv, p.fd_k AS fd_k, p.dmax AS dmax, p.m1 AS m1, p.m2 AS m2,
       bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
       bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
-      multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, nb_cur <= {{ FBIN[3] }}, 4, 5) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
+      multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, 4) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
       {# Атрибуты — строго не-Nullable: при join_use_nulls = 1 LEFT JOIN даёт NULL у логинов без атрибутов,
          а arrayConcat ролей в CH 24 приводит массивы к типу первого — NULL ронял запрос (Code 349). #}
-      toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,
+      {{ ou('lvl3_management_unit_nm') }} AS lvl3, {{ ou('lvl4_management_unit_nm') }} AS lvl4,
       {#- Оргструктура УС-3…УС-7: путь «УС-3 › УС-4 › …» до первого пустого уровня. Узел дерева = префикс пути,
           поэтому одноимённые отделы разных департаментов не склеиваются. -#}
-      [lvl3, lvl4{% if HAS_ORG %}, toString(ifNull(a.lvl5_management_unit_nm, '')), toString(ifNull(a.lvl6_management_unit_nm, '')), toString(ifNull(a.lvl7_management_unit_nm, '')){% endif %}] AS lv,
+      [lvl3, lvl4{% if HAS_ORG %}, {{ ou('lvl5_management_unit_nm') }}, {{ ou('lvl6_management_unit_nm') }}, {{ ou('lvl7_management_unit_nm') }}{% endif %}] AS lv,
       {#- Обе ветки if — одного типа (UInt32): в CH 24 if(UInt64, Int64) падает «no supertype». -#}
       if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
       arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
@@ -118,7 +121,7 @@ WITH
       countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }})) AS new_u,
       countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }}) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(rk.5 + 1)))) = 0) AS react_u,
-      countIf(nb_cur > {{ FBIN[2] }}) AS regular, countIf(nb_prev > {{ FBIN[2] }}) AS regular_prev,
+      countIf(nb_cur > {{ FBIN[1] }}) AS regular, countIf(nb_prev > {{ FBIN[1] }}) AS regular_prev,
       countIf(prv AND NOT cur) AS sleeping,
       countIf(m1 = 1) AS mau, countIf(m2 = 1) AS mau_prev,
       count() AS cnt,
@@ -181,7 +184,8 @@ FROM (
   UNION ALL
   {# Поимённый список — ВСЕ зрители области, упакованные: одна строка на подразделение
      (parent = путь «УС-3 › … › УС-7»), в k — сотрудники через \n, поля через \t:
-     логин, ФИО, специализация, стрим, стаж, рук., активных периодов, просмотров, последний визит, корзина.
+     логин, ФИО, специализация, стрим, стаж, рук., активных периодов, просмотров, последний визит, корзина,
+     новый 1/0, MAU 1/0, MAU пред. месяца 1/0 (KPI и сводная по корзине частоты считаются в чарте).
      Путь не повторяется у каждого человека, 30 пустых колонок на человека не едут —
      ответ в ~6 раз легче построчного (весь Proteus: 21 МБ → ~3 МБ). cnt — людей в строке. #}
   SELECT 'list' AS section, '' AS g,
@@ -189,7 +193,8 @@ FROM (
       replaceRegexpAll(ifNull(toString(lp.login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.fio), ''), '[\t\n\r]', ' '), '\t',
       replaceRegexpAll(ifNull(toString(lp.spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.stream), ''), '[\t\n\r]', ' '), '\t',
       replaceRegexpAll(ifNull(toString(lp.exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(lp.is_head), ''), '\t', ifNull(toString(lp.days), ''), '\t',
-      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''))), '\n') AS k,
+      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''), '\t',
+      toString(ifNull(lp.new_u, 0)), '\t', toString(ifNull(lp.mau, 0)), '\t', toString(ifNull(lp.mau_prev, 0)))), '\n') AS k,
     lp.parent AS parent,
     NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
     NULL AS days, NULL AS last_dt, NULL AS bin,

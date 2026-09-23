@@ -125,7 +125,8 @@ def gen(big=False):
     S.query(f"""INSERT INTO prod_proteus.pa_emp_attrs SELECT concat('u', toString(number)),
       if(number % 50 = 0, '', concat('Блок ', toString(number % 12))), if(number % 40 = 0 OR number % 50 = 0, '', concat('Деп ', toString(number % 12), '.', toString(number % 5))),
       -- УС-5…7: иерархия (имя узла несёт путь родителя), пустой уровень обрывает цепочку ниже
-      if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0, '', concat('Упр ', toString(number % 12), '.', toString(number % 5), '.', toString(number % 3))),
+      -- заглушка «-» на УС-5 (как в бою): путь обязан обрываться на ней, как на пустом уровне
+      if(number % 13 = 0, '-', if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0, '', concat('Упр ', toString(number % 12), '.', toString(number % 5), '.', toString(number % 3)))),
       if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0, '', concat('Отдел ', toString(number % 7))),
       if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0 OR number % 6 = 0, '', concat('Команда ', toString(number % 2))),
       concat('Спец ', toString(number % 20)), concat('Стрим ', toString(number % 9)), toInt32(number % 11 = 0),

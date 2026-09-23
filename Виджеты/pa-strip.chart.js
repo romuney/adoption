@@ -293,13 +293,13 @@ function buildHTML() {
   h.push('<div class="' + N + '-togs" role="group" aria-label="Какие отчёты и просмотры считать">');
   for (var j = 0; j < CFG.switches.length; j++) {
     var s = CFG.switches[j], on = !!state.sw[s.key];
-    h.push('<label class="' + N + '-tog' + (on ? ' on' : '') + (on !== s.def ? ' dev' : '') + '"' + tip({ title: s.label, text: s.hint }) + '>' +
+    // Без тултипа (фидбек владельца): в шапке ~64 px всплывашка обрезалась рамкой чарта.
+    h.push('<label class="' + N + '-tog' + (on ? ' on' : '') + (on !== s.def ? ' dev' : '') + '" aria-label="' + esc(s.label) + '">' +
       '<input type="checkbox" data-f="' + esc(s.key) + '"' + (on ? ' checked' : '') + '><i aria-hidden="true"></i>' + esc(s.short) + '</label>');
   }
   h.push('</div>');
   h.push('<span class="' + N + '-sp"></span>');
-  h.push('<span class="' + N + '-fresh"' + tip({ title: 'Свежесть данных', text: 'Витрина обновляется ежедневно, данные — по вчерашний день включительно.' }) +
-    '><i></i>данные <b>за вчера</b></span>');
+  h.push('<span class="' + N + '-fresh"><i></i>данные <b>за вчера</b></span>');
 
   h.push('</div>');
   h.push('</div>');

@@ -1197,6 +1197,8 @@ function makeNode(cut, k, name, depth, g, sub) {
   return { id: cut + ':' + k, cut: cut, k: k, name: name, depth: depth, m: gMetrics(g), sub: sub || '' };
 }
 // Вид «один уровень УС»: whoCut = org3…org7 → номер уровня (0 — не он).
+// ORG_NONE — ключ строки «—» (оргструктура не доходит до уровня); в шину не уходит.
+var ORG_NONE = '\u2014none';
 function orgLevelOf(cut) { var m = /^org([3-7])$/.exec(cut || ''); return m ? +m[1] : 0; }
 function nodeKids(nd) {
   if (nd.cut !== 'org' || nd.flat) return [];
@@ -1209,7 +1211,7 @@ function orgNode(path) {
   return makeNode('org', path, ps[ps.length - 1], ps.length - 1, MODEL.gm.org[path], 'УС-' + (ps.length + 2));
 }
 function rootNodes(cut) {
-  var out = [], k, src, L = orgLevelOf(cut);
+  var out = [], k, src, L = orgLevelOf(cut), sumL = {};
   if (L) {
     // Плоско: все узлы уровня УС-L; вторая строка — путь до него. Шина та же (org_f путём).
     for (k in MODEL.gm.org) {
@@ -1219,6 +1221,15 @@ function rootNodes(cut) {
       var fn = makeNode('org', k, pp[pp.length - 1], 0, MODEL.gm.org[k], 'УС-' + L + (pp.length > 1 ? ' · ' + pp.slice(0, -1).join(CFG.orgSep) : ''));
       fn.id = cut + ':' + k; fn.flat = true;
       out.push(fn);
+      for (var zk in ZERO_M) if (Object.prototype.hasOwnProperty.call(ZERO_M, zk)) sumL[zk] = (sumL[zk] || 0) + ((MODEL.gm.org[k] || {})[zk] || 0);
+    }
+    // Строка «—»: кто не доходит до УС-L. Узлы одного уровня не пересекаются, поэтому
+    // остаток = итог области − сумма узлов (точно); сумма строк таблицы = «Итого по области».
+    var rest = minusM(MODEL.kpi || ZERO_M, sumL);
+    if (rest.users > 0) {
+      var rn = makeNode('org', ORG_NONE, '—', 0, rest, 'не доходят до УС-' + L);
+      rn.id = cut + ':' + ORG_NONE; rn.flat = true; rn.noBus = true;
+      out.push(rn);
     }
   } else if (cut === 'org') {
     var ks = MODEL.orgKids[''] || [];
@@ -1242,8 +1253,7 @@ function peopleIndex(plist, cut) {
     var p = plist[i];
     if (L) {                           // уровень УС-L: все сотрудники поддерева узла
       var lp = orgParts(p.org);
-      if (lp.length < L - 2) continue;
-      key = lp.slice(0, L - 2).join(CFG.orgSep);
+      key = lp.length < L - 2 ? ORG_NONE : lp.slice(0, L - 2).join(CFG.orgSep);
     } else if (cut === 'org') key = p.org;
     else if (cut === 'heads') key = p.is_head ? 'Тим-лиды' : 'Остальные';
     else if (cut === 'spec' || cut === 'stream') key = p[cut];
@@ -1276,6 +1286,7 @@ function gColsNow() {
 function sortNodes(nodes) {
   var sc = state.gSort;
   return nodes.slice().sort(function (a, b) {
+    if (!!a.noBus !== !!b.noBus) return a.noBus ? 1 : -1;   // строка «—» — всегда внизу
     var va = sc.key === 'name' ? a.name.toLowerCase() : a.m[sc.key];
     var vb = sc.key === 'name' ? b.name.toLowerCase() : b.m[sc.key];
     var ea = va == null, eb = vb == null;
@@ -1313,7 +1324,7 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
     ? nd.sub + (nk ? ' · ' + nk + ' ' + plural(nk, 'подразделение', 'подразделения', 'подразделений') : '')
     : '';
   var h = '<tr class="grp-h' + (sel ? ' sel' : '') + (dim ? ' grp-dim' : '') + ' d' + Math.min(nd.depth, 4) + '"' +
-    ' data-who="' + esc(nd.k) + '" data-whocut="' + esc(nd.cut) + '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
+    (nd.noBus ? '' : ' data-who="' + esc(nd.k) + '" data-whocut="' + esc(nd.cut) + '" tabindex="0" role="button" aria-pressed="' + sel + '"') +
     '>' +
     '<td class="txt gname" style="padding-left:' + (6 + nd.depth * 18) + 'px">' +
     (hasKids
@@ -1354,6 +1365,7 @@ function groupTableHtml(plist, cut) {
   var cols = gColsNow(), local = localActive();
   var span = cols.length + 1 + (local ? 1 : 0);
   var pix = peopleIndex(plist, cut), lc = local ? localCounts(plist, orgLevelOf(cut) ? 'org' : cut) : null;
+  if (lc && orgLevelOf(cut)) lc[ORG_NONE] = (pix[ORG_NONE] || []).length;
   var out = [], visible = [];
   function walk(nodes) {
     var s = sortNodes(nodes);
@@ -1422,7 +1434,7 @@ function exportRows() {
   function walk(nodes) {                 // все уровни, независимо от раскрытия
     var s = sortNodes(nodes);
     for (var j = 0; j < s.length; j++) {
-      var nd = s[j], m = nd.m, row = [nd.sub || cutLabel, nd.k, nd.name];
+      var nd = s[j], m = nd.m, row = [nd.sub || cutLabel, nd.noBus ? '' : nd.k, nd.name];
       for (var q = 0; q < cols.length; q++) {
         var key = cols[q].key;
         row.push(key === 'share' || key === 'dUsers' || key === 'regShare' || key === 'vpu' ? num2(m[key], 1) : num2(m[key]));
@@ -1609,7 +1621,7 @@ function whoTableHtml() {
   return (grouped ? groupTableHtml(plist, cut) : peopleTableHtml(plist)) +
     '<div class="' + CFG.ns + '-tbl-note">' + (grouped
       ? (orgLevelOf(cut)
-        ? 'Подразделения уровня УС-' + orgLevelOf(cut) + ' — точные уникальные люди; ▸ — все сотрудники подразделения вместе с нижними уровнями; кто не дошёл до УС-' + orgLevelOf(cut) + ' в оргструктуре, в таблицу не входит'
+        ? 'Подразделения уровня УС-' + orgLevelOf(cut) + ' — точные уникальные люди; ▸ — все сотрудники подразделения вместе с нижними уровнями; «—» — у кого оргструктура не доходит до УС-' + orgLevelOf(cut) + ' (в каталог не фильтрует)'
         : 'Итоги групп — точные уникальные люди по всей области; ▸ раскрывает вглубь' + (cut === 'org' ? ' (УС-3 › … › УС-7)' : '')) +
         ', сотрудники — во вложенной таблице. Клик по строке — людская шина (каталог слева сузится), Shift накапливает; клик по заголовку — сортировка.'
       : 'Клик по заголовку — сортировка; клик по человеку — людская шина (каталог слева сузится до его отчётов), Shift накапливает.') +

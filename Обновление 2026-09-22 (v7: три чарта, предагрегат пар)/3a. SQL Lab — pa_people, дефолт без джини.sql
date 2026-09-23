@@ -1,6 +1,6 @@
 -- SQL Lab: pa_people (файл 3), 30 дней, без выбора в каталоге. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 3
+-- 4
 WITH
   maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
   dash_ok AS (
@@ -30,8 +30,7 @@ WITH
       bitAnd(p.msk, 1073741823) != 0 AS cur, bitAnd(p.msk, 1152921503533105152) != 0 AS prv,
       bitCount(bitAnd(p.msk, 1073741823)) AS nb_cur, bitCount(bitAnd(p.msk, 1152921503533105152)) AS nb_prev,
       multiIf(nb_cur <= 1, 1, nb_cur <= 3, 2, nb_cur <= 7, 3, nb_cur <= 15, 4, 5) AS bin,
-      toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,[lvl3, lvl4, toString(ifNull(a.lvl5_management_unit_nm, '')), toString(ifNull(a.lvl6_management_unit_nm, '')), toString(ifNull(a.lvl7_management_unit_nm, ''))] AS lv,
-      toUInt32(if(arrayFirstIndex(x -> x = '', lv) = 0, length(lv), arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
+      toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,[lvl3, lvl4, toString(ifNull(a.lvl5_management_unit_nm, '')), toString(ifNull(a.lvl6_management_unit_nm, '')), toString(ifNull(a.lvl7_management_unit_nm, ''))] AS lv,if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
       arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
       toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,

@@ -82,7 +82,8 @@ WITH
       {#- Оргструктура УС-3…УС-7: путь «УС-3 › УС-4 › …» до первого пустого уровня. Узел дерева = префикс пути,
           поэтому одноимённые отделы разных департаментов не склеиваются. -#}
       [lvl3, lvl4{% if HAS_ORG %}, toString(ifNull(a.lvl5_management_unit_nm, '')), toString(ifNull(a.lvl6_management_unit_nm, '')), toString(ifNull(a.lvl7_management_unit_nm, '')){% endif %}] AS lv,
-      toUInt32(if(arrayFirstIndex(x -> x = '', lv) = 0, length(lv), arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
+      {#- Обе ветки if — одного типа (UInt32): в CH 24 if(UInt64, Int64) падает «no supertype». -#}
+      if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
       arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
       toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,

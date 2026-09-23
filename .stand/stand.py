@@ -16,6 +16,9 @@ import jinja2
 
 DB = os.environ.get('PA_DB') or os.path.join(os.path.dirname(os.path.abspath(__file__)), '.db')
 S = cs.Session(DB)
+# Как боевой ClickHouse 24: без Variant-типа как общего. Иначе chdb (новее) молча сводит
+# if(UInt64, Int64) к Variant, а бой падает «There is no supertype for types Int64, UInt64».
+S.query('SET use_variant_as_common_type = 0')
 FACT_N = None
 
 

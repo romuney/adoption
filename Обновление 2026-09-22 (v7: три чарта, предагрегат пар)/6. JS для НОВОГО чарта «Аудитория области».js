@@ -88,9 +88,9 @@ var CFG = {
     { key: 'users', label: 'Людей', hint: 'Уникальные люди группы в области за период' },
     { key: 'share', label: 'Доля', hint: 'Доля группы от всех людей области' },
     { key: 'dUsers', label: 'Δ к пред.', hint: 'Изменение числа людей к предыдущему периоду той же длины', prevOnly: true },
-    { key: 'views', label: 'Просмотров', hint: 'Открытия отчётов области за период' },
+    { key: 'views', label: 'Просмотров', short: 'Просм.', hint: 'Открытия отчётов области за период' },
     { key: 'vpu', label: 'На чел.', hint: 'Просмотров на одного человека группы' },
-    { key: 'regShare', label: 'Постоянных', hint: 'Доля постоянных — корзины частоты 3 и 4: 6+ дней или недель, 4+ месяца, 3+ квартала (число — во всплывашке)' },
+    { key: 'regShare', label: 'Постоянных', short: 'Пост.', hint: 'Доля постоянных — корзины частоты 3 и 4: 6+ дней или недель, 4+ месяца, 3+ квартала (число — во всплывашке)' },
     { key: 'new_u', label: 'Новых', hint: 'Первый визит в отчёты области пришёлся на этот период' }
   ],
   // Колонки поимённого списка (сортировка — по ключу).
@@ -554,6 +554,8 @@ function buildModel() {
   return m;
 }
 var MODEL = buildModel();
+// Отпечаток ответа: меняется, когда пришли новые данные (область, период, опции).
+MODEL.sig = [MODEL.grain, MODEL.total, MODEL.kpi ? MODEL.kpi.views : 0, MODEL.rows.length, MODEL.ts.length, MODEL.coh.length].join('|');
 
 // ---------- БЛОК 4: ФОРМАТИРОВАНИЕ И ЦВЕТ ----------
 // Подсказка: тот же HTML-контракт, что и у макетного UI.tipHtml (ui.js 86–106)
@@ -700,6 +702,9 @@ function buildCSS() {
     '  --fs-cap:10.5px;--fs-note:11.5px;--fs-body:12.5px;--fs-lead:13.5px;',
     '  --chart-gap:' + CFG.spacing.stackGap + 'px;color-scheme:light;}',
     P + '-root *{box-sizing:border-box;font-family:inherit;}',
+    // ── Анимация появления (ДС 6.5) — Web Animations в animateIn(); здесь только точки опоры ──
+    P + '-root svg .bar{transform-box:fill-box;transform-origin:50% 100%;}',
+    P + '-root ' + P + '-cellbar i,' + P + '-root .sp-bar{transform-origin:0 50%;}',
 
     // ── KPI области и «Что видно в данных» — над карточкой вкладок, на сером холсте ──
     P + '-top{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;flex:0 0 auto;}',
@@ -923,14 +928,17 @@ function buildCSS() {
     P + '-ptable tr.grp-h.grp-dim .gh-name{color:var(--muted);font-weight:400;}',
     // ── Сводная таблица групп и поимённый список (v7.3) ──
     P + '-ptable.gt td{font-variant-numeric:tabular-nums;}',
-    P + '-ptable.gt th:first-child,' + P + '-ptable.gt td.gname{width:34%;}',
+    P + '-ptable.gt{table-layout:fixed;}',
+    P + '-ptable.gt th{overflow:hidden;text-overflow:ellipsis;}',
+    P + '-shr{display:inline-flex;align-items:center;justify-content:flex-end;gap:7px;}',
+    P + '-shr-v{display:inline-block;min-width:42px;text-align:right;}',
     P + '-ptable.gt td.gname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0;}',
     P + '-gh-sp{display:inline-block;width:26px;}',
     // Запас под каретку 28 px (−6/+4 поля) с зазором: иначе длинное имя упирается в край, блок
     // не помещается в ячейку, и её text-overflow заменяет его ЦЕЛИКОМ на «…» (имя и «УС-N»).
     P + '-gtx{display:inline-block;vertical-align:middle;max-width:calc(100% - 34px);overflow:hidden;text-overflow:ellipsis;}',
     P + '-gtx .gh-name{display:block;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-ptable td.shr ' + P + '-cellbar{display:inline-block;width:40px;height:8px;margin-right:7px;vertical-align:middle;}',
+    P + '-ptable td.shr ' + P + '-cellbar{display:inline-block;width:40px;height:8px;vertical-align:middle;flex:0 0 40px;}',
     P + '-ptable.sub td{height:auto;}',
     // Скролл «Кто смотрит»: зона списка — flex-колонка, таблица скроллится внутри,
     // шапка таблицы закреплена (sticky), тулбар и пагинатор на месте.
@@ -1343,11 +1351,18 @@ function sortNodes(nodes) {
     return r || b.m.users - a.m.users || (a.name < b.name ? -1 : 1);
   });
 }
+// Ячейка «Доля»: полоса фиксированной ширины + число в поле фиксированной ширины
+// (вправо) — полосы всех строк начинаются на одной вертикали, «8%» и «10,0%» не сдвигают их.
+function shareCell(share, barPct) {
+  return '<td class="shr"><span class="' + CFG.ns + '-shr">' +
+    '<span class="' + CFG.ns + '-cellbar"' + (barPct == null ? ' style="visibility:hidden"' : '') + '><i style="width:' + (barPct || 0).toFixed(1) + '%"></i></span>' +
+    '<span class="' + CFG.ns + '-shr-v">' + pct(share, share < 10 ? 1 : 0) + '</span></span></td>';
+}
 function gCellHtml(key, m) {
   if (key === 'users') return '<td class="lead">' + nf(m.users) + '</td>';
   if (key === 'share') {
     // Полоса — от крупнейшей группы верхнего уровня: доли 2–8% иначе не видны.
-    return '<td class="shr"><span class="' + CFG.ns + '-cellbar"><i style="width:' + Math.min(100, m.share / (MAX_SHARE || 100) * 100).toFixed(1) + '%"></i></span>' + pct(m.share, m.share < 10 ? 1 : 0) + '</td>';
+    return shareCell(m.share, Math.min(100, m.share / (MAX_SHARE || 100) * 100));
   }
   if (key === 'dUsers') {
     if (m.dUsers == null) return '<td><span class="mut">—</span></td>';
@@ -1434,7 +1449,8 @@ function groupTableHtml(plist, cut) {
   walk(roots);
   VISIBLE_NODES = visible;
   var tot = gMetrics(effKpi() || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' || orgLevelOf(cut) ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
-  for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c], state.gSort);
+  // В шапке — короткие подписи (колонки равной ширины), в выгрузке — полные.
+  for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c].short ? { key: cols[c].key, label: cols[c].short, hint: cols[c].label + '. ' + cols[c].hint } : cols[c], state.gSort);
   if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всей области.' }) + '>В выборке</th>';
   // Общая каретка (ДС 4.6c) — в строке итога, на вертикали строчных кареток:
   // ничего не раскрыто — ▸ раскрывает группы на уровень вглубь; что-то раскрыто — ▾ сворачивает всё.
@@ -1447,11 +1463,20 @@ function groupTableHtml(plist, cut) {
       ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-wofold="level" aria-expanded="false" aria-label="Раскрыть уровень"' + tip({ text: 'Раскрыть все группы на уровень вглубь; дальше — каретками строк' }) + '>▸</button>'
       : '<span class="' + CFG.ns + '-gh-sp"></span>');
   var totRow = '<tr class="g-tot tot"><td class="txt gname" style="padding-left:6px">' + totCaret + 'Итого по области</td>';
-  for (c = 0; c < cols.length; c++) totRow += cols[c].key === 'share' ? '<td class="shr">100%</td>' : gCellHtml(cols[c].key, tot);
+  for (c = 0; c < cols.length; c++) totRow += cols[c].key === 'share' ? shareCell(100, null) : gCellHtml(cols[c].key, tot);
   // (строка итога строится ДО полос групп — MAX_SHARE к ней не применяется)
   if (local) totRow += '<td class="loc">' + nf(plist.length) + '</td>';
   totRow += '</tr>';
-  return '<div class="' + CFG.ns + '-tbl-scroll"><table class="' + CFG.ns + '-ptable dense gt"><thead><tr>' + th + '</tr></thead><tbody>' + totRow +
+  // Ширины колонок фиксированы: имя 30%, «Доля» 15%, остальные числа — поровну;
+  // длинное имя группы обрезается «…» по ширине колонки.
+  var nNum = cols.length + (local ? 1 : 0), hasShare = false;
+  for (c = 0; c < cols.length; c++) if (cols[c].key === 'share') hasShare = true;
+  var restW = (70 - (hasShare ? 15 : 0)) / Math.max(1, nNum - (hasShare ? 1 : 0));
+  var cg = '<colgroup><col style="width:30%">';
+  for (c = 0; c < cols.length; c++) cg += '<col style="width:' + (cols[c].key === 'share' ? 15 : restW).toFixed(2) + '%">';
+  if (local) cg += '<col style="width:' + restW.toFixed(2) + '%">';
+  cg += '</colgroup>';
+  return '<div class="' + CFG.ns + '-tbl-scroll"><table class="' + CFG.ns + '-ptable dense gt">' + cg + '<thead><tr>' + th + '</tr></thead><tbody>' + totRow +
     (out.length ? out.join('') : '<tr><td colspan="' + span + '" class="' + CFG.ns + '-empty-td">В области нет групп по этому разрезу.</td></tr>') +
     '</tbody></table></div>';
 }
@@ -1962,10 +1987,11 @@ function retCurveSvg(points, opts) {
     var yy = r1(yOf(gy));
     body += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (SVG_W - padR) + '" y2="' + yy + '" stroke="' + C.split + '" stroke-dasharray="3 3"/>';
   }
-  body += '<path d="' + s + 'L' + r1(pts[n - 1][0]) + ' ' + r1(yOf(0)) + 'L' + r1(pts[0][0]) + ' ' + r1(yOf(0)) + 'Z" fill="rgba(0,115,160,.08)"/>';
-  body += '<path d="' + s + '" fill="none" stroke="' + C.act + '" stroke-width="2"/>';
+  var cid = revealClip(H);
+  body += cid.defs + '<path clip-path="url(#' + cid.id + ')" d="' + s + 'L' + r1(pts[n - 1][0]) + ' ' + r1(yOf(0)) + 'L' + r1(pts[0][0]) + ' ' + r1(yOf(0)) + 'Z" fill="rgba(0,115,160,.08)"/>';
+  body += '<path class="ln" pathLength="1" stroke-dasharray="1" d="' + s + '" fill="none" stroke="' + C.act + '" stroke-width="2"/>';
   for (i = 0; i < n; i++) {
-    body += '<circle cx="' + r1(pts[i][0]) + '" cy="' + r1(pts[i][1]) + '" r="3.5" fill="' + C.act + '" stroke="#fff" stroke-width="2"' +
+    body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, n - 1)) + '\" cx="' + r1(pts[i][0]) + '" cy="' + r1(pts[i][1]) + '" r="3.5" fill="' + C.act + '" stroke="#fff" stroke-width="2"' +
       tip({
         title: 'Через ' + points[i].age + ' ' + plural(points[i].age, 'месяц', 'месяца', 'месяцев'),
         rows: [{ label: 'Возвращаются', value: pct(points[i].pct), color: C.act },
@@ -1973,7 +1999,7 @@ function retCurveSvg(points, opts) {
         note: 'Доля когорты, активной через N месяцев после первого визита'
       }) + '/>';
     if (i % ls === 0 || i === n - 1) {
-      body += '<text x="' + r1(pts[i][0]) + '" y="' + r1(pts[i][1] - 10) + '" font-size="' + CFG.fonts.val + '" text-anchor="middle" fill="' + C.label +
+      body += '<text class="fade" x="' + r1(pts[i][0]) + '" y="' + r1(pts[i][1] - 10) + '" font-size="' + CFG.fonts.val + '" text-anchor="middle" fill="' + C.label +
         '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(pct(points[i].pct, 0)) + '</text>';
       body += '<text x="' + r1(pts[i][0]) + '" y="' + (H - 12) + '" font-size="11" text-anchor="middle" fill="' + C.axis + '">+' + points[i].age + ' мес</text>';
     }
@@ -2194,6 +2220,34 @@ var SVG_W = 760;
 // Высота динамики под ячейку чарта: меряется ПОСЛЕ монтажа (как SVG_W) и
 // делится между стеком пользователей (60%) и просмотрами (40%). 0 — дефолт.
 var DYN_H = 0;
+// Анимация появления (ДС 6.5) — только в рендере с НОВЫМИ данными (клик по отчёту,
+// смена периода): ресайз, наведение и клики внутри панели не анимируют.
+var ANIM = false, CLIP_N = 0;
+// Заливка под линией открывается слева направо: clipPath с растущей шириной (SMIL).
+// Появление: столбики растут от оси, линия рисуется слева направо, точки и подписи
+// проявляются, полосы долей и корзин растут слева. Web Animations — без @keyframes в CSS.
+function animateIn(root) {
+  if (!root || !root.querySelectorAll || typeof Element === 'undefined' || !Element.prototype.animate) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var run = function (sel, frames, o) {
+    var els = root.querySelectorAll(sel);
+    for (var i = 0; i < els.length; i++) {
+      var d = +(els[i].getAttribute('data-d') || 0);
+      try { els[i].animate(frames, { duration: o.dur, easing: o.ease || 'ease-out', delay: (o.delay || 0) + d, fill: 'both' }); } catch (e) { /* старый браузер — без анимации */ }
+    }
+  };
+  var E1 = 'cubic-bezier(.22,.61,.36,1)', E2 = 'cubic-bezier(.4,0,.2,1)';
+  run('svg .bar', [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }], { dur: 480, ease: E1 });
+  run('svg .ln', [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { dur: 760, ease: E2 });
+  run('svg .fade', [{ opacity: 0 }, { opacity: 1 }], { dur: 350, delay: 250 });
+  run('.' + CFG.ns + '-cellbar i, .sp-bar', [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { dur: 480, ease: E1 });
+}
+function revealClip(h) {
+  var id = CFG.ns + '-clip-' + (++CLIP_N);
+  return { id: id, defs: '<defs><clipPath id="' + id + '"><rect x="0" y="0" height="' + r1(h) + '" width="' + (ANIM ? 0 : SVG_W) + '">' +
+    (ANIM ? '<animate attributeName="width" from="0" to="' + SVG_W + '" dur="0.76s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".4 0 .2 1"/>' : '') +
+    '</rect></clipPath></defs>' };
+}
 // Высота кривой удержания: остаток тела вкладки «Закрепляемость» (как у «Динамики»).
 var COH_H = 0;
 function r1(v) { return Math.round(v * 10) / 10; }
@@ -2257,6 +2311,7 @@ function usersChartSvg(ts, grain) {
     var topmost = -1;
     for (var si = 0; si < segs.length; si++) if (segs[si].h > 0.5) topmost = si;
     var yy = top + pH;
+    body += '<g class="bar" data-d="' + Math.round(i * 12) + '\">';   // колонка растёт от оси (анимация)
     for (var sj = 0; sj < segs.length; sj++) {
       if (segs[sj].h <= 0.5) continue;    // пустых ступеней не рисуем вовсе
       var sy = yy - segs[sj].h;
@@ -2265,8 +2320,9 @@ function usersChartSvg(ts, grain) {
         : '<rect x="' + r1(x) + '" y="' + r1(sy) + '" width="' + r1(bw) + '" height="' + r1(segs[sj].h) + '" fill="' + segs[sj].c + '"/>';
       yy = sy;
     }
+    body += '</g>';
     // Подпись значения — у КАЖДОГО столбика (макет: valueLabel без пропусков).
-    body += '<text x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
+    body += '<text class="fade" x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
       '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(compact(aU)) + '</text>';
     bk.push({ k: p.k, u: p.users, nu: p.new_u, re: p.react_u, rt: p.ret, v: p.views });
   }
@@ -2302,7 +2358,7 @@ function viewsChartSvg(ts, grain) {
     var cy = y2(viewsOf(ts[i]));
     pts.push([cx, cy]);
     bk.push({ k: ts[i].k, u: ts[i].users, v: ts[i].views });
-    labels += '<text x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
+    labels += '<text class="fade" x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
       '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(fmtV(ts[i])) + '</text>';
   }
   labels += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
@@ -2313,10 +2369,11 @@ function viewsChartSvg(ts, grain) {
   }
   var s = 'M' + r1(pts[0][0]) + ' ' + r1(pts[0][1]);
   for (i = 1; i < pts.length; i++) s += 'C' + r1(cps[i][0]) + ' ' + r1(cps[i][1]) + ' ' + r1(cps[i][2]) + ' ' + r1(cps[i][3]) + ' ' + r1(pts[i][0]) + ' ' + r1(pts[i][1]);
-  var body = '<path d="' + s + 'L' + r1(pts[pts.length - 1][0]) + ' ' + (top + pH) + 'L' + r1(pts[0][0]) + ' ' + (top + pH) + 'Z" fill="rgba(91,100,120,.07)" stroke="none"/>' +
-    '<path d="' + s + '" fill="none" stroke="' + C.views + '" stroke-width="2"/>';
+  var cid = revealClip(H);
+  var body = cid.defs + '<path clip-path="url(#' + cid.id + ')" d="' + s + 'L' + r1(pts[pts.length - 1][0]) + ' ' + (top + pH) + 'L' + r1(pts[0][0]) + ' ' + (top + pH) + 'Z" fill="rgba(91,100,120,.07)" stroke="none"/>' +
+    '<path class="ln" pathLength="1" stroke-dasharray="1" d="' + s + '" fill="none" stroke="' + C.views + '" stroke-width="2"/>';
   for (i = 0; i < pts.length; i++) {
-    body += '<circle cx="' + r1(pts[i][0]) + '" cy="' + r1(pts[i][1]) + '" r="2.6" fill="' + C.views + '" stroke="#fff" stroke-width="1.6"/>';
+    body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, pts.length - 1)) + '\" cx="' + r1(pts[i][0]) + '" cy="' + r1(pts[i][1]) + '" r="2.6" fill="' + C.views + '" stroke="#fff" stroke-width="1.6"/>';
   }
   body += labels;
   body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent" data-dyn="views" data-n="' + n +
@@ -2509,9 +2566,13 @@ function dynTipHtml(el, i) {
     function render() {
       // overlay — скролл-контейнер: без сохранения позиции клик внизу прыгал наверх.
       var st = overlay.scrollTop, sl = overlay.scrollLeft;
+      ANIM = MODEL.sig !== state.animSig;     // новые данные → анимация только в этом рендере
+      state.animSig = MODEL.sig;
       overlay.innerHTML = buildHTML();
       var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch3 = syncCohH();
       if (ch1 || ch2 || ch3) overlay.innerHTML = buildHTML();
+      if (ANIM) animateIn(overlay);
+      ANIM = false;
       overlay.scrollTop = st;
       overlay.scrollLeft = sl;
       renderTip();

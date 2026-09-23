@@ -14,18 +14,17 @@
 // ОБЯЗАТЕЛЬНО: все 7 блоков ниже, в таком порядке, без перенумерации.
 // ОБЯЗАТЕЛЬНО: вызов render(); в теле mount() — без него overlay пустой.
 //
-// ЧТО ЭТО. Верхний чарт листа во всю ширину (макет 2.5): строка управления
-//   (период · опции · сброс), пять KPI ВСЕГО экрана, «Что видно в данных» и
-//   строка общих фильтров — пилюли всех активных условий листа.
-// ДАННЫЕ. Датасет pa_kpi — ОДНА строка итогов по области каталога ∩ людской
-//   шине панели «Кто смотрит» под периодом и свитками (+ эхо условий в state_j).
-// ШИНЫ. Пишет period_param / pub_f / act_f / exc_f → каталог, панель и СЕБЯ
-//   (самовлияние ВКЛЮЧЕНО: KPI зависят от периода). Слушает область каталога
-//   (mode_param + sel_f) и людскую шину панели. Чужие условия шапка только
-//   показывает: снимаются они там, где заданы (кликом по выделенной строке).
-// «ЧТО ВИДНО В ДАННЫХ» — лента фиксированной высоты: факты листаются ‹ ›,
-//   подробности — в подсказке. Раскрываться вниз шапка не может: чарты Proteus
-//   не раздвигают соседей.
+// ЧТО ЭТО. Верхний чарт листа во всю ширину, v7.2 (вариант «KPI в панели»):
+//   одна тонкая карточка — период · опции · свежесть · сброс, под ними строка
+//   общих фильтров: пилюли всех активных условий листа. KPI и «Что видно в
+//   данных» живут в правой панели («Аудитория области»).
+// ДАННЫЕ. Датасет pa_strip — ОДНА строка эха условий (state_j) и подписей для
+//   пилюль (area_nm — названия отчётов, ppl_nm — ФИО людей). Факт и pa_pair не
+//   читает: запрос мгновенный.
+// ШИНЫ. Пишет period_param / pub_f / act_f / exc_f → каталог и панель.
+//   Самовлияние выключено: свои период и опции шапка держит в состоянии.
+//   Слушает область каталога (mode_param + sel_f) и людскую шину панели. Чужие
+//   условия только показывает: снимаются они там, где заданы.
 // ============================================================================
 
 // ---------- БЛОК 1: CFG ----------
@@ -34,13 +33,8 @@
 // Все цвета/шрифты/отступы из макета — только здесь, не в разметке.
 var CFG = {
   ns: 'past',
-  // 17 колонок датасета pa_kpi (Виджеты/pa-strip.data.sql), одна строка.
-  fields: {
-    grain: 'grain', users: 'users', users_prev: 'users_prev', views: 'views', views_prev: 'views_prev',
-    new_u: 'new_u', new_prev: 'new_prev', regular: 'regular', regular_prev: 'regular_prev',
-    sleeping: 'sleeping', mau: 'mau', mau_prev: 'mau_prev',
-    area_nm: 'area_nm', ppl_nm: 'ppl_nm', state_j: 'state_j'
-  },
+  // 4 колонки датасета pa_strip (Виджеты/pa-strip.data.sql), одна строка.
+  fields: { grain: 'grain', area_nm: 'area_nm', ppl_nm: 'ppl_nm', state_j: 'state_j' },
   text: { noData: 'Нет данных' },
   mode: 'snapshot',
   grains: [
@@ -85,10 +79,9 @@ var rawData = (typeof data !== 'undefined' && Array.isArray(data)) ? data : [];
 
 if (!window.__pvtState) window.__pvtState = {};
 var __S = window.__pvtState;
-if (!__S[CFG.ns]) __S[CFG.ns] = { tip: null, grain: 'd', sw: {}, open: false, obsI: 0 };
+if (!__S[CFG.ns]) __S[CFG.ns] = { tip: null, grain: 'd', sw: {}, open: false };
 var state = __S[CFG.ns];
 if (!state.sw) state.sw = {};   // защита при обновлении структуры с прошлых сессий
-if (state.obsI == null) state.obsI = 0;
 
 function esc(s) {
   return String(s == null ? '' : s)
@@ -136,7 +129,6 @@ function resetState() {
   state.sw = swDefaults();
   state.open = false;
   state.tip = null;
-  state.obsI = 0;
 }
 if (state.grain === undefined) state.grain = 'd';
 (function initSw() {
@@ -149,15 +141,8 @@ function grainOf(id) {
 }
 function buildModel() {
   var F = CFG.fields, r = rawData[0] || null;
-  var m = { kpi: null, grain: state.grain, sj: {}, areaNm: [], ppl: {} };
+  var m = { grain: state.grain, sj: {}, areaNm: [], ppl: {} };
   if (!r) return m;
-  m.kpi = {
-    users: num(r[F.users]) || 0, users_prev: num(r[F.users_prev]) || 0,
-    views: num(r[F.views]) || 0, views_prev: num(r[F.views_prev]) || 0,
-    new_u: num(r[F.new_u]) || 0, new_prev: num(r[F.new_prev]) || 0,
-    regular: num(r[F.regular]) || 0, regular_prev: num(r[F.regular_prev]) || 0,
-    sleeping: num(r[F.sleeping]) || 0, mau: num(r[F.mau]) || 0, mau_prev: num(r[F.mau_prev]) || 0
-  };
   var g = String(r[F.grain] || '');
   if (g) m.grain = grainOf(g).id;
   try { m.sj = JSON.parse(String(r[F.state_j] || '{}')) || {}; } catch (e) { m.sj = {}; }
@@ -190,43 +175,6 @@ function maskOf(st) {
   return fl;
 }
 
-// «Что видно в данных»: пороговый отбор фактов по KPI экрана.
-function obsList(k, G, what) {
-  var out = [];
-  if (!k || !k.users) return out;
-  var dU = G.prev && k.users_prev ? (k.users / k.users_prev - 1) * 100 : null;
-  var shNew = k.new_u / k.users * 100;
-  var shReg = k.regular / k.users * 100;
-  var shGone = k.users_prev ? k.sleeping / k.users_prev * 100 : null;
-  if (dU != null && Math.abs(dU) >= 10) {
-    out.push({ sev: dU > 0 ? 'good' : 'high',
-      lead: 'Пользователей ' + (dU > 0 ? 'больше' : 'меньше') + ' на ' + pct(Math.abs(dU)) + ' ' + G.vs,
-      body: what + ': за период ' + nf(k.users) + ' пользователей против ' + nf(k.users_prev) + ' в предыдущем.',
-      rule: 'изменение к предыдущему периоду ≥10%' });
-  }
-  if (G.prev && shGone != null && shGone >= 15) {
-    out.push({ sev: 'mid',
-      lead: nf(k.sleeping) + ' ' + plural(k.sleeping, 'человек', 'человека', 'человек') + ' прошлого периода не вернулись',
-      body: nf(k.sleeping) + ' из ' + nf(k.users_prev) + ' зрителей предыдущего периода (' + pct(shGone) + ') в текущем не заходили.',
-      rule: 'доля ушедших ≥15% аудитории прошлого периода' });
-  }
-  if (shNew >= 22) {
-    out.push({ sev: 'good',
-      lead: 'Новые дают ' + pct(shNew) + ' аудитории',
-      body: 'Из ' + nf(k.users) + ' пользователей ' + nf(k.new_u) + ' пришли впервые: рост идёт за счёт притока.',
-      rule: 'доля новых ≥22%' });
-  }
-  if (shReg < 25) {
-    out.push({ sev: 'mid',
-      lead: 'Постоянных ' + pct(shReg) + ' — меньше четверти',
-      body: 'Только ' + nf(k.regular) + ' человек заходили 8 и более ' + G.units + ' за период.',
-      rule: 'доля постоянных <25%' });
-  }
-  var ord = { high: 0, mid: 1, good: 2 };
-  out.sort(function (a, b) { return ord[a.sev] - ord[b.sev]; });
-  return out;
-}
-
 // ---------- БЛОК 4: ФОРМАТИРОВАНИЕ И ЦВЕТ ----------
 // Тонкий пробел в разрядах, типографский минус, русское склонение.
 var THIN = ' ';
@@ -246,24 +194,6 @@ function plural(n, one, few, many) {
   if (d10 === 1 && d100 !== 11) return one;
   if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return few;
   return many;
-}
-function compact(v) {
-  if (v == null) return '—';
-  var a = Math.abs(v);
-  if (a >= 1e6) return nf(v / 1e6, 1) + 'M';
-  if (a >= 1e4) return nf(v / 1e3, 0) + 'K';
-  if (a >= 1e3) return nf(v / 1e3, 1) + 'K';
-  return nf(v, 0);
-}
-function signed(v, dec, unit) {
-  if (v == null || !isFinite(v)) return '—';
-  return (v > 0 ? '+' : (v < 0 ? MINUS : '')) + nf(Math.abs(v), dec == null ? 0 : dec) + (unit || '');
-}
-// Последний ЗАКРЫТЫЙ месяц от даты свежести (витрина за вчера).
-function closedMonth(back) {
-  var now = new Date(Date.now() - 86400000);
-  var dt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
-  return MONTHS_FULL[dt.getUTCMonth()] + ' ' + dt.getUTCFullYear();
 }
 function freqLabel(i, units) {
   var f = { 'дней': ['день', 'дня', 'дней'], 'недель': ['неделя', 'недели', 'недель'],
@@ -288,15 +218,6 @@ function tipHtml(o) {
   return s + '</div>';
 }
 function tip(o) { return ' data-tip="' + esc(tipHtml(o)) + '"'; }
-function delta(v, o) {
-  o = o || {};
-  if (v == null || !isFinite(v)) {
-    return '<span class="' + CFG.ns + '-nocmp"' + tip({ title: 'Сравнение', text: o.why || 'Нет предыдущего периода.' }) + '>не сравнивается</span>';
-  }
-  var cls = Math.abs(v) < (o.dead == null ? 0.05 : o.dead) ? 'flat' : (v > 0 ? 'up' : 'down');
-  return '<span class="' + CFG.ns + '-delta ' + CFG.ns + '-' + cls + '">' + signed(v, 1, o.unit || '') +
-    (o.vs ? ' <span class="' + CFG.ns + '-d-vs">' + esc(o.vs) + '</span>' : '') + '</span>';
-}
 function cssColor(c) {
   if (!c) return '#000';
   if (typeof c === 'string') return c;
@@ -316,7 +237,7 @@ function buildCSS() {
   var C = CFG.colors;
   return [
     '<style>',
-    P + '-root{width:100%;min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;'
+    P + '-root{width:100%;min-height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:10px 14px;background:' + C.card + ';border-radius:12px;'
             + 'font-family:' + CFG.fonts.family + ';color:' + C.ink2 + ';color-scheme:light;}',
     P + '-root *{box-sizing:border-box;font-family:inherit;}',
     // ТУЛТИП живёт В BODY, вне -root — шрифт ему НЕ наследуется.
@@ -332,7 +253,7 @@ function buildCSS() {
     P + '-t-v{margin-left:auto;font-size:12px;font-weight:600;color:' + C.ink + ';font-variant-numeric:tabular-nums;}',
     P + '-t-n{font-size:10.5px;color:' + C.mut + ';margin-top:4px;padding-top:4px;border-top:1px solid ' + C.line2 + ';}',
     // ── Строка управления ──
-    P + '-strip{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 12px;background:' + C.card + ';border-radius:12px;}',
+    P + '-strip{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}',
     P + '-strip-seg{display:inline-flex;align-items:center;gap:2px;background:' + C.bgAlt + ';border-radius:9px;padding:2px;}',
     P + '-strip-seg button{border:0;background:transparent;border-radius:7px;padding:5px 12px;font:inherit;font-size:12px;'
            + 'font-weight:500;color:' + C.mut + ';cursor:pointer;white-space:nowrap;}',
@@ -362,38 +283,9 @@ function buildCSS() {
            + 'font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;}',
     P + '-btn-ghost:hover{background:rgba(0,115,160,.08);}',
     // ── KPI ──
-    P + '-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}',
-    P + '-kpi{background:' + C.card + ';border-radius:12px;padding:12px 15px;min-width:0;}',
-    P + '-k-label{font-size:11.5px;color:' + C.mut + ';font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-k-val{font-size:24px;font-weight:600;letter-spacing:-.4px;line-height:1.15;color:' + C.ink + ';margin-top:4px;font-variant-numeric:tabular-nums;}',
-    P + '-k-row{display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap;min-height:20px;}',
-    P + '-k-sub{font-size:11.5px;color:' + C.mut + ';}',
-    P + '-k-sub b{color:' + C.ink2 + ';font-weight:500;}',
-    P + '-delta{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:500;border-radius:999px;padding:2px 8px;}',
-    P + '-d-vs{font-weight:400;font-size:10.5px;opacity:.8;}',
-    P + '-up{background:' + C.greenBg + ';color:' + C.greenTx + ';}',
-    P + '-down{background:' + C.redBg + ';color:' + C.redTx + ';}',
-    P + '-flat{background:#f0f1f3;color:' + C.mut + ';}',
-    P + '-nocmp{font-size:11px;color:' + C.mut + ';cursor:help;border-bottom:1px dotted ' + C.mut2 + ';}',
     // ── «Что видно в данных»: лента фиксированной высоты ──
-    P + '-obs{display:flex;align-items:center;gap:10px;height:42px;padding:0 8px 0 14px;border-radius:12px;background:' + C.card + ';min-width:0;}',
-    P + '-obs.sev-high{background:linear-gradient(100deg,#fff0f1 0%,#fdf6f8 45%,#fff 100%);}',
-    P + '-obs.sev-mid{background:linear-gradient(100deg,#fff6e6 0%,#fdf9f2 45%,#fff 100%);}',
-    P + '-obs.sev-good{background:linear-gradient(100deg,#eaf8ef 0%,#f5faf7 45%,#fff 100%);}',
-    P + '-obs-ico{width:20px;height:20px;border-radius:6px;background:rgba(255,255,255,.8);display:inline-flex;align-items:center;justify-content:center;'
-           + 'font-size:11px;font-weight:600;flex:0 0 auto;color:' + C.mut + ';}',
-    P + '-obs.sev-high ' + P + '-obs-ico{color:' + C.redTx + ';}',
-    P + '-obs.sev-mid ' + P + '-obs-ico{color:#9a6500;}',
-    P + '-obs.sev-good ' + P + '-obs-ico{color:' + C.greenTx + ';}',
-    P + '-obs-t{font-size:12.5px;font-weight:500;color:' + C.ink2 + ';flex:0 0 auto;}',
-    P + '-obs-lead{font-size:12.5px;color:' + C.ink2 + ';flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help;}',
-    P + '-obs-nav{display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;}',
-    P + '-obs-nav button{border:0;background:rgba(255,255,255,.7);width:24px;height:24px;border-radius:7px;cursor:pointer;color:' + C.ink2 + ';font:inherit;font-size:13px;}',
-    P + '-obs-nav button:hover{background:#fff;color:' + C.act + ';}',
-    P + '-obs-nav button[disabled]{opacity:.35;cursor:default;}',
-    P + '-obs-n{font-size:11px;color:' + C.mut + ';padding:0 4px;font-variant-numeric:tabular-nums;}',
     // ── Общие фильтры листа ──
-    P + '-flt{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:26px;padding:0 4px;}',
+    P + '-flt{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:26px;padding-top:8px;border-top:1px solid ' + C.line2 + ';}',
     P + '-flt-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:' + C.mut + ';font-weight:500;}',
     P + '-flt-hint{font-size:11.5px;color:' + C.mut + ';}',
     P + '-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px;font-size:11.5px;font-weight:500;'
@@ -407,76 +299,6 @@ function buildCSS() {
     P + '-pill-k{opacity:.75;font-weight:400;}',
     '</style>'
   ].join('');
-}
-
-function kpiCard(o) {
-  return '<div class="' + CFG.ns + '-kpi">' +
-    '<div class="' + CFG.ns + '-k-label">' + esc(o.label) +
-      (o.hint ? '<span class="' + CFG.ns + '-info"' + tip(o.hint) + ' aria-hidden="true">i</span>' : '') + '</div>' +
-    '<div class="' + CFG.ns + '-k-val">' + o.value + '</div>' +
-    '<div class="' + CFG.ns + '-k-row">' + (o.delta || '') + '</div>' +
-    '<div class="' + CFG.ns + '-k-row">' + (o.sub ? '<span class="' + CFG.ns + '-k-sub">' + o.sub + '</span>' : '') + '</div>' +
-    '</div>';
-}
-
-// Пять карточек экрана. Предыдущий период сравнивается только там, где он
-// целиком помещается в 13 месяцев истории витрины (30 дней, 20 недель).
-function kpisHtml() {
-  var k = MODEL.kpi, G = grainOf(MODEL.grain);
-  if (!k) return '';
-  var dPct = function (a, b) { return b ? (a / b - 1) * 100 : null; };
-  var why = 'В витрине 13 месяцев истории: полного предыдущего периода (' + G.label + ') в ней нет.';
-  var dl = function (v, o) { return G.prev ? delta(v, o) : delta(null, { why: why }); };
-  var shReg = k.users ? k.regular / k.users * 100 : 0;
-  var shRegPrev = k.users_prev ? k.regular_prev / k.users_prev * 100 : 0;
-  var mM = closedMonth(1), mP = closedMonth(2);
-  return '<div class="' + CFG.ns + '-kpis">' +
-    kpiCard({ label: 'Пользователей за ' + G.label, value: nf(k.users),
-      hint: { title: 'Пользователи', text: 'Уникальные люди экрана: область каталога и выбранные люди. Один человек — один раз.' },
-      delta: dl(dPct(k.users, k.users_prev), { vs: G.vs, unit: '%' }),
-      sub: G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>' }) +
-    kpiCard({ label: 'Просмотров', value: compact(k.views),
-      hint: { title: 'Просмотры', text: 'Сумма открытий отчётов области за период.' },
-      delta: dl(dPct(k.views, k.views_prev), { vs: G.vs, unit: '%' }),
-      sub: 'на пользователя: <b>' + nf(k.users ? k.views / k.users : 0, 1) + '</b>' }) +
-    kpiCard({ label: 'Новых', value: nf(k.new_u),
-      hint: { title: 'Новые', text: 'Первый визит в отчёты области пришёлся на этот период.' },
-      delta: dl(dPct(k.new_u, k.new_prev), { vs: G.vs, unit: '%' }),
-      sub: 'доля аудитории: <b>' + pct(k.users ? k.new_u / k.users * 100 : 0) + '</b>' }) +
-    kpiCard({ label: 'Постоянных', value: pct(shReg),
-      hint: { title: 'Постоянные', text: 'Заходили 8 и более разных ' + G.units + ' за период — та же мера, что столбец «Пост.» каталога.' },
-      delta: dl(shReg - shRegPrev, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
-      sub: '<b>' + nf(k.regular) + '</b> ' + plural(k.regular, 'человек', 'человека', 'человек') }) +
-    kpiCard({ label: 'MAU · ' + mM, value: nf(k.mau),
-      hint: { title: 'Месячная аудитория', text: 'Уникальные люди за последний закрытый календарный месяц. От периода полоски не зависит.',
-        rows: [{ label: mM, value: nf(k.mau), color: CFG.colors.ret }, { label: mP, value: nf(k.mau_prev), color: CFG.colors.bench }] },
-      delta: delta(dPct(k.mau, k.mau_prev), { vs: 'к ' + mP.split(' ')[0], unit: '%' }),
-      sub: mP + ': <b>' + nf(k.mau_prev) + '</b>' }) +
-    '</div>';
-}
-
-// Лента наблюдений: один факт на экране, листание ‹ ›, текст целиком — в подсказке.
-function obsHtml(what) {
-  var list = obsList(MODEL.kpi, grainOf(MODEL.grain), what);
-  var N = CFG.ns;
-  if (!list.length) {
-    return '<div class="' + N + '-obs"><span class="' + N + '-obs-ico" aria-hidden="true">✓</span>' +
-      '<span class="' + N + '-obs-t">Что видно в данных</span>' +
-      '<span class="' + N + '-obs-lead">Отклонений выше порогов нет: показатели в пределах обычного разброса.</span></div>';
-  }
-  var i = Math.max(0, Math.min(state.obsI || 0, list.length - 1));
-  state.obsI = i;
-  var o = list[i];
-  return '<div class="' + N + '-obs sev-' + o.sev + '">' +
-    '<span class="' + N + '-obs-ico" aria-hidden="true">!</span>' +
-    '<span class="' + N + '-obs-t">Что видно в данных</span>' +
-    '<span class="' + N + '-obs-lead"' + tip({ title: o.lead, text: o.body, note: 'Отбор по порогу: ' + o.rule }) + '>' + esc(o.lead) + '</span>' +
-    (list.length > 1
-      ? '<span class="' + N + '-obs-nav"><button type="button" data-obs="prev" aria-label="Предыдущий факт"' + (i === 0 ? ' disabled' : '') + '>‹</button>' +
-        '<span class="' + N + '-obs-n">' + (i + 1) + ' / ' + list.length + '</span>' +
-        '<button type="button" data-obs="next" aria-label="Следующий факт"' + (i === list.length - 1 ? ' disabled' : '') + '>›</button></span>'
-      : '') +
-    '</div>';
 }
 
 // Общие фильтры листа: область каталога (синие), люди из «Кто смотрит»
@@ -527,7 +349,7 @@ function filtersHtml() {
     n++;
   }
   if (sj.freq && sj.freq.length) {
-    var G = grainOf(MODEL.grain), fl = [];
+    var G = grainOf(state.grain), fl = [];
     for (var f = 0; f < sj.freq.length; f++) fl.push(freqLabel(parseInt(sj.freq[f], 10) - 1, G.units));
     h += '<span class="' + N + '-pill ppl"' + tip({ title: 'Частота', text: fromWho }) + '><span class="' + N + '-pill-k">Частота:</span> ' + esc(fl.join(', ')) + '</span>';
     n++;
@@ -547,7 +369,6 @@ function filtersHtml() {
 function buildHTML() {
   var N = CFG.ns, h = [];
   var sj = MODEL.sj || {};
-  var what = sj.area && sj.area.length ? 'Выбранная область' : 'Proteus';
   h.push('<div class="' + N + '-root">');
   h.push('<div class="' + N + '-strip">');
   h.push('<div class="' + N + '-strip-seg" role="group" aria-label="Период">');
@@ -578,10 +399,6 @@ function buildHTML() {
   h.push('<button type="button" class="' + N + '-btn-ghost" data-action="resetAll"' +
     tip({ text: 'Вернуть период и опции к умолчанию. Выбор в каталоге и в «Кто смотрит» снимается там же.' }) + '>Сбросить</button>');
   h.push('</div>');
-  if (MODEL.kpi) {
-    h.push(kpisHtml());
-    h.push(obsHtml(what));
-  }
   h.push(filtersHtml());
   h.push('</div>');
   return buildCSS() + h.join('');
@@ -736,13 +553,6 @@ function buildHTML() {
         state.sw[sw.getAttribute('data-f')] = sw.checked;
         render();
         emitFilters();
-        return;
-      }
-      // Лента «Что видно в данных»: листание фактов на месте.
-      var ob = trigger(e.target, 'data-obs');
-      if (ob) {
-        state.obsI = (state.obsI || 0) + (ob.getAttribute('data-obs') === 'next' ? 1 : -1);
-        render();
         return;
       }
       // Серая пилюля отклонённого свитка: × возвращает свиток к умолчанию.

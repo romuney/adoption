@@ -926,7 +926,10 @@ function buildCSS() {
     P + '-ptable.gt th:first-child,' + P + '-ptable.gt td.gname{width:34%;}',
     P + '-ptable.gt td.gname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0;}',
     P + '-gh-sp{display:inline-block;width:26px;}',
-    P + '-gtx{display:inline-block;vertical-align:middle;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;}',
+    // Запас под каретку 28 px (−6/+4 поля) с зазором: иначе длинное имя упирается в край, блок
+    // не помещается в ячейку, и её text-overflow заменяет его ЦЕЛИКОМ на «…» (имя и «УС-N»).
+    P + '-gtx{display:inline-block;vertical-align:middle;max-width:calc(100% - 34px);overflow:hidden;text-overflow:ellipsis;}',
+    P + '-gtx .gh-name{display:block;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable td.shr ' + P + '-cellbar{display:inline-block;width:40px;height:8px;margin-right:7px;vertical-align:middle;}',
     P + '-ptable.sub td{height:auto;}',
     // Скролл «Кто смотрит»: зона списка — flex-колонка, таблица скроллится внутри,

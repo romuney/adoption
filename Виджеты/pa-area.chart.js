@@ -1351,7 +1351,17 @@ function groupTableHtml(plist, cut) {
   var tot = gMetrics(MODEL.kpi || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
   for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c], state.gSort);
   if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всей области.' }) + '>В выборке</th>';
-  var totRow = '<tr class="g-tot tot"><td class="txt">Итого по области</td>';
+  // Общая каретка (ДС 4.6c) — в строке итога, на вертикали строчных кареток:
+  // ничего не раскрыто — ▸ раскрывает группы на уровень вглубь; что-то раскрыто — ▾ сворачивает всё.
+  var pre = cut + ':', anyOpen = false, canOpen = false;
+  for (var ok in state.gOpen) if (Object.prototype.hasOwnProperty.call(state.gOpen, ok) && ok.indexOf(pre) === 0 && state.gOpen[ok]) { anyOpen = true; break; }
+  for (var vn = 0; vn < visible.length; vn++) if (visible[vn].hasKids) { canOpen = true; break; }
+  var totCaret = anyOpen
+    ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-wofold="all" aria-expanded="true" aria-label="Свернуть всё"' + tip({ text: 'Свернуть всё до верхнего уровня' }) + '>▾</button>'
+    : (canOpen
+      ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-wofold="level" aria-expanded="false" aria-label="Раскрыть уровень"' + tip({ text: 'Раскрыть все группы на уровень вглубь; дальше — каретками строк' }) + '>▸</button>'
+      : '<span class="' + CFG.ns + '-gh-sp"></span>');
+  var totRow = '<tr class="g-tot tot"><td class="txt gname" style="padding-left:6px">' + totCaret + 'Итого по области</td>';
   for (c = 0; c < cols.length; c++) totRow += cols[c].key === 'share' ? '<td class="shr">100%</td>' : gCellHtml(cols[c].key, tot);
   // (строка итога строится ДО полос групп — MAX_SHARE к ней не применяется)
   if (local) totRow += '<td class="loc">' + nf(plist.length) + '</td>';
@@ -1602,11 +1612,6 @@ function listZoneHtml() {
     '</div>' +
     '<div class="' + N + '-bar-g r">' +
       '<span class="' + N + '-who-cnt">' + whoCountHtml() + '</span>' +
-      (grouped
-        ? '<span class="' + N + '-bar-sep" aria-hidden="true"></span>' +
-          '<button class="' + N + '-btn ghost xs" data-wofold="level"' + tip({ text: 'Раскрыть все видимые группы на один уровень вглубь' }) + ' type="button">Раскрыть уровень</button>' +
-          '<button class="' + N + '-btn ghost xs" data-wofold="all"' + tip({ text: 'Свернуть до верхнего уровня' }) + ' type="button">Свернуть</button>'
-        : '') +
       '<span class="' + N + '-bar-sep" aria-hidden="true"></span>' +
       '<button class="' + N + '-btn ' + N + '-ibtn" data-wexp="copy" type="button" aria-label="Копировать"' + tip({ title: 'Копировать', text: grouped
         ? 'Все группы всех уровней с итогами — в буфер обмена; вставка в Excel разложит по колонкам.'
@@ -2631,6 +2636,7 @@ function dynTipHtml(el, i) {
           var pre = state.whoCut + ':';
           for (var ok in state.gOpen) if (Object.prototype.hasOwnProperty.call(state.gOpen, ok) && ok.indexOf(pre) === 0) delete state.gOpen[ok];
         }
+        state.tip = null; hideTip();   // подсказка каретки сменилась (▸ ↔ ▾)
         render();
         return;
       }

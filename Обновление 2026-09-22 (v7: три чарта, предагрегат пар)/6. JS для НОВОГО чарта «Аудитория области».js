@@ -188,7 +188,7 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
 var state = __S[CFG.ns];
 // Состояние из прошлой версии виджета (та же вкладка браузера): добиваем ключи.
 (function () {
-  var d = { gOpen: {}, gMore: {}, gSort: { key: 'users', dir: -1 }, pSort: { key: 'days', dir: -1 }, page: 0, toast: '' };
+  var d = { gOpen: {}, gMore: {}, gSort: { key: 'users', dir: -1 }, pSort: { key: 'days', dir: -1 }, page: 0, toast: '', whoFull: false };
   for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k) && state[k] == null) state[k] = d[k];
   var pk = state.picks || (state.picks = {});
   var need = ['org', 'spec', 'stream', 'adgroup', 'heads', 'login'];
@@ -748,7 +748,7 @@ function buildCSS() {
 
     // ── Вкладки панели ──
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
-    P + '-sub-tab{box-sizing:border-box;height:26px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
+    P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
@@ -762,7 +762,7 @@ function buildCSS() {
 
     // ── Сигаретка частоты (app.css .segstrip.freq) ──
     // padding-top: кольцо выбранной корзины выступает на 3 px — без запаса его резал верх тела.
-    P + '-segstrip{display:flex;gap:6px;margin-bottom:10px;padding-top:5px;min-width:0;flex:0 0 auto;}',
+    P + '-segstrip{display:flex;gap:6px;margin-bottom:18px;padding-top:5px;min-width:0;flex:0 0 auto;}',
     P + '-seg-part{flex:1 1 0;min-width:66px;border:0;background:transparent;padding:0;',
     '  cursor:pointer;font-family:inherit;text-align:left;display:flex;',
     '  flex-direction:column;gap:3px;transition:opacity .15s;}',
@@ -779,20 +779,21 @@ function buildCSS() {
 
     // ── Тулбар «Кто смотрит» ──
     P + '-who-bar{position:relative;display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;',
-    '  margin-bottom:8px;}',
+    '  margin-bottom:12px;}',
     P + '-who-cnt{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;}',
     P + '-bar-g{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}',
     P + '-bar-g.r{margin-left:auto;gap:6px;}',
     P + '-bar-sep{width:1px;height:18px;background:var(--line);margin:0 2px;}',
-    P + '-who-bar ' + P + '-psearch input{width:200px;height:30px;}',
+    P + '-who-bar ' + P + '-psearch input{width:200px;height:34px;}',
     P + '-who-tbl{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
     P + '-who-cnt b{color:var(--ink2);font-weight:500;}',
     P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:500;cursor:help;}',
 
     // ── Дропдауны (app.css .dd) ──
     P + '-dd{position:relative;min-width:0;}',
-    P + '-dd-trg{display:flex;align-items:center;gap:6px;width:100%;border:1px solid var(--line);',
-    '  background:var(--card);border-radius:9px;padding:6px 10px;font-size:12px;font-weight:500;',
+    // Все контролы тулбаров — высота 34 px, как поиск (эталон — поиск каталога).
+    P + '-dd-trg{display:flex;align-items:center;gap:6px;width:100%;height:34px;border:1px solid var(--line);',
+    '  background:var(--card);border-radius:9px;padding:0 12px;font-size:12px;font-weight:500;',
     '  color:var(--ink2);cursor:pointer;font-family:inherit;}',
     P + '-dd-trg:hover{border-color:#d8dce4;}',
     P + '-dd.open ' + P + '-dd-trg{border-color:var(--act);}',
@@ -802,7 +803,7 @@ function buildCSS() {
     P + '-dd-body{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:100%;',
     '  background:var(--card);border:1px solid var(--line);border-radius:9px;padding:4px;',
     '  box-shadow:0 10px 30px rgba(24,33,50,.14),0 2px 6px rgba(24,33,50,.06);}',
-    P + '-dd.sm ' + P + '-dd-trg{padding:5px 9px;font-size:12px;}',
+    P + '-dd.sm ' + P + '-dd-trg{padding:0 12px;font-size:12px;}',
     P + '-dd.sm ' + P + '-dd-body{right:0;left:auto;}',
     P + '-who-bar ' + P + '-dd ' + P + '-dd-body{left:0;right:auto;}',
     P + '-dd-opt{border:0;background:transparent;border-radius:7px;display:flex;width:100%;',
@@ -838,12 +839,15 @@ function buildCSS() {
     P + '-scope-act{display:flex;gap:6px;}',
 
     // ── Кнопки ──
-    P + '-btn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:6px 12px;',
+    P + '-btn{display:inline-flex;align-items:center;gap:6px;height:34px;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:0 12px;',
     '  font-size:12px;font-weight:500;color:var(--ink2);cursor:pointer;font-family:inherit;}',
     P + '-btn:hover{background:#fafbfc;border-color:#d8dce4;}',
     P + '-btn.ghost{border-color:transparent;color:var(--blue);}',
     P + '-btn.ghost:hover{background:var(--blue-bg);}',
-    P + '-btn.xs{padding:3px 8px;font-size:11px;}',
+    P + '-btn.xs{padding:0 10px;font-size:12px;}',
+    // Иконка-кнопка тулбара (копировать, на весь чарт): квадрат 34×34.
+    P + '-ibtn{width:34px;padding:0;justify-content:center;color:var(--ink2);}',
+    P + '-ibtn.on{background:var(--blue-bg);border-color:var(--act-line);color:var(--act-ink);}',
 
     // ── Таблица людей ──
     P + '-tbl-scroll{flex:1 1 auto;min-height:0;overflow:auto;}',
@@ -908,7 +912,7 @@ function buildCSS() {
     P + '-ptable.gt td{font-variant-numeric:tabular-nums;}',
     P + '-ptable.gt th:first-child,' + P + '-ptable.gt td.gname{width:34%;}',
     P + '-ptable.gt td.gname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0;}',
-    P + '-gh-sp{display:inline-block;width:18px;}',
+    P + '-gh-sp{display:inline-block;width:26px;}',
     P + '-gtx{display:inline-block;vertical-align:middle;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable td.shr ' + P + '-cellbar{display:inline-block;width:40px;height:8px;margin-right:7px;vertical-align:middle;}',
     P + '-ptable.sub td{height:auto;}',
@@ -931,9 +935,11 @@ function buildCSS() {
     P + '-exp{display:inline-flex;align-items:center;gap:6px;}',
     P + '-toast{position:absolute;right:2px;top:calc(100% - 4px);z-index:5;font-size:var(--fs-note);color:var(--green-tx);background:var(--card);padding:0 4px;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-toast:empty{display:none;}',
-    P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;',
-    '  font-size:10px;width:18px;padding:0;font-family:inherit;line-height:1;}',
-    P + '-gh-caret:hover{color:var(--ink);}',
+    // Каретка — отдельная кнопка 28×28 с подложкой при наведении: в неё легко попасть,
+    // промах не уходит в клик по строке (тот фильтрует каталог).
+    P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;',
+    '  font-size:12px;width:28px;height:28px;margin:-6px 4px -6px -6px;padding:0;border-radius:7px;font-family:inherit;line-height:1;vertical-align:middle;}',
+    P + '-gh-caret:hover{color:var(--ink);background:#eef1f5;}',
     P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
@@ -1580,6 +1586,9 @@ function groupsNow() {
   for (var k in (MODEL.gm.adg || {})) if (Object.prototype.hasOwnProperty.call(MODEL.gm.adg, k)) { hasAdg = true; break; }
   return CFG.groups.filter(function (g) { return g.key !== 'adgroup' || hasAdg; });
 }
+var COPY_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
+var EXPAND_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
+var SHRINK_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>';
 function listZoneHtml() {
   var views = groupsNow(), known = false;
   for (var v = 0; v < views.length; v++) if (views[v].key === state.whoCut) known = true;
@@ -1599,10 +1608,12 @@ function listZoneHtml() {
           '<button class="' + N + '-btn ghost xs" data-wofold="all"' + tip({ text: 'Свернуть до верхнего уровня' }) + ' type="button">Свернуть</button>'
         : '') +
       '<span class="' + N + '-bar-sep" aria-hidden="true"></span>' +
-      '<button class="' + N + '-btn xs" data-wexp="copy" type="button"' + tip({ title: 'Копировать', text: grouped
+      '<button class="' + N + '-btn ' + N + '-ibtn" data-wexp="copy" type="button" aria-label="Копировать"' + tip({ title: 'Копировать', text: grouped
         ? 'Все группы всех уровней с итогами — в буфер обмена; вставка в Excel разложит по колонкам.'
-        : 'Все люди списка с учётом поиска, корзины и настроек (не только страница) — в буфер обмена; вставка в Excel разложит по колонкам.' }) + '>Копировать</button>' +
-      '<button class="' + N + '-btn xs" data-wexp="csv" type="button"' + tip({ title: 'CSV', text: 'То же, файлом для Excel (разделитель «;»). Если Proteus запретит скачивание — используйте «Копировать».' }) + '>CSV</button>' +
+        : 'Все люди списка с учётом поиска, корзины и настроек (не только страница) — в буфер обмена; вставка в Excel разложит по колонкам.' }) + '>' + COPY_SVG + '</button>' +
+            '<button class="' + N + '-btn ' + N + '-ibtn' + (state.whoFull ? ' on' : '') + '" data-wfull="1" type="button" aria-pressed="' + !!state.whoFull + '" aria-label="' + (state.whoFull ? 'Вернуть KPI' : 'Список на весь чарт') + '"' +
+        tip({ title: state.whoFull ? 'Вернуть KPI и «Что видно»' : 'Список на весь чарт', text: state.whoFull ? 'Вернуть панель в обычный вид.' : 'Скрыть KPI и «Что видно в данных» — список с корзинами и настройками займёт весь правый чарт.' }) +
+        '>' + (state.whoFull ? SHRINK_SVG : EXPAND_SVG) + '</button>' +
     '</div>' +
     '<span class="' + N + '-toast" role="status">' + esc(state.toast || '') + '</span>' +
     '</div>' +
@@ -2045,7 +2056,8 @@ function buildHTML() {
   var h = [];
   h.push('<div class="' + N + '-root">');
   h.push(areaFilterRowHtml(ai));
-  if (MODEL.kpi) h.push('<div class="' + N + '-top">' + kpisHtml() + obsHtml(ai.mut ? 'Proteus' : ai.what) + '</div>');
+  // «Кто смотрит» на весь чарт: KPI и «Что видно» скрыты, список с корзинами занимает всё.
+  if (MODEL.kpi && !(view === 'who' && state.whoFull)) h.push('<div class="' + N + '-top">' + kpisHtml() + obsHtml(ai.mut ? 'Proteus' : ai.what) + '</div>');
   h.push('<div class="' + N + '-panel">');
   h.push('<div class="' + N + '-panel-h">' +
     '<div class="' + N + '-h-txt"><span>' + esc(title) + ' · <span class="' + N + '-h-area"' + tip({ title: 'Область', text: ai.text }) + '>' +
@@ -2652,6 +2664,8 @@ function dynTipHtml(el, i) {
         return;
       }
       // Выгрузка: копирование в буфер (TSV) / файл CSV — из модели, все строки.
+      var wf = trigger(e.target, 'data-wfull');
+      if (wf) { state.whoFull = !state.whoFull; state.tip = null; hideTip(); render(); return; }
       var wx = trigger(e.target, 'data-wexp');
       if (wx) {
         var kind = wx.getAttribute('data-wexp'), tb = exportRows(), nR = tb.rows.length;

@@ -633,7 +633,7 @@ function buildCSS() {
     // ── Подшапка разрезов ──
     P + '-cutbar{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0 16px 12px;}',
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
-    P + '-sub-tab{box-sizing:border-box;height:26px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
+    P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tab.has{color:var(--act-ink);}',

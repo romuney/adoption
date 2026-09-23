@@ -250,7 +250,7 @@ function buildCSS() {
     // ── Строка управления ──
     P + '-strip{display:flex;align-items:center;flex-wrap:wrap;gap:8px;}',
     P + '-strip-seg{display:inline-flex;align-items:center;gap:2px;background:' + C.bgAlt + ';border-radius:9px;padding:2px;}',
-    P + '-strip-seg button{border:0;background:transparent;border-radius:7px;padding:5px 12px;font:inherit;font-size:12px;'
+    P + '-strip-seg button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 12px;font:inherit;font-size:12px;'
            + 'font-weight:500;color:' + C.mut + ';cursor:pointer;white-space:nowrap;}',
     P + '-strip-seg button.on{background:#fff;color:' + C.ink + ';box-shadow:0 1px 2px rgba(20,28,45,.12);}',
     P + '-sp{flex:1;}',
@@ -258,7 +258,7 @@ function buildCSS() {
     P + '-sep{width:1px;height:20px;background:' + C.line + ';margin:0 4px;flex:0 0 auto;}',
     P + '-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:' + C.mut + ';font-weight:500;}',
     P + '-togs{display:inline-flex;gap:6px;flex-wrap:wrap;}',
-    P + '-tog{position:relative;display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 11px 0 8px;border:1px solid ' + C.line + ';border-radius:9px;background:#fff;font-size:12px;color:' + C.ink2 + ';cursor:pointer;user-select:none;white-space:nowrap;}',
+    P + '-tog{position:relative;display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 11px 0 8px;border:1px solid ' + C.line + ';border-radius:9px;background:#fff;font-size:12px;color:' + C.ink2 + ';cursor:pointer;user-select:none;white-space:nowrap;}',
     P + '-tog:hover{border-color:#d3d8e0;}',
     P + '-tog input{position:absolute;opacity:0;width:0;height:0;margin:0;}',
     P + '-tog i{position:relative;width:26px;height:15px;border-radius:999px;background:#dfe3ea;flex:0 0 auto;transition:background .15s;}',

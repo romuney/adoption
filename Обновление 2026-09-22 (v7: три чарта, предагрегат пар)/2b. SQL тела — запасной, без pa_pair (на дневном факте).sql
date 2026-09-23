@@ -56,6 +56,10 @@
 {% if loginf %}{% set _ = SJ.append('"login":' ~ jal(loginf)) %}{% endif %}
 {% if exlf %}{% set _ = SJ.append('"exl":' ~ jal(exlf)) %}{% endif %}
 {% if freqf %}{% set _ = SJ.append('"freq":' ~ jal(freqf)) %}{% endif %}
+{#- Ритм пользователя отчёта (не зависит от периода полоски): 4 — ежедневно (12+ активных дней
+    из последних 30), 3 — еженедельно (6+ недель из 8), 2 — ежемесячно (2+ из последних 3 месяцев),
+    1 — эпизодически (заходил за 3 месяца реже), 0 — не заходил 3 месяца (в ритм не входит). -#}
+{% set RC = "multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0)" %}
 WITH
   maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
   dash_ok AS (
@@ -69,7 +73,11 @@ WITH
       groupBitOr(if({{ kx('e.log_dttm') }} < {{ 2 * g.n }}, toUInt64(bitShiftLeft(toUInt64(1), toUInt8({{ kx('e.log_dttm') }}))), toUInt64(0))) AS msk,
       sumIf(e.views, {{ kx('e.log_dttm') }} < {{ g.n }}) AS v_cur,
       sum(e.views) AS v_life,
-      max(e.log_dttm) AS dmax
+      max(e.log_dttm) AS dmax,
+      {#- маски дней/недель/месяцев — для ритма отчёта (как msk_d/msk_w/msk_m пар; не зависят от грануляции) -#}
+      groupBitOr(if(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd))) < 30, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))))), toUInt64(0))) AS pd,
+      groupBitOr(if(dateDiff('week', toMonday(e.log_dttm), toMonday((SELECT md FROM maxd))) < 8, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(dateDiff('week', toMonday(e.log_dttm), toMonday((SELECT md FROM maxd)))))), toUInt64(0))) AS pw,
+      groupBitOr(if(dateDiff('month', toStartOfMonth(e.log_dttm), toStartOfMonth((SELECT md FROM maxd))) < 3, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(dateDiff('month', toStartOfMonth(e.log_dttm), toStartOfMonth((SELECT md FROM maxd)))))), toUInt64(0))) AS pm
     FROM prod_proteus.pa_evd_day e
     INNER JOIN dash_ok m ON m.dashboard_id = e.dashboard_id
     WHERE 1=1{% if excv == '1' %} AND NOT has(m.owners_string, e.login){% endif %}
@@ -96,7 +104,8 @@ WITH
     {#- Ключ строки размножается: 0 = ИТОГО, 1 = отчёт, 2 = владелец, 3 = коллекция.
         Мета (владелец, коллекции) подтягивается ПОСЛЕ сжатия факта до пар. -#}
     SELECT kd, k0, login,
-      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax
+      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
+      groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm
     FROM (
       SELECT arrayJoin(arrayConcat(
           [(toUInt8(0), '')],
@@ -104,7 +113,8 @@ WITH
           arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
-        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax
+        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
+        p.pd AS pd, p.pw AS pw, p.pm AS pm
       FROM evd p
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
@@ -116,7 +126,9 @@ WITH
       sum(v_cur) AS views,
       countIf(bitCount(bitAnd(msk, {{ CUR }})) >= {{ REG }}) AS regular_users,
       dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
-      sum(v_life) AS v_tot
+      sum(v_life) AS v_tot,
+      {#- Ритм отчёта: людей каждого ритма «ежедневно, еженедельно, ежемесячно, эпизодически». -#}
+      arrayStringConcat([toString(countIf({{ RC }} = 4)), toString(countIf({{ RC }} = 3)), toString(countIf({{ RC }} = 2)), toString(countIf({{ RC }} = 1))], ',') AS rhythm
     FROM kx GROUP BY kd, k0
   )
 SELECT
@@ -135,6 +147,7 @@ SELECT
   CAST(ifNull(views, 0) AS Int64) AS views,
   CAST(ifNull(regular_users, 0) AS UInt64) AS regular_users,
   CAST(ifNull(last_view_days, 0) AS Int64) AS last_view_days,
+  CAST(if(kd = 1, rhythm, NULL) AS Nullable(String)) AS rhythm,
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))

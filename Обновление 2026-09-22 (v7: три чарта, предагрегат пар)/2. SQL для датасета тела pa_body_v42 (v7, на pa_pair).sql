@@ -60,6 +60,10 @@
 {% if loginf %}{% set _ = SJ.append('"login":' ~ jal(loginf)) %}{% endif %}
 {% if exlf %}{% set _ = SJ.append('"exl":' ~ jal(exlf)) %}{% endif %}
 {% if freqf %}{% set _ = SJ.append('"freq":' ~ jal(freqf)) %}{% endif %}
+{#- Ритм пользователя отчёта (не зависит от периода полоски): 4 — ежедневно (12+ активных дней
+    из последних 30), 3 — еженедельно (6+ недель из 8), 2 — ежемесячно (2+ из последних 3 месяцев),
+    1 — эпизодически (заходил за 3 месяца реже), 0 — не заходил 3 месяца (в ритм не входит). -#}
+{% set RC = "multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0)" %}
 WITH
   {# Дата свежести: md пары; запасной источник — последний визит (при пустом md gp_to_click). #}
   maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
@@ -73,7 +77,9 @@ WITH
         own_flg = 1 — зритель среди владельцев отчёта (свиток «без просмотров владельцев»). -#}
     SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,
       {#- ifNull: gp_to_click создаёт колонки Nullable; NULL в сумме доехал бы до CAST и уронил запрос (Code 349). -#}
-      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax
+      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax,
+      {#- маски дней/недель/месяцев — для ритма отчёта (не зависят от грануляции) -#}
+      toUInt64(ifNull(e.msk_d, 0)) AS pd, toUInt64(ifNull(e.msk_w, 0)) AS pw, toUInt64(ifNull(e.msk_m, 0)) AS pm
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
@@ -97,7 +103,8 @@ WITH
     {#- Ключ строки размножается: 0 = ИТОГО, 1 = отчёт, 2 = владелец, 3 = коллекция.
         Мета (владелец, коллекции) подтягивается ПОСЛЕ сжатия факта до пар. -#}
     SELECT kd, k0, login,
-      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax
+      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
+      groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm
     FROM (
       SELECT arrayJoin(arrayConcat(
           {# Все элементы — строго Tuple(UInt8, String): arrayConcat в CH 24 приводит массивы к типу
@@ -107,7 +114,8 @@ WITH
           arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
-        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax
+        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
+        p.pd AS pd, p.pw AS pw, p.pm AS pm
       FROM evd p
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
@@ -119,7 +127,9 @@ WITH
       sum(v_cur) AS views,
       countIf(bitCount(bitAnd(msk, {{ CUR }})) >= {{ REG }}) AS regular_users,
       dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
-      sum(v_life) AS v_tot
+      sum(v_life) AS v_tot,
+      {#- Ритм отчёта: людей каждого ритма «ежедневно, еженедельно, ежемесячно, эпизодически». -#}
+      arrayStringConcat([toString(countIf({{ RC }} = 4)), toString(countIf({{ RC }} = 3)), toString(countIf({{ RC }} = 2)), toString(countIf({{ RC }} = 1))], ',') AS rhythm
     FROM kx GROUP BY kd, k0
   )
 SELECT
@@ -138,6 +148,7 @@ SELECT
   CAST(ifNull(views, 0) AS Int64) AS views,
   CAST(ifNull(regular_users, 0) AS UInt64) AS regular_users,
   CAST(ifNull(last_view_days, 0) AS Int64) AS last_view_days,
+  CAST(if(kd = 1, rhythm, NULL) AS Nullable(String)) AS rhythm,
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))

@@ -49,7 +49,7 @@ var CFG = {
     dash_nm: 'dash_nm', owner_login: 'owner_login', colls: 'colls',
     published: 'published', certified: 'certified', created_dt: 'created_dt',
     users: 'users', views: 'views', regular_users: 'regular_users',
-    last_view_days: 'last_view_days',
+    last_view_days: 'last_view_days', rhythm: 'rhythm',
     state_j: 'state_j'
   },
   text: { noData: 'Нет данных' },
@@ -258,7 +258,8 @@ function buildModel() {
       users: num(r[F.users]) || 0,
       views: num(r[F.views]) || 0,
       regular_users: num(r[F.regular_users]) || 0,
-      last_view_days: num(r[F.last_view_days]) || 0
+      last_view_days: num(r[F.last_view_days]) || 0,
+      rh: rhythmOf(r[F.rhythm])
     };
   }
 
@@ -813,6 +814,17 @@ function isFresh(created) {
   return days <= 90;
 }
 // Адрес отчёта: origin страницы борда (referrer iframe), иначе dashHost.
+// Ритм отчёта (колонка rhythm: «ежедневно,еженедельно,ежемесячно,эпизодически» — людей):
+// тот ритм, которого придерживается хотя бы половина пользователей (медиана по частоте).
+function rhythmOf(raw) {
+  // Подписи — внутри: функция зовётся при сборке модели, раньше строки с var (подъём даст undefined).
+  var RH_LABELS = ['Эпизодически', 'Ежемесячно', 'Еженедельно', 'Ежедневно'];
+  var a = String(raw == null ? '' : raw).split(','), d = num(a[0]) || 0, w = num(a[1]) || 0, m = num(a[2]) || 0, o = num(a[3]) || 0;
+  var n = d + w + m + o, half = n / 2, cum = [d, d + w, d + w + m, n], rank = 0;
+  for (var i = 0; i < 4 && n; i++) if (cum[i] >= half) { rank = 4 - i; break; }
+  return { d: d, w: w, m: m, o: o, n: n, rank: rank, label: rank ? RH_LABELS[rank - 1] : '—',
+    share: n && rank ? cum[4 - rank] / n : 0 };
+}
 // Подсказка скрепки: действие + ID отчёта (адрес целиком в подсказку не помещается).
 function linkTip(id) { return { text: 'Скопировать ссылку на отчёт', rows: [{ label: 'ID отчёта', value: String(id) }] }; }
 function dashUrl(id) {
@@ -874,6 +886,7 @@ function reportTableHtml() {
       if (sc.col === 'dashboard_nm') return String(x.m.dash_nm || '');
       if (sc.col === 'vpu') return x.vpu;
       if (sc.col === 'regular_users') return x.rs;
+      if (sc.col === 'rhythm') return x.k.rh.rank + x.k.rh.share;   // чаще → выше; при равном ритме — у кого он твёрже
       return x.k[sc.col] != null ? x.k[sc.col] : 0;
     };
     var va = val(a), vb = val(b);
@@ -903,7 +916,7 @@ function reportTableHtml() {
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
     th('users', 'Польз.') + th('views', 'Просм.') +
     th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
-    th('last_view_days', 'Тишина', { text: 'Сколько дней назад был последний просмотр (данные — по вчерашний день)' }) +
+    th('rhythm', 'Ритм', { title: 'Ритм отчёта', text: 'Как пользуется отчётом хотя бы половина его пользователей: ежедневно — 12+ дней из последних 30, еженедельно — 6+ недель из 8, ежемесячно — 2 из последних 3 месяцев, иначе эпизодически. Не зависит от периода полоски.' }) +
     '</tr></thead><tbody>';
   for (var r = 0; r < pageRows.length; r++) {
     var x = pageRows[r], sel = indexOfId(picked, x.id) >= 0;
@@ -915,8 +928,11 @@ function reportTableHtml() {
           { label: 'Пользователи', value: nf(x.k.users), color: CFG.colors.ret },
           { label: 'Постоянные', value: nf(x.k.regular_users) + ' · ' + pct(x.rs, 0) },
           { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) }
-        ],
-        note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
+        ].concat(x.k.rh.n ? [
+          { label: 'Ежедневно', value: nf(x.k.rh.d) }, { label: 'Еженедельно', value: nf(x.k.rh.w) },
+          { label: 'Ежемесячно', value: nf(x.k.rh.m) }, { label: 'Эпизодически', value: nf(x.k.rh.o) }
+        ] : []),
+        note: (x.k.rh.n ? 'Ритм — людей, заходивших за 3 месяца. ' : '') + (x.m.created_dt ? 'Создан ' + fmtDate(x.m.created_dt) : '')
       }) + '>' +
       // Скрепка слева, текст — отдельным блоком справа: вторая строка длинного
       // названия и строка владельца выровнены по первой, а не уходят под иконку.
@@ -929,8 +945,7 @@ function reportTableHtml() {
       '<td class="lead">' + nf(x.k.users) + '</td>' +
       '<td>' + compact(x.k.views) + '</td>' +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
-      // last_view_days отсчитан от последнего дня данных (вчера): 0 — смотрели вчера.
-      '<td>' + (x.k.last_view_days === 0 ? '<span class="mut">вчера</span>' : days(x.k.last_view_days + 1)) + '</td>' +
+      '<td class="rh">' + (x.k.rh.n ? esc(x.k.rh.label) : '<span class="mut">—</span>') + '</td>' +
       '</tr>';
   }
   return { html: h + '</tbody></table>', total: total };

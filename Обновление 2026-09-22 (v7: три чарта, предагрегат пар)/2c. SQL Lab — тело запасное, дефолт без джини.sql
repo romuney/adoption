@@ -1,6 +1,6 @@
 -- SQL Lab: тело v7 запасное (файл 2b), 30 дней, свитки по умолчанию. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 5
+-- 6
 WITH
   maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
   dash_ok AS (
@@ -12,14 +12,17 @@ WITH
       groupBitOr(if(toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) < 60, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd))))))), toUInt64(0))) AS msk,
       sumIf(e.views, toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) < 30) AS v_cur,
       sum(e.views) AS v_life,
-      max(e.log_dttm) AS dmax
+      max(e.log_dttm) AS dmax,groupBitOr(if(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd))) < 30, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))))), toUInt64(0))) AS pd,
+      groupBitOr(if(dateDiff('week', toMonday(e.log_dttm), toMonday((SELECT md FROM maxd))) < 8, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(dateDiff('week', toMonday(e.log_dttm), toMonday((SELECT md FROM maxd)))))), toUInt64(0))) AS pw,
+      groupBitOr(if(dateDiff('month', toStartOfMonth(e.log_dttm), toStartOfMonth((SELECT md FROM maxd))) < 3, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(dateDiff('month', toStartOfMonth(e.log_dttm), toStartOfMonth((SELECT md FROM maxd)))))), toUInt64(0))) AS pm
     FROM prod_proteus.pa_evd_day e
     INNER JOIN dash_ok m ON m.dashboard_id = e.dashboard_id
     WHERE 1=1 AND NOT has(m.owners_string, e.login)
     GROUP BY e.dashboard_id, e.login
   ),
   kx AS (SELECT kd, k0, login,
-      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax
+      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
+      groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm
     FROM (
       SELECT arrayJoin(arrayConcat(
           [(toUInt8(0), '')],
@@ -27,7 +30,8 @@ WITH
           arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
-        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax
+        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
+        p.pd AS pd, p.pw AS pw, p.pm AS pm
       FROM evd p
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
@@ -39,7 +43,7 @@ WITH
       sum(v_cur) AS views,
       countIf(bitCount(bitAnd(msk, 1073741823)) >= 6) AS regular_users,
       dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
-      sum(v_life) AS v_tot
+      sum(v_life) AS v_tot,arrayStringConcat([toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 4)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 3)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 2)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 1))], ',') AS rhythm
     FROM kx GROUP BY kd, k0
   )
 SELECT
@@ -58,6 +62,7 @@ SELECT
   CAST(ifNull(views, 0) AS Int64) AS views,
   CAST(ifNull(regular_users, 0) AS UInt64) AS regular_users,
   CAST(ifNull(last_view_days, 0) AS Int64) AS last_view_days,
+  CAST(if(kd = 1, rhythm, NULL) AS Nullable(String)) AS rhythm,
   CAST(if(kd = 0, '{"period":"d"}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))

@@ -26,17 +26,20 @@
 {% set have = pmode != '' and sel|length > 0 %}
 {% set repids = [] %}{% if have and pmode == 'report' %}{% for v in sel %}{% if v|int > 0 %}{% set _ = repids.append(v|int) %}{% endif %}{% endfor %}{% endif %}
 {#- Людская шина (правая панель) -#}
-{% set lv3 = filter_values('lvl3_f') or [] %}
-{% set lv4 = filter_values('lvl4_f') or [] %}
-{% set strm = filter_values('stream_f') or [] %}
-{% set spcf = filter_values('spec_f') or [] %}
-{% set adgf = filter_values('adg_f') or [] %}
+{% set lv3 = [] %}{% for v in (filter_values('lvl3_f') or []) %}{% if v|string != '' %}{% set _ = lv3.append(v|string) %}{% endif %}{% endfor %}
+{% set lv4 = [] %}{% for v in (filter_values('lvl4_f') or []) %}{% if v|string != '' %}{% set _ = lv4.append(v|string) %}{% endif %}{% endfor %}
+{% set strm = [] %}{% for v in (filter_values('stream_f') or []) %}{% if v|string != '' %}{% set _ = strm.append(v|string) %}{% endif %}{% endfor %}
+{% set spcf = [] %}{% for v in (filter_values('spec_f') or []) %}{% if v|string != '' %}{% set _ = spcf.append(v|string) %}{% endif %}{% endfor %}
+{% set adgf = [] %}{% for v in (filter_values('adg_f') or []) %}{% if v|string != '' %}{% set _ = adgf.append(v|string) %}{% endif %}{% endfor %}
 {% set headsv = filter_values('heads_f')|first|default('0', true) %}{% set headsv = headsv if headsv in ['0', '1', 'n'] else '0' %}
-{% set loginf = filter_values('login_f') or [] %}
+{% set loginf = [] %}{% for v in (filter_values('login_f') or []) %}{% if v|string != '' %}{% set _ = loginf.append(v|string) %}{% endif %}{% endfor %}
 {#- Узлы оргструктуры (группировка «Оргструктура» панели): путь «УС-3 › УС-4 › …», глубина = число звеньев. -#}
 {% set orgf = [] %}{% for v in (filter_values('org_f') or []) %}{% if v|string != '' and (v|string).split(' › ')|length <= 5 %}{% set _ = orgf.append(v|string) %}{% endif %}{% endfor %}
 {#- Исключённые логины (настройки «Кто смотрит»): люди выпадают из всех чисел. -#}
 {% set exlf = [] %}{% for v in (filter_values('exl_f') or []) %}{% if v|string != '' %}{% set _ = exlf.append(v|string) %}{% endif %}{% endfor %}
+{#- Логины для подписей пилюль: выбранные + исключённые (список строится циклом —
+    при сохранении датасета Proteus отдаёт вместо списка AlwaysTrueObject, «+» с ним падает). -#}
+{% set pplq = [] %}{% for v in loginf %}{% set _ = pplq.append(v) %}{% endfor %}{% for v in exlf %}{% set _ = pplq.append(v) %}{% endfor %}
 {% set freqr = filter_values('freq_f') or [] %}
 {% set freqf = [] %}{% for v in freqr %}{% if v|string in ['1', '2', '3', '4', '5'] %}{% set _ = freqf.append(v|string) %}{% endif %}{% endfor %}
 {% set SJ = ['"period":"' ~ grain ~ '"'] %}
@@ -57,5 +60,5 @@
 SELECT
   CAST('{{ grain }}' AS String) AS grain,
   CAST({% if have and pmode == 'report' and repids %}ifNull((SELECT arrayStringConcat(groupArray(20)(toString(ifNull(dashboard_nm, ''))), '\n') FROM prod_proteus.pa_dash_meta WHERE dashboard_id IN ({{ repids|join(', ') }})), ''){% else %}''{% endif %} AS String) AS area_nm,
-  CAST({% if loginf or exlf %}ifNull((SELECT arrayStringConcat(groupArray(concat(toString(login), '\t', toString(ifNull(fio, '')))), '\n') FROM prod_proteus.pa_emp_attrs WHERE login IN {{ q(loginf + exlf) }}), ''){% else %}''{% endif %} AS String) AS ppl_nm,
+  CAST({% if loginf or exlf %}ifNull((SELECT arrayStringConcat(groupArray(concat(toString(login), '\t', toString(ifNull(fio, '')))), '\n') FROM prod_proteus.pa_emp_attrs WHERE login IN {{ q(pplq) }}), ''){% else %}''{% endif %} AS String) AS ppl_nm,
   CAST('{{ "{" ~ SJ|join(", ") ~ "}" }}' AS String) AS state_j

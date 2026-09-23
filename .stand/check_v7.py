@@ -106,6 +106,14 @@ tot = lambda c: int(([x for x in run(BODY, c)[0] if x['section'] == 'total'] or 
 na = int(str(stand.S.query("SELECT uniqExact(login) FROM prod_proteus.pa_pair WHERE bitAnd(msk_d, 1073741823) != 0 AND ifNull(own_flg, 0) = 0 AND dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE published = 1 AND actual_flg = 1) AND login NOT IN (SELECT login FROM prod_proteus.pa_emp_attrs)", 'CSV')).strip())
 u1, un, ut = tot({'heads_f': '1'}), tot({'heads_f': 'n'}), tot({})
 ok(u1 + un + na == ut, f'руководители {u1} + остальные {un} + без атрибутов {na} == все {ut}')
+# Сохранение датасета в Proteus: filter_values = AlwaysTrueObject (не список). Каждый SQL поставки
+# обязан отрендериться и исполниться (прецедент: «+» списков в pa_strip — unsupported operand).
+for pth in [BODY, FALL, PPL, HDR]:
+    try:
+        sql = stand.render(pth, always_true=True); stand.S.query(sql, 'JSON'); err = ''
+    except Exception as e:
+        err = str(e).split('\n')[0][:160]
+    ok(not err, f'рендер при сохранении датасета (AlwaysTrueObject): {os.path.basename(pth)[:30]} {err}')
 import json
 norm = lambda rows: sorted(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in rows)
 for pth in [BODY, FALL, PPL, HDR]:

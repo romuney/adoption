@@ -25,13 +25,25 @@ def where_in(values, mark="'"):
     return '(' + ', '.join(q(v) for v in values) + ')'
 
 
-def render(path, flt=None):
-    """Рендер jinja-шаблона датасета: flt = {колонка: значение | [значения]}."""
+class AlwaysTrue:
+    """Как AlwaysTrueObject Proteus: при сохранении/синхронизации датасета
+    filter_values отдаёт не список, а истинный объект без значений. Итерация
+    пустая, «+» со списком не определён — шаблон обязан это пережить."""
+    def __bool__(self): return True
+    def __iter__(self): return iter(())
+    def __str__(self): return ''
+
+
+def render(path, flt=None, always_true=False):
+    """Рендер jinja-шаблона датасета: flt = {колонка: значение | [значения]}.
+    always_true=True — режим сохранения датасета в Proteus (см. AlwaysTrue)."""
     flt = flt or {}
     env = jinja2.Environment(extensions=['jinja2.ext.do'])
     env.filters['where_in'] = where_in
 
     def filter_values(col, default=None, remove_filter=False):
+        if always_true:
+            return AlwaysTrue()
         v = flt.get(col)
         if v is None:
             return [] if default is None else [default]

@@ -759,6 +759,8 @@ function buildCSS() {
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
     P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
+    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:500;margin-left:5px;padding:0 4px;}',
+    P + '-sub-cnt.ppl{background:#f3ecff;color:#5a2fc2;}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
@@ -1721,9 +1723,16 @@ function tabsHtml(tabKey, tabs) {
   for (var i = 0; i < tabs.length; i++) {
     h += '<button class="' + CFG.ns + '-sub-tab' + (tabs[i].on ? ' active' : '') +
       '" role="tab" aria-selected="' + (tabs[i].on ? 'true' : 'false') +
-      '" data-view="' + esc(tabKey) + ':' + esc(tabs[i].key) + '" type="button">' + esc(tabs[i].label) + '</button>';
+      '" data-view="' + esc(tabKey) + ':' + esc(tabs[i].key) + '" type="button">' + esc(tabs[i].label) +
+      (tabs[i].cnt ? '<span class="' + CFG.ns + '-sub-cnt ppl"' + tip({ text: 'Условий людской шины из «Кто смотрит»: ' + tabs[i].cnt + ' — каталог слева сужен' }) + '>' + tabs[i].cnt + '</span>' : '') +
+      '</button>';
   }
   return h;
+}
+// Сколько условий ушло из «Кто смотрит» в каталог (как счётчик вкладок каталога):
+// выбранные группы и люди + корзина частоты + «только руководители» + исключения.
+function whoFilterCount() {
+  return pickCount() + (state.freqSel ? 1 : 0) + (state.headsOnly ? 1 : 0) + (state.excl.length ? 1 : 0);
 }
 function searchBoxHtml(id, placeholder, value) {
   return '<div class="' + CFG.ns + '-psearch">' +
@@ -2152,7 +2161,7 @@ function buildHTML() {
     bodyCls = 'coh-wrap'; title = 'Закрепляемость';
   }
   var tabs = [];
-  for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key });
+  for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key, cnt: CFG.views[t].key === 'who' ? whoFilterCount() : 0 });
   var h = [];
   h.push('<div class="' + N + '-root">');
   h.push(areaFilterRowHtml(ai));

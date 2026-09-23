@@ -813,6 +813,8 @@ function isFresh(created) {
   return days <= 90;
 }
 // Адрес отчёта: origin страницы борда (referrer iframe), иначе dashHost.
+// Подсказка скрепки: действие + ID отчёта (адрес целиком в подсказку не помещается).
+function linkTip(id) { return { text: 'Скопировать ссылку на отчёт', rows: [{ label: 'ID отчёта', value: String(id) }] }; }
 function dashUrl(id) {
   var origin = '';
   try {
@@ -862,14 +864,21 @@ function reportTableHtml() {
     var m = MODEL.meta[id] || {};
     if (q && (String(m.dash_nm || '').toLowerCase().indexOf(q) < 0) &&
       !collsMatch(m, q) && String(m.owner_login || '').toLowerCase().indexOf(q) < 0) continue;
-    rows.push({ id: id, m: m, k: byId[id].kpi, vpu: byId[id].kpi.users ? byId[id].kpi.views / byId[id].kpi.users : 0 });
+    var kp = byId[id].kpi;
+    rows.push({ id: id, m: m, k: kp, vpu: kp.users ? kp.views / kp.users : 0, rs: kp.users ? kp.regular_users / kp.users * 100 : 0 });
   }
   var sc = state.repSort;
   rows.sort(function (a, b) {
-    var va = sc.col === 'dashboard_nm' ? String(a.m.dash_nm || '') : (sc.col === 'vpu' ? a.vpu : (a.k[sc.col] != null ? a.k[sc.col] : 0));
-    var vb = sc.col === 'dashboard_nm' ? String(b.m.dash_nm || '') : (sc.col === 'vpu' ? b.vpu : (b.k[sc.col] != null ? b.k[sc.col] : 0));
+    // «Пост.» в колонке — ДОЛЯ, сортируем по доле (по абсолюту порядок выглядел случайным).
+    var val = function (x) {
+      if (sc.col === 'dashboard_nm') return String(x.m.dash_nm || '');
+      if (sc.col === 'vpu') return x.vpu;
+      if (sc.col === 'regular_users') return x.rs;
+      return x.k[sc.col] != null ? x.k[sc.col] : 0;
+    };
+    var va = val(a), vb = val(b);
     var r = va > vb ? 1 : (va < vb ? -1 : 0);
-    return r * sc.dir;
+    return r * sc.dir || (b.k.users - a.k.users);
   });
   if (!rows.length) {
     return { html: '<div class="' + CFG.ns + '-empty"><b>Ничего не найдено</b>Снимите часть фильтров или очистите поиск.</div>', total: 0 };
@@ -904,15 +913,15 @@ function reportTableHtml() {
         title: x.m.dash_nm,
         rows: [
           { label: 'Пользователи', value: nf(x.k.users), color: CFG.colors.ret },
-          { label: 'Просмотры', value: nf(x.k.views), dash: true, color: CFG.colors.bench },
-          { label: 'На пользователя', value: nf(x.vpu, 1) }
+          { label: 'Постоянные', value: nf(x.k.regular_users) + ' · ' + pct(x.rs, 0) },
+          { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) }
         ],
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
       }) + '>' +
       // Скрепка слева, текст — отдельным блоком справа: вторая строка длинного
       // названия и строка владельца выровнены по первой, а не уходят под иконку.
       '<td class="txt"><div class="' + CFG.ns + '-rname">' +
-        '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' + tip({ text: 'Скопировать ссылку на отчёт' }) + '>' + LINK_SVG + '</button>' +
+        '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' + tip(linkTip(x.id)) + '>' + LINK_SVG + '</button>' +
         '<div class="' + CFG.ns + '-rname-t">' + esc(x.m.dash_nm) +
         '<span class="' + CFG.ns + '-unit-sub">' +
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
@@ -1074,8 +1083,8 @@ function catalogTableHtml() {
       tip: {
         title: cr.label,
         rows: [{ label: 'Пользователи', value: nf(cr.k.users), color: CFG.colors.ret },
-          { label: 'Просмотры', value: compact(cr.k.views), dash: true, color: CFG.colors.bench },
-          { label: 'Постоянные', value: pct(cr.k.users ? cr.k.regular_users / cr.k.users * 100 : 0, 0) }]
+          { label: 'Постоянные', value: nf(cr.k.regular_users) + ' · ' + pct(cr.k.users ? cr.k.regular_users / cr.k.users * 100 : 0, 0) },
+          { label: 'Просмотров на пользователя', value: nf(cr.k.users ? cr.k.views / cr.k.users : 0, 1) }]
       }
     });
   }
@@ -1418,12 +1427,12 @@ function buildHTML() {
           lnk.className = CFG.ns + '-lnkbtn ' + (ok ? 'ok' : 'err');
           lnk.innerHTML = ok ? '✓' : '!';
           // Короткая подсказка без адреса: длинный URL в тултип не помещается.
-          lnk.setAttribute('data-tip', tipHtml({ text: ok ? 'Ссылка скопирована' : 'Браузер запретил доступ к буферу обмена' }));
+          lnk.setAttribute('data-tip', tipHtml({ text: ok ? 'Ссылка скопирована' : 'Браузер запретил доступ к буферу обмена', rows: [{ label: 'ID отчёта', value: lnk.getAttribute('data-replink') }] }));
           if (state.tip) { state.tip.key = lnk.getAttribute('data-tip'); renderTip(); }
           setTimeout(function () {
             lnk.className = CFG.ns + '-lnkbtn';
             lnk.innerHTML = LINK_SVG;
-            lnk.setAttribute('data-tip', tipHtml({ text: 'Скопировать ссылку на отчёт' }));
+            lnk.setAttribute('data-tip', tipHtml(linkTip(lnk.getAttribute('data-replink'))));
           }, ok ? 1800 : 6000);
         });
         return;

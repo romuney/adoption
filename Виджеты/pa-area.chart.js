@@ -1938,9 +1938,15 @@ function retCurveSvg(points, opts) {
   var o = opts || {}, C = CFG.colors;
   if (!points.length) return '<div class="' + CFG.ns + '-tbl-note">Закрытых когорт для кривой мало.</div>';
   var n = points.length;
-  var padL = 6, padR = 18, top = 34, bottom = 30, H = 280;
+  // Поля по бокам — под подписи крайних точек («30%», «+1 мес» не режутся краем);
+  // высота — остаток вкладки (COH_H); шкала от нуля до максимума с воздухом (не до 100%:
+  // кривая 20–30% иначе прижималась к верху тонкой полоской).
+  var padL = 28, padR = 28, top = 34, bottom = 30, H = COH_H || 280;
   var step = (SVG_W - padL - padR) / Math.max(1, n - 1);
-  var yOf = function (v) { return top + (1 - v / 100) * (H - top - bottom); };
+  var mx = 0;
+  for (var q = 0; q < n; q++) if (points[q].pct > mx) mx = points[q].pct;
+  var yMax = Math.min(100, Math.max(10, Math.ceil(mx * 1.25 / 10) * 10));
+  var yOf = function (v) { return top + (1 - v / yMax) * (H - top - bottom); };
   var xOf = function (i2) { return padL + i2 * step; };
   var ls = labelStep(n);
   var pts = [], i;
@@ -1952,7 +1958,7 @@ function retCurveSvg(points, opts) {
   }
   var body = '<text x="' + padL + '" y="16" font-size="' + CFG.fonts.title + '" font-weight="600" fill="' + C.txt + '">' +
     esc(o.title || 'Средняя кривая удержания по всем когортам') + '</text>';
-  for (var gy = 0; gy <= 100; gy += 25) {
+  for (var gy = 0; gy <= yMax; gy += yMax / 4) {
     var yy = r1(yOf(gy));
     body += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (SVG_W - padR) + '" y2="' + yy + '" stroke="' + C.split + '" stroke-dasharray="3 3"/>';
   }
@@ -1972,7 +1978,7 @@ function retCurveSvg(points, opts) {
       body += '<text x="' + r1(pts[i][0]) + '" y="' + (H - 12) + '" font-size="11" text-anchor="middle" fill="' + C.axis + '">+' + points[i].age + ' мес</text>';
     }
   }
-  return '<svg viewBox="0 0 ' + SVG_W + ' ' + H + '" width="100%" data-dyn-svg="1" style="height:auto;display:block" font-family="' + CFG.fonts.family +
+  return '<svg viewBox="0 0 ' + SVG_W + ' ' + H + '" width="100%" data-dyn-svg="1" data-coh-curve="1" style="height:auto;display:block" font-family="' + CFG.fonts.family +
     '" role="img" aria-label="Кривая удержания">' + body + '</svg>';
 }
 
@@ -2188,6 +2194,8 @@ var SVG_W = 760;
 // Высота динамики под ячейку чарта: меряется ПОСЛЕ монтажа (как SVG_W) и
 // делится между стеком пользователей (60%) и просмотрами (40%). 0 — дефолт.
 var DYN_H = 0;
+// Высота кривой удержания: остаток тела вкладки «Закрепляемость» (как у «Динамики»).
+var COH_H = 0;
 function r1(v) { return Math.round(v * 10) / 10; }
 function svgHeadroom(max, n) {
   return Math.max(1, Math.ceil(max * (n > CFG.spacing.dense ? CFG.spacing.headroomDense : CFG.spacing.headroom)));
@@ -2477,6 +2485,19 @@ function dynTipHtml(el, i) {
       DYN_H = avail;
       return true;
     }
+    // Кривая удержания тянется на высоту тела вкладки (минус заголовок «Когорты…»).
+    function syncCohH() {
+      var body = overlay.querySelector('.' + CFG.ns + '-panel-b.coh-wrap');
+      if (!body || !body.querySelector('svg[data-coh-curve]')) return false;
+      var cs = getComputedStyle(body);
+      var avail = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
+      for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
+      avail = Math.max(240, Math.floor(avail - 8));
+      if (Math.abs(avail - COH_H) <= 4) return false;
+      COH_H = avail;
+      return true;
+    }
     function syncSvgWidth() {
       var svgs = overlay.querySelectorAll('svg[data-dyn-svg]');
       if (!svgs.length) return false;
@@ -2489,8 +2510,8 @@ function dynTipHtml(el, i) {
       // overlay — скролл-контейнер: без сохранения позиции клик внизу прыгал наверх.
       var st = overlay.scrollTop, sl = overlay.scrollLeft;
       overlay.innerHTML = buildHTML();
-      var ch1 = syncSvgWidth(), ch2 = syncDynH();
-      if (ch1 || ch2) overlay.innerHTML = buildHTML();
+      var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch3 = syncCohH();
+      if (ch1 || ch2 || ch3) overlay.innerHTML = buildHTML();
       overlay.scrollTop = st;
       overlay.scrollLeft = sl;
       renderTip();
@@ -2937,7 +2958,7 @@ function dynTipHtml(el, i) {
     // Старый снимаем ЯВНО, ссылку держим в state. Escape вешай здесь же,
     // тем же способом, и никогда не внутри render().
     if (state.onWinResize) window.removeEventListener('resize', state.onWinResize);
-    state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(); if (w || hh) render(); if (state.tip) renderTip(); };
+    state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(); if (w || hh || ch) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 
     render();
@@ -2952,7 +2973,7 @@ function dynTipHtml(el, i) {
         // реальной смене размеров графиков — без цикла render ↔ observer.
         if (state.roT) clearTimeout(state.roT);
         state.roT = setTimeout(function () {
-          var w = syncSvgWidth(), hh = syncDynH();
+          var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH();
           if (w || hh) render();
         }, 150);
       });

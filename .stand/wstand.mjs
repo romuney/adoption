@@ -1,6 +1,7 @@
 // Стенд виджета: хост как в Proteus, spy applyCrossFilter, сценарий действий.
 // node wstand.mjs <chart.js> <mock.json> <scenario.json> [shot.png] [width]
-import { chromium } from 'playwright';
+import { createRequire } from 'module';
+const { chromium } = createRequire(import.meta.url)('playwright'); // NODE_PATH=$(npm root -g)
 import fs from 'fs';
 const [,, chart, mock, scen, shot, width] = process.argv;
 const W = +(width || 1100);

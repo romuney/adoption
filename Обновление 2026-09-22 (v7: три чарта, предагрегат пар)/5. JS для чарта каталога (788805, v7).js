@@ -19,10 +19,10 @@
 //   Клик по строке задаёт ОБЛАСТЬ и эмитит её правой панели (mode_param +
 //   sel_f); сам каталог себя не перечитывает (самовлияние выключено), смена
 //   вкладки и кросс-фильтр вкладок — клиентские. KPI, наблюдения, динамика,
-//   «кто смотрит» и когорты области — в правой панели (датасет pa_people):
+//   «кто смотрит» и когорты области — в правой панели (датасет pa_people),
+//   KPI экрана и пилюли активных условий — в шапке листа (датасет pa_kpi):
 //   там числа ТОЧНЫЕ при любом выборе, включая Shift-мультивыбор.
-//   Каталог слушает полоску и людскую шину правой панели (куб перезапрашивается),
-//   активные условия приходят в state_j и печатаются чипами в шапке.
+//   Каталог слушает шапку и людскую шину правой панели (куб перезапрашивается).
 //
 // ВЫЧИСЛЕНИЯ ЖИВУТ ЗДЕСЬ, А НЕ В SQL. Проценты, дельты, ранги, накопительные
 //   итоги, сортировка и форматирование считаются в buildModel() (БЛОК 3).
@@ -189,7 +189,8 @@ function toDate(raw) {
 //   rep — каталог отчётов + мета (владелец/коллекции/даты)
 //   grp — точные строки владельцев и коллекций (уникальные пользователи группы)
 //   total — ИТОГО + state_j (JSON активных условий запроса: свитки полоски
-//           и людская шина правой панели; тело печатает по нему чипы условий)
+//           и людская шина; держится в модели для отладки, чипов в каталоге нет —
+//           условия показывает шапка листа пилюлями)
 // Смена разреза подшапки и фильтрация вкладок друг по другу — клиентские,
 // без похода в базу. Клик эмитит область (mode_param + sel_f) правой панели.
 function buildModel() {
@@ -490,7 +491,7 @@ function buildCSS() {
     // гаттеру борда (16px), как между панелями внутри чарта.
     P + '-root{width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;font-family:' + CFG.fonts.family + ';',
     '  --card:#fff;--line:#e7e9ee;--line2:#eef0f3;--bg:#f6f6f6;',
-    '  --ink:#1f1f1f;--ink2:#3a3f4a;--muted:#8a909c;--muted2:#aab0bb;',
+    '  --ink:#23272e;--ink2:#454b55;--muted:#8a909c;--muted2:#aab0bb;',
     '  --green:#12b048;--green-bg:#bff2cd;--green-tx:#0a8f3c;',
     '  --red:#f51f1f;--red-bg:#ffcccc;--red-tx:#d11414;',
     '  --act:#0073A0;--act-ink:#015A7D;--blue-bg:#E8F4F9;--act-line:#C4E2ED;',
@@ -501,63 +502,24 @@ function buildCSS() {
     '  --chart-gap:' + CFG.spacing.stackGap + 'px;color-scheme:light;}',
     P + '-root *{box-sizing:border-box;font-family:inherit;}',
 
-    // ── Заголовок страницы и чипы выбора ──
-    P + '-page-h{margin:0 0 14px;}',
-    P + '-ph-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}',
-    P + '-page-h h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.3px;color:var(--ink);}',
-    P + '-page-h p{margin:6px 0 0;font-size:var(--fs-body);color:var(--muted);line-height:1.5;max-width:920px;}',
-    P + '-page-h p b{color:var(--ink2);font-weight:600;}',
+    // ── Область в заголовке панели ──
     P + '-area{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42%;}',
-    P + '-area b{color:var(--ink2);font-weight:600;}',
-    P + '-fresh{font-size:var(--fs-note);color:var(--muted);font-weight:500;display:inline-flex;align-items:center;gap:7px;margin-left:auto;}',
-    P + '-fresh b{color:var(--ink2);font-weight:600;}',
-    P + '-fresh i{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;}',
-    P + '-chips{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;}',
-    P + '-chip{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:var(--blue-bg);border:1px solid var(--act-line);padding:4px 6px 4px 11px;font-size:var(--fs-note);color:var(--act-ink);font-weight:500;}',
-    P + '-chip button{width:14px;height:14px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(23,103,127,.16);color:var(--act-ink);font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;}',
-    P + '-chip button:hover{background:rgba(23,103,127,.3);}',
-    // Чип внешних условий (state_j: полка/шина «кто смотрит»): информационный,
-    // без крестика — снятие живёт в своем чарте (полка/список людей).
-    P + '-chip.ext{background:#f2f4f6;border-color:var(--line2);color:var(--ink2);padding-right:11px;cursor:default;}',
-
-    // ── KPI-полоса ──
-    // Ячейка тела на борде узкая (~30–40% листа): карточки сами находят
-    // число колонок (auto-fit), а не рвутся по пять в ряд.
-    P + '-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px;}',
-    // Раунд 6: блоки — белые карточки на сером канвасе борда (#f6f6f6),
-    // БЕЗ границ и теней — разделение серым желобом, как между чартами.
-    // Радиус вернул 2026-09-18: раунд 6 снял у плитки и его вместе с тенью
-    // («KPI потеряли скругления»). Тень/рамку не возвращаем — на сером канвасе
-    // плитка читается и без них.
-    P + '-kpi{background:var(--card);border-radius:12px;padding:13px 15px;}',
-    P + '-k-label{font-size:var(--fs-note);color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px;}',
-    P + '-k-val{font-size:var(--fs-hero);font-weight:700;letter-spacing:-.5px;line-height:1.1;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums;}',
-    P + '-k-row{display:flex;align-items:center;gap:9px;margin-top:8px;flex-wrap:wrap;}',
-    P + '-k-row:empty{margin:0;}',
-    P + '-k-sub{font-size:var(--fs-note);color:var(--muted);font-weight:500;}',
-    P + '-k-sub b{color:var(--ink2);font-weight:600;}',
-    P + '-kpi-tag{display:inline-block;font-size:9px;font-weight:600;border-radius:4px;background:var(--blue-bg);color:var(--act-ink);padding:2px 6px;}',
-    P + '-delta{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-note);font-weight:600;border-radius:999px;padding:3px 9px;}',
-    P + '-d-vs{font-weight:500;font-size:var(--fs-cap);opacity:.75;}',
-    P + '-up{background:var(--green-bg);color:var(--green-tx);}',
-    P + '-down{background:var(--red-bg);color:var(--red-tx);}',
-    P + '-flat,' + P + '-neu{background:#f0f1f3;}',
-    P + '-flat{color:var(--muted);}',
-    P + '-neu{color:var(--ink2);}',
-    P + '-nocmp{display:inline-block;font-size:11px;font-weight:500;color:var(--muted);cursor:help;border-bottom:1px dotted var(--muted2);}',
+    P + '-area b{color:var(--ink2);font-weight:500;}',
 
     // ── Панели и сетки ──
-    P + '-rows{display:flex;flex-direction:column;gap:16px;}',
     // Раунд 6: панель — белый блок на сером канвасе, без границы и тени.
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;}',
-    P + '-panel-h{padding:14px 16px;font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
+    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
     // Подзаголовок панели — одна строка всегда: текст меняется от кликов
     // («· только «1 день»»), перенос не должен раздвигать шапку и сдвигать
     // панель по вертикали (правка владельца 2026-09-18).
     P + '-panel-h .sub{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-h-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}',
-    P + '-h-txt .sub b{color:var(--ink2);font-weight:600;}',
+    P + '-h-txt .sub b{color:var(--ink2);font-weight:500;}',
     P + '-panel-h .sub-tabs{margin:0 0 0 auto;flex:0 0 auto;}',
+    P + '-lnk{border:0;background:transparent;padding:0;font:inherit;color:var(--act);cursor:pointer;}',
+    P + '-lnk:hover{text-decoration:underline;}',
+    P + '-cat{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
     P + '-panel-b{padding:14px 16px;}',
     // Каталог — единственная панель тела (v6/2.5): тянется на всю ячейку,
     // строки скроллятся внутри (-tscroll), пейджер прижат к низу.
@@ -570,35 +532,35 @@ function buildCSS() {
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
     P + '-pginfo{font-size:var(--fs-note);color:var(--muted);}',
-    P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:600;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
+    P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:500;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
     P + '-pgbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;min-width:26px;height:24px;font-size:13px;line-height:1;color:var(--ink2);cursor:pointer;padding:0 7px;font-family:inherit;}',
     P + '-pgbtn:hover:not([disabled]){background:#fafbfc;border-color:#d8dce4;}',
     P + '-pgbtn[disabled]{opacity:.4;cursor:default;}',
 
     // ── Подшапка разрезов ──
     P + '-cutbar{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0 16px 12px;}',
-    P + '-cb-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;}',
+    P + '-cb-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;}',
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
     P + '-sub-tab{border:0;background:transparent;padding:6px 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tab.has{color:var(--act-ink);}',
-    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:600;margin-left:5px;padding:0 4px;}',
+    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:500;margin-left:5px;padding:0 4px;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{padding:2px 8px;font-size:var(--fs-note);border-radius:6px;}',
 
     // ── Таблицы ──
     P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:600;text-align:right;padding:8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line2);}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line2);}',
     P + '-ptable th.txt{text-align:left;padding-left:10px;}',
     P + '-ptable td{text-align:right;padding:8px;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;}',
-    P + '-ptable td.txt{text-align:left;font-weight:600;color:var(--ink);padding-left:10px;white-space:normal;min-width:0;}',
-    P + '-ptable td.lead{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}',
+    P + '-ptable td.txt{text-align:left;font-weight:500;color:var(--ink2);padding-left:10px;white-space:normal;min-width:0;}',
+    P + '-ptable td.lead{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
     P + '-urow{cursor:pointer;}',
     P + '-urow:hover{background:#fafbfc;}',
     P + '-urow.sel{background:var(--blue-bg);box-shadow:inset 3px 0 0 var(--act);}',
-    P + '-total td{border-top:0;border-bottom:2px solid var(--line);font-weight:600;color:var(--ink);}',
+    P + '-total td{border-top:0;border-bottom:2px solid var(--line);font-weight:500;color:var(--ink);}',
     P + '-ptable.dense th{padding:8px 6px;font-size:var(--fs-cap);}',
     P + '-ptable.dense td{padding:7px 6px;}',
     P + '-ptable.sortable th[data-sort]{cursor:pointer;user-select:none;}',
@@ -607,7 +569,7 @@ function buildCSS() {
     P + '-ptable th.on{color:var(--ink2);}',
     P + '-ptable th.on .sa{opacity:1;color:var(--act);}',
     P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:600;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
+    P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.cert{background:var(--green-bg);color:var(--green-tx);}',
     P + '-rflag.new{background:var(--new-bg);color:var(--new-tx);}',
     P + '-barcell,' + P + '-bar-th{text-align:left !important;padding-left:10px !important;}',
@@ -615,50 +577,21 @@ function buildCSS() {
     P + '-cellbar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
 
     // ── Наблюдения ──
-    P + '-obs{border-radius:12px;margin:0 0 16px;overflow:visible;border:1px solid var(--line2);}',
-    P + '-obs.sev-high{background:linear-gradient(103deg,#ffeef0 0%,#fdf3f6 38%,#faf7ff 78%,#fcfcfe 100%);}',
-    P + '-obs.sev-mid{background:linear-gradient(103deg,#fff5e3 0%,#fdf6ef 38%,#faf7ff 78%,#fcfcfe 100%);}',
-    P + '-obs.sev-good{background:linear-gradient(103deg,#e9f9ef 0%,#f4f9f6 38%,#faf8ff 78%,#fcfcfe 100%);}',
-    P + '-obs-h{display:flex;align-items:center;gap:10px;padding:12px 15px;cursor:pointer;user-select:none;}',
-    P + '-obs-ico{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.75);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:0 0 auto;}',
-    P + '-obs.sev-high ' + P + '-obs-ico{color:var(--red-tx);}',
-    P + '-obs.sev-mid ' + P + '-obs-ico{color:#9a6500;}',
-    P + '-obs.sev-good ' + P + '-obs-ico{color:var(--green-tx);}',
-    P + '-obs-t{font-size:13px;font-weight:600;color:var(--ink2);flex:0 0 auto;}',
-    P + '-obs-lead{font-size:var(--fs-body);color:var(--ink2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
-    P + '-obs-lead b{font-weight:600;color:var(--ink);}',
-    P + '-obs-tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.55);flex:0 0 auto;}',
     P + '-obs-b{padding:0 15px 14px;font-size:13px;color:var(--ink2);line-height:1.55;}',
     P + '-obs-b ul{margin:8px 0 0;padding-left:20px;}',
     P + '-obs-b li{margin-bottom:5px;}',
-    P + '-obs-b b{color:var(--ink);font-weight:600;}',
-    P + '-obs-rule{display:block;font-size:var(--fs-note);color:var(--muted);margin-top:8px;padding-top:6px;border-top:1px solid var(--line2);}',
-    P + '-no-insight{display:flex;align-items:center;gap:9px;font-size:var(--fs-body);color:var(--muted);background:var(--card);border:1px solid var(--line2);border-radius:12px;padding:12px 15px;margin-bottom:16px;}',
-    P + '-ok-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:0 0 auto;}',
+    P + '-obs-b b{color:var(--ink);font-weight:500;}',
 
 
     // ── Прочее ──
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;}',
-    P + '-tbl-note b{color:var(--ink2);font-weight:600;}',
-    P + '-note-inline{font-size:12px;color:var(--muted);background:var(--card);border:1px solid var(--line2);border-radius:9px;padding:8px 12px;}',
-    P + '-note-inline b{color:var(--ink2);font-weight:600;}',
+    P + '-tbl-note b{color:var(--ink2);font-weight:500;}',
     P + '-empty{background:var(--card);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:var(--fs-body);}',
     P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
-    P + '-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--line);color:var(--muted);font-size:9px;font-weight:600;cursor:help;flex:0 0 auto;}',
-    P + '-info:hover{border-color:var(--act);background:var(--blue-bg);color:var(--act);}',
-    P + '-btn{border:1px solid var(--line);background:var(--card);border-radius:9px;padding:6px 12px;font-size:12px;font-weight:500;color:var(--ink2);cursor:pointer;font-family:inherit;}',
-    P + '-btn:hover{background:#fafbfc;border-color:#d8dce4;}',
     P + '-psearch{position:relative;flex:0 0 auto;color:var(--muted);margin-left:auto;}',
     P + '-psearch input{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px 5px 28px;font-size:12px;color:var(--ink);width:190px;font-family:inherit;}',
     P + '-psearch input:focus{outline:none;border-color:var(--act);}',
     P + '-psearch svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none;}',
-    P + '-chart{display:block;}',
-
-    // ── Слот подшапки: чипы ЗАМЕНЯЮТ вводный абзац той же высоты ──
-    P + '-ph-sub{min-height:36px;display:flex;align-items:flex-start;flex-direction:column;justify-content:center;}',
-    P + '-ph-sub p{margin:4px 0 0;font-size:var(--fs-body);color:var(--muted);line-height:1.5;max-width:920px;}',
-    P + '-ph-sub p b{color:var(--ink2);font-weight:600;}',
-    P + '-ph-sub ' + P + '-chips{margin-top:4px;}',
 
     // ТУЛТИП живёт В BODY, вне -root — шрифт ему НЕ наследуется.
     // Повторяем font-family и position:fixed явно, иначе будет другой шрифт.
@@ -667,13 +600,13 @@ function buildCSS() {
     '  border:1px solid #e7e9ee;border-radius:9px;padding:7px 10px;max-width:260px;',
     '  box-shadow:0 10px 30px rgba(24,33,50,.18),0 2px 6px rgba(24,33,50,.08);',
     '  transition:opacity .08s;}',
-    P + '-tip ' + P + '-t-h{display:block;font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
+    P + '-tip ' + P + '-t-h{display:block;font-size:10px;font-weight:500;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
     P + '-tip ' + P + '-t-x{display:block;font-size:11.5px;color:#3a3f4a;line-height:1.4;}',
     P + '-tip ' + P + '-t-r{display:flex;align-items:center;gap:6px;margin-top:3px;min-width:118px;}',
     P + '-tip ' + P + '-t-m{display:inline-block;flex:0 0 auto;width:10px;height:9px;border-radius:3px;}',
     P + '-tip ' + P + '-t-m.' + CFG.ns + '-dash{height:0;width:14px;border-radius:0;border-top:2px dashed;background:none;}',
     P + '-tip ' + P + '-t-l{font-size:11px;font-weight:500;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#1f1f1f;}',
+    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#23272e;}',
     P + '-tip ' + P + '-t-r.' + CFG.ns + '-bench ' + P + '-t-v{color:#8a909c;font-weight:500;}',
     P + '-tip ' + P + '-t-n{display:block;font-size:10.5px;line-height:1.35;font-weight:400;color:#8a909c;margin-top:6px;padding-top:5px;border-top:1px solid #eef0f3;}',
     '</style>'
@@ -968,111 +901,27 @@ function catalogTableHtml() {
 }
 
 // ВНИМАНИЕ: здесь префикс БЕЗ точки. var P = '.' + CFG.ns дал бы class=".pvt-root".
-// Чипы активных условий из state_j (куб v6: джиня собирает JSON всех
-// фильтров запроса). Это ЧУЖИЕ шины — свитки полоски и людская шина pa-who:
-// у тела нет владения их колонками эмита, крестика снятия здесь НЕТ,
-// тултип отправляет туда, где условие снимается (решение §4 NOTES).
-// Людские условия: одно — именованный чип, два и больше — «Люди: N»
-// (макет 2.5); человек подписан логином — ФИО в предагрегате нет (хвост).
-function stateChips() {
-  var sj = MODEL.stateJ;
-  if (!sj) return '';
-  var extTip = tip({
-    title: 'Активные условия',
-    text: 'Пришли из полоски настроек и панели «Аудитория области» — там же и снимаются. Уже сузили каталог.'
-  });
-  var pplRows = [], nPpl = 0;
-  function ppl(label, vals) {
-    for (var i = 0; i < vals.length; i++) { nPpl++; pplRows.push({ label: label, value: String(vals[i]) }); }
-  }
-  var own = [];
-  if (sj.pub === '0') own.push('включая неопубликованные');
-  if (sj.act === '0') own.push('включая неактуальные');
-  if (sj.exc === '0') own.push('с просмотрами владельцев');
-  if (sj.heads === '1') { nPpl++; pplRows.push({ label: 'Только руководители', value: 'да' }); }
-  if (sj.lvl3) ppl('УС-3', sj.lvl3);
-  if (sj.lvl4) ppl('Департамент', sj.lvl4);
-  if (sj.stream) ppl('Стрим', sj.stream);
-  if (sj.spec) ppl('Специализация', sj.spec);
-  if (sj.adg) ppl('AD-группа', sj.adg);
-  if (sj.login) ppl('Человек', sj.login);
-  var out = '';
-  for (var o = 0; o < own.length; o++) {
-    out += '<span class="' + CFG.ns + '-chip ext"' + extTip + '>' + esc(own[o]) + '</span>';
-  }
-  if (nPpl === 1) {
-    out += '<span class="' + CFG.ns + '-chip ext"' + extTip + '>' +
-      esc(pplRows[0].label + ': ' + pplRows[0].value) + '</span>';
-  } else if (nPpl > 1) {
-    out += '<span class="' + CFG.ns + '-chip ext"' + tip({
-      title: 'Люди: ' + nPpl,
-      text: 'Условия по людям из панели «Аудитория области» — снимаются там же.',
-      rows: pplRows.slice(0, 12)
-    }) + '>Люди: ' + nPpl + '</span>';
-  }
-  if (sj.freq && sj.freq.length) {
-    var g = curGrain(), labels = freqLabels(g), parts2 = [];
-    for (var f = 0; f < sj.freq.length; f++) {
-      var ix = parseInt(sj.freq[f], 10) - 1;
-      parts2.push(labels[ix] != null ? labels[ix] : String(sj.freq[f]));
-    }
-    out += '<span class="' + CFG.ns + '-chip ext"' + extTip + '>Частота: ' + esc(parts2.join(', ')) + '</span>';
-  }
-  return out;
-}
-
 function buildHTML() {
   if (MODEL.empty || (!MODEL.repMode && !Object.keys(MODEL.grps).length)) {
     return buildCSS() + '<div class="' + CFG.ns + '-root"><div class="' + CFG.ns + '-empty" style="margin:24px">' +
       '<b>' + esc(CFG.text.noData) + '</b>Куб не вернул ни одной секции.</div></div>';
   }
-  var g = curGrain();
-  var sl = selection();
   var modeInfo = MODE(state.mode);
 
   var h = [];
   h.push('<div class="' + CFG.ns + '-root">');
 
-  // ── Шапка: заголовок, область, свежесть, чипы условий ──
-  // Чип показывает НАЗВАНИЕ, не идентификатор (правка владельца 2026-09-18:
-  // «должно показывать название, а не айдишник») и ЗАНИМАЕТ СЛОТ вводного
-  // абзаца той же высоты — вёрстка не сдвигается вниз при появлении выбора.
-  function chipName(modeKey, val) {
-    if (modeKey === 'report') {
-      var m = MODEL.meta[num(val)];
-      if (m && m.dash_nm) return m.dash_nm;
-    }
-    return String(val);
-  }
-  var chips = '';
-  var sc = stateChips();
-  if (pickCount() || sc) {
-    chips = '<div class="' + CFG.ns + '-chips">';
-    for (var ci = 0; ci < CFG.modes.length; ci++) {
-      var mk = CFG.modes[ci], pv = pickList(mk.key);
-      for (var pj = 0; pj < pv.length; pj++) {
-        var pl = pv.length === 1 ? MODE(mk.key).one : mk.label;
-        chips += '<span class="' + CFG.ns + '-chip"' + tip({ title: pl, text: String(pv[pj]) }) + '>' +
-          esc(pl + ': ' + chipName(mk.key, pv[pj])) +
-          '<button data-unchip="' + esc(mk.key) + ':' + esc(pv[pj]) + '" aria-label="Снять условие" type="button">×</button></span>';
-      }
-    }
-    chips += sc;
-    chips += '</div>';
-  }
-  var intro = '<p>Клик по строке задаёт область, Shift+клик накапливает — панель «Аудитория области» справа ' +
-    'пересчитается под выбор. Период — <b>' + esc(CFG.grains[g].label) + '</b>.</p>';
-  h.push('<div class="' + CFG.ns + '-page-h"><div class="' + CFG.ns + '-ph-row">' +
-    '<h2>Отчёты</h2>' +
-    '<span class="' + CFG.ns + '-area">область: <b>' + esc(sl.title) + '</b></span>' +
-    '<span class="' + CFG.ns + '-fresh"' + tip({ title: 'Свежесть данных', text: 'Витрина обновляется за вчера. Отдельной колонки с датой среза в кубе нет — подпись отсчитывается от сегодняшней даты.' }) + '><i></i>данные: <b>за вчера</b></span>' +
-    '</div><div class="' + CFG.ns + '-ph-sub">' + (chips || intro) + '</div></div>');
   // ── Каталог — единственная панель тела: KPI и аналитика области — в правой
   // панели. Панель тянется на всю ячейку; ячейка на борде узкая (~35–40%) —
   // таблица плотная, названия режутся ellipsis. ──
   var tableHtml = catalogTableHtml();
   h.push(panelHtml({
-    cls: 'cat', title: 'Каталог', sub: 'клик — выбор · Shift+клик — несколько',
+    // v7.1: шапка листа, KPI и общие пилюли фильтров — в чарте-шапке сверху;
+    // здесь только карточка каталога. Выбор снимается тут же.
+    cls: 'cat', title: 'Каталог',
+    subHtml: pickCount()
+      ? 'выбрано: <b>' + pickCount() + '</b> · <button type="button" class="' + CFG.ns + '-lnk" data-action="clearPicks">снять выбор</button>'
+      : 'клик — область экрана · Shift+клик — несколько',
     right: searchBoxHtml('repQ', state.mode === 'report' ? 'Найти в каталоге' : 'Найти: ' + modeInfo.one.toLowerCase(), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
   }));
@@ -1355,6 +1204,13 @@ function buildHTML() {
       var act = trigger(e.target, 'data-action');
       if (act) {
         var a = act.getAttribute('data-action');
+        if (a === 'clearPicks') {
+          state.picks = { report: [], collection: [], owner: [] };
+          state.page = 0;
+          emitSel();
+          render();
+          return;
+        }
         if (a === 'obs') {
           // Тело (-obs-b) — СЕСТРИНСКИЙ узел заголовка с data-action: ищем
           // от родителя. querySelector от самого act искал бы ВНУТРИ

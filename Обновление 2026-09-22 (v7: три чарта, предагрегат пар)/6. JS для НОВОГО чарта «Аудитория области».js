@@ -61,8 +61,8 @@ var CFG = {
   },
   // Вкладки панели: люди → время → удержание.
   views: [
-    { key: 'who', label: 'Кто смотрит' },
     { key: 'dyn', label: 'Динамика' },
+    { key: 'who', label: 'Кто смотрит' },
     { key: 'coh', label: 'Закрепляемость' }
   ],
   // Группировки поимённого списка (макет app.js WHO_GROUPS, дословно).
@@ -127,10 +127,10 @@ var rawData = (typeof data !== 'undefined' && Array.isArray(data)) ? data : [];
 // чтобы правки разных сессий не расходились.
 if (!window.__pvtState) window.__pvtState = {};
 var __S = window.__pvtState;
-// Дефолты: вкладка «Кто смотрит» — главный вход в людскую шину.
+// Дефолты: первая вкладка — «Динамика» (правка владельца 2026-09-23).
 if (!__S[CFG.ns]) __S[CFG.ns] = {
   tip: null,
-  view: 'who',               // вкладка панели: who | dyn | coh
+  view: 'dyn',               // вкладка панели: dyn | who | coh (Динамика — первая)
   q: '',                     // поиск «Имя или логин»
   whoCut: 'none',            // группировка поимённого списка
   grpClosed: {},             // свёрнутые группы дерева (ключ → true)
@@ -268,7 +268,7 @@ function calAxisSvg(ts, grain, xOf, y0) {
   var out = '';
   for (var i = 0; i < ts.length; i++) {
     var L = calLabel(ts, i, grain), x = r1(xOf(i));
-    out += '<text x="' + x + '" y="' + (y0 + 12) + '" font-size="10.5" text-anchor="middle" font-weight="' + (L.bold ? 700 : 400) +
+    out += '<text x="' + x + '" y="' + (y0 + 12) + '" font-size="10.5" text-anchor="middle" font-weight="' + (L.bold ? 600 : 400) +
       '" fill="' + (L.bold ? '#3a3f4a' : CFG.colors.axis) + '">' + esc(L.main) + '</text>';
     if (L.sub) {
       out += '<text x="' + x + '" y="' + (y0 + 25) + '" font-size="9.5" text-anchor="middle" font-weight="600" fill="#8a909c">' + esc(L.sub) + '</text>';
@@ -470,71 +470,8 @@ function signed(v, dec, unit) {
   var sign = v > 0 ? '+' : (v < 0 ? MINUS : '');
   return sign + nf(Math.abs(v), dec == null ? 0 : dec) + (unit || '');
 }
-function monthName(t) { return t ? MONTHS_FULL[t.m] + ' ' + t.y : '—'; }
-// Последний ЗАКРЫТЫЙ месяц относительно даты свежести (витрина за вчера):
-// back = 1 — прошлый месяц, 2 — позапрошлый.
-function closedMonth(back) {
-  var now = new Date(Date.now() - 86400000);
-  var dt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
-  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: 1 };
-}
 
-// Дельта-бейдж KPI (порт из тела v6): зелёный рост / красное падение /
-// серая мёртвая зона; без предыдущего периода — «не сравнивается».
-function delta(v, opts) {
-  var o = opts || {};
-  if (v == null || !isFinite(v)) {
-    return '<span class="' + CFG.ns + '-nocmp"' + tip({ title: 'Сравнение', text: o.why || 'Не с чем сравнивать: нет предыдущего периода.' }) + '>не сравнивается</span>';
-  }
-  var cls;
-  if (Math.abs(v) < (o.dead == null ? 0.05 : o.dead)) cls = 'flat';
-  else cls = (v > 0) === !o.invert ? 'up' : 'down';
-  var vs = o.vs ? '<span class="' + CFG.ns + '-d-vs">' + esc(o.vs) + '</span>' : '';
-  return '<span class="' + CFG.ns + '-delta ' + CFG.ns + '-' + cls + '"' + (o.tip ? tip(o.tip) : '') + '>' +
-    signed(v, o.dec == null ? 1 : o.dec, o.unit || '') + vs + '</span>';
-}
 
-// «Что видно в данных»: пороговый отбор фактов по KPI области; каждый факт
-// называет свой порог. Числа — точные (люди области, не сумма отчётов).
-function obsArea(k, what, grain) {
-  var out = [];
-  if (!k || !k.users) return out;
-  var G = CFG.grains[grain];
-  var dU = G.prev && k.users_prev ? (k.users / k.users_prev - 1) * 100 : null;
-  var shNew = k.new_u / k.users * 100;
-  var shReg = k.regular / k.users * 100;
-  var shGone = k.users_prev ? k.sleeping / k.users_prev * 100 : null;
-  if (dU != null && Math.abs(dU) >= 10) {
-    out.push({ sev: dU > 0 ? 'good' : 'high',
-      lead: 'Пользователей ' + (dU > 0 ? 'больше' : 'меньше') + ' на ' + pct(Math.abs(dU)) + ' ' + G.vs,
-      body: esc(what) + ': за период <b>' + nf(k.users) + '</b> пользователей против <b>' + nf(k.users_prev) +
-        '</b> в предыдущем — изменение <b>' + signed(dU, 1, '%') + '</b>.',
-      rule: 'изменение к предыдущему периоду ≥10%' });
-  }
-  if (shNew >= 22) {
-    out.push({ sev: 'good',
-      lead: 'Новые дают ' + pct(shNew) + ' аудитории',
-      body: 'Из <b>' + nf(k.users) + '</b> пользователей <b>' + nf(k.new_u) + '</b> пришли впервые. ' +
-        'Рост идёт за счёт притока, а не за счёт того, что прежние стали ходить чаще.',
-      rule: 'доля новых ≥22%' });
-  }
-  if (G.prev && shGone != null && shGone >= 15) {
-    out.push({ sev: 'mid',
-      lead: nf(k.sleeping) + ' ' + plural(k.sleeping, 'человек', 'человека', 'человек') + ' прошлого периода не вернулись',
-      body: '<b>' + nf(k.sleeping) + '</b> из <b>' + nf(k.users_prev) + '</b> зрителей предыдущего периода (<b>' + pct(shGone) +
-        '</b>) в текущем не заходили. Это те, кого уже привели — и потеряли.',
-      rule: 'доля ушедших ≥15% аудитории прошлого периода' });
-  }
-  if (shReg < 25) {
-    out.push({ sev: 'mid',
-      lead: 'Постоянных пользователей ' + pct(shReg) + ' — меньше четверти',
-      body: 'Только <b>' + nf(k.regular) + '</b> человек заходили 8 и более ' + G.units + ' за период. Остальные — эпизодически.',
-      rule: 'доля постоянных <25%' });
-  }
-  var ord = { high: 0, mid: 1, good: 2, none: 3 };
-  out.sort(function (a, b) { return ord[a.sev] - ord[b.sev]; });
-  return out;
-}
 
 // Дивергентная шкала когорт (ui.js 259–289): жёлтый — ниже медианы,
 // голубой — выше, белый — медиана. 3 ступени в каждую сторону.
@@ -576,7 +513,7 @@ function buildCSS() {
     // с телом 788805: канвас = холст борда, панель — белый блок.
     P + '-root{width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;font-family:' + CFG.fonts.family + ';',
     '  --card:#fff;--line:#e7e9ee;--line2:#eef0f3;--bg:#f6f6f6;',
-    '  --ink:#1f1f1f;--ink2:#3a3f4a;--muted:#8a909c;--muted2:#aab0bb;',
+    '  --ink:#23272e;--ink2:#454b55;--muted:#8a909c;--muted2:#aab0bb;',
     '  --green:#12b048;--green-bg:#bff2cd;--green-tx:#0a8f3c;',
     '  --red:#f51f1f;--red-bg:#ffcccc;--red-tx:#d11414;',
     '  --blue:#0b57d0;--act:#0073A0;--act-ink:#015A7D;--blue-bg:#E8F4F9;--act-line:#C4E2ED;',
@@ -586,10 +523,10 @@ function buildCSS() {
 
     // ── Панель ──
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column;}',
-    P + '-panel-h{padding:14px 16px;font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:0 0 auto;}',
+    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:0 0 auto;}',
     P + '-panel-h .sub{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-h-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}',
-    P + '-h-txt .sub b{color:var(--ink2);font-weight:600;}',
+    P + '-h-txt .sub b{color:var(--ink2);font-weight:500;}',
     P + '-panel-h .sub-tabs{margin:0 0 0 auto;flex:0 0 auto;}',
     P + '-panel-b{padding:14px 16px;flex:1;min-height:0;}',
     P + '-panel-b.tbl-wrap{padding-top:0;padding-bottom:0;display:flex;flex-direction:column;}',
@@ -597,7 +534,6 @@ function buildCSS() {
     P + '-panel-b.dyn-wrap > svg{flex:0 0 auto;}',
     // Поиск живёт ПОД переключателем (макет rightUnder): прибит вправо,
     // не ездит от подзаголовка и группировки.
-    P + '-under{display:flex;justify-content:flex-end;padding:0 16px 10px;flex:0 0 auto;}',
 
     // ── Вкладки панели ──
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
@@ -619,22 +555,22 @@ function buildCSS() {
     '  cursor:pointer;font-family:inherit;text-align:left;display:flex;',
     '  flex-direction:column;gap:3px;transition:opacity .15s;}',
     P + '-seg-part .sp-bar{display:block;height:10px;border-radius:2px;}',
-    P + '-seg-part .sp-v{font-size:var(--fs-body);font-weight:700;color:var(--ink);',
+    P + '-seg-part .sp-v{font-size:var(--fs-body);font-weight:600;color:var(--ink);',
     '  font-variant-numeric:tabular-nums;line-height:1.1;}',
     P + '-seg-part .sp-p{font-style:normal;font-weight:400;color:var(--muted);}',
     P + '-seg-part .sp-l{font-size:var(--fs-cap);color:var(--muted);font-weight:500;',
     '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-seg-part:hover .sp-l{color:var(--ink2);}',
     P + '-seg-part.off{opacity:.42;}',
-    P + '-seg-part.on .sp-l{color:var(--ink);font-weight:600;}',
+    P + '-seg-part.on .sp-l{color:var(--ink);font-weight:500;}',
     P + '-seg-part.on .sp-bar{box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--ink2);}',
 
     // ── Тулбар «Кто смотрит» ──
     P + '-who-bar{display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;',
     '  margin-bottom:8px;}',
     P + '-who-cnt{font-size:var(--fs-note);color:var(--muted);font-weight:400;margin-left:auto;}',
-    P + '-who-cnt b{color:var(--ink2);font-weight:600;}',
-    P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:600;cursor:help;}',
+    P + '-who-cnt b{color:var(--ink2);font-weight:500;}',
+    P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:500;cursor:help;}',
 
     // ── Дропдауны (app.css .dd) ──
     P + '-dd{position:relative;min-width:0;}',
@@ -656,13 +592,13 @@ function buildCSS() {
     '  text-align:left;padding:6px 9px;font-size:12px;font-weight:400;color:var(--ink2);',
     '  cursor:pointer;font-family:inherit;white-space:nowrap;}',
     P + '-dd-opt:hover{background:#f4f6f9;color:var(--ink);}',
-    P + '-dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:600;}',
+    P + '-dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:500;}',
 
     // ── Настройки списка (поповер) ──
     P + '-who-opts ' + P + '-dd-trg{width:auto;}',
     P + '-who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px;}',
     P + '-who-opts-pop ' + P + '-psearch input{width:100%;}',
-    P + '-wo-h{font-size:11px;font-weight:600;color:var(--muted);',
+    P + '-wo-h{font-size:11px;font-weight:500;color:var(--muted);',
     '  text-transform:uppercase;letter-spacing:.4px;}',
     P + '-wo-ex{max-height:224px;overflow:auto;}',
     P + '-wo-login{font-style:normal;color:var(--muted);font-size:11px;}',
@@ -695,19 +631,19 @@ function buildCSS() {
     // ── Таблица людей ──
     P + '-tbl-scroll{flex:1 1 auto;min-height:0;overflow:auto;}',
     P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:600;text-align:right;padding:8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line2);}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line2);}',
     P + '-ptable th.txt{text-align:left;padding-left:10px;}',
     P + '-ptable td{text-align:right;padding:8px;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;}',
-    P + '-ptable td.txt{text-align:left;font-weight:600;color:var(--ink);padding-left:10px;white-space:normal;min-width:0;}',
-    P + '-ptable td.lead{font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;}',
+    P + '-ptable td.txt{text-align:left;font-weight:500;color:var(--ink2);padding-left:10px;white-space:normal;min-width:0;}',
+    P + '-ptable td.lead{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
     P + '-ptable.dense th{padding:8px 6px;font-size:var(--fs-cap);}',
     P + '-ptable.dense td{padding:7px 6px;}',
-    P + '-ptable tr.grp-h td{padding:6px 10px;font-weight:600;color:var(--ink);',
+    P + '-ptable tr.grp-h td{padding:6px 10px;font-weight:500;color:var(--ink);',
     '  background:#f4f6f9;text-align:left;}',
     P + '-ptable tr.grp-h:hover td{background:#eef2f7;}',
     P + '-ptable tr.grp-h.blk td,' + P + '-ptable tr.grp-h.flat td{padding-left:6px;}',
-    P + '-ptable tr.grp-h.blk td{font-weight:700;}',
+    P + '-ptable tr.grp-h.blk td{font-weight:600;}',
     P + '-ptable tr.grp-h.dep td{padding-left:30px;}',
     P + '-ptable tr.grp-child>td:first-child{padding-left:30px;}',
     P + '-ptable tr.grp-child.deep>td:first-child{padding-left:54px;}',
@@ -723,12 +659,12 @@ function buildCSS() {
     P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;',
     '  font-size:10px;width:18px;padding:0;font-family:inherit;line-height:1;}',
     P + '-gh-caret:hover{color:var(--ink);}',
-    P + '-gh-name{font:inherit;font-weight:600;color:var(--ink);}',
+    P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
     P + '-gh-cnt{margin-left:8px;color:var(--muted);font-weight:400;font-size:var(--fs-note);}',
     P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:600;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
+    P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
-    P + '-sig-chip{display:inline-block;font-size:11px;font-weight:600;',
+    P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
     '  border-radius:999px;padding:2px 9px;}',
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
@@ -737,7 +673,7 @@ function buildCSS() {
 
     // ── Динамика: каптионы и легенда стека ──
     P + '-dynhead{display:flex;align-items:center;gap:12px;min-height:24px;flex-wrap:wrap;row-gap:4px;}',
-    P + '-cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;}',
+    P + '-cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;}',
     P + '-legend{display:inline-flex;gap:4px;margin-left:auto;flex-wrap:wrap;}',
     P + '-leg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--card);border-radius:999px;',
     '  padding:3px 10px 3px 8px;font-size:var(--fs-note);color:var(--ink2);cursor:pointer;font-family:inherit;font-weight:500;}',
@@ -752,65 +688,21 @@ function buildCSS() {
     '  border:1px solid #e7e9ee;border-radius:9px;padding:7px 10px;max-width:260px;',
     '  box-shadow:0 10px 30px rgba(24,33,50,.18),0 2px 6px rgba(24,33,50,.08);',
     '  transition:opacity .08s;}',
-    P + '-tip ' + P + '-t-h{display:block;font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
+    P + '-tip ' + P + '-t-h{display:block;font-size:10px;font-weight:500;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
     P + '-tip ' + P + '-t-x{display:block;font-size:11.5px;color:#3a3f4a;line-height:1.4;}',
     P + '-tip ' + P + '-t-r{display:flex;align-items:center;gap:6px;margin-top:3px;min-width:118px;}',
     P + '-tip ' + P + '-t-m{display:inline-block;flex:0 0 auto;width:10px;height:9px;border-radius:3px;}',
     P + '-tip ' + P + '-t-m.' + CFG.ns + '-dash{height:0;width:14px;border-radius:0;border-top:2px dashed;background:none;}',
     P + '-tip ' + P + '-t-l{font-size:11px;font-weight:500;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums;color:#1f1f1f;}',
+    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#23272e;}',
     P + '-tip ' + P + '-t-r.' + CFG.ns + '-bench ' + P + '-t-v{color:#8a909c;font-weight:500;}',
     P + '-tip ' + P + '-t-n{display:block;font-size:10.5px;line-height:1.35;font-weight:400;color:#8a909c;margin-top:6px;padding-top:5px;border-top:1px solid #eef0f3;}',
 
-    // ── Шапка панели: заголовок, область, свежесть ──
-    P + '-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 12px;flex:0 0 auto;}',
-    P + '-head h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.3px;color:var(--ink);}',
-    P + '-pill{display:inline-flex;align-items:center;gap:7px;border-radius:999px;background:var(--blue-bg);',
-    '  border:1px solid var(--act-line);padding:3px 11px;font-size:var(--fs-note);color:var(--act-ink);font-weight:600;',
-    '  max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help;}',
-    P + '-pill.mut{background:#f0f1f3;border-color:var(--line2);color:var(--muted);font-weight:500;}',
-    P + '-pill.ppl{background:#f3ecff;border-color:#e2d4ff;color:#5a2fc2;}',
-    P + '-fresh{font-size:var(--fs-note);color:var(--muted);font-weight:500;display:inline-flex;align-items:center;gap:7px;margin-left:auto;}',
-    P + '-fresh b{color:var(--ink2);font-weight:600;}',
-    P + '-fresh i{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;}',
-
-    // ── KPI области (порт из тела v6) ──
-    P + '-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:12px;flex:0 0 auto;}',
-    P + '-kpi{background:var(--card);border-radius:12px;padding:13px 15px;}',
-    P + '-k-label{font-size:var(--fs-note);color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px;}',
-    P + '-k-val{font-size:24px;font-weight:700;letter-spacing:-.5px;line-height:1.1;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums;}',
-    P + '-k-row{display:flex;align-items:center;gap:9px;margin-top:8px;flex-wrap:wrap;}',
-    P + '-k-row:empty{margin:0;}',
-    P + '-k-sub{font-size:var(--fs-note);color:var(--muted);font-weight:500;}',
-    P + '-k-sub b{color:var(--ink2);font-weight:600;}',
-    P + '-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--line);color:var(--muted);font-size:9px;font-weight:600;cursor:help;flex:0 0 auto;}',
-    P + '-delta{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-note);font-weight:600;border-radius:999px;padding:3px 9px;}',
-    P + '-d-vs{font-weight:500;font-size:var(--fs-cap);opacity:.75;}',
-    P + '-up{background:var(--green-bg);color:var(--green-tx);}',
-    P + '-down{background:var(--red-bg);color:var(--red-tx);}',
-    P + '-flat{background:#f0f1f3;color:var(--muted);}',
-    P + '-nocmp{display:inline-block;font-size:11px;font-weight:500;color:var(--muted);cursor:help;border-bottom:1px dotted var(--muted2);}',
-
     // ── «Что видно в данных» ──
-    P + '-obs{border-radius:12px;margin:0 0 12px;overflow:visible;border:1px solid var(--line2);flex:0 0 auto;}',
-    P + '-obs.sev-high{background:linear-gradient(103deg,#ffeef0 0%,#fdf3f6 38%,#faf7ff 78%,#fcfcfe 100%);}',
-    P + '-obs.sev-mid{background:linear-gradient(103deg,#fff5e3 0%,#fdf6ef 38%,#faf7ff 78%,#fcfcfe 100%);}',
-    P + '-obs.sev-good{background:linear-gradient(103deg,#e9f9ef 0%,#f4f9f6 38%,#faf8ff 78%,#fcfcfe 100%);}',
-    P + '-obs-h{display:flex;align-items:center;gap:10px;padding:10px 15px;cursor:pointer;user-select:none;}',
-    P + '-obs-ico{width:22px;height:22px;border-radius:6px;background:rgba(255,255,255,.75);display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex:0 0 auto;}',
-    P + '-obs.sev-high ' + P + '-obs-ico{color:var(--red-tx);}',
-    P + '-obs.sev-mid ' + P + '-obs-ico{color:#9a6500;}',
-    P + '-obs.sev-good ' + P + '-obs-ico{color:var(--green-tx);}',
-    P + '-obs-t{font-size:13px;font-weight:600;color:var(--ink2);flex:0 0 auto;}',
-    P + '-obs-lead{font-size:var(--fs-body);color:var(--ink2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
-    P + '-obs-tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:rgba(255,255,255,.55);flex:0 0 auto;}',
     P + '-obs-b{padding:0 15px 14px;font-size:13px;color:var(--ink2);line-height:1.55;}',
     P + '-obs-b ul{margin:8px 0 0;padding-left:20px;}',
     P + '-obs-b li{margin-bottom:5px;}',
-    P + '-obs-b b{color:var(--ink);font-weight:600;}',
-    P + '-obs-rule{display:block;font-size:var(--fs-note);color:var(--muted);margin-top:8px;padding-top:6px;border-top:1px solid var(--line2);}',
-    P + '-no-insight{display:flex;align-items:center;gap:9px;font-size:var(--fs-body);color:var(--muted);background:var(--card);border:1px solid var(--line2);border-radius:12px;padding:10px 15px;margin-bottom:12px;flex:0 0 auto;}',
-    P + '-ok-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex:0 0 auto;}',
+    P + '-obs-b b{color:var(--ink);font-weight:500;}',
     P + '-empty{background:var(--card);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:var(--fs-body);}',
     P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
 
@@ -823,25 +715,29 @@ function buildCSS() {
     P + '-ct-st{width:26px;height:14px;border:0;padding:0;cursor:pointer;border-radius:2px;transition:transform .1s;}',
     P + '-ct-st:hover,' + P + '-ct-st:focus-visible{transform:scaleY(1.45);}',
     P + '-ct-cfg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:3px;}',
-    P + '-ct-cfg-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;}',
+    P + '-ct-cfg-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;}',
     P + '-ct-cfg-n{font-size:var(--fs-cap);color:var(--muted2);font-weight:500;cursor:help;}',
     P + '-ct-wrap{overflow-x:auto;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell{opacity:.2;transition:opacity .1s;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell.band-hit{opacity:1;box-shadow:inset 0 0 0 1px rgba(31,31,31,.35);}',
     P + '-cttable{border-collapse:separate;border-spacing:2px;width:100%;font-size:var(--fs-body);}',
     P + '-cttable th,' + P + '-cttable td{border:0;white-space:nowrap;}',
-    P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:600;text-align:center;padding:4px 2px;}',
+    P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:center;padding:4px 2px;}',
     P + '-cttable th.txt{text-align:left;padding-left:4px;}',
     P + '-ct-med{display:block;font-size:9.5px;font-weight:500;color:var(--muted2);margin-top:1px;}',
-    P + '-cttable td.txt{font-weight:600;color:var(--ink);padding-left:4px;}',
+    P + '-cttable td.txt{font-weight:500;color:var(--ink);padding-left:4px;}',
     P + '-ct-sz{display:flex;align-items:center;gap:8px;}',
     P + '-ct-bar{flex:1;height:12px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
     P + '-ct-bar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
-    P + '-ct-sz b{font-weight:600;color:var(--ink2);font-variant-numeric:tabular-nums;}',
-    P + '-ct-cell{text-align:center;padding:7px 3px;border-radius:6px;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
+    P + '-ct-sz b{font-weight:500;color:var(--ink2);font-variant-numeric:tabular-nums;}',
+    P + '-ct-cell{text-align:center;padding:7px 3px;border-radius:6px;font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
     P + '-ct-cell.none{background:transparent !important;cursor:default;}',
     P + '-ct-cell.part{background:#f1f3f6 !important;font-style:italic;color:var(--muted);}',
     P + '-panel-h ' + P + '-under{padding:0;margin-left:auto;}',
+    P + '-h-area{color:var(--muted);font-weight:400;cursor:help;}',
+    P + '-hsearch{margin-left:auto;flex:0 0 auto;}',
+    P + '-hsearch + ' + P + '-sub-tabs{margin-left:8px;}',
+    P + '-panel-h > ' + P + '-sub-tabs{margin-left:auto;}',
     '</style>'
   ].join('\n');
 }
@@ -1219,86 +1115,8 @@ function areaInfo() {
   };
 }
 
-function kpiCard(o) {
-  return '<div class="' + CFG.ns + '-kpi">' +
-    '<div class="' + CFG.ns + '-k-label">' + esc(o.label) +
-      (o.hint ? '<span class="' + CFG.ns + '-info"' + tip(o.hint) + ' aria-hidden="true">i</span>' : '') +
-    '</div>' +
-    '<div class="' + CFG.ns + '-k-val">' + o.value + '</div>' +
-    '<div class="' + CFG.ns + '-k-row">' + (o.delta || '') + '</div>' +
-    '<div class="' + CFG.ns + '-k-row">' + (o.sub ? '<span class="' + CFG.ns + '-k-sub">' + o.sub + '</span>' : '') + '</div>' +
-    '</div>';
-}
 
-// Пять карточек области. Предыдущий период сравнивается только там, где он
-// целиком помещается в 13 месяцев истории витрины (30 дней, 20 недель).
-function kpisHtml() {
-  var k = MODEL.kpi, G = CFG.grains[MODEL.grain];
-  if (!k) return '';
-  var dPct = function (a, b) { return b ? (a / b - 1) * 100 : null; };
-  var why = 'В витрине 13 месяцев истории: предыдущего периода такой же длины (' + G.label.replace('за ', '') + ') в ней нет.';
-  var dl = function (v, o) { return G.prev ? delta(v, o) : delta(null, { why: why }); };
-  var shReg = k.users ? k.regular / k.users * 100 : 0;
-  var shRegPrev = k.users_prev ? k.regular_prev / k.users_prev * 100 : 0;
-  var mM = monthName(closedMonth(1)), mP = monthName(closedMonth(2));
-  return '<div class="' + CFG.ns + '-kpis">' +
-    kpiCard({
-      label: 'Пользователей ' + G.label, value: nf(k.users),
-      hint: { title: 'Пользователи', text: 'Уникальные люди области за период. Один человек, открывший несколько отчётов области, посчитан один раз.' },
-      delta: dl(dPct(k.users, k.users_prev), { vs: G.vs, unit: '%',
-        tip: { title: 'Сравнение', rows: [{ label: 'Период', value: nf(k.users) }, { label: 'Предыдущий', value: nf(k.users_prev), dash: true, color: CFG.colors.bench }] } }),
-      sub: G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>'
-    }) +
-    kpiCard({
-      label: 'Просмотров', value: compact(k.views),
-      hint: { title: 'Просмотры', text: 'Сумма открытий отчётов области за период.' },
-      delta: dl(dPct(k.views, k.views_prev), { vs: G.vs, unit: '%' }),
-      sub: 'на пользователя: <b>' + nf(k.users ? k.views / k.users : 0, 1) + '</b>'
-    }) +
-    kpiCard({
-      label: 'Новых', value: nf(k.new_u),
-      hint: { title: 'Новые', text: MODEL.area.sel.length ? 'Впервые открыли отчёт области в этом периоде.' : 'Первый визит в Proteus пришёлся на этот период.' },
-      delta: dl(dPct(k.new_u, k.new_prev), { vs: G.vs, unit: '%' }),
-      sub: 'доля аудитории: <b>' + pct(k.users ? k.new_u / k.users * 100 : 0) + '</b>'
-    }) +
-    kpiCard({
-      label: 'Постоянных', value: pct(shReg),
-      hint: { title: 'Постоянные', text: 'Заходили 8 и более разных ' + G.units + ' за период.', note: 'Та же мера, что столбец «Пост.» каталога и корзины «8–15» и «16+» частоты.' },
-      delta: dl(shReg - shRegPrev, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
-      sub: '<b>' + nf(k.regular) + '</b> ' + plural(k.regular, 'человек', 'человека', 'человек')
-    }) +
-    kpiCard({
-      label: 'MAU · ' + mM, value: nf(k.mau),
-      hint: { title: 'Месячная аудитория за ' + mM,
-        text: 'Уникальные люди области за последний ЗАКРЫТЫЙ календарный месяц. От периода полоски не зависит.',
-        rows: [{ label: mM, value: nf(k.mau), color: CFG.colors.ret }, { label: mP, value: nf(k.mau_prev), dash: true, color: CFG.colors.bench }],
-        note: 'Текущий месяц не берём: он неполный.' },
-      delta: delta(dPct(k.mau, k.mau_prev), { vs: 'к ' + mP, unit: '%' }),
-      sub: mP + ': <b>' + nf(k.mau_prev) + '</b>'
-    }) +
-    '</div>';
-}
 
-// Наблюдения (U.observations): заголовок с главным фактом, остальное — по клику.
-function observationsHtml(list) {
-  if (!list.length) {
-    return '<div class="' + CFG.ns + '-no-insight"><span class="' + CFG.ns + '-ok-dot"></span>' +
-      'Отклонений выше порогов нет: показатели в пределах обычного разброса.</div>';
-  }
-  var top = list[0];
-  var h = '<div class="' + CFG.ns + '-obs sev-' + (top.sev || 'none') + '">' +
-    '<div class="' + CFG.ns + '-obs-h" data-action="obs" role="button" tabindex="0" aria-expanded="false">' +
-      '<span class="' + CFG.ns + '-obs-ico" aria-hidden="true">!</span>' +
-      '<span class="' + CFG.ns + '-obs-t">Что видно в данных</span>' +
-      '<span class="' + CFG.ns + '-obs-lead">' + top.lead + '</span>' +
-      '<span class="' + CFG.ns + '-obs-tag">подробнее</span>' +
-    '</div>' +
-    '<div class="' + CFG.ns + '-obs-b" style="display:none"><ul>';
-  for (var i = 0; i < list.length; i++) h += '<li>' + list[i].body + '</li>';
-  h += '</ul><span class="' + CFG.ns + '-obs-rule">Отбор по порогам, без языковой модели: ' +
-    esc(list.map(function (x) { return x.rule; }).join('; ')) + '.</span></div></div>';
-  return h;
-}
 
 // --- Закрепляемость: таблица когорт (порт pa-cohorts) -----------------------
 // Ячейка берётся ПО ВОЗРАСТУ (byAge), а не по позиции в массиве: возраст, в
@@ -1518,41 +1336,39 @@ function cohortZoneHtml(ai) {
 }
 
 function buildHTML() {
-  if (!MODEL.kpi && !MODEL.rows.length && !MODEL.ts.length && !MODEL.coh.length) {
+  if (!MODEL.rows.length && !MODEL.ts.length && !MODEL.coh.length) {
     return buildCSS() + '<div class="' + CFG.ns + '-root"><div class="' + CFG.ns + '-empty"><b>' + esc(CFG.text.noData) + '</b>' +
       'В области нет зрителей за период — снимите часть условий в каталоге или в полоске.</div></div>';
   }
-  var N = CFG.ns, ai = areaInfo(), G = CFG.grains[MODEL.grain];
-  var view = state.view === 'dyn' || state.view === 'coh' ? state.view : 'who';
-  var body, bodyCls;
+  // v7.1: шапка листа (период, KPI, «что видно», общие пилюли фильтров) — в
+  // чарте-шапке сверху. Здесь одна карточка, как «Каталог» слева: заголовок
+  // вкладки с областью · поиск (для «Кто смотрит») · вкладки справа.
+  var N = CFG.ns, ai = areaInfo();
+  var view = state.view === 'who' || state.view === 'coh' ? state.view : 'dyn';
+  var body, bodyCls, title;
   if (view === 'who') {
     body = freqStripHtml(busList()) + '<div class="' + N + '-list-zone">' + listZoneHtml() + '</div>';
-    bodyCls = 'tbl-wrap';
+    bodyCls = 'tbl-wrap'; title = 'Кто смотрит';
   } else if (view === 'dyn') {
     body = dynamicsHtml(MODEL.ts, MODEL.grain, {});
-    bodyCls = 'dyn-wrap';
+    bodyCls = 'dyn-wrap'; title = 'Динамика';
   } else {
     body = cohortZoneHtml(ai);
-    bodyCls = 'coh-wrap';
+    bodyCls = 'coh-wrap'; title = 'Закрепляемость';
   }
-  var nP = pickCount();
-  var h = [];
-  h.push('<div class="' + N + '-root">');
-  h.push('<div class="' + N + '-head"><h2>Аудитория области</h2>' +
-    '<span class="' + N + '-pill' + (ai.mut ? ' mut' : '') + '"' + tip({ title: 'Область', text: ai.text }) + '>' + esc(ai.pill) + '</span>' +
-    (nP ? '<span class="' + N + '-pill ppl"' + tip({ title: 'Людская шина', text: 'Выбрано условий по людям: ' + nP +
-      '. Каталог слева сужен до отчётов этих людей; карточки и вкладки здесь — по всей области, выбор подсвечен в «Кто смотрит».' }) +
-      '>люди: ' + nP + '</span>' : '') +
-    '<span class="' + N + '-fresh"' + tip({ title: 'Свежесть данных', text: 'Витрина обновляется ежедневно, данные — по вчерашний день включительно.' }) +
-      '><i></i>' + esc(G.label) + ' · данные <b>за вчера</b></span></div>');
-  h.push(kpisHtml());
-  h.push(observationsHtml(obsArea(MODEL.kpi, ai.what, MODEL.grain)));
   var tabs = [];
   for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key });
+  var h = [];
+  h.push('<div class="' + N + '-root">');
   h.push('<div class="' + N + '-panel">');
   h.push('<div class="' + N + '-panel-h">' +
+    '<div class="' + N + '-h-txt"><span>' + esc(title) + ' · <span class="' + N + '-h-area"' + tip({ title: 'Область', text: ai.text }) + '>' +
+      esc(ai.mut ? 'весь Proteus' : ai.pill) + '</span></span>' +
+      '<span class="sub">' + (view === 'who'
+        ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
+        : (view === 'dyn' ? 'клик по строке каталога задаёт область' : 'когорты первого визита; период на них не действует')) + '</span></div>' +
+    (view === 'who' ? '<div class="' + N + '-hsearch">' + searchBoxHtml('whoQ', 'Имя или логин', state.q) + '</div>' : '') +
     '<div class="' + N + '-sub-tabs" role="tablist">' + tabsHtml('view', tabs) + '</div>' +
-    (view === 'who' ? '<div class="' + N + '-under">' + searchBoxHtml('whoQ', 'Имя или логин', state.q) + '</div>' : '') +
     '</div>');
   h.push('<div class="' + N + '-panel-b ' + bodyCls + '">' + body + '</div>');
   h.push('</div>');
@@ -1565,6 +1381,9 @@ function buildHTML() {
 // значения подписаны у марок; столкнувшиеся подписи скрываются (шаг показа);
 // зазор между панелями = STACK_GAP. Резиновость через viewBox + width:100%.
 var SVG_W = 760;
+// Высота динамики под ячейку чарта: меряется ПОСЛЕ монтажа (как SVG_W) и
+// делится между стеком пользователей (60%) и просмотрами (40%). 0 — дефолт.
+var DYN_H = 0;
 function r1(v) { return Math.round(v * 10) / 10; }
 function svgHeadroom(max, n) {
   return Math.max(1, Math.ceil(max * (n > CFG.spacing.dense ? CFG.spacing.headroomDense : CFG.spacing.headroom)));
@@ -1606,7 +1425,8 @@ function usersChartSvg(ts, grain) {
   var padL = 6, padR = 26, inner = SVG_W - padL - padR;
   var step = inner / n;
   var bw = svgBarWidth(n);
-  var top = 14, pH = 164, axH = 32;
+  var top = 14, axH = 32;
+  var pH = DYN_H ? Math.max(120, Math.round(DYN_H * 0.6) - top - axH) : 164;
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
   var fsVal = dense ? CFG.fonts.dense : CFG.fonts.val;
@@ -1657,7 +1477,8 @@ function viewsChartSvg(ts, grain) {
   var topV = svgHeadroom(maxV, n);
   var padL = 6, padR = 26, inner = SVG_W - padL - padR;
   var step = inner / n;
-  var top = 14, pH = 112, axH = 32;
+  var top = 14, axH = 32;
+  var pH = DYN_H ? Math.max(80, Math.round(DYN_H * 0.4) - top - axH) : 112;
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
   var fsVal = dense ? CFG.fonts.dense : CFG.fonts.val;
@@ -1828,6 +1649,21 @@ function dynTipHtml(el, i) {
     // Ширина SVG меряется ПОСЛЕ монтажа (width:100%) и уходит в SVG_W:
     // пересборка с новой шириной даёт масштаб 1:1 — подписи не растягиваются
     // вместе с ячейкой (правка владельца 2026-09-18). Прогон максимум двойной.
+    // Высота вкладки «Динамика»: всё, что осталось в теле панели после
+    // заголовков графиков и зазоров, делится между двумя SVG.
+    function syncDynH() {
+      var body = overlay.querySelector('.' + CFG.ns + '-panel-b.dyn-wrap');
+      if (!body) return false;
+      var cs = getComputedStyle(body);
+      var avail = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
+      for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
+      avail -= CFG.spacing.stackGap * 3;
+      avail = Math.max(360, Math.floor(avail));
+      if (Math.abs(avail - DYN_H) <= 4) return false;
+      DYN_H = avail;
+      return true;
+    }
     function syncSvgWidth() {
       var svgs = overlay.querySelectorAll('svg[data-dyn-svg]');
       if (!svgs.length) return false;
@@ -1840,7 +1676,8 @@ function dynTipHtml(el, i) {
       // overlay — скролл-контейнер: без сохранения позиции клик внизу прыгал наверх.
       var st = overlay.scrollTop, sl = overlay.scrollLeft;
       overlay.innerHTML = buildHTML();
-      if (syncSvgWidth()) overlay.innerHTML = buildHTML();
+      var ch1 = syncSvgWidth(), ch2 = syncDynH();
+      if (ch1 || ch2) overlay.innerHTML = buildHTML();
       overlay.scrollTop = st;
       overlay.scrollLeft = sl;
       renderTip();
@@ -2166,7 +2003,7 @@ function dynTipHtml(el, i) {
     // Старый снимаем ЯВНО, ссылку держим в state. Escape вешай здесь же,
     // тем же способом, и никогда не внутри render().
     if (state.onWinResize) window.removeEventListener('resize', state.onWinResize);
-    state.onWinResize = function () { if (syncSvgWidth()) render(); if (state.tip) renderTip(); };
+    state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(); if (w || hh) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 
     render();
@@ -2177,6 +2014,13 @@ function dynTipHtml(el, i) {
       if (state.ro && state.ro.disconnect) state.ro.disconnect();
       var ro = new ResizeObserver(function() {
         overlay.style.width = '100%'; overlay.style.height = '100%';
+        // Ячейку борда растянули/сжали: пересборка ОТЛОЖЕНА и только при
+        // реальной смене размеров графиков — без цикла render ↔ observer.
+        if (state.roT) clearTimeout(state.roT);
+        state.roT = setTimeout(function () {
+          var w = syncSvgWidth(), hh = syncDynH();
+          if (w || hh) render();
+        }, 150);
       });
       ro.observe(host);
       state.ro = ro;

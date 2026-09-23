@@ -97,6 +97,16 @@ for lg in ['u3', 'u8', 'u40']:
     seen = {int(v) for v in str(stand.S.query(f"SELECT DISTINCT dashboard_id FROM prod_proteus.pa_pair WHERE login = '{lg}' AND bitAnd(msk_d, 1073741823) != 0 AND ifNull(own_flg, 0) = 0", 'CSV')).split()} & univ
     rr = {x['dashboard_id'] for x in run(BODY, {'login_f': [lg]})[0] if x['section'] == 'rep' and int(x['users']) > 0}
     ok(seen and rr == seen, f'login_f={lg}: в каталоге все его отчёты из вселенной ({len(rr)} из {len(seen)})')
+# Корзина считается по заходам В ОТЧЁТ СТРОКИ: строка отчёта при корзине == числу на этой корзине
+# в панели при выборе этого отчёта (владелец: «как часто заходят именно в этот отчёт»).
+reps = sorted([x for x in run(BODY, {})[0] if x['section'] == 'rep'], key=lambda x: -int(x['users']))
+for g in ['d', 'm']:
+    for rp in reps[:3]:
+        did = str(rp['dashboard_id'])
+        fr = [x for x in run(PPL, {'period_param': g, 'mode_param': 'report', 'sel_f': [did]})[0] if x['section'] == 'freq']
+        for r in fr:
+            t = [x for x in run(BODY, {'period_param': g, 'freq_f': [r['k']]})[0] if x['section'] == 'rep' and str(x['dashboard_id']) == did]
+            ok(str(t[0]['users'] if t else 0) == str(r['users']), f'отчёт {did} [{g}] корзина {r["k"]}: в панели {r["users"]} → в строке каталога {t[0]["users"] if t else 0}')
 for c in [{'freq_f': ['1']}, {'freq_f': ['2']}]:
     rr = {x['dashboard_id'] for x in run(BODY, c)[0] if x['section'] == 'rep'}
     ok(rr <= univ and len(rr) > 0.5 * len(univ), f'{c}: отчёты каталога — внутри вселенной, порог не сужен ({len(rr)} из {len(univ)})')

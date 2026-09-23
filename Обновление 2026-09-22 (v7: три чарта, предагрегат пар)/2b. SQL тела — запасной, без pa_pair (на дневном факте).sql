@@ -42,6 +42,12 @@
     вселенной «≥500 просмотров за жизнь» ронял отчёты (корзина «2–5 дней» на отчёте → «Ничего не найдено»).
     Порог тогда берётся по ВСЕМ зрителям отчёта (как без фильтра) — отдельным подзапросом. -#}
 {% set pplf = loginf or exlf or attrson or freqf %}
+{#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n В ОТЧЁТАХ СТРОКИ каталога:
+    у строки отчёта — заходы в этот отчёт, у коллекции / владельца — в их отчёты, у ИТОГО — во все
+    (= корзина правой панели без выбора). Фильтр — HAVING по маске человека внутри строки (kx; msk там — уже groupBitOr). -#}
+{%- set FB = [] -%}
+{%- set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] -%}
+{%- for v in freqf -%}{%- set bi = v|int -%}{%- if bi == 1 %}{% set _ = FB.append('nb BETWEEN 1 AND ' ~ FBIN[0]) %}{% elif bi == 4 %}{% set _ = FB.append('nb > ' ~ FBIN[2]) %}{% elif bi in [2, 3] %}{% set _ = FB.append('nb BETWEEN ' ~ (FBIN[bi - 2] + 1) ~ ' AND ' ~ FBIN[bi - 1]) %}{% endif -%}{%- endfor %}
 {%- set OCOL = ['lvl3_management_unit_nm', 'lvl4_management_unit_nm', 'lvl5_management_unit_nm', 'lvl6_management_unit_nm', 'lvl7_management_unit_nm'] -%}
 {%- set OC = [] -%}
 {%- for L in [1, 2, 3, 4, 5] -%}{%- set vs = [] -%}{%- for v in orgf -%}{%- if v.split(' › ')|length == L -%}{%- set _ = vs.append(v) -%}{%- endif -%}{%- endfor -%}
@@ -88,20 +94,6 @@ WITH
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
     {%- if exlf %} AND e.login NOT IN {{ q(exlf) }}{% endif %}
     {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% elif headsv == 'n' %} AND management_head_flg = 0{% endif %}{% if OC %} AND ({{ OC|join(' OR ') }}){% endif %}){% endif %}
-    {%- if freqf %}
-      {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n (как в правой панели). -#}
-      {%- set FB = [] -%}
-      {%- for v in freqf -%}
-        {%- set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] -%}{%- set bi = v|int -%}{%- if bi == 1 %}{% set _ = FB.append('nb BETWEEN 1 AND ' ~ FBIN[0]) %}{% elif bi == 4 %}{% set _ = FB.append('nb > ' ~ FBIN[2]) %}{% elif bi in [2, 3] %}{% set _ = FB.append('nb BETWEEN ' ~ (FBIN[bi - 2] + 1) ~ ' AND ' ~ FBIN[bi - 1]) %}{% endif -%}
-      {%- endfor %} AND e.login IN (
-        SELECT login FROM (
-          SELECT f.login AS login, uniqExact({{ kx('f.log_dttm') }}) AS nb
-          FROM prod_proteus.pa_evd_day f
-          INNER JOIN dash_ok fm ON fm.dashboard_id = f.dashboard_id
-          WHERE {{ kx('f.log_dttm') }} < {{ g.n }}{% if excv == '1' %} AND NOT has(fm.owners_string, f.login){% endif %}
-          GROUP BY f.login
-        ) WHERE {{ FB|join(' OR ') }})
-    {%- endif %}
     GROUP BY e.dashboard_id, e.login
   ),
   kx AS (
@@ -123,6 +115,9 @@ WITH
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
     GROUP BY kd, k0, login
+    {%- if FB %}
+    HAVING {{ FB|join(' OR ')|replace('nb', 'bitCount(bitAnd(msk, ' ~ CUR ~ '))') }}
+    {%- endif %}
   ),
   agg AS (
     SELECT kd, k0,

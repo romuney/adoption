@@ -717,11 +717,11 @@ function buildCSS() {
 
     // ── Вкладки панели ──
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
-    P + '-sub-tab{border:0;background:transparent;padding:6px 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
+    P + '-sub-tab{box-sizing:border-box;height:26px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
-    P + '-sub-tabs.tiny ' + P + '-sub-tab{padding:2px 8px;font-size:var(--fs-note);border-radius:6px;}',
+    P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
 
     // ── Поиск ──
     P + '-psearch{position:relative;flex:0 0 auto;color:var(--muted);}',
@@ -1068,16 +1068,7 @@ function personRowHtml(p) {
   var ps = orgParts(p.org);
   return '<tr class="pk' + (on ? ' sel' : '') + '"' +
     ' data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
-    tip({
-      title: p.fio || p.login,
-      text: p.org ? p.org : 'Подразделение не указано',
-      rows: [
-        { label: actLabel(), value: nf(p.days), color: CFG.colors.act },
-        { label: 'Просмотров', value: p.views ? nf(p.views) : '—' },
-        { label: 'Стаж в компании', value: p.exp || '—' }
-      ],
-      note: 'Клик сузит каталог слева до отчётов этого человека; Shift — добавить к выбору'
-    }) + '>' +
+    '>' +
     '<td class="txt">' + esc(p.fio || p.login) +
       (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(p.login) + '</span></td>' +
@@ -1255,14 +1246,7 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
   var local = lc != null;
   var cN = local ? (lc[nd.k] || 0) : null;
   var dim = local && !sel && !cN;
-  var m = nd.m, G = CFG.grains[MODEL.grain] || CFG.grains.d;
-  var rows = [{ label: 'Людей в области', value: nf(m.users), color: CFG.colors.act },
-    { label: 'Доля области', value: pct(m.share) }];
-  if (G.prev) rows.push({ label: 'В предыдущем периоде', value: nf(m.users_prev) });
-  rows.push({ label: 'Просмотров', value: nf(m.views) }, { label: 'Постоянных', value: nf(m.regular) + ' · ' + pct(m.regShare) },
-    { label: 'Новых', value: nf(m.new_u) });
-  if (G.prev) rows.push({ label: 'Ушли (были в прошлом периоде)', value: nf(m.sleeping) });
-  if (local) rows.push({ label: 'В текущей выборке', value: nf(cN) });
+  var m = nd.m;
   // Вторая строка, как у отчёта (владелец) и человека (логин): уровень и состав.
   var nk = nd.cut === 'org' ? (MODEL.orgKids[nd.k] || []).length : 0;
   var sub = nd.cut === 'org'
@@ -1270,10 +1254,7 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
     : '';
   var h = '<tr class="grp-h' + (sel ? ' sel' : '') + (dim ? ' grp-dim' : '') + ' d' + Math.min(nd.depth, 4) + '"' +
     ' data-who="' + esc(nd.k) + '" data-whocut="' + esc(nd.cut) + '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
-    tip({ title: nd.cut === 'org' ? nd.k : nd.name, rows: rows,
-      note: nd.cut === 'adgroup'
-        ? 'Людей внутри AD-групп в ответе нет. Клик — людская шина: каталог слева сузится до отчётов группы'
-        : 'Клик — людская шина: каталог слева сузится до отчётов этой группы; Shift добавит, повторный клик снимет. ▸ — раскрыть' }) + '>' +
+    '>' +
     '<td class="txt gname" style="padding-left:' + (6 + nd.depth * 18) + 'px">' +
     (hasKids
       ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-gtog="' + esc(nd.id) + '" aria-expanded="' + open + '" aria-label="' + (open ? 'Свернуть ' : 'Раскрыть ') + esc(nd.name) + '">' + (open ? '▾' : '▸') + '</button>'
@@ -1294,8 +1275,7 @@ function nestPeopleHtml(nd, people, span) {
   for (var i = 0; i < sorted.length && i < lim; i++) {
     var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
     h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
-      tip({ title: p.fio || p.login, text: p.org || '', rows: [{ label: actLabel(), value: nf(p.days), color: CFG.colors.act }, { label: 'Просмотров', value: nf(p.views) }],
-        note: 'Клик сузит каталог слева до отчётов этого человека; Shift — добавить к выбору' }) + '>' +
+      '>' +
       '<td class="txt">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
         ' <span class="' + CFG.ns + '-wo-login">' + esc(p.login) + '</span></td>' +
       '<td>' + nf(p.days) + THIN + grainCfg().us + '</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
@@ -2249,15 +2229,23 @@ function dynTipHtml(el, i) {
     // Твоё дело — только содержимое и якорь. Видимость и позицию считает showTip.
     function showTip(html, rect) {
       var tip = getTip();
-      tip.innerHTML = html;
+      // За курсором showTip зовётся на каждом mousemove — HTML меняем, только если он другой.
+      if (tip.__h !== html) { tip.innerHTML = html; tip.__h = html; }
       tip.style.display = 'block';
       tip.style.left = '0px';
       tip.style.top = '0px';
       var t = tip.getBoundingClientRect();
-      var pad = 6, gap = 8;
-      var left = rect.left + rect.width / 2 - t.width / 2;
-      var top = rect.top + rect.height + gap;
-      if (top + t.height > window.innerHeight - pad) top = rect.top - t.height - gap;
+      var pad = 6, gap = 8, left, top;
+      if (rect.pt) {
+        // Якорь — курсор (как тултип eCharts): справа-снизу, у края окна — зеркально.
+        left = rect.left + 14; top = rect.top + 18;
+        if (left + t.width > window.innerWidth - pad) left = rect.left - t.width - 14;
+        if (top + t.height > window.innerHeight - pad) top = rect.top - t.height - 14;
+      } else {
+        left = rect.left + rect.width / 2 - t.width / 2;
+        top = rect.top + rect.height + gap;
+        if (top + t.height > window.innerHeight - pad) top = rect.top - t.height - gap;
+      }
       left = Math.max(pad, Math.min(left, window.innerWidth - t.width - pad));
       top = Math.max(pad, Math.min(top, window.innerHeight - t.height - pad));
       tip.style.left = Math.round(left) + 'px';
@@ -2268,6 +2256,7 @@ function dynTipHtml(el, i) {
       var tip = getTip();
       tip.style.opacity = '0';
       tip.style.display = 'none';
+      tip.__h = null;
     }
 
     // Показ/скрытие тултипа НЕ требует полного render(): hover меняет только
@@ -2364,13 +2353,22 @@ function dynTipHtml(el, i) {
       // а всплывашка его закрывала (Chrome шлёт наведение после перерисовки).
       if (el.getAttribute('aria-expanded') === 'true') return;
       // Якорь — rect ЦЕЛИ как есть; содержимое — готовый HTML из data-tip.
+      // Якорь — точка курсора: тултип идёт за мышью (onTipMove), как на диаграмме.
       state.tip = {
-        rect: el.getBoundingClientRect(),
+        rect: curPt(e),
         kind: el.getAttribute('data-kind') || '',
         key: el.getAttribute('data-tip') || '',
         html: el.getAttribute('data-tip') || ''
       };
       renderTip();
+    }
+
+    function curPt(e) { return { left: e.clientX, top: e.clientY, width: 0, height: 0, pt: true }; }
+    // Тултип за курсором: на mousemove — только позиция, содержимое не пересобирается.
+    function onTipMove(e) {
+      if (!state.tip || !state.tip.rect || !state.tip.rect.pt) return;
+      state.tip.rect = curPt(e);
+      showTip(state.tip.html || state.tip.key || '', state.tip.rect);
     }
 
     function onOut(e) {
@@ -2429,7 +2427,7 @@ function dynTipHtml(el, i) {
       if (state.dynEl !== el || state.dynI !== i) {
         state.dynEl = el;
         state.dynI = i;
-        getTip().innerHTML = dynTipHtml(el, i);
+        var dt = getTip(); dt.innerHTML = dynTipHtml(el, i); dt.__h = null;
       }
       placeTip(e.clientX, e.clientY);
     }
@@ -2730,6 +2728,7 @@ function dynTipHtml(el, i) {
 
     overlay.addEventListener('mouseover', onOver);
     overlay.addEventListener('mouseout', onOut);
+    overlay.addEventListener('mousemove', onTipMove);
     overlay.addEventListener('mousemove', onMove);
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('input', onInput);

@@ -631,13 +631,13 @@ function buildCSS() {
     // ── Подшапка разрезов ──
     P + '-cutbar{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0 16px 12px;}',
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
-    P + '-sub-tab{border:0;background:transparent;padding:6px 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
+    P + '-sub-tab{box-sizing:border-box;height:26px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tab.has{color:var(--act-ink);}',
     P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:500;margin-left:5px;padding:0 4px;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
-    P + '-sub-tabs.tiny ' + P + '-sub-tab{padding:2px 8px;font-size:var(--fs-note);border-radius:6px;}',
+    P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
 
     // ── Таблицы ──
     P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin-left:5px;padding:0;border:0;border-radius:6px;'
@@ -892,8 +892,7 @@ function reportTableHtml() {
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
       }) + '>' +
       '<td class="txt">' + esc(x.m.dash_nm) +
-        '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' +
-          tip({ title: 'Ссылка на отчёт', text: 'Клик — скопировать адрес в буфер обмена', note: dashUrl(x.id) }) + '>' + LINK_SVG + '</button>' +
+        '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' + tip({ text: 'Скопировать ссылку на отчёт' }) + '>' + LINK_SVG + '</button>' +
         '<span class="' + CFG.ns + '-unit-sub">' +
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
           esc(x.m.owner_login || '—') + '</span></td>' +
@@ -1172,15 +1171,23 @@ function buildHTML() {
     // Твоё дело — только содержимое и якорь. Видимость и позицию считает showTip.
     function showTip(html, rect) {
       var tip = getTip();
-      tip.innerHTML = html;
+      // За курсором showTip зовётся на каждом mousemove — HTML меняем, только если он другой.
+      if (tip.__h !== html) { tip.innerHTML = html; tip.__h = html; }
       tip.style.display = 'block';
       tip.style.left = '0px';
       tip.style.top = '0px';
       var t = tip.getBoundingClientRect();
-      var pad = 6, gap = 8;
-      var left = rect.left + rect.width / 2 - t.width / 2;
-      var top = rect.top + rect.height + gap;
-      if (top + t.height > window.innerHeight - pad) top = rect.top - t.height - gap;
+      var pad = 6, gap = 8, left, top;
+      if (rect.pt) {
+        // Якорь — курсор (как тултип eCharts): справа-снизу, у края окна — зеркально.
+        left = rect.left + 14; top = rect.top + 18;
+        if (left + t.width > window.innerWidth - pad) left = rect.left - t.width - 14;
+        if (top + t.height > window.innerHeight - pad) top = rect.top - t.height - 14;
+      } else {
+        left = rect.left + rect.width / 2 - t.width / 2;
+        top = rect.top + rect.height + gap;
+        if (top + t.height > window.innerHeight - pad) top = rect.top - t.height - gap;
+      }
       left = Math.max(pad, Math.min(left, window.innerWidth - t.width - pad));
       top = Math.max(pad, Math.min(top, window.innerHeight - t.height - pad));
       tip.style.left = Math.round(left) + 'px';
@@ -1191,6 +1198,7 @@ function buildHTML() {
       var tip = getTip();
       tip.style.opacity = '0';
       tip.style.display = 'none';
+      tip.__h = null;
     }
 
     // Показ/скрытие тултипа НЕ требует полного render(): hover меняет только
@@ -1239,12 +1247,21 @@ function buildHTML() {
       var el = trigger(e.target, 'data-tip');
       if (!el) return;
       // Якорь — rect ЦЕЛИ как есть. key — готовый HTML контента из data-tip.
+      // Якорь — точка курсора: тултип идёт за мышью (onTipMove), как на диаграмме.
       state.tip = {
-        rect: el.getBoundingClientRect(),
+        rect: curPt(e),
         kind: el.getAttribute('data-kind') || '',
         key: el.getAttribute('data-tip') || ''
       };
       renderTip();
+    }
+
+    function curPt(e) { return { left: e.clientX, top: e.clientY, width: 0, height: 0, pt: true }; }
+    // Тултип за курсором: на mousemove — только позиция, содержимое не пересобирается.
+    function onTipMove(e) {
+      if (!state.tip || !state.tip.rect || !state.tip.rect.pt) return;
+      state.tip.rect = curPt(e);
+      showTip(state.tip.html || state.tip.key || '', state.tip.rect);
     }
 
     function onOut(e) {
@@ -1379,15 +1396,14 @@ function buildHTML() {
         copyText(url, function (ok) {
           lnk.className = CFG.ns + '-lnkbtn ' + (ok ? 'ok' : 'err');
           lnk.innerHTML = ok ? '✓' : '!';
-          lnk.setAttribute('data-tip', tipHtml(ok
-            ? { title: 'Ссылка скопирована', note: url }
-            : { title: 'Не удалось скопировать', text: 'Браузер запретил доступ к буферу — адрес ниже, выделите и скопируйте вручную', note: url }));
-          if (ok) hideTip();
+          // Короткая подсказка без адреса: длинный URL в тултип не помещается.
+          lnk.setAttribute('data-tip', tipHtml({ text: ok ? 'Ссылка скопирована' : 'Браузер запретил доступ к буферу обмена' }));
+          if (state.tip) { state.tip.key = lnk.getAttribute('data-tip'); renderTip(); }
           setTimeout(function () {
             lnk.className = CFG.ns + '-lnkbtn';
             lnk.innerHTML = LINK_SVG;
-            lnk.setAttribute('data-tip', tipHtml({ title: 'Ссылка на отчёт', text: 'Клик — скопировать адрес в буфер обмена', note: url }));
-          }, 1800);
+            lnk.setAttribute('data-tip', tipHtml({ text: 'Скопировать ссылку на отчёт' }));
+          }, ok ? 1800 : 6000);
         });
         return;
       }
@@ -1472,6 +1488,7 @@ function buildHTML() {
 
     overlay.addEventListener('mouseover', onOver);
     overlay.addEventListener('mouseout', onOut);
+    overlay.addEventListener('mousemove', onTipMove);
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('input', onInput);
 

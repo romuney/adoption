@@ -35,6 +35,9 @@
 // Все цвета/шрифты/отступы из макета — только здесь, не в разметке.
 var CFG = {
   ns: 'prb',                  // ПРЕФИКС всех CSS-классов и класса overlay
+  // Адрес отчёта для кнопки «ссылка» в строке каталога: база + dashboard_id
+  // (как dashboard_url макета). Другой хост Proteus — поменять здесь.
+  dashUrl: 'https://proteus.tcsbank.ru/superset/dashboard/',
   // 16 колонок куба v7 (датасет pa_body_v42, SQL — поставка 2026-09-22, файл 2):
   // каталог rep/grp + total. colls приходит JSON-массивом, парсится в buildModel.
   // state_j — JSON активных условий запроса (только у total-строки).
@@ -593,6 +596,12 @@ function buildCSS() {
     P + '-ptable td.lead{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
     P + '-urow{cursor:pointer;}',
+    P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin-left:5px;padding:0;border:0;border-radius:6px;'
+      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.55;font:inherit;font-size:12px;font-weight:600;}',
+    P + '-urow:hover ' + P + '-lnkbtn{opacity:1;}',
+    P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
+    P + '-lnkbtn.ok{opacity:1;color:var(--green-tx, #0a8f3c);background:#e6f6ec;}',
+    P + '-lnkbtn.err{opacity:1;color:#c8251f;background:#ffe9e9;}',
     P + '-urow:hover{background:#fafbfc;}',
     P + '-urow.sel{background:var(--blue-bg);box-shadow:inset 3px 0 0 var(--act);}',
     P + '-total td{border-top:0;border-bottom:2px solid var(--line);font-weight:500;color:var(--ink);}',
@@ -689,6 +698,31 @@ function isFresh(created) {
     Date.UTC(created.y, created.m, created.d)) / 86400000);
   return days <= 90;
 }
+// Иконка «ссылка» (две скобы цепи), рисуется currentColor.
+var LINK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>';
+// Буфер обмена: Clipboard API, при отказе (iframe песочницы без clipboard-write) —
+// textarea + execCommand('copy') в том же пользовательском жесте.
+function copyText(text, done) {
+  function fallback() {
+    var ta = document.createElement('textarea'), ok = false;
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-2000px;left:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallback()); });
+      return;
+    }
+  } catch (e) { /* Clipboard API недоступен — ниже fallback */ }
+  done(fallback());
+}
 function reportTableHtml() {
   var g = curGrain(), byId = MODEL.reps[g] || {};
   var rows = [];
@@ -751,6 +785,8 @@ function reportTableHtml() {
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
       }) + '>' +
       '<td class="txt">' + esc(x.m.dash_nm) +
+        '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' +
+          tip({ title: 'Ссылка на отчёт', text: 'Клик — скопировать адрес в буфер обмена', note: CFG.dashUrl + x.id + '/' }) + '>' + LINK_SVG + '</button>' +
         '<span class="' + CFG.ns + '-unit-sub">' +
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
           esc(x.m.owner_login || '—') + '</span></td>' +
@@ -1210,6 +1246,25 @@ function buildHTML() {
       // Выбор строки каталога: отчёт / группа / срез — накопительно.
       // Кросс-фильтрация вкладок и карточки пересчитываются на клиенте,
       // серверу уходит только когортная маска.
+      // Кнопка «ссылка» в строке отчёта: копирует адрес, строку НЕ выбирает.
+      var lnk = trigger(e.target, 'data-replink');
+      if (lnk) {
+        var url = CFG.dashUrl + lnk.getAttribute('data-replink') + '/';
+        copyText(url, function (ok) {
+          lnk.className = CFG.ns + '-lnkbtn ' + (ok ? 'ok' : 'err');
+          lnk.innerHTML = ok ? '✓' : '!';
+          lnk.setAttribute('data-tip', tipHtml(ok
+            ? { title: 'Ссылка скопирована', note: url }
+            : { title: 'Не удалось скопировать', text: 'Браузер запретил доступ к буферу — адрес ниже, выделите и скопируйте вручную', note: url }));
+          if (ok) hideTip();
+          setTimeout(function () {
+            lnk.className = CFG.ns + '-lnkbtn';
+            lnk.innerHTML = LINK_SVG;
+            lnk.setAttribute('data-tip', tipHtml({ title: 'Ссылка на отчёт', text: 'Клик — скопировать адрес в буфер обмена', note: url }));
+          }, 1800);
+        });
+        return;
+      }
       var rep = trigger(e.target, 'data-rep');
       if (rep) {
         togglePick('report', rep.getAttribute('data-rep'), e.shiftKey);

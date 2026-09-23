@@ -652,6 +652,14 @@ function buildCSS() {
     P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
     P + '-lnkbtn.ok{opacity:1;color:var(--green-tx, #0a8f3c);background:#e6f6ec;}',
     P + '-lnkbtn.err{opacity:1;color:#c8251f;background:#ffe9e9;}',
+    P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
+    '  border-radius:999px;padding:2px 9px;}',
+    P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
+    P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
+    P + '-sig-chip.neutral{background:#f3f4f6;color:var(--muted);}',
+    // Ритм отчёта — те же пилюли, что сегменты людей в «Кто смотрит»:
+    // Daily/Weekly — зелёная, Monthly — голубая, Rare — серая, Dead — красная.
+    P + '-sig-chip.dead{background:var(--red-bg);color:var(--red-tx);}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.cert{background:var(--green-bg);color:var(--green-tx);}',
     P + '-rflag.new{background:var(--new-bg);color:var(--new-tx);}',
@@ -946,7 +954,7 @@ function reportTableHtml() {
       '<td class="lead">' + nf(x.k.users) + '</td>' +
       '<td>' + compact(x.k.views) + '</td>' +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
-      '<td class="rh">' + (x.k.rh.n ? esc(x.k.rh.label) : '<span class="mut">Dead</span>') + '</td>' +
+      '<td class="rh"><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span></td>' +
       '</tr>';
   }
   return { html: h + '</tbody></table>', total: total };

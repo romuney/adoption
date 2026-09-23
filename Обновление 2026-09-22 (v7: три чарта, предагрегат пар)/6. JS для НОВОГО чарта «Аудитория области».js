@@ -347,7 +347,10 @@ function calLabel(ts, i, grain) {
   return { main: grain === 'm' ? MONTHS[t.m] : 'Q' + (Math.floor(t.m / 3) + 1), bold: chY, sub: chY ? String(t.y) : '' };
 }
 function calAxisSvg(ts, grain, xOf, y0) {
-  var out = '';
+  // Линия оси X по ширине всех колонок — основание столбиков и линии.
+  var hs = ts.length > 1 ? (xOf(1) - xOf(0)) / 2 : 12;
+  var out = ts.length ? '<line x1="' + r1(xOf(0) - hs) + '" y1="' + (y0 + 0.5) + '" x2="' + r1(xOf(ts.length - 1) + hs) + '" y2="' + (y0 + 0.5) +
+    '" stroke="' + CFG.colors.axisLine + '" stroke-width="1"/>' : '';
   for (var i = 0; i < ts.length; i++) {
     var L = calLabel(ts, i, grain), x = r1(xOf(i));
     out += '<text x="' + x + '" y="' + (y0 + 12) + '" font-size="10.5" text-anchor="middle" font-weight="' + (L.bold ? 600 : 400) +
@@ -966,7 +969,7 @@ function buildCSS() {
     P + '-cttable th.txt{text-align:left;padding-left:4px;}',
     P + '-ct-med{display:block;font-size:9.5px;font-weight:500;color:var(--muted2);margin-top:1px;}',
     P + '-cttable td.txt{font-weight:500;color:var(--ink);padding-left:4px;}',
-    P + '-ct-sz{display:flex;align-items:center;gap:8px;}',
+    P + '-ct-sz{display:flex;align-items:center;gap:8px;padding-right:14px;}',
     P + '-ct-bar{flex:1;height:12px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
     P + '-ct-bar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
     P + '-ct-sz b{font-weight:500;color:var(--ink2);font-variant-numeric:tabular-nums;}',
@@ -1684,26 +1687,32 @@ function cohortTableHtml(o) {
   }
   var medAll = medianOf(closed);
   var refOf = function (ag) { return base === 'all' ? medAll : med[ag]; };
-  var maxDev = 0;
+  // Края шкалы — максимальные отклонения ВВЕРХ и ВНИЗ отдельно: у каждого края есть
+  // хотя бы одна ячейка, наведение на крайнюю ступень всегда что-то подсвечивает
+  // (симметричная шкала по |макс| оставляла один край пустым).
+  var maxUp = 0, maxDn = 0;
   for (i = 0; i < rows.length; i++) {
     for (a = 1; a <= maxAge; a++) {
       var cc = grid[i][a], rf = refOf(a);
       if (!cc || cc.partial || rf == null) continue;
-      var dv = Math.abs(pctOf(rows[i], cc) - rf);
-      if (dv > maxDev) maxDev = dv;
+      var dv = pctOf(rows[i], cc) - rf;
+      if (dv > maxUp) maxUp = dv;
+      if (-dv > maxDn) maxDn = -dv;
     }
   }
-  var span = maxDev > 0.001 ? maxDev : 20;
+  var spanUp = maxUp > 0.001 ? maxUp : (maxDn > 0.001 ? maxDn : 20);
+  var spanDn = maxDn > 0.001 ? maxDn : spanUp;
   var normOf = function (v, ag) {
     var ref = refOf(ag);
     if (ref == null || v == null) return null;
-    return Math.max(-1, Math.min(1, (v - ref) / span));
+    var dd = v - ref;
+    return Math.max(-1, Math.min(1, dd >= 0 ? dd / spanUp : dd / spanDn));
   };
   var what = base === 'all' ? 'медианы таблицы' : 'медианы своего столбца';
   var bandTip = function (bi) {
-    var d = bi - BANDS;
-    var lo = (d - 0.5) / BANDS * span, hi = (d + 0.5) / BANDS * span;
-    if (d === 0) return { title: 'Около медианы', text: 'Отклонение от ' + what + ' меньше ' + nf(span / BANDS / 2, 1) + ' п.п.' };
+    var d = bi - BANDS, sp = d > 0 ? spanUp : spanDn;
+    var lo = (d - 0.5) / BANDS * sp, hi = (d + 0.5) / BANDS * sp;
+    if (d === 0) return { title: 'Около медианы', text: 'Отклонение от ' + what + ': от ' + MINUS + nf(spanDn / BANDS / 2, 1) + ' до +' + nf(spanUp / BANDS / 2, 1) + ' п.п.' };
     return {
       title: d > 0 ? 'Выше медианы' : 'Ниже медианы',
       text: (d > 0 ? '+' : MINUS) + nf(Math.abs(d > 0 ? lo : hi), 0) + '…' +
@@ -1729,21 +1738,23 @@ function cohortTableHtml(o) {
       ' type="button">' + esc(CT_BASES[b].label) + '</button>';
   }
   h += '</div><span class="' + CFG.ns + '-ct-cfg-n"' +
-    tip({ text: 'Край шкалы равен максимальному отклонению в этой таблице (' + pct(span, 0) + '), поэтому шкала всегда использована целиком.' }) +
-    '>край шкалы ' + pct(span, 0) + '</span></div></div>';
+    tip({ text: 'Края шкалы — максимальные отклонения в этой таблице: вниз ' + MINUS + nf(spanDn, 0) + ' п.п., вверх +' + nf(spanUp, 0) + ' п.п. Крайняя ступень всегда подсвечивает самую далёкую ячейку.' }) +
+    '>края ' + MINUS + nf(spanDn, 0) + ' / +' + nf(spanUp, 0) + ' п.п.</span></div></div>';
   h += '<div class="' + CFG.ns + '-ct-wrap"><table class="' + CFG.ns + '-cttable"><colgroup>' +
     '<col style="width:64px"><col style="width:112px">';
   for (a = 0; a < maxAge; a++) h += '<col>';
   h += '</colgroup><thead><tr>' +
-    '<th class="txt"' + tip({ text: o.firstTip || 'Месяц первого визита' }) + '>Когорта</th>' +
-    '<th class="txt"' + tip({ text: o.sizeNote || 'Столько человек пришли впервые в этом месяце' }) + '>Пришло</th>';
+    '<th class="txt"' + tip({ text: o.firstTip || 'Месяц первого визита' }) + '>Когорта<span class="' + CFG.ns + '-ct-med">&nbsp;</span></th>' +
+    '<th class="txt"' + tip({ text: o.sizeNote || 'Столько человек пришли впервые в этом месяце' }) + '>Пришло<span class="' + CFG.ns + '-ct-med">&nbsp;</span></th>';
   for (a = 1; a <= maxAge; a++) {
     var ref2 = refOf(a);
     var ttl = '+' + a + ' ' + plural(a, 'месяц', 'месяца', 'месяцев');
     h += '<th' + (ref2 != null
       ? tip({ title: ttl, rows: [{ label: base === 'all' ? 'Медиана таблицы' : 'Медиана столбца', value: pct(ref2) }] })
       : tip({ title: ttl, text: 'Доля когорты, активной через ' + a + ' мес. после первого визита' })) +
-      '>+' + a + ((base === 'col' && ref2 != null) ? '<span class="' + CFG.ns + '-ct-med">м ' + pct(ref2, 0) + '</span>' : '') + '</th>';
+      // Строка медианы есть всегда (в режиме «от таблицы» — пустая): смена режима
+      // не меняет высоту шапки, таблица не прыгает.
+      '>+' + a + '<span class="' + CFG.ns + '-ct-med">' + ((base === 'col' && ref2 != null) ? 'м ' + pct(ref2, 0) : '&nbsp;') + '</span></th>';
   }
   h += '</tr></thead><tbody>';
   for (i = 0; i < rows.length; i++) {

@@ -4,8 +4,11 @@
     (mode_param + sel_f; report/owner/collection — мультивыбор = объединение,
     cut:lvl3/lvl4/spec/stream/head — эмит панели Аудитории). Людскую шину НЕ читает:
     панель — её источник (BI-паттерн: источник себя не фильтрует).
-    Одно чтение факта: evd сжимает факт до ОДНОЙ строки на логин (маска бакетов окна 2n,
-    суммы, первый визит, месяцы активности для когорт), дальше строка логина
+    v2 (2026-09-23): дневной факт НЕ читается — evd сворачивает предагрегат пар pa_pair
+    (как каталог) до ОДНОЙ строки на логин: OR масок бакетов окна 2n, суммы просмотров,
+    первый визит (kmax), маска месяцев (msk_mon — когорты и MAU). Линия «Просмотры»
+    динамики — из pa_dash_bkt (отчёт × бакет). «Дней» у человека = АКТИВНЫХ ПЕРИОДОВ
+    грануляции (на 30 днях — активные дни, как раньше). Дальше строка логина
     размножается по РОЛЯМ (total/freq/ctx/list/ts/coh; ctx g='org' — узлы оргструктуры
     УС-3…УС-7, k = путь «А › Б › В», parent = путь родителя; у list parent = путь человека) одним arrayJoin и сворачивается
     одним GROUP BY. UNION-плеч поверх общего CTE нет. -#}
@@ -40,9 +43,10 @@
 {% set have = pmode != '' and sel|length > 0 %}
 {% set repids = [] %}{% if have and pmode == 'report' %}{% for v in sel %}{% if v|int > 0 %}{% set _ = repids.append(v|int) %}{% endif %}{% endfor %}{% endif %}
 WITH
-  maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
+  {# Дата свежести — как у каталога: md пары, запасной источник — последний визит. #}
+  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   dash_ok AS (
-    SELECT dashboard_id, owners_string
+    SELECT dashboard_id
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %}
     {%- if have and pmode == 'report' %} AND dashboard_id IN ({{ repids|join(', ') if repids else '0' }}){#- мусор / пустое пересечение каталога → пустая область -#}{% endif %}
@@ -50,29 +54,28 @@ WITH
     {%- if have and pmode == 'collection' %} AND hasAny(collection_names, {{ qa(sel) }}){% endif %}
   ),
   evd AS (
-    {#- Одна строка на зрителя области. msk: bit k = активен в бакете возраста k (k < 2n). -#}
+    {#- Одна строка на зрителя области из пар: msk — bit k = активен в бакете возраста k (k < 2n),
+        fd_k — возраст бакета первого визита, mon — bit = возраст месяца активности. -#}
     SELECT toString(ifNull(e.login, '')) AS login,
-      groupBitOr(if({{ kx('e.log_dttm') }} < {{ 2 * g.n }}, toUInt64(bitShiftLeft(toUInt64(1), toUInt8({{ kx('e.log_dttm') }}))), toUInt64(0))) AS msk,
-      uniqExactIf(toDate(e.log_dttm), {{ kx('e.log_dttm') }} < {{ g.n }}) AS days,
-      sumIf(e.views, {{ kx('e.log_dttm') }} < {{ g.n }}) AS v_cur,
-      sumIf(e.views, {{ kx('e.log_dttm') }} >= {{ g.n }} AND {{ kx('e.log_dttm') }} < {{ 2 * g.n }}) AS v_prev,
-      sumMapIf([{{ kx('e.log_dttm') }}], [toInt64(e.views)], {{ kx('e.log_dttm') }} < {{ g.n }}) AS kv,
-      max({{ kx('e.log_dttm') }}) AS fd_k,
-      max(e.log_dttm) AS dmax,
-      toStartOfMonth(min(e.log_dttm)) AS c0,
-      groupUniqArray(toInt64(dateDiff('month', toStartOfMonth(e.log_dttm), toStartOfMonth((SELECT md FROM maxd))))) AS bms,
-      max(toStartOfMonth(e.log_dttm) = addMonths(toStartOfMonth((SELECT md FROM maxd)), -1)) AS m1,
-      max(toStartOfMonth(e.log_dttm) = addMonths(toStartOfMonth((SELECT md FROM maxd)), -2)) AS m2
-    FROM prod_proteus.pa_evd_day e
-    INNER JOIN dash_ok m ON m.dashboard_id = e.dashboard_id
-    WHERE 1=1{% if excv == '1' %} AND NOT has(m.owners_string, e.login){% endif %}
+      groupBitOr(toUInt64(ifNull(e.msk_{{ grain }}, 0))) AS msk,
+      sum(ifNull(e.v_{{ grain }}, 0)) AS v_cur,
+      sum(ifNull(e.vp_{{ grain }}, 0)) AS v_prev,
+      max(ifNull(e.kmax_{{ grain }}, 0)) AS fd_k,
+      max(e.dmax) AS dmax,
+      groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
+    FROM prod_proteus.pa_pair e
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
     GROUP BY e.login
   ),
   pr AS (
     {#- Зритель + атрибуты + роли, в которые он попадает. -#}
-    SELECT p.login AS login, p.msk AS msk, p.days AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
-      p.kv AS kv, p.fd_k AS fd_k, p.dmax AS dmax, p.m1 AS m1, p.m2 AS m2,
+    SELECT p.login AS login, p.msk AS msk, bitCount(bitAnd(p.msk, {{ CUR }})) AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
+      p.fd_k AS fd_k, p.dmax AS dmax, toUInt8(bitTest(p.mon, 1)) AS m1, toUInt8(bitTest(p.mon, 2)) AS m2,
+      {#- Месяцы активности из маски: возраст самого старого — месяц первого визита (когорта). -#}
+      arrayMap(i -> toInt64(i), arrayFilter(i -> bitTest(p.mon, i), range(63))) AS bms,
+      if(empty(bms), toInt64(0), arrayMax(bms)) AS gm,
+      addMonths(toStartOfMonth((SELECT md FROM maxd)), -toInt32(gm)) AS c0,
       bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
       bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
       multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, nb_cur <= {{ FBIN[3] }}, 4, 5) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
@@ -88,9 +91,7 @@ WITH
       toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
       toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,
       {% if HAS_FIO %}toString(ifNull(a.fio, '')) AS fio, toString(ifNull(a.exp_nm, '')) AS exp{% else %}'' AS fio, '' AS exp{% endif %},
-      toInt64(dateDiff('month', p.c0, toStartOfMonth((SELECT md FROM maxd)))) AS gm,
-      p.c0 AS c0,
-      arrayFilter(x -> x >= 1 AND x <= 11, arrayMap(y -> toInt64(dateDiff('month', p.c0, toStartOfMonth((SELECT md FROM maxd)))) - y, p.bms)) AS ags,
+      arrayFilter(x -> x >= 1 AND x <= 11, arrayMap(y -> gm - y, bms)) AS ags,
       arrayJoin(arrayConcat(
         [('total', '', '', '', toInt64(-1))],
         if(cur, [('freq', '', toString(bin), '', toInt64(-1))], []),
@@ -100,8 +101,9 @@ WITH
         if((cur OR prv) AND is_head = 1, [('ctx', 'head', '1', '', toInt64(-1))], []),
         if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),
         if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
-        if(gm < 12, [('coh', '', toString(p.c0), '', toInt64(-1))], []),
-        if(cur, arrayMap(t -> ('ts', '', toString(t), '', t), (p.kv).1), [])
+        if(gm < 12, [('coh', '', toString(c0), '', toInt64(-1))], []),
+        {#- Динамика: строка на каждый активный бакет текущего окна (просмотры — из pa_dash_bkt ниже). -#}
+        if(cur, arrayMap(t -> ('ts', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.msk, t), range({{ g.n }}))), [])
       )) AS rk
     FROM evd p
     LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
@@ -109,7 +111,7 @@ WITH
   agg AS (
     SELECT rk.1 AS role, rk.2 AS g, rk.3 AS k, rk.4 AS parent,
       countIf(cur) AS users, countIf(prv) AS users_prev,
-      sum(if(rk.1 = 'ts', (kv).2[indexOf((kv).1, rk.5)], v_cur)) AS views,
+      sum(if(rk.1 = 'ts', 0, v_cur)) AS views, any(rk.5) AS tk,
       sum(v_prev) AS views_prev,
       countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }})) AS new_u,
       countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }}) AS new_prev,
@@ -124,6 +126,23 @@ WITH
       any(toDate(dmax)) AS last_dt, any(bin) AS bin
     FROM pr
     GROUP BY role, g, k, parent
+  ),
+  bv AS (
+    {#- Просмотры по бакетам окна (линия «Просмотры» динамики). Людской срез области (cut:*) —
+        только из факта: у pa_dash_bkt разбивки по людям нет. -#}
+    {%- if have and pmode in CUTS %}
+    SELECT {{ kx('e.log_dttm') }} AS bk, sum(e.views) AS bviews
+    FROM prod_proteus.pa_evd_day e
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND {{ kx('e.log_dttm') }} < {{ g.n }}
+      AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }})
+      {%- if excv == '1' %} AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1){% endif %}
+    GROUP BY bk
+    {%- else %}
+    SELECT toInt64(k) AS bk, sum({{ 'views_nown' if excv == '1' else 'views' }}) AS bviews
+    FROM prod_proteus.pa_dash_bkt
+    WHERE grain = '{{ grain }}' AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    GROUP BY bk
+    {%- endif %}
   ),
   rnk AS (
     SELECT *,
@@ -169,9 +188,10 @@ FROM (
     if(role = 'list', exp, NULL) AS exp, if(role = 'list', is_head, NULL) AS is_head,
     if(role = 'list', days, NULL) AS days, if(role = 'list', last_dt, NULL) AS last_dt,
     if(role = 'list', bin, NULL) AS bin,
-    users, users_prev, views, views_prev, new_u, new_prev, react_u, regular, regular_prev,
+    users, users_prev, if(role = 'ts', toInt64(ifNull(b.bviews, 0)), toInt64(views)) AS views, views_prev, new_u, new_prev, react_u, regular, regular_prev,
     sleeping, mau, mau_prev, cnt, (am).1 AS ages, (am).2 AS acts
   FROM rnk
+  LEFT JOIN bv b ON b.bk = rnk.tk
   WHERE (role != 'list' OR rn <= {{ LIST_N }}) AND (g != 'adg' OR rn <= {{ ADG_N }})
 
   UNION ALL

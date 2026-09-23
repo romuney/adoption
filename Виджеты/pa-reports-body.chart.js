@@ -747,6 +747,9 @@ function catFilterRowHtml() {
     for (j = 0; j < sj.freq.length; j++) fv.push(fl[parseInt(sj.freq[j], 10) - 1] || sj.freq[j]);
     ext.push({ k: 'Частота', v: fv.join(', '), from: from });
   }
+  // Справочные пилюли соседнего чарта не показываем (правка владельца 2026-09-23):
+  // в строке — только то, что снимается здесь же ×. Людская шина видна по суженному каталогу.
+  ext = [];
   return filterRowHtml(own, ext, 'кликните по строке каталога — выбор появится здесь');
 }
 function panelHtml(o) {

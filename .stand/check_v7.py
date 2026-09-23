@@ -8,7 +8,8 @@
 3. Строка отчёта каталога == KPI области pa_people при выборе этого отчёта.
 4. Людская шина: корзина / группа из pa_people → ИТОГО тела совпадает с числом
    людей корзины / группы (клик в правой панели даёт ровно столько людей слева).
-5. Каждый датасет читает дневной факт не больше одного раза (сканы ≤ 1,05).
+5. Каждый датасет читает дневной факт не больше одного раза (сканы ≤ 1,05);
+   pa_people вне срезов cut:* его не читает вовсе (pa_pair + pa_dash_bkt).
 6. Шапка pa_strip (файл 4): одна строка эха условий, без выбора таблиц не
    читает, подписи пилюль верные; KPI панели == ИТОГО каталога под опциями и областью.
 7. Старый анализатор ClickHouse (enable_analyzer = 0, как может стоять на боевом 24)
@@ -20,7 +21,7 @@ import stand
 
 D = sys.argv[1]
 f = lambda p: os.path.join(D, [x for x in os.listdir(D) if x.startswith(p)][0])
-BODY, FALL, PPL, HDR = f('2. '), f('2b. '), f('3. '), f('4. ')
+BODY, FALL, PPL, PFALL, HDR = f('2. '), f('2b. '), f('3. '), f('3b. '), f('4. ')
 run = lambda p, c: stand.stat(stand.render(p, c))
 key = lambda r: (r['section'], r['dashboard_id'], r['group_key'], r['group_val'])
 bad = 0
@@ -50,7 +51,19 @@ for g in ['d', 'w', 'm', 'q']:
     pt = [r for r in p if r['section'] == 'total'][0]
     ok((t['users'], t['views'], t['regular_users']) == (pt['users'], pt['views'], pt['regular']),
        f'ИТОГО тела == total pa_people [{g}]  (pa_people сканов: {xp})')
-    ok(xp <= 1.05, f'pa_people читает факт один раз [{g}]')
+    ok('pa_evd_day' not in stand.render(PPL, {'period_param': g}) and xp <= 1.05,
+       f'pa_people не читает дневной факт — только pa_pair + pa_dash_bkt [{g}]')
+ok('pa_evd_day' in stand.render(PPL, {'mode_param': 'cut:spec', 'sel_f': ['Спец 3']}),
+   'pa_people в срезе панели «Аудитория» (cut:*) досчитывает просмотры по дневному факту')
+# pa_people на pa_pair + pa_dash_bkt (файл 3) == запасной на дневном факте (файл 3b) — все строки.
+pkey = lambda r: tuple(str(r[c]) for c in ('section', 'g', 'k', 'parent', 'login'))
+for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'},
+          {'mode_param': 'report', 'sel_f': ['1', '2', '5']}, {'mode_param': 'collection', 'sel_f': ['Колл 5']},
+          {'mode_param': 'owner', 'sel_f': ['own3']}, {'pub_f': '0', 'act_f': '0', 'exc_f': '0', 'period_param': 'w'},
+          {'mode_param': 'cut:spec', 'sel_f': ['Спец 3']}]:
+    A = {pkey(r): r for r in run(PPL, c)[0]}; B = {pkey(r): r for r in run(PFALL, c)[0]}
+    diff = [k for k in A.keys() | B.keys() if A.get(k) != B.get(k)]
+    ok(not diff, f'pa_people == запасной на факте {c}' + (f'  расхождений: {len(diff)}, напр. {sorted(diff)[:2]}' if diff else ''))
 cube = run(BODY, {})[0]
 for r in [x for x in cube if x['section'] == 'rep'][:5]:
     pt = [x for x in run(PPL, {'mode_param': 'report', 'sel_f': [str(r['dashboard_id'])]})[0] if x['section'] == 'total'][0]
@@ -114,7 +127,7 @@ u1, un, ut = tot({'heads_f': '1'}), tot({'heads_f': 'n'}), tot({})
 ok(u1 + un + na == ut, f'руководители {u1} + остальные {un} + без атрибутов {na} == все {ut}')
 # Сохранение датасета в Proteus: filter_values = AlwaysTrueObject (не список). Каждый SQL поставки
 # обязан отрендериться и исполниться (прецедент: «+» списков в pa_strip — unsupported operand).
-for pth in [BODY, FALL, PPL, HDR]:
+for pth in [BODY, FALL, PPL, PFALL, HDR]:
     try:
         sql = stand.render(pth, always_true=True); stand.S.query(sql, 'JSON'); err = ''
     except Exception as e:

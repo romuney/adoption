@@ -85,10 +85,29 @@ def _pair():
       GROUP BY e.dashboard_id, e.login""")
 
 
+def _bkt():
+    """Эмуляция GP-параграфа «PA · просмотры по периодам» (pa_dash_bkt): отчёт × грануляция ×
+    возраст бакета k < n — просмотры всех и без владельцев отчёта. Нужен pa_people для линии
+    «Просмотры» динамики: по парам (pa_pair) просмотры по бакетам не восстановить."""
+    S.query('DROP TABLE IF EXISTS prod_proteus.pa_dash_bkt')
+    G = {'d': (30, 'day', 'toStartOfDay'), 'w': (20, 'week', 'toMonday'),
+         'm': (12, 'month', 'toStartOfMonth'), 'q': (8, 'quarter', 'toStartOfQuarter')}
+    arms = []
+    for g, (n, u, sf) in G.items():
+        k = f"toInt64(dateDiff('{u}', {sf}(e.log_dttm), {sf}(mdx)))"
+        arms.append(f"""SELECT e.dashboard_id AS dashboard_id, '{g}' AS grain, {k} AS k, sum(e.views) AS views,
+          sumIf(e.views, NOT has(m.owners_string, e.login)) AS views_nown
+          FROM prod_proteus.pa_evd_day e LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = e.dashboard_id
+          WHERE {k} < {n} GROUP BY dashboard_id, k""")
+    S.query("CREATE TABLE prod_proteus.pa_dash_bkt (dashboard_id Int32, grain String, k Int64, views Int64, views_nown Int64) ENGINE=MergeTree ORDER BY (grain, dashboard_id, k)")
+    for a in arms:
+        S.query(f"INSERT INTO prod_proteus.pa_dash_bkt WITH (SELECT max(log_dttm) FROM prod_proteus.pa_evd_day) AS mdx {a}")
+
+
 def gen(big=False):
     n_dash, n_login = (16000, 47000) if big else (3000, 6400)
     S.query('CREATE DATABASE IF NOT EXISTS prod_proteus')
-    for t in ['pa_evd_day', 'pa_emp_attrs', 'pa_dash_meta', 'pa_pair']:
+    for t in ['pa_evd_day', 'pa_emp_attrs', 'pa_dash_meta', 'pa_pair', 'pa_dash_bkt']:
         S.query(f'DROP TABLE IF EXISTS prod_proteus.{t}')
     S.query("""CREATE TABLE prod_proteus.pa_dash_meta (dashboard_id Int32, dashboard_nm String, owner_login String,
       owners_string Array(String), collection_names Array(String), published Int32, actual_flg Int32,
@@ -128,6 +147,7 @@ def gen(big=False):
           FROM numbers({1600000 if big else 150000})) p ARRAY JOIN range(toUInt64(nd)) AS i
       ) GROUP BY did, lg, dt""")
     _pair()
+    _bkt()
     print(S.query('SELECT count(), uniqExact(login), uniqExact(dashboard_id) FROM prod_proteus.pa_evd_day', 'CSV'))
 
 

@@ -164,3 +164,43 @@ from ev
 left join usr_cross_data.pa_dash_meta m on m.dashboard_id = ev.dashboard_id
 group by ev.dashboard_id, ev.login
 distributed by (dashboard_id);
+
+-- ---------------------------------------------------------------------------
+-- Параграф «PA · просмотры по периодам» → usr_cross_data.pa_dash_bkt  (НОВЫЙ 2026-09-23)
+-- Отчёт × грануляция × возраст бакета k (< n текущего окна): просмотры всех и без
+-- владельцев отчёта. Нужен датасету pa_people (правая панель) для линии «Просмотры»
+-- динамики: остальное он теперь считает по pa_pair и дневной факт не читает — так
+-- правая панель стала такой же быстрой, как каталог. Возраст k — как в «PA · пары».
+-- ---------------------------------------------------------------------------
+drop table if exists usr_cross_data.pa_dash_bkt;
+create table usr_cross_data.pa_dash_bkt as
+with mx as (
+    select max(log_dttm) as md from usr_cross_data.pa_evd_day
+),
+ev as (
+    select
+        e.dashboard_id, e.views,
+        case when e.login = any(m.owners_string) then 1 else 0 end                         as own,
+        (x.md::date - e.log_dttm::date)                                                    as kd,
+        ((date_trunc('week', x.md)::date - date_trunc('week', e.log_dttm)::date) / 7)      as kw,
+        ((extract(year from x.md) * 12 + extract(month from x.md))
+          - (extract(year from e.log_dttm) * 12 + extract(month from e.log_dttm)))::int    as km,
+        ((extract(year from x.md) * 4 + extract(quarter from x.md))
+          - (extract(year from e.log_dttm) * 4 + extract(quarter from e.log_dttm)))::int   as kq
+    from usr_cross_data.pa_evd_day e
+    cross join mx x
+    left join usr_cross_data.pa_dash_meta m on m.dashboard_id = e.dashboard_id
+)
+select dashboard_id, 'd'::text as grain, kd::bigint as k, sum(views)::bigint as views,
+       sum(case when own = 0 then views else 0 end)::bigint as views_nown
+from ev where kd < 30 group by dashboard_id, kd
+union all
+select dashboard_id, 'w', kw::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+from ev where kw < 20 group by dashboard_id, kw
+union all
+select dashboard_id, 'm', km::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+from ev where km < 12 group by dashboard_id, km
+union all
+select dashboard_id, 'q', kq::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+from ev where kq < 8 group by dashboard_id, kq
+distributed by (dashboard_id);

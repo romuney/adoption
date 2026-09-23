@@ -92,7 +92,7 @@ var CFG = {
     { key: 'fio', label: 'Сотрудник', txt: true },
     { key: 'org', label: 'Подразделение', txt: true },
     { key: 'exp', label: 'Стаж', txt: true },
-    { key: 'days', label: 'Дней' },
+    { key: 'days', label: 'Дней', hint: 'Активных периодов в окне: дней, недель, месяцев или кварталов — по грануляции' },
     { key: 'views', label: 'Просм.' },
     { key: 'last', label: 'Визит' },
     { key: 'bin', label: 'Сегмент', txt: true }
@@ -105,10 +105,10 @@ var CFG = {
   fbins: { d: [1, 3, 7, 15], w: [1, 3, 7, 15], m: [1, 3, 6, 9], q: [1, 2, 3, 4] },
   fopen: { d: true, q: true },
   grains: {
-    d: { n: 30, unit: 'день',    units: 'дней',     label: 'за 30 дней',    vs: 'к пред. 30 дням',     prev: true },
-    w: { n: 20, unit: 'неделя',  units: 'недель',   label: 'за 20 недель',  vs: 'к пред. 20 неделям',  prev: true },
-    m: { n: 12, unit: 'месяц',   units: 'месяцев',  label: 'за 12 месяцев', vs: 'к пред. 12 месяцам',  prev: false },
-    q: { n: 8,  unit: 'квартал', units: 'кварталов', label: 'за 8 кварталов', vs: 'к пред. 8 кварталам', prev: false }
+    d: { n: 30, unit: 'день',    units: 'дней',     us: 'дн',  label: 'за 30 дней',    vs: 'к пред. 30 дням',     prev: true },
+    w: { n: 20, unit: 'неделя',  units: 'недель',   us: 'нед', label: 'за 20 недель',  vs: 'к пред. 20 неделям',  prev: true },
+    m: { n: 12, unit: 'месяц',   units: 'месяцев',  us: 'мес', label: 'за 12 месяцев', vs: 'к пред. 12 месяцам',  prev: false },
+    q: { n: 8,  unit: 'квартал', units: 'кварталов', us: 'кв', label: 'за 8 кварталов', vs: 'к пред. 8 кварталам', prev: false }
   },
   // Подписи режимов области (mode_param каталога и cut:* панели «Аудитория»).
   areaLabels: {
@@ -1072,7 +1072,7 @@ function personRowHtml(p) {
       title: p.fio || p.login,
       text: p.org ? p.org : 'Подразделение не указано',
       rows: [
-        { label: 'Активных дней', value: nf(p.days), color: CFG.colors.act },
+        { label: actLabel(), value: nf(p.days), color: CFG.colors.act },
         { label: 'Просмотров', value: p.views ? nf(p.views) : '—' },
         { label: 'Стаж в компании', value: p.exp || '—' }
       ],
@@ -1090,6 +1090,9 @@ function personRowHtml(p) {
     '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td>' +
     '</tr>';
 }
+function grainCfg() { return CFG.grains[state.grain] || CFG.grains.d; }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function actLabel() { return 'Активных ' + grainCfg().units; }
 function sortTh(attr, col, sc, cls) {
   var on = sc.key === col.key;
   return '<th class="srt' + (col.txt ? ' txt' : '') + (on ? ' on' : '') + (cls ? ' ' + cls : '') + '" ' + attr + '="' + esc(col.key) + '"' +
@@ -1109,16 +1112,28 @@ function pagerHtml(total) {
     '<span class="' + CFG.ns + '-pgnum">' + (state.page + 1) + ' / ' + pages + '</span>' +
     '<button type="button" class="' + CFG.ns + '-pgbtn" data-pg="next"' + (state.page >= pages - 1 ? ' disabled' : '') + ' aria-label="Следующая страница">›</button></div>';
 }
+// Корзина есть в области, но в топ-3 000 списка никто из неё не вошёл (частые вытесняют
+// редких) — не «никто не подходит»: каталог слева всё равно сужен сервером.
+function emptyPeopleText() {
+  if (state.freqSel && !state.q && MODEL.list.length >= CFG.listCap)
+    return 'В поимённый список входят ' + nf(CFG.listCap) + ' самых активных зрителей — из этой корзины в него никто не попал. Каталог слева сужен по всей корзине.';
+  return 'Никто не подходит под корзину частоты, поиск и настройки.';
+}
 function peopleTableHtml(plist) {
   var sorted = sortPeople(plist);
   var PS = CFG.pageSize, pager = pagerHtml(sorted.length);
   var page = sorted.slice(state.page * PS, state.page * PS + PS);   // в DOM — только страница (RETRO 30)
   var th = '';
-  for (var c = 0; c < CFG.pcols.length; c++) th += sortTh('data-psort', CFG.pcols[c], state.pSort);
+  for (var c = 0; c < CFG.pcols.length; c++) {
+    var pc = CFG.pcols[c];
+    // «Дней» — активные периоды текущей грануляции (Недель / Месяцев / Кварталов)
+    if (pc.key === 'days') pc = { key: 'days', label: cap(grainCfg().units), hint: pc.hint };
+    th += sortTh('data-psort', pc, state.pSort);
+  }
   var rows = '';
   for (var i = 0; i < page.length; i++) rows += personRowHtml(page[i]);
   return '<div class="' + CFG.ns + '-tbl-scroll"><table class="' + CFG.ns + '-ptable dense who-people"><thead><tr>' + th + '</tr></thead><tbody>' +
-    (rows || '<tr><td colspan="' + CFG.pcols.length + '" class="' + CFG.ns + '-empty-td">Никто не подходит под корзину частоты, поиск и настройки.</td></tr>') +
+    (rows || '<tr><td colspan="' + CFG.pcols.length + '" class="' + CFG.ns + '-empty-td">' + emptyPeopleText() + '</td></tr>') +
     '</tbody></table></div>' + pager;
 }
 
@@ -1279,11 +1294,11 @@ function nestPeopleHtml(nd, people, span) {
   for (var i = 0; i < sorted.length && i < lim; i++) {
     var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
     h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
-      tip({ title: p.fio || p.login, text: p.org || '', rows: [{ label: 'Активных дней', value: nf(p.days), color: CFG.colors.act }, { label: 'Просмотров', value: nf(p.views) }],
+      tip({ title: p.fio || p.login, text: p.org || '', rows: [{ label: actLabel(), value: nf(p.days), color: CFG.colors.act }, { label: 'Просмотров', value: nf(p.views) }],
         note: 'Клик сузит каталог слева до отчётов этого человека; Shift — добавить к выбору' }) + '>' +
       '<td class="txt">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
         ' <span class="' + CFG.ns + '-wo-login">' + esc(p.login) + '</span></td>' +
-      '<td>' + nf(p.days) + THIN + 'дн</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
+      '<td>' + nf(p.days) + THIN + grainCfg().us + '</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
       '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td></tr>';
   }
   h += '</tbody></table>';
@@ -1338,7 +1353,7 @@ function exportRows() {
   var num2 = function (v, d) { return v == null || !isFinite(v) ? '' : (d ? v.toFixed(d).replace('.', ',') : String(Math.round(v))); };
   if (cut === 'none') {
     head = ['ФИО', 'Логин', 'Руководитель', 'УС-3', 'УС-4', 'УС-5', 'УС-6', 'УС-7', 'Специализация', 'Стрим', 'Стаж',
-      'Активных дней', 'Просмотров', 'Последний визит', 'Сегмент'];
+      actLabel(), 'Просмотров', 'Последний визит', 'Сегмент'];
     var ps = sortPeople(shownList());
     for (i = 0; i < ps.length; i++) {
       var p = ps[i], op = orgParts(p.org);
@@ -1882,8 +1897,8 @@ function areaFilterRowHtml(ai) {
   if (state.freqSel) own.push({ id: 'freq|', k: 'Частота', v: MODEL.labels[parseInt(state.freqSel, 10) - 1] || state.freqSel });
   if (state.headsOnly) own.push({ id: 'headsOnly|', k: '', v: 'Только руководители' });
   if (state.excl.length) own.push({ id: 'excl|', k: 'Исключено', v: String(state.excl.length), full: state.excl.map(function (x) { return fioOf[x] || x; }).slice(0, 8).join(', ') });
-  var ext = ai.mut ? [] : [{ k: '', v: ai.pill, full: ai.text, from: 'Задано в каталоге слева — снимается там.' }];
-  return filterRowHtml(own, ext, 'кликните по группе, человеку или корзине частоты — выбор появится здесь', 'ppl');
+  // Только то, что снимается здесь же (×): выбор каталога виден в заголовке панели.
+  return filterRowHtml(own, [], 'кликните по группе, человеку или корзине частоты — выбор появится здесь', 'ppl');
 }
 function kpiCard(o) {
   return '<div class="' + CFG.ns + '-kpi">' +

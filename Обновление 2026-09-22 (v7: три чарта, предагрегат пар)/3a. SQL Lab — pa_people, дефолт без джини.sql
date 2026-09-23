@@ -1,32 +1,28 @@
 -- SQL Lab: pa_people (файл 3), 30 дней, без выбора в каталоге. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 4
+-- 5
 WITH
-  maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
+  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   dash_ok AS (
-    SELECT dashboard_id, owners_string
+    SELECT dashboard_id
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1 AND published = 1 AND actual_flg = 1
   ),
   evd AS (SELECT toString(ifNull(e.login, '')) AS login,
-      groupBitOr(if(toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) < 60, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd))))))), toUInt64(0))) AS msk,
-      uniqExactIf(toDate(e.log_dttm), toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) < 30) AS days,
-      sumIf(e.views, toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) < 30) AS v_cur,
-      sumIf(e.views, toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) >= 30 AND toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) < 60) AS v_prev,
-      sumMapIf([toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd))))], [toInt64(e.views)], toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd)))) < 30) AS kv,
-      max(toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay((SELECT md FROM maxd))))) AS fd_k,
-      max(e.log_dttm) AS dmax,
-      toStartOfMonth(min(e.log_dttm)) AS c0,
-      groupUniqArray(toInt64(dateDiff('month', toStartOfMonth(e.log_dttm), toStartOfMonth((SELECT md FROM maxd))))) AS bms,
-      max(toStartOfMonth(e.log_dttm) = addMonths(toStartOfMonth((SELECT md FROM maxd)), -1)) AS m1,
-      max(toStartOfMonth(e.log_dttm) = addMonths(toStartOfMonth((SELECT md FROM maxd)), -2)) AS m2
-    FROM prod_proteus.pa_evd_day e
-    INNER JOIN dash_ok m ON m.dashboard_id = e.dashboard_id
-    WHERE 1=1 AND NOT has(m.owners_string, e.login)
+      groupBitOr(toUInt64(ifNull(e.msk_d, 0))) AS msk,
+      sum(ifNull(e.v_d, 0)) AS v_cur,
+      sum(ifNull(e.vp_d, 0)) AS v_prev,
+      max(ifNull(e.kmax_d, 0)) AS fd_k,
+      max(e.dmax) AS dmax,
+      groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
+    FROM prod_proteus.pa_pair e
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
     GROUP BY e.login
   ),
-  pr AS (SELECT p.login AS login, p.msk AS msk, p.days AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
-      p.kv AS kv, p.fd_k AS fd_k, p.dmax AS dmax, p.m1 AS m1, p.m2 AS m2,
+  pr AS (SELECT p.login AS login, p.msk AS msk, bitCount(bitAnd(p.msk, 1073741823)) AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
+      p.fd_k AS fd_k, p.dmax AS dmax, toUInt8(bitTest(p.mon, 1)) AS m1, toUInt8(bitTest(p.mon, 2)) AS m2,arrayMap(i -> toInt64(i), arrayFilter(i -> bitTest(p.mon, i), range(63))) AS bms,
+      if(empty(bms), toInt64(0), arrayMax(bms)) AS gm,
+      addMonths(toStartOfMonth((SELECT md FROM maxd)), -toInt32(gm)) AS c0,
       bitAnd(p.msk, 1073741823) != 0 AS cur, bitAnd(p.msk, 1152921503533105152) != 0 AS prv,
       bitCount(bitAnd(p.msk, 1073741823)) AS nb_cur, bitCount(bitAnd(p.msk, 1152921503533105152)) AS nb_prev,
       multiIf(nb_cur <= 1, 1, nb_cur <= 3, 2, nb_cur <= 7, 3, nb_cur <= 15, 4, 5) AS bin,
@@ -35,9 +31,7 @@ WITH
       toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
       toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,
       toString(ifNull(a.fio, '')) AS fio, toString(ifNull(a.exp_nm, '')) AS exp,
-      toInt64(dateDiff('month', p.c0, toStartOfMonth((SELECT md FROM maxd)))) AS gm,
-      p.c0 AS c0,
-      arrayFilter(x -> x >= 1 AND x <= 11, arrayMap(y -> toInt64(dateDiff('month', p.c0, toStartOfMonth((SELECT md FROM maxd)))) - y, p.bms)) AS ags,
+      arrayFilter(x -> x >= 1 AND x <= 11, arrayMap(y -> gm - y, bms)) AS ags,
       arrayJoin(arrayConcat(
         [('total', '', '', '', toInt64(-1))],
         if(cur, [('freq', '', toString(bin), '', toInt64(-1))], []),
@@ -47,8 +41,7 @@ WITH
         if((cur OR prv) AND is_head = 1, [('ctx', 'head', '1', '', toInt64(-1))], []),
         if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),
         if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
-        if(gm < 12, [('coh', '', toString(p.c0), '', toInt64(-1))], []),
-        if(cur, arrayMap(t -> ('ts', '', toString(t), '', t), (p.kv).1), [])
+        if(gm < 12, [('coh', '', toString(c0), '', toInt64(-1))], []),if(cur, arrayMap(t -> ('ts', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.msk, t), range(30))), [])
       )) AS rk
     FROM evd p
     LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
@@ -56,7 +49,7 @@ WITH
   agg AS (
     SELECT rk.1 AS role, rk.2 AS g, rk.3 AS k, rk.4 AS parent,
       countIf(cur) AS users, countIf(prv) AS users_prev,
-      sum(if(rk.1 = 'ts', (kv).2[indexOf((kv).1, rk.5)], v_cur)) AS views,
+      sum(if(rk.1 = 'ts', 0, v_cur)) AS views, any(rk.5) AS tk,
       sum(v_prev) AS views_prev,
       countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < 30)) AS new_u,
       countIf(prv AND fd_k >= 30 AND fd_k < 60) AS new_prev,
@@ -71,6 +64,12 @@ WITH
       any(toDate(dmax)) AS last_dt, any(bin) AS bin
     FROM pr
     GROUP BY role, g, k, parent
+  ),
+  bv AS (
+    SELECT toInt64(k) AS bk, sum(views_nown) AS bviews
+    FROM prod_proteus.pa_dash_bkt
+    WHERE grain = 'd' AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    GROUP BY bk
   ),
   rnk AS (
     SELECT *,
@@ -116,13 +115,12 @@ FROM (
     if(role = 'list', exp, NULL) AS exp, if(role = 'list', is_head, NULL) AS is_head,
     if(role = 'list', days, NULL) AS days, if(role = 'list', last_dt, NULL) AS last_dt,
     if(role = 'list', bin, NULL) AS bin,
-    users, users_prev, views, views_prev, new_u, new_prev, react_u, regular, regular_prev,
+    users, users_prev, if(role = 'ts', toInt64(ifNull(b.bviews, 0)), toInt64(views)) AS views, views_prev, new_u, new_prev, react_u, regular, regular_prev,
     sleeping, mau, mau_prev, cnt, (am).1 AS ages, (am).2 AS acts
   FROM rnk
+  LEFT JOIN bv b ON b.bk = rnk.tk
   WHERE (role != 'list' OR rn <= 3000) AND (g != 'adg' OR rn <= 100)
-
   UNION ALL
-  
   SELECT 'area' AS section, '' AS g,
     '' AS k, 'd' AS parent,
     NULL AS login,

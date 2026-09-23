@@ -77,6 +77,7 @@
     'Люди':           [['Департамент HR', 4], ['Департамент обучения', 3]],
   };
   const ORG_PARENT = {};        // департамент → блок
+  const ORG_SEP = ' › ';        // разделитель пути оргструктуры (как в бою: pa_people, org_f)
   CUTS.lvl3.vals.forEach((b) => (ORG_TREE[b] || []).forEach(([d, w]) => {
     ORG_PARENT[d] = b; CUTS.lvl4.vals.push(d); CUTS.lvl4.w.push(w);
   }));
@@ -650,6 +651,24 @@
         is_head: rp() < .12 ? 1 : 0,
       });
     }
+    /* Оргструктура ниже департамента — УС-5…УС-7 (в бою lvl5…lvl7 из
+       proteus_views_1). Строится ДЕТЕРМИНИРОВАННО от pid через h2, а не от
+       общего rng: иначе сдвинулись бы все остальные числа макета. Путь
+       обрывается на первом пустом уровне: часть людей сидит прямо в
+       департаменте или управлении. org — путь «УС-3 › … › УС-7». */
+    const UPR = ['Управление аналитики', 'Управление развития', 'Управление сопровождения', 'Управление продукта'];
+    const OTD = ['Отдел А', 'Отдел Б', 'Отдел В'];
+    const KOM = ['Команда 1', 'Команда 2'];
+    out.forEach((p) => {
+      const d4 = p.lvl4 ? p.lvl4.replace(/^Департамент\s+/, '') : '';
+      const a = h2(p.pid, 5101), b = h2(p.pid, 5202), c = h2(p.pid, 5303);
+      p.lvl5 = p.lvl4 && a > .1 ? UPR[Math.floor(h2(p.pid, 5404) * (2 + (d4.length % 3)))] + ' · ' + d4 : '';
+      p.lvl6 = p.lvl5 && b > .22 ? OTD[Math.floor(h2(p.pid, 5505) * OTD.length)] : '';
+      p.lvl7 = p.lvl6 && c > .35 ? KOM[Math.floor(h2(p.pid, 5606) * KOM.length)] : '';
+      const path = [];
+      [p.lvl3, p.lvl4, p.lvl5, p.lvl6, p.lvl7].some((x) => { if (!x) return true; path.push(x); return false; });
+      p.org = path.join(ORG_SEP);
+    });
     /* Логины уникальны, как в бою: пул ФИО в моке мал, тёзки получают
        номер (п.иванова, п.иванова2…). Клик по человеку в «Кто смотрит»
        обязан выделять ровно одного. */
@@ -843,7 +862,8 @@
       }
       return {
         pid: p.pid, fio: p.fio, login: p.login,
-        lvl3: p.lvl3, lvl4: p.lvl4, stream: p.stream, spec: p.spec,
+        lvl3: p.lvl3, lvl4: p.lvl4, lvl5: p.lvl5, lvl6: p.lvl6, lvl7: p.lvl7, org: p.org,
+        stream: p.stream, spec: p.spec,
         exp: p.exp, it: p.it, hq: p.hq, is_head: p.is_head,
         has_access: acc,
         came, active_days: days, views, last_visit_days: last,
@@ -951,7 +971,7 @@
     MAX_DATE, GRAINS, CUTS, CUT_KEYS, FREQ,
     ds_overview, ds_reports,
     reportMeta, audienceMeta,
-    population, POP_W, POP_N, AUD_DIMS, AD_GROUP_DEF,
+    population, POP_W, POP_N, AUD_DIMS, AD_GROUP_DEF, ORG_SEP,
     accessAudience, customAudience, audienceRows, audienceDynamics, inAdGroup, hasAccess,
     scopeUsers, scopeVisitors, visitorsOf, reportsForPeople,
     reportCohorts, globalCohorts,

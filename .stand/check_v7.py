@@ -56,9 +56,15 @@ for r in [x for x in cube if x['section'] == 'rep'][:5]:
     pt = [x for x in run(PPL, {'mode_param': 'report', 'sel_f': [str(r['dashboard_id'])]})[0] if x['section'] == 'total'][0]
     ok((r['users'], r['views'], r['regular_users']) == (pt['users'], pt['views'], pt['regular']), f'отчёт {r["dashboard_id"]}: строка каталога == KPI области')
 p = run(PPL, {})[0]
-for r in [x for x in p if x['section'] == 'freq']:
-    t = [x for x in run(BODY, {'freq_f': [r['k']]})[0] if x['section'] == 'total']
-    ok(str(t[0]['users'] if t else 0) == str(r['users']), f'корзина {r["k"]}: людей {r["users"]} → ИТОГО тела')
+# Корзины частоты — своя шкала у каждой гранулярности; клик по корзине → ИТОГО тела == людям корзины.
+for g in ['d', 'w', 'm', 'q']:
+    pg = run(PPL, {'period_param': g})[0]
+    fr = [x for x in pg if x['section'] == 'freq']
+    tt = [x for x in pg if x['section'] == 'total'][0]
+    ok(sum(int(x['users']) for x in fr) == int(tt['users']), f'корзины [{g}] делят всех людей периода без остатка ({tt["users"]})')
+    for r in fr:
+        t = [x for x in run(BODY, {'freq_f': [r['k']], 'period_param': g})[0] if x['section'] == 'total']
+        ok(str(t[0]['users'] if t else 0) == str(r['users']), f'корзина {r["k"]} [{g}]: людей {r["users"]} → ИТОГО тела')
 # Оргструктура: узел любой глубины (УС-3…УС-7) → ИТОГО тела == людям узла в панели.
 orgs = [x for x in p if x['section'] == 'ctx' and x['g'] == 'org' and int(x['users']) > 0]
 for depth in range(1, 6):

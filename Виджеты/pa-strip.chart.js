@@ -14,17 +14,14 @@
 // ОБЯЗАТЕЛЬНО: все 7 блоков ниже, в таком порядке, без перенумерации.
 // ОБЯЗАТЕЛЬНО: вызов render(); в теле mount() — без него overlay пустой.
 //
-// ЧТО ЭТО. Верхний чарт листа во всю ширину, v7.2 (вариант «KPI в панели»):
-//   одна тонкая карточка — период · опции · свежесть · сброс, под ними строка
-//   общих фильтров: пилюли всех активных условий листа. KPI и «Что видно в
-//   данных» живут в правой панели («Аудитория области»).
-// ДАННЫЕ. Датасет pa_strip — ОДНА строка эха условий (state_j) и подписей для
-//   пилюль (area_nm — названия отчётов, ppl_nm — ФИО людей). Факт и pa_pair не
-//   читает: запрос мгновенный.
+// ЧТО ЭТО. Верхний чарт листа во всю ширину, v7.3: одна строка — период ·
+//   «Считать»: переключатели опций · свежесть данных. Выбранные фильтры живут
+//   НЕ здесь, а в строке «Выбранные фильтры» над каждым чартом, где их задали и
+//   где снимают (правка владельца 2026-09-23: «фильтры — в самих чартах»).
+// ДАННЫЕ. Датасет pa_strip — одна строка эха (grain); шапке он нужен только как
+//   носитель чарта. Факт и pa_pair не читает.
 // ШИНЫ. Пишет period_param / pub_f / act_f / exc_f → каталог и панель.
 //   Самовлияние выключено: свои период и опции шапка держит в состоянии.
-//   Слушает область каталога (mode_param + sel_f) и людскую шину панели. Чужие
-//   условия только показывает: снимаются они там, где заданы.
 // ============================================================================
 
 // ---------- БЛОК 1: CFG ----------
@@ -199,12 +196,6 @@ function plural(n, one, few, many) {
   if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return few;
   return many;
 }
-function freqLabel(i, units) {
-  var f = { 'дней': ['день', 'дня', 'дней'], 'недель': ['неделя', 'недели', 'недель'],
-    'месяцев': ['месяц', 'месяца', 'месяцев'], 'кварталов': ['квартал', 'квартала', 'кварталов'] }[units] || ['день', 'дня', 'дней'];
-  var rg = function (a, b) { return a + THIN + '–' + THIN + b + ' ' + plural(b, f[0], f[1], f[2]); };
-  return ['1 ' + f[0], rg(2, 3), rg(4, 7), rg(8, 15), '16+ ' + f[2]][i] || '';
-}
 // Подсказка — тот же HTML-контракт, что у каталога и панели.
 function tipHtml(o) {
   if (o == null) return '';
@@ -276,111 +267,19 @@ function buildCSS() {
     P + '-tog.on i:after{transform:translateX(11px);}',
     P + '-tog.dev{border-color:' + C.actLine + ';background:' + C.blueBg + ';}',
     P + '-tog:focus-within{outline:2px solid ' + C.actLine + ';outline-offset:1px;}',
-    P + '-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;flex:0 0 auto;'
-           + 'border:1px solid ' + C.line + ';color:' + C.mut + ';font-size:9px;font-style:normal;font-weight:600;cursor:help;vertical-align:middle;}',
     P + '-fresh{font-size:11.5px;color:' + C.mut + ';display:inline-flex;align-items:center;gap:7px;}',
     P + '-fresh b{color:' + C.ink2 + ';font-weight:500;}',
     P + '-fresh i{width:7px;height:7px;border-radius:50%;background:' + C.green + ';display:inline-block;}',
-    P + '-btn-ghost{border:0;color:' + C.act + ';background:transparent;border-radius:9px;padding:5px 12px;'
-           + 'font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;}',
-    P + '-btn-ghost:hover{background:rgba(0,115,160,.08);}',
     // ── KPI ──
     // ── «Что видно в данных»: лента фиксированной высоты ──
     // ── Общие фильтры листа ──
-    P + '-flt{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:26px;padding-top:8px;border-top:1px solid ' + C.line2 + ';}',
-    P + '-flt-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:' + C.mut + ';font-weight:500;}',
-    P + '-flt-hint{font-size:11.5px;color:' + C.mut + ';}',
-    P + '-pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:3px 11px;font-size:11.5px;font-weight:500;'
-           + 'max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help;border:1px solid transparent;}',
-    P + '-pill.area{background:' + C.blueBg + ';border-color:' + C.actLine + ';color:' + C.actInk + ';}',
-    P + '-pill.ppl{background:' + C.pplBg + ';border-color:' + C.pplLine + ';color:' + C.ppl + ';}',
-    P + '-pill.opt{background:#f2f4f6;border-color:' + C.line2 + ';color:' + C.ink2 + ';cursor:default;padding-right:6px;}',
-    P + '-pill.opt button{width:15px;height:15px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(58,63,74,.12);'
-           + 'color:' + C.ink2 + ';font-size:11px;line-height:1;}',
-    P + '-pill.opt button:hover{background:rgba(58,63,74,.24);}',
-    P + '-pill-k{opacity:.75;font-weight:400;}',
     '</style>'
   ].join('');
-}
-
-// Общие фильтры листа: область каталога (синие), люди из «Кто смотрит»
-// (фиолетовые), отклонённые свитки полоски (серые, снимаются здесь же ×).
-function filtersHtml() {
-  var N = CFG.ns, sj = MODEL.sj || {}, h = '', n = 0;
-  var fromCat = 'Задано в каталоге слева — снимается кликом по выделенной строке.';
-  var fromWho = 'Задано в «Кто смотрит» справа — снимается кликом по выделенной строке.';
-  if (sj.area_mode && sj.area && sj.area.length) {
-    var L = CFG.areaLabels[sj.area_mode] || ['Область', 'Область'];
-    var names = sj.area_mode === 'report' ? (MODEL.areaNm.length ? MODEL.areaNm : sj.area) : sj.area;
-    var one = sj.area.length === 1;
-    if (sj.area_mode === 'report' && one && sj.area[0] === '0') {
-      h += '<span class="' + N + '-pill area"' + tip({ title: 'Область', text: 'Условия каталога не оставили ни одного отчёта.' }) + '>Пустое пересечение</span>';
-    } else {
-      h += '<span class="' + N + '-pill area"' + tip({ title: L[one ? 0 : 1], text: fromCat,
-        rows: one ? [] : names.slice(0, 12).map(function (x) { return { label: x, value: '' }; }) }) + '>' +
-        '<span class="' + N + '-pill-k">' + esc(L[one ? 0 : 1]) + ':</span> ' + esc(one ? (names[0] || sj.area[0]) : String(sj.area.length)) + '</span>';
-    }
-    n++;
-  }
-  for (var c = 0; c < CFG.pplLabels.length; c++) {
-    var pl = CFG.pplLabels[c], vals = sj[pl.key];
-    if (!vals || !vals.length) continue;
-    h += '<span class="' + N + '-pill ppl"' + tip({ title: vals.length === 1 ? pl.one : pl.many, text: fromWho,
-      rows: vals.length === 1 ? [] : vals.slice(0, 12).map(function (x) { return { label: x, value: '' }; }) }) + '>' +
-      '<span class="' + N + '-pill-k">' + esc(vals.length === 1 ? pl.one : pl.many) + ':</span> ' + esc(vals.length === 1 ? vals[0] : String(vals.length)) + '</span>';
-    n++;
-  }
-  // Узлы оргструктуры: путь «УС-3 › … › УС-7» — в пилюле последнее звено, путь — во всплывашке.
-  if (sj.org && sj.org.length) {
-    var last = function (x) { var ps = String(x).split(' › '); return ps[ps.length - 1]; };
-    var lvl = function (x) { return 'УС-' + (String(x).split(' › ').length + 2); };
-    var o1 = sj.org.length === 1;
-    h += '<span class="' + N + '-pill ppl"' + tip({ title: o1 ? lvl(sj.org[0]) : 'Подразделения', text: (o1 ? sj.org[0] + '. ' : '') + fromWho,
-      rows: o1 ? [] : sj.org.slice(0, 12).map(function (x) { return { label: last(x), value: lvl(x) }; }) }) + '>' +
-      '<span class="' + N + '-pill-k">' + (o1 ? esc(lvl(sj.org[0])) : 'Подразделения') + ':</span> ' + esc(o1 ? last(sj.org[0]) : String(sj.org.length)) + '</span>';
-    n++;
-  }
-  if (sj.login && sj.login.length) {
-    var nm = function (l) { return MODEL.ppl[l] || l; };
-    h += '<span class="' + N + '-pill ppl"' + tip({ title: sj.login.length === 1 ? 'Человек' : 'Люди', text: fromWho,
-      rows: sj.login.slice(0, 12).map(function (x) { return { label: nm(x), value: x }; }) }) + '>' +
-      '<span class="' + N + '-pill-k">' + (sj.login.length === 1 ? 'Человек:' : 'Люди:') + '</span> ' +
-      esc(sj.login.length === 1 ? nm(sj.login[0]) : String(sj.login.length)) + '</span>';
-    n++;
-  }
-  if (sj.heads === '1' || sj.heads === 'n') {
-    h += '<span class="' + N + '-pill ppl"' + tip({ title: 'Руководители', text: fromWho }) + '>' + (sj.heads === '1' ? 'Только руководители' : 'Без руководителей') + '</span>';
-    n++;
-  }
-  if (sj.exl && sj.exl.length) {
-    var nx = function (l) { return MODEL.ppl[l] || l; };
-    h += '<span class="' + N + '-pill ppl"' + tip({ title: 'Исключены из всех чисел',
-      text: 'Задано в «Кто смотрит» → Настройки → Исключить логины; снимается там же.',
-      rows: sj.exl.slice(0, 12).map(function (x) { return { label: nx(x), value: x }; }) }) + '>' +
-      '<span class="' + N + '-pill-k">Исключено:</span> ' + esc(sj.exl.length === 1 ? nx(sj.exl[0]) : String(sj.exl.length)) + '</span>';
-    n++;
-  }
-  if (sj.freq && sj.freq.length) {
-    var G = grainOf(state.grain), fl = [];
-    for (var f = 0; f < sj.freq.length; f++) fl.push(freqLabel(parseInt(sj.freq[f], 10) - 1, G.units));
-    h += '<span class="' + N + '-pill ppl"' + tip({ title: 'Частота', text: fromWho }) + '><span class="' + N + '-pill-k">Частота:</span> ' + esc(fl.join(', ')) + '</span>';
-    n++;
-  }
-  for (var s = 0; s < CFG.switches.length; s++) {
-    var sw = CFG.switches[s];
-    if (state.sw[sw.key] === sw.def) continue;
-    h += '<span class="' + N + '-pill opt">' + esc(sw.off) +
-      '<button type="button" data-swreset="' + esc(sw.key) + '" aria-label="Вернуть «' + esc(sw.label) + '»">×</button></span>';
-    n++;
-  }
-  return '<div class="' + N + '-flt"><span class="' + N + '-flt-l">Фильтры</span>' +
-    (n ? h : '<span class="' + N + '-flt-hint">клик по строке каталога или «Кто смотрит» добавит условие сюда; Shift — несколько</span>') + '</div>';
 }
 
 // Только конкатенация строк. Все данные через esc().
 function buildHTML() {
   var N = CFG.ns, h = [];
-  var sj = MODEL.sj || {};
   h.push('<div class="' + N + '-root">');
   h.push('<div class="' + N + '-strip">');
   h.push('<div class="' + N + '-strip-seg" role="group" aria-label="Период">');
@@ -401,10 +300,8 @@ function buildHTML() {
   h.push('<span class="' + N + '-sp"></span>');
   h.push('<span class="' + N + '-fresh"' + tip({ title: 'Свежесть данных', text: 'Витрина обновляется ежедневно, данные — по вчерашний день включительно.' }) +
     '><i></i>данные <b>за вчера</b></span>');
-  h.push('<button type="button" class="' + N + '-btn-ghost" data-action="resetAll"' +
-    tip({ text: 'Вернуть период и переключатели к умолчанию. Выбор в каталоге и в «Кто смотрит» снимается там же, где сделан.' }) + '>Сбросить</button>');
+
   h.push('</div>');
-  h.push(filtersHtml());
   h.push('</div>');
   return buildCSS() + h.join('');
 }

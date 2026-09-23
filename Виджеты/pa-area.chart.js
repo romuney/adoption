@@ -100,6 +100,10 @@ var CFG = {
   // Грануляция периода задаётся полоской (period_param); датасет возвращает
   // её в area-строке (parent). prev — есть ли в 13 месяцах истории полный
   // предыдущий период той же длины (m: 24 мес., q: 16 кв. — нет).
+  // Корзины частоты: верхние границы корзин 1–4 по гранулярности (= FBIN в SQL
+  // pa_people и каталога); fopen — пятая корзина подписывается «N+», иначе диапазоном до n.
+  fbins: { d: [1, 3, 7, 15], w: [1, 3, 7, 15], m: [1, 3, 6, 9], q: [1, 2, 3, 4] },
+  fopen: { d: true, q: true },
   grains: {
     d: { n: 30, unit: 'день',    units: 'дней',     label: 'за 30 дней',    vs: 'к пред. 30 дням',     prev: true },
     w: { n: 20, unit: 'неделя',  units: 'недель',   label: 'за 20 недель',  vs: 'к пред. 20 неделям',  prev: true },
@@ -368,9 +372,15 @@ function freqLabels(grain) {
   var u = CFG.grains[grain] ? CFG.grains[grain].unit : 'день';
   var f = { 'день': ['день', 'дня', 'дней'], 'неделя': ['неделя', 'недели', 'недель'],
     'месяц': ['месяц', 'месяца', 'месяцев'], 'квартал': ['квартал', 'квартала', 'кварталов'] }[u] || ['день', 'дня', 'дней'];
-  // Склонение по ВЕРХНЕЙ границе диапазона: «2–3 дня», «8–15 дней», «16+ дней».
-  var rg = function (a, b) { return a + THIN + '–' + THIN + b + ' ' + plural(b, f[0], f[1], f[2]); };
-  return ['1 ' + f[0], rg(2, 3), rg(4, 7), rg(8, 15), '16+ ' + f[2]];
+  // Шкала корзин — своя у гранулярности (та же таблица FBIN, что в SQL): верхние
+  // границы корзин 1–4, пятая — всё выше. В 12 месяцах нет «16+», в кварталах —
+  // «8–15» (в витрине 13 месяцев истории: больше 5 активных кварталов не бывает).
+  var b = CFG.fbins[grain] || CFG.fbins.d, n = CFG.grains[grain] ? CFG.grains[grain].n : 30;
+  var w = function (x) { return plural(x, f[0], f[1], f[2]); };
+  var rg = function (a, c) { return a === c ? a + ' ' + w(a) : a + THIN + '–' + THIN + c + ' ' + w(c); };
+  var top = b[3] + 1;
+  return ['1 ' + f[0], rg(b[0] + 1, b[1]), rg(b[1] + 1, b[2]), rg(b[2] + 1, b[3]),
+    CFG.fopen[grain] ? top + '+ ' + f[2] : rg(top, n)];
 }
 
 // Сегмент человека по корзине (макет data.js SEG_OF: ≥8 Постоянный, ≥2
@@ -720,7 +730,8 @@ function buildCSS() {
     P + '-psearch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}',
 
     // ── Сигаретка частоты (app.css .segstrip.freq) ──
-    P + '-segstrip{display:flex;gap:6px;margin-bottom:10px;min-width:0;flex:0 0 auto;}',
+    // padding-top: кольцо выбранной корзины выступает на 3 px — без запаса его резал верх тела.
+    P + '-segstrip{display:flex;gap:6px;margin-bottom:10px;padding-top:5px;min-width:0;flex:0 0 auto;}',
     P + '-seg-part{flex:1 1 0;min-width:66px;border:0;background:transparent;padding:0;',
     '  cursor:pointer;font-family:inherit;text-align:left;display:flex;',
     '  flex-direction:column;gap:3px;transition:opacity .15s;}',
@@ -805,6 +816,24 @@ function buildCSS() {
 
     // ── Таблица людей ──
     P + '-tbl-scroll{flex:1 1 auto;min-height:0;overflow:auto;}',
+    // ── ВЫБРАННЫЕ ФИЛЬТРЫ ЧАРТА: общий стиль (ДОСЛОВНО одинаков в pa-reports-body и
+    //    pa-area). Строка на сером холсте над карточкой, высота ФИКСИРОВАНА: клик
+    //    добавляет/снимает пилюлю, вёрстка не двигается (правка владельца 2026-09-23). ──
+    P + '-frow{display:flex;align-items:center;gap:8px;height:34px;margin:0 0 8px;padding:0 4px;min-width:0;flex:0 0 auto;overflow:hidden;}',
+    P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
+    P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
+    P + '-frow-h{font-size:var(--fs-note);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:500;flex:0 0 auto;max-width:280px;cursor:default;}',
+    P + '-fpill .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-fpill .k{opacity:.75;font-weight:400;}',
+    P + '-fpill.own{background:var(--blue-bg);border-color:var(--act-line);color:var(--act-ink);padding-right:5px;}',
+    P + '-fpill.ppl{background:#f3ecff;border-color:#e2d4ff;color:#5a2fc2;padding-right:5px;}',
+    P + '-fpill.ext{background:var(--card);color:var(--ink2);}',
+    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(23,103,127,.14);color:inherit;font:inherit;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
+    P + '-fpill button:hover{background:rgba(23,103,127,.3);}',
+    P + '-frow-x{border:0;background:transparent;color:var(--act);font:inherit;font-size:var(--fs-note);cursor:pointer;padding:4px 6px;border-radius:6px;flex:0 0 auto;white-space:nowrap;}',
+    P + '-frow-x:hover{background:var(--blue-bg);}',
+    // ── /ВЫБРАННЫЕ ФИЛЬТРЫ ──
     // ── ТАБЛИЦЫ: общий стиль каталога и «Кто смотрит» (держать ДОСЛОВНО одинаковым
     //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
     //    «таблицы по-разному отформатированы») ──
@@ -1809,6 +1838,53 @@ function cohortZoneHtml(ai) {
   });
 }
 
+// Строка «Выбранные фильтры» над карточкой — ОБЩИЙ хелпер (одинаков в каталоге
+// и панели). own — своё выбранное (снимается × здесь же), ext — пришло из соседнего
+// чарта (снимается там). Высота строки постоянна: вёрстка от клика не двигается.
+function filterRowHtml(own, ext, hint, ownCls) {
+  var N = CFG.ns, h = '';
+  for (var i = 0; i < own.length; i++) {
+    var o = own[i];
+    h += '<span class="' + N + '-fpill ' + (ownCls || 'own') + '"' + tip({ title: o.title || o.k, text: o.full || o.v, note: 'Снять — ×' }) + '>' +
+      '<span class="v">' + (o.k ? '<span class="k">' + esc(o.k) + ':</span> ' : '') + esc(o.v) + '</span>' +
+      '<button type="button" data-unpick="' + esc(o.id) + '" aria-label="Снять фильтр «' + esc(o.v) + '»">×</button></span>';
+  }
+  for (var j = 0; j < ext.length; j++) {
+    var x = ext[j];
+    h += '<span class="' + N + '-fpill ext"' + tip({ title: x.title || x.k, text: (x.full ? x.full + '. ' : '') + x.from }) + '>' +
+      '<span class="v">' + (x.k ? '<span class="k">' + esc(x.k) + ':</span> ' : '') + esc(x.v) + '</span></span>';
+  }
+  return '<div class="' + N + '-frow"><span class="' + N + '-frow-l">Выбранные фильтры</span>' +
+    '<div class="' + N + '-frow-p">' + (h || '<span class="' + N + '-frow-h">' + esc(hint) + '</span>') + '</div>' +
+    (own.length > 1 ? '<button type="button" class="' + N + '-frow-x" data-unpick="*">Снять все</button>' : '') +
+    '</div>';
+}
+// Пилюли панели: СВОЁ — людская шина, заданная кликами здесь (× снимает здесь же);
+// ЧУЖОЕ — область каталога слева (снимается в каталоге).
+function areaFilterRowHtml(ai) {
+  var own = [], pk = state.picks, i;
+  var add = function (cut, key, lots, arr, fmt, fullF) {
+    if (!arr.length) return;
+    if (arr.length <= 2) {
+      for (var j = 0; j < arr.length; j++) own.push({ id: cut + '|' + arr[j], k: typeof key === 'function' ? key(arr[j]) : key, v: fmt ? fmt(arr[j]) : arr[j], full: fullF ? fullF(arr[j]) : arr[j] });
+    } else {
+      own.push({ id: cut + '|', k: lots, v: String(arr.length), full: arr.slice(0, 8).map(fmt || function (x) { return x; }).join('; ') });
+    }
+  };
+  var fioOf = {};
+  for (i = 0; i < MODEL.list.length; i++) fioOf[MODEL.list[i].login] = MODEL.list[i].fio || MODEL.list[i].login;
+  add('org', function (x) { return 'УС-' + (orgParts(x).length + 2); }, 'Подразделения', pk.org, orgShort, function (x) { return x; });
+  add('spec', 'Специализация', 'Специализации', pk.spec);
+  add('stream', 'Стрим', 'Стримы', pk.stream);
+  add('adgroup', 'AD-группа', 'AD-группы', pk.adgroup);
+  add('heads', '', 'Тим-лиды', pk.heads);
+  add('login', 'Человек', 'Люди', pk.login, function (x) { return fioOf[x] || x; });
+  if (state.freqSel) own.push({ id: 'freq|', k: 'Частота', v: MODEL.labels[parseInt(state.freqSel, 10) - 1] || state.freqSel });
+  if (state.headsOnly) own.push({ id: 'headsOnly|', k: '', v: 'Только руководители' });
+  if (state.excl.length) own.push({ id: 'excl|', k: 'Исключено', v: String(state.excl.length), full: state.excl.map(function (x) { return fioOf[x] || x; }).slice(0, 8).join(', ') });
+  var ext = ai.mut ? [] : [{ k: '', v: ai.pill, full: ai.text, from: 'Задано в каталоге слева — снимается там.' }];
+  return filterRowHtml(own, ext, 'кликните по группе, человеку или корзине частоты — выбор появится здесь', 'ppl');
+}
 function kpiCard(o) {
   return '<div class="' + CFG.ns + '-kpi">' +
     '<div class="' + CFG.ns + '-k-label">' + esc(o.label) +
@@ -1906,6 +1982,7 @@ function buildHTML() {
   for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key });
   var h = [];
   h.push('<div class="' + N + '-root">');
+  h.push(areaFilterRowHtml(ai));
   if (MODEL.kpi) h.push('<div class="' + N + '-top">' + kpisHtml() + obsHtml(ai.mut ? 'Proteus' : ai.what) + '</div>');
   h.push('<div class="' + N + '-panel">');
   h.push('<div class="' + N + '-panel-h">' +
@@ -2417,6 +2494,29 @@ function dynTipHtml(el, i) {
         state.dd = null;
         state.page = 0;
         render();
+        return;
+      }
+      // Строка «Выбранные фильтры»: × снимает условие, «Снять все» — всю людскую шину.
+      var up = trigger(e.target, 'data-unpick');
+      if (up) {
+        var uid = up.getAttribute('data-unpick');
+        var ukey = uid === '*' ? '*' : uid.split('|')[0], uval = uid === '*' ? '' : uid.slice(ukey.length + 1);
+        if (ukey === '*') {
+          for (var pk0 in state.picks) if (Object.prototype.hasOwnProperty.call(state.picks, pk0)) state.picks[pk0] = [];
+          state.freqSel = null; state.headsOnly = false; state.excl = [];
+        } else if (ukey === 'freq') state.freqSel = null;
+        else if (ukey === 'headsOnly') state.headsOnly = false;
+        else if (ukey === 'excl') state.excl = [];
+        else if (uval === '') state.picks[ukey] = [];
+        else {
+          var ul = state.picks[ukey] || [], ui = ul.indexOf(uval);
+          if (ui >= 0) ul.splice(ui, 1);
+        }
+        state.page = 0;
+        state.tip = null;
+        hideTip();
+        render();
+        emitBus();
         return;
       }
       // Каретка группы: раскрыть/свернуть (узел оргструктуры — на уровень вглубь).

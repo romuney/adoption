@@ -18,6 +18,9 @@
 {% set CUR = 2 ** g.n - 1 %}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% set GAPM = 2 ** g.gap - 1 %}
+{#- Корзины частоты — верхние границы корзин 1–4 по АКТИВНЫМ периодам, своя шкала у каждой гранулярности
+    (в 12 месяцах и 8 кварталах нет недостижимых «8–15» / «16+»). Та же таблица — в SQL каталога. -#}
+{% set FBIN = {'d': [1, 3, 7, 15], 'w': [1, 3, 7, 15], 'm': [1, 3, 6, 9], 'q': [1, 2, 3, 4]}[grain] %}
 {% set LIST_N = 3000 %}{% set ADG_N = 100 %}
 {% macro q(values) -%}
 {%- set out = [] -%}
@@ -72,7 +75,7 @@ WITH
       p.kv AS kv, p.fd_k AS fd_k, p.dmax AS dmax, p.m1 AS m1, p.m2 AS m2,
       bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
       bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
-      multiIf(nb_cur <= 1, 1, nb_cur <= 3, 2, nb_cur <= 7, 3, nb_cur <= 15, 4, 5) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
+      multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, nb_cur <= {{ FBIN[3] }}, 4, 5) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
       {# Атрибуты — строго не-Nullable: при join_use_nulls = 1 LEFT JOIN даёт NULL у логинов без атрибутов,
          а arrayConcat ролей в CH 24 приводит массивы к типу первого — NULL ронял запрос (Code 349). #}
       toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,

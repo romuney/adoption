@@ -7,7 +7,7 @@ const { chromium } = createRequire(import.meta.url)('playwright'); // NODE_PATH=
 import fs from 'fs';
 import path from 'path';
 const [,, dir, out, width, clicks] = process.argv;
-const W = +(width || 1600), HEAD = 104, ROW = 1000, GAP = 16;
+const W = +(width || 1600), HEAD = 64, ROW = 1000, GAP = 16;
 const W_ = decodeURIComponent(new URL('../Виджеты/', import.meta.url).pathname);
 const frame = (js, mock) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#f6f6f6;height:100%}</style></head><body>' +
   '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"><canvas></canvas></div>' +

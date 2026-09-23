@@ -79,7 +79,7 @@ WITH
       {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n (как в правой панели). -#}
       {%- set FB = [] -%}
       {%- for v in freqf -%}
-        {%- if v == '1' %}{% set _ = FB.append('nb = 1') %}{% elif v == '2' %}{% set _ = FB.append('nb BETWEEN 2 AND 3') %}{% elif v == '3' %}{% set _ = FB.append('nb BETWEEN 4 AND 7') %}{% elif v == '4' %}{% set _ = FB.append('nb BETWEEN 8 AND 15') %}{% elif v == '5' %}{% set _ = FB.append('nb >= 16') %}{% endif -%}
+        {%- set FBIN = {'d': [1, 3, 7, 15], 'w': [1, 3, 7, 15], 'm': [1, 3, 6, 9], 'q': [1, 2, 3, 4]}[grain] -%}{%- set bi = v|int -%}{%- if bi == 1 %}{% set _ = FB.append('nb BETWEEN 1 AND ' ~ FBIN[0]) %}{% elif bi == 5 %}{% set _ = FB.append('nb > ' ~ FBIN[3]) %}{% else %}{% set _ = FB.append('nb BETWEEN ' ~ (FBIN[bi - 2] + 1) ~ ' AND ' ~ FBIN[bi - 1]) %}{% endif -%}
       {%- endfor %} AND e.login IN (
         SELECT login FROM (
           SELECT f.login AS login, uniqExact({{ kx('f.log_dttm') }}) AS nb

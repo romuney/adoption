@@ -71,6 +71,10 @@ var CFG = {
     { key: 'collection', label: 'Коллекции', axis: 'grp', one: 'Коллекция' },
     { key: 'owner',      label: 'Владельцы', axis: 'grp', one: 'Владелец' }
   ],
+  // Корзины частоты: верхние границы корзин 1–4 по гранулярности (= FBIN в SQL
+  // pa_people и каталога); fopen — пятая корзина подписывается «N+», иначе диапазоном до n.
+  fbins: { d: [1, 3, 7, 15], w: [1, 3, 7, 15], m: [1, 3, 6, 9], q: [1, 2, 3, 4] },
+  fopen: { d: true, q: true },
   grains: {
     d: { n: 30, unit: 'день',    units: 'дней',     label: 'за 30 дней' },
     w: { n: 20, unit: 'неделя',  units: 'недель',   label: 'за 20 недель' },
@@ -472,9 +476,15 @@ function freqLabels(grain) {
   var u = CFG.grains[grain] ? CFG.grains[grain].unit : 'день';
   var f = { 'день': ['день', 'дня', 'дней'], 'неделя': ['неделя', 'недели', 'недель'],
     'месяц': ['месяц', 'месяца', 'месяцев'], 'квартал': ['квартал', 'квартала', 'кварталов'] }[u] || ['день', 'дня', 'дней'];
-  // Склонение по ВЕРХНЕЙ границе диапазона: «2–3 дня», «8–15 дней», «16+ дней».
-  var rg = function (a, b) { return a + THIN + '–' + THIN + b + ' ' + plural(b, f[0], f[1], f[2]); };
-  return ['1 ' + f[0], rg(2, 3), rg(4, 7), rg(8, 15), '16+ ' + f[2]];
+  // Шкала корзин — своя у гранулярности (та же таблица FBIN, что в SQL): верхние
+  // границы корзин 1–4, пятая — всё выше. В 12 месяцах нет «16+», в кварталах —
+  // «8–15» (в витрине 13 месяцев истории: больше 5 активных кварталов не бывает).
+  var b = CFG.fbins[grain] || CFG.fbins.d, n = CFG.grains[grain] ? CFG.grains[grain].n : 30;
+  var w = function (x) { return plural(x, f[0], f[1], f[2]); };
+  var rg = function (a, c) { return a === c ? a + ' ' + w(a) : a + THIN + '–' + THIN + c + ' ' + w(c); };
+  var top = b[3] + 1;
+  return ['1 ' + f[0], rg(b[0] + 1, b[1]), rg(b[1] + 1, b[2]), rg(b[2] + 1, b[3]),
+    CFG.fopen[grain] ? top + '+ ' + f[2] : rg(top, n)];
 }
 
 // Подсказка: тот же HTML-контракт, что и у макетного UI.tipHtml (ui.js 86–106).
@@ -569,6 +579,24 @@ function buildCSS() {
     P + '-panel-b.tbl-wrap{padding-top:0;padding-bottom:0;display:flex;flex-direction:column;}',
     // Каталог: скроллится ТОЛЬКО зона строк, пейджер прижат к низу панели.
     P + '-tscroll{flex:1;min-height:0;overflow:auto;}',
+    // ── ВЫБРАННЫЕ ФИЛЬТРЫ ЧАРТА: общий стиль (ДОСЛОВНО одинаков в pa-reports-body и
+    //    pa-area). Строка на сером холсте над карточкой, высота ФИКСИРОВАНА: клик
+    //    добавляет/снимает пилюлю, вёрстка не двигается (правка владельца 2026-09-23). ──
+    P + '-frow{display:flex;align-items:center;gap:8px;height:34px;margin:0 0 8px;padding:0 4px;min-width:0;flex:0 0 auto;overflow:hidden;}',
+    P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
+    P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
+    P + '-frow-h{font-size:var(--fs-note);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:500;flex:0 0 auto;max-width:280px;cursor:default;}',
+    P + '-fpill .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-fpill .k{opacity:.75;font-weight:400;}',
+    P + '-fpill.own{background:var(--blue-bg);border-color:var(--act-line);color:var(--act-ink);padding-right:5px;}',
+    P + '-fpill.ppl{background:#f3ecff;border-color:#e2d4ff;color:#5a2fc2;padding-right:5px;}',
+    P + '-fpill.ext{background:var(--card);color:var(--ink2);}',
+    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(23,103,127,.14);color:inherit;font:inherit;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
+    P + '-fpill button:hover{background:rgba(23,103,127,.3);}',
+    P + '-frow-x{border:0;background:transparent;color:var(--act);font:inherit;font-size:var(--fs-note);cursor:pointer;padding:4px 6px;border-radius:6px;flex:0 0 auto;white-space:nowrap;}',
+    P + '-frow-x:hover{background:var(--blue-bg);}',
+    // ── /ВЫБРАННЫЕ ФИЛЬТРЫ ──
     // ── ТАБЛИЦЫ: общий стиль каталога и «Кто смотрит» (держать ДОСЛОВНО одинаковым
     //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
     //    «таблицы по-разному отформатированы») ──
@@ -658,6 +686,68 @@ function buildCSS() {
     P + '-tip ' + P + '-t-n{display:block;font-size:10.5px;line-height:1.35;font-weight:400;color:#8a909c;margin-top:6px;padding-top:5px;border-top:1px solid #eef0f3;}',
     '</style>'
   ].join('\n');
+}
+// Строка «Выбранные фильтры» над карточкой — ОБЩИЙ хелпер (одинаков в каталоге
+// и панели). own — своё выбранное (снимается × здесь же), ext — пришло из соседнего
+// чарта (снимается там). Высота строки постоянна: вёрстка от клика не двигается.
+function filterRowHtml(own, ext, hint, ownCls) {
+  var N = CFG.ns, h = '';
+  for (var i = 0; i < own.length; i++) {
+    var o = own[i];
+    h += '<span class="' + N + '-fpill ' + (ownCls || 'own') + '"' + tip({ title: o.title || o.k, text: o.full || o.v, note: 'Снять — ×' }) + '>' +
+      '<span class="v">' + (o.k ? '<span class="k">' + esc(o.k) + ':</span> ' : '') + esc(o.v) + '</span>' +
+      '<button type="button" data-unpick="' + esc(o.id) + '" aria-label="Снять фильтр «' + esc(o.v) + '»">×</button></span>';
+  }
+  for (var j = 0; j < ext.length; j++) {
+    var x = ext[j];
+    h += '<span class="' + N + '-fpill ext"' + tip({ title: x.title || x.k, text: (x.full ? x.full + '. ' : '') + x.from }) + '>' +
+      '<span class="v">' + (x.k ? '<span class="k">' + esc(x.k) + ':</span> ' : '') + esc(x.v) + '</span></span>';
+  }
+  return '<div class="' + N + '-frow"><span class="' + N + '-frow-l">Выбранные фильтры</span>' +
+    '<div class="' + N + '-frow-p">' + (h || '<span class="' + N + '-frow-h">' + esc(hint) + '</span>') + '</div>' +
+    (own.length > 1 ? '<button type="button" class="' + N + '-frow-x" data-unpick="*">Снять все</button>' : '') +
+    '</div>';
+}
+// Пилюли каталога: СВОЁ — отчёты / коллекции / владельцы (× снимает здесь же);
+// до двух значений разреза — по пилюле на значение, больше — одна «Отчёты: N».
+// ЧУЖОЕ — людская шина из «Кто смотрит» (эхо state_j куба), снимается там.
+function catFilterRowHtml() {
+  var own = [], ext = [], i, j;
+  for (i = 0; i < CFG.modes.length; i++) {
+    var md = CFG.modes[i], lst = pickList(md.key);
+    if (!lst.length) continue;
+    var nm = function (v) { return md.key === 'report' ? ((MODEL.meta[v] || {}).dash_nm || String(v)) : String(v); };
+    if (lst.length <= 2) {
+      for (j = 0; j < lst.length; j++) own.push({ id: md.key + '|' + lst[j], k: md.one, v: nm(lst[j]) });
+    } else {
+      var names = [];
+      for (j = 0; j < lst.length; j++) names.push(nm(lst[j]));
+      own.push({ id: md.key + '|', k: md.label, v: String(lst.length), full: names.slice(0, 12).join(', ') + (names.length > 12 ? '…' : '') });
+    }
+  }
+  var sj = MODEL.stateJ || {}, from = 'Задано в «Кто смотрит» справа — снимается там.';
+  var lastOf = function (x) { var ps = String(x).split(' › '); return ps[ps.length - 1]; };
+  var many = function (key, one, lots, arr, fmt) {
+    if (!arr || !arr.length) return;
+    ext.push(arr.length === 1
+      ? { k: one, v: fmt ? fmt(arr[0]) : String(arr[0]), full: String(arr[0]), from: from }
+      : { k: lots, v: String(arr.length), full: arr.slice(0, 8).join('; '), from: from });
+  };
+  many('org', 'УС-' + (sj.org && sj.org.length === 1 ? String(sj.org[0]).split(' › ').length + 2 : ''), 'Подразделения', sj.org, lastOf);
+  many('lvl3', 'УС-3', 'УС-3', sj.lvl3);
+  many('lvl4', 'УС-4', 'УС-4', sj.lvl4);
+  many('spec', 'Специализация', 'Специализации', sj.spec);
+  many('stream', 'Стрим', 'Стримы', sj.stream);
+  many('adg', 'AD-группа', 'AD-группы', sj.adg);
+  many('login', 'Человек', 'Люди', sj.login);
+  if (sj.heads === '1' || sj.heads === 'n') ext.push({ k: '', v: sj.heads === '1' ? 'Только руководители' : 'Без руководителей', from: from });
+  if (sj.exl && sj.exl.length) ext.push({ k: 'Исключено', v: String(sj.exl.length), full: sj.exl.slice(0, 8).join(', '), from: from });
+  if (sj.freq && sj.freq.length) {
+    var fl = freqLabels(curGrain()), fv = [];
+    for (j = 0; j < sj.freq.length; j++) fv.push(fl[parseInt(sj.freq[j], 10) - 1] || sj.freq[j]);
+    ext.push({ k: 'Частота', v: fv.join(', '), from: from });
+  }
+  return filterRowHtml(own, ext, 'кликните по строке каталога — выбор появится здесь');
 }
 function panelHtml(o) {
   return '<div class="' + CFG.ns + '-panel' + (o.cls ? ' ' + CFG.ns + '-' + o.cls : '') + '">' +
@@ -995,6 +1085,7 @@ function buildHTML() {
 
   var h = [];
   h.push('<div class="' + CFG.ns + '-root">');
+  h.push(catFilterRowHtml());
 
   // ── Каталог — единственная панель тела: KPI и аналитика области — в правой
   // панели. Панель тянется на всю ячейку; ячейка на борде узкая (~35–40%) —
@@ -1004,9 +1095,7 @@ function buildHTML() {
     // v7.1: шапка листа, KPI и общие пилюли фильтров — в чарте-шапке сверху;
     // здесь только карточка каталога. Выбор снимается тут же.
     cls: 'cat', title: 'Каталог',
-    subHtml: pickCount()
-      ? 'выбрано: <b>' + pickCount() + '</b> · <button type="button" class="' + CFG.ns + '-lnk" data-action="clearPicks">снять выбор</button>'
-      : 'клик — выбрать область · Shift — несколько',
+    sub: 'клик — выбрать область · Shift — несколько',
     right: searchBoxHtml('repQ', state.mode === 'report' ? 'Найти в каталоге' : 'Найти: ' + modeInfo.one.toLowerCase(), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
   }));
@@ -1260,6 +1349,26 @@ function buildHTML() {
       // Выбор строки каталога: отчёт / группа / срез — накопительно.
       // Кросс-фильтрация вкладок и карточки пересчитываются на клиенте,
       // серверу уходит только когортная маска.
+      // Строка «Выбранные фильтры»: × снимает значение (или весь разрез), «Снять все».
+      var up = trigger(e.target, 'data-unpick');
+      if (up) {
+        var uid = up.getAttribute('data-unpick');
+        if (uid === '*') {
+          state.picks = { report: [], collection: [], owner: [] };
+        } else {
+          var ukey = uid.split('|')[0], uval = uid.slice(ukey.length + 1);
+          if (uval === '') state.picks[ukey] = [];
+          else {
+            var ul = state.picks[ukey] || [], ui = indexOfId(ul, uval);
+            if (ui >= 0) ul.splice(ui, 1);
+          }
+        }
+        state.page = 0;
+        hideTip();
+        emitSel();
+        render();
+        return;
+      }
       // Кнопка «ссылка» в строке отчёта: копирует адрес, строку НЕ выбирает.
       var lnk = trigger(e.target, 'data-replink');
       if (lnk) {

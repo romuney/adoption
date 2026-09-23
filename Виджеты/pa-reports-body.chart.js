@@ -569,6 +569,26 @@ function buildCSS() {
     P + '-panel-b.tbl-wrap{padding-top:0;padding-bottom:0;display:flex;flex-direction:column;}',
     // Каталог: скроллится ТОЛЬКО зона строк, пейджер прижат к низу панели.
     P + '-tscroll{flex:1;min-height:0;overflow:auto;}',
+    // ── ТАБЛИЦЫ: общий стиль каталога и «Кто смотрит» (держать ДОСЛОВНО одинаковым
+    //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
+    //    «таблицы по-разному отформатированы») ──
+    P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);font-variant-numeric:tabular-nums;}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:9px 8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
+    P + '-ptable th.txt{text-align:left;padding-left:12px;}',
+    P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
+    P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
+    P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
+    P + '-ptable td{text-align:right;padding:6px 8px;height:44px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
+    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:500;color:var(--ink);white-space:normal;min-width:0;}',
+    P + '-ptable td.lead{font-weight:500;color:var(--ink);}',
+    P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
+    P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
+    P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-ptable tbody tr[role=button]{cursor:pointer;}',
+    P + '-ptable tbody tr[role=button]:hover td{background:#fafbfc;}',
+    P + '-ptable tbody tr.sel td{background:var(--blue-bg);}',
+    P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    P + '-ptable tr.tot td{font-weight:500;color:var(--ink);border-bottom:2px solid var(--line);}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
     P + '-pginfo{font-size:var(--fs-note);color:var(--muted);}',
@@ -576,6 +596,9 @@ function buildCSS() {
     P + '-pgbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;min-width:26px;height:24px;font-size:13px;line-height:1;color:var(--ink2);cursor:pointer;padding:0 7px;font-family:inherit;}',
     P + '-pgbtn:hover:not([disabled]){background:#fafbfc;border-color:#d8dce4;}',
     P + '-pgbtn[disabled]{opacity:.4;cursor:default;}',
+    P + '-cellbar{display:block;width:100%;height:13px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
+    P + '-cellbar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
+    // ── /ТАБЛИЦЫ ──
 
     // ── Подшапка разрезов ──
     P + '-cutbar{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0 16px 12px;}',
@@ -590,37 +613,16 @@ function buildCSS() {
     P + '-sub-tabs.tiny ' + P + '-sub-tab{padding:2px 8px;font-size:var(--fs-note);border-radius:6px;}',
 
     // ── Таблицы ──
-    P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line2);}',
-    P + '-ptable th.txt{text-align:left;padding-left:10px;}',
-    P + '-ptable td{text-align:right;padding:8px;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;}',
-    P + '-ptable td.txt{text-align:left;font-weight:500;color:var(--ink2);padding-left:10px;white-space:normal;min-width:0;}',
-    P + '-ptable td.lead{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;}',
-    P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
-    P + '-urow{cursor:pointer;}',
     P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin-left:5px;padding:0;border:0;border-radius:6px;'
       + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.55;font:inherit;font-size:12px;font-weight:600;}',
     P + '-urow:hover ' + P + '-lnkbtn{opacity:1;}',
     P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
     P + '-lnkbtn.ok{opacity:1;color:var(--green-tx, #0a8f3c);background:#e6f6ec;}',
     P + '-lnkbtn.err{opacity:1;color:#c8251f;background:#ffe9e9;}',
-    P + '-urow:hover{background:#fafbfc;}',
-    P + '-urow.sel{background:var(--blue-bg);box-shadow:inset 3px 0 0 var(--act);}',
-    P + '-total td{border-top:0;border-bottom:2px solid var(--line);font-weight:500;color:var(--ink);}',
-    P + '-ptable.dense th{padding:8px 6px;font-size:var(--fs-cap);}',
-    P + '-ptable.dense td{padding:7px 6px;}',
-    P + '-ptable.sortable th[data-sort]{cursor:pointer;user-select:none;}',
-    P + '-ptable.sortable th[data-sort]:hover{color:var(--ink2);}',
-    P + '-ptable .sa{opacity:0;font-size:9px;margin-left:3px;}',
-    P + '-ptable th.on{color:var(--ink2);}',
-    P + '-ptable th.on .sa{opacity:1;color:var(--act);}',
-    P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.cert{background:var(--green-bg);color:var(--green-tx);}',
     P + '-rflag.new{background:var(--new-bg);color:var(--new-tx);}',
     P + '-barcell,' + P + '-bar-th{text-align:left !important;padding-left:10px !important;}',
-    P + '-cellbar{display:block;width:100%;height:13px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
-    P + '-cellbar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
 
     // ── Наблюдения ──
     P + '-obs-b{padding:0 15px 14px;font-size:13px;color:var(--ink2);line-height:1.55;}',
@@ -775,10 +777,11 @@ function reportTableHtml() {
   var th = function (col, label, hint) {
     return '<th' + (hint ? tip(hint) : '') + ' data-sort="' + col + '"' +
       (sc.col === col ? ' class="on"' : '') + '>' + esc(label) +
-      '<span class="' + CFG.ns + '-sa">' + (sc.dir < 0 ? '▼' : '▲') + '</span></th>';
+      '<span class="' + CFG.ns + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>';
   };
   var h = '<table class="' + CFG.ns + '-ptable dense sortable"><thead><tr>' +
-    '<th class="txt" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">▲</span></th>' +
+    '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
+      (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
     th('users', 'Польз.') + th('views', 'Просм.') +
     th('regular_users', 'Пост.', { text: 'Доля тех, кто заходил в отчёт 8+ раз за период' }) +
     th('last_view_days', 'Тишина', { text: 'Сколько дней назад был последний просмотр (данные — по вчерашний день)' }) +
@@ -873,7 +876,7 @@ function barTableHtml(o) {
   }
   h += '<th class="txt ' + CFG.ns + '-bar-th">' + esc(o.barH == null ? 'Распределение' : o.barH) + '</th></tr></thead><tbody>';
   if (o.total) {
-    h += '<tr class="' + CFG.ns + '-total"' + (o.total.tip ? tip(o.total.tip) : '') + '><td class="txt">ИТОГО</td>';
+    h += '<tr class="' + CFG.ns + '-total tot"' + (o.total.tip ? tip(o.total.tip) : '') + '><td class="txt">ИТОГО</td>';
     for (var tc = 0; tc < o.total.cells.length; tc++) h += '<td class="' + (tc === 0 ? 'lead' : '') + '">' + o.total.cells[tc] + '</td>';
     h += '<td class="' + CFG.ns + '-barcell"></td></tr>';
   }
@@ -914,7 +917,7 @@ function pagerHtml(total) {
   var from = total ? pg * PS + 1 : 0;
   var to = Math.min(total, (pg + 1) * PS);
   var h = '<div class="' + CFG.ns + '-pager">' +
-    '<span class="' + CFG.ns + '-pginfo">Показано ' + nf(from) + THIN + '–' + nf(to) + ' из ' + nf(total) + '</span>' +
+    '<span class="' + CFG.ns + '-pginfo">Показано ' + nf(from) + '–' + nf(to) + ' из ' + nf(total) + '</span>' +
     '<span class="spacer"></span>';
   if (pages > 1) {
     h += '<button class="' + CFG.ns + '-pgbtn" data-action="pg-prev" data-pages="' + pages + '"' +

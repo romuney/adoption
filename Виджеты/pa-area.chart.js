@@ -719,7 +719,7 @@ function buildCSS() {
     P + '-psearch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}',
 
     // ── Сигаретка частоты (app.css .segstrip.freq) ──
-    P + '-segstrip{display:flex;gap:6px;margin-bottom:10px;min-width:0;}',
+    P + '-segstrip{display:flex;gap:6px;margin-bottom:10px;min-width:0;flex:0 0 auto;}',
     P + '-seg-part{flex:1 1 0;min-width:66px;border:0;background:transparent;padding:0;',
     '  cursor:pointer;font-family:inherit;text-align:left;display:flex;',
     '  flex-direction:column;gap:3px;transition:opacity .15s;}',
@@ -799,41 +799,55 @@ function buildCSS() {
 
     // ── Таблица людей ──
     P + '-tbl-scroll{flex:1 1 auto;min-height:0;overflow:auto;}',
-    P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line2);}',
-    P + '-ptable th.txt{text-align:left;padding-left:10px;}',
-    P + '-ptable td{text-align:right;padding:8px;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;}',
-    P + '-ptable td.txt{text-align:left;font-weight:500;color:var(--ink2);padding-left:10px;white-space:normal;min-width:0;}',
-    P + '-ptable td.lead{font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums;}',
+    // ── ТАБЛИЦЫ: общий стиль каталога и «Кто смотрит» (держать ДОСЛОВНО одинаковым
+    //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
+    //    «таблицы по-разному отформатированы») ──
+    P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);font-variant-numeric:tabular-nums;}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:9px 8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
+    P + '-ptable th.txt{text-align:left;padding-left:12px;}',
+    P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
+    P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
+    P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
+    P + '-ptable td{text-align:right;padding:6px 8px;height:44px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
+    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:500;color:var(--ink);white-space:normal;min-width:0;}',
+    P + '-ptable td.lead{font-weight:500;color:var(--ink);}',
+    P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
-    P + '-ptable.dense th{padding:8px 6px;font-size:var(--fs-cap);}',
-    P + '-ptable.dense td{padding:7px 6px;}',
+    P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-ptable tbody tr[role=button]{cursor:pointer;}',
+    P + '-ptable tbody tr[role=button]:hover td{background:#fafbfc;}',
+    P + '-ptable tbody tr.sel td{background:var(--blue-bg);}',
+    P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    P + '-ptable tr.tot td{font-weight:500;color:var(--ink);border-bottom:2px solid var(--line);}',
+    P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
+    P + '-pager .spacer{flex:1;}',
+    P + '-pginfo{font-size:var(--fs-note);color:var(--muted);}',
+    P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:500;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
+    P + '-pgbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;min-width:26px;height:24px;font-size:13px;line-height:1;color:var(--ink2);cursor:pointer;padding:0 7px;font-family:inherit;}',
+    P + '-pgbtn:hover:not([disabled]){background:#fafbfc;border-color:#d8dce4;}',
+    P + '-pgbtn[disabled]{opacity:.4;cursor:default;}',
+    P + '-cellbar{display:block;width:100%;height:13px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
+    P + '-cellbar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
+    // ── /ТАБЛИЦЫ ──
     P + '-ptable tr.grp-h td{padding:7px 8px;font-weight:400;color:var(--ink2);background:var(--card);text-align:right;}',
     P + '-ptable tr.grp-h td.gname{text-align:left;color:var(--ink);}',
-    P + '-ptable tr.grp-h.d0 td{background:#f8f9fb;}',
     P + '-ptable tr.grp-h:hover td{background:#eef2f7;}',
     P + '-ptable tr.grp-h{cursor:pointer;}',
     P + '-ptable tr.grp-h.sel td{background:var(--blue-bg);}',
     P + '-ptable tr.grp-h.sel .gh-name{color:var(--act-ink);}',
     P + '-ptable tr.grp-h.grp-dim .gh-name{color:var(--muted);font-weight:400;}',
-    P + '-ptable tr.pk{cursor:pointer;}',
-    P + '-ptable tr.pk:hover{background:#fafbfc;}',
-    P + '-ptable tr.pk.sel td{background:var(--blue-bg);}',
-    P + '-ptable tr.pk.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
     // ── Сводная таблица групп и поимённый список (v7.3) ──
-    P + '-ptable th.srt{cursor:pointer;user-select:none;}',
-    P + '-ptable th.srt:hover,' + P + '-ptable th.srt.on{color:var(--ink2);}',
-    P + '-sa{display:inline-block;width:10px;font-style:normal;font-size:8px;margin-left:3px;color:var(--act);}',
     P + '-ptable.gt td{font-variant-numeric:tabular-nums;}',
     P + '-ptable.gt th:first-child,' + P + '-ptable.gt td.gname{width:34%;}',
     P + '-ptable.gt td.gname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0;}',
-    P + '-ptable tr.grp-h.d0 td.gname .gh-name{font-weight:600;}',
-    P + '-ptable tr.g-tot td{font-weight:600;color:var(--ink);background:#f7f8fa;border-bottom:1px solid var(--line);}',
-    P + '-ptable tr.g-tot td.txt{font-weight:600;}',
     P + '-gh-sp{display:inline-block;width:18px;}',
-    P + '-lvl{font-style:normal;font-size:9.5px;font-weight:500;color:var(--muted);background:#f1f3f6;border-radius:4px;padding:1px 5px;margin-left:7px;vertical-align:1px;}',
-    P + '-mbar{display:inline-block;width:38px;height:5px;border-radius:3px;background:#eef0f3;margin-right:7px;vertical-align:2px;overflow:hidden;}',
-    P + '-mbar i{display:block;height:100%;background:' + CFG.colors.act + ';border-radius:3px;}',
+    P + '-gtx{display:inline-block;vertical-align:middle;max-width:calc(100% - 24px);overflow:hidden;text-overflow:ellipsis;}',
+    P + '-ptable td.shr ' + P + '-cellbar{display:inline-block;width:40px;height:8px;margin-right:7px;vertical-align:middle;}',
+    P + '-ptable.sub td{height:auto;}',
+    // Скролл «Кто смотрит»: зона списка — flex-колонка, таблица скроллится внутри,
+    // шапка таблицы закреплена (sticky), тулбар и пагинатор на месте.
+    P + '-panel-b.tbl-wrap{overflow:hidden;}',
+    P + '-list-zone{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
     P + '-dnum{font-weight:500;}',
     P + '-dnum.up{color:var(--green-tx);}',
     P + '-dnum.down{color:var(--red-tx);}',
@@ -848,17 +862,10 @@ function buildCSS() {
     P + '-bar-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;}',
     P + '-exp{display:inline-flex;align-items:center;gap:6px;}',
     P + '-toast{font-size:var(--fs-note);color:var(--green-tx);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-pager{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 2px 0;font-size:var(--fs-note);color:var(--muted);flex:0 0 auto;}',
-    P + '-pager > span:first-child{margin-right:auto;}',
-    P + '-pg{border:1px solid var(--line);background:var(--card);border-radius:7px;width:26px;height:26px;cursor:pointer;color:var(--ink2);font:inherit;font-size:13px;}',
-    P + '-pg:hover{border-color:var(--act);color:var(--act);}',
-    P + '-pg[disabled]{opacity:.35;cursor:default;}',
-    P + '-pg-n{min-width:48px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink2);}',
     P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;',
     '  font-size:10px;width:18px;padding:0;font-family:inherit;line-height:1;}',
     P + '-gh-caret:hover{color:var(--ink);}',
     P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
-    P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
     P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
@@ -1061,10 +1068,12 @@ function pagerHtml(total) {
   if (state.page < 0) state.page = 0;
   if (total <= PS) return '';
   var a = state.page * PS + 1, b = Math.min(total, a + PS - 1);
-  return '<div class="' + CFG.ns + '-pager"><span>' + nf(a) + THIN + '–' + THIN + nf(b) + ' из ' + nf(total) + '</span>' +
-    '<button type="button" class="' + CFG.ns + '-pg" data-pg="prev"' + (state.page === 0 ? ' disabled' : '') + ' aria-label="Предыдущая страница">‹</button>' +
-    '<span class="' + CFG.ns + '-pg-n">' + (state.page + 1) + ' / ' + pages + '</span>' +
-    '<button type="button" class="' + CFG.ns + '-pg" data-pg="next"' + (state.page >= pages - 1 ? ' disabled' : '') + ' aria-label="Следующая страница">›</button></div>';
+  // Разметка и классы — как у пагинатора каталога (общий стиль таблиц).
+  return '<div class="' + CFG.ns + '-pager"><span class="' + CFG.ns + '-pginfo">Показано ' + nf(a) + '–' + nf(b) + ' из ' + nf(total) + '</span>' +
+    '<span class="spacer"></span>' +
+    '<button type="button" class="' + CFG.ns + '-pgbtn" data-pg="prev"' + (state.page === 0 ? ' disabled' : '') + ' aria-label="Предыдущая страница">‹</button>' +
+    '<span class="' + CFG.ns + '-pgnum">' + (state.page + 1) + ' / ' + pages + '</span>' +
+    '<button type="button" class="' + CFG.ns + '-pgbtn" data-pg="next"' + (state.page >= pages - 1 ? ' disabled' : '') + ' aria-label="Следующая страница">›</button></div>';
 }
 function peopleTableHtml(plist) {
   var sorted = sortPeople(plist);
@@ -1179,7 +1188,7 @@ function gCellHtml(key, m) {
   if (key === 'users') return '<td class="lead">' + nf(m.users) + '</td>';
   if (key === 'share') {
     // Полоса — от крупнейшей группы верхнего уровня: доли 2–8% иначе не видны.
-    return '<td class="shr"><span class="' + CFG.ns + '-mbar"><i style="width:' + Math.min(100, m.share / (MAX_SHARE || 100) * 100).toFixed(1) + '%"></i></span>' + pct(m.share, m.share < 10 ? 1 : 0) + '</td>';
+    return '<td class="shr"><span class="' + CFG.ns + '-cellbar"><i style="width:' + Math.min(100, m.share / (MAX_SHARE || 100) * 100).toFixed(1) + '%"></i></span>' + pct(m.share, m.share < 10 ? 1 : 0) + '</td>';
   }
   if (key === 'dUsers') {
     if (m.dUsers == null) return '<td><span class="mut">—</span></td>';
@@ -1205,6 +1214,11 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
     { label: 'Новых', value: nf(m.new_u) });
   if (G.prev) rows.push({ label: 'Ушли (были в прошлом периоде)', value: nf(m.sleeping) });
   if (local) rows.push({ label: 'В текущей выборке', value: nf(cN) });
+  // Вторая строка, как у отчёта (владелец) и человека (логин): уровень и состав.
+  var nk = nd.cut === 'org' ? (MODEL.orgKids[nd.k] || []).length : 0;
+  var sub = nd.cut === 'org'
+    ? nd.sub + (nk ? ' · ' + nk + ' ' + plural(nk, 'подразделение', 'подразделения', 'подразделений') : '')
+    : '';
   var h = '<tr class="grp-h' + (sel ? ' sel' : '') + (dim ? ' grp-dim' : '') + ' d' + Math.min(nd.depth, 4) + '"' +
     ' data-who="' + esc(nd.k) + '" data-whocut="' + esc(nd.cut) + '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
     tip({ title: nd.cut === 'org' ? nd.k : nd.name, rows: rows,
@@ -1215,8 +1229,8 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
     (hasKids
       ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-gtog="' + esc(nd.id) + '" aria-expanded="' + open + '" aria-label="' + (open ? 'Свернуть ' : 'Раскрыть ') + esc(nd.name) + '">' + (open ? '▾' : '▸') + '</button>'
       : '<span class="' + CFG.ns + '-gh-sp"></span>') +
-    '<span class="' + CFG.ns + '-gh-name gh-name">' + esc(nd.name) + '</span>' +
-    (nd.sub ? '<i class="' + CFG.ns + '-lvl">' + esc(nd.sub) + '</i>' : '') + '</td>';
+    '<span class="' + CFG.ns + '-gtx"><span class="' + CFG.ns + '-gh-name gh-name">' + esc(nd.name) + '</span>' +
+    (sub ? '<span class="' + CFG.ns + '-unit-sub">' + esc(sub) + '</span>' : '') + '</span></td>';
   for (var c = 0; c < cols.length; c++) h += gCellHtml(cols[c].key, m);
   if (local) h += '<td class="loc">' + (cN ? nf(cN) : '<span class="mut">0</span>') + '</td>';
   return h + '</tr>';
@@ -1273,7 +1287,7 @@ function groupTableHtml(plist, cut) {
   var tot = gMetrics(MODEL.kpi || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
   for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c], state.gSort);
   if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всей области.' }) + '>В выборке</th>';
-  var totRow = '<tr class="g-tot"><td class="txt">Итого по области</td>';
+  var totRow = '<tr class="g-tot tot"><td class="txt">Итого по области</td>';
   for (c = 0; c < cols.length; c++) totRow += cols[c].key === 'share' ? '<td class="shr">100%</td>' : gCellHtml(cols[c].key, tot);
   // (строка итога строится ДО полос групп — MAX_SHARE к ней не применяется)
   if (local) totRow += '<td class="loc">' + nf(plist.length) + '</td>';

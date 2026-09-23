@@ -162,7 +162,7 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   tip: null,
   view: 'dyn',               // вкладка панели: dyn | who | coh (Динамика — первая)
   q: '',                     // поиск «Имя или логин»
-  obsI: 0,                   // «Что видно в данных»: номер факта в карусели
+  obsOpen: false,            // «Что видно в данных»: список фактов раскрыт вниз
   whoCut: 'none',            // группировка: none (люди) | org | spec | stream | adgroup | heads
   gOpen: {},                 // раскрытые группы сводной таблицы (cut:ключ → true)
   gMore: {},                 // группы, где людей показано больше subShow
@@ -688,7 +688,8 @@ function buildCSS() {
     P + '-down{background:var(--red-bg);color:var(--red-tx);}',
     P + '-flat{background:#f0f1f3;color:var(--muted);}',
     P + '-nocmp{font-size:11px;color:var(--muted);cursor:help;border-bottom:1px dotted var(--muted2);}',
-    P + '-obs{display:flex;align-items:center;gap:10px;height:42px;padding:0 8px 0 14px;border-radius:12px;background:var(--card);min-width:0;}',
+    P + '-obs{border-radius:12px;background:var(--card);min-width:0;}',
+    P + '-obs-h{display:flex;align-items:center;gap:10px;height:42px;padding:0 8px 0 14px;min-width:0;}',
     P + '-obs.sev-high{background:linear-gradient(100deg,#fff0f1 0%,#fdf6f8 45%,#fff 100%);}',
     P + '-obs.sev-mid{background:linear-gradient(100deg,#fff6e6 0%,#fdf9f2 45%,#fff 100%);}',
     P + '-obs.sev-good{background:linear-gradient(100deg,#eaf8ef 0%,#f5faf7 45%,#fff 100%);}',
@@ -698,11 +699,17 @@ function buildCSS() {
     P + '-obs.sev-mid ' + P + '-obs-ico{color:#9a6500;}',
     P + '-obs-t{font-size:var(--fs-body);font-weight:500;color:var(--ink2);flex:0 0 auto;}',
     P + '-obs-lead{font-size:var(--fs-body);color:var(--ink2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help;}',
-    P + '-obs-nav{display:inline-flex;align-items:center;gap:2px;flex:0 0 auto;}',
-    P + '-obs-nav button{border:0;background:rgba(255,255,255,.7);width:24px;height:24px;border-radius:7px;cursor:pointer;color:var(--ink2);font:inherit;font-size:13px;}',
-    P + '-obs-nav button:hover{background:#fff;color:var(--act);}',
-    P + '-obs-nav button[disabled]{opacity:.35;cursor:default;}',
-    P + '-obs-n{font-size:11px;color:var(--muted);padding:0 4px;font-variant-numeric:tabular-nums;}',
+    P + '-obs-tog{border:0;background:rgba(255,255,255,.75);height:26px;padding:0 10px;border-radius:8px;cursor:pointer;color:var(--act);font:inherit;font-size:var(--fs-note);font-weight:500;flex:0 0 auto;margin-left:auto;}',
+    P + '-obs-tog:hover{background:#fff;}',
+    // Раскрытый список фактов растёт ВНИЗ (не карусель вправо): каждый факт — строка
+    // с меткой важности, заголовком и пояснением; графики под ним ужимаются по высоте.
+    P + '-obs-list{list-style:none;margin:0;padding:0 14px 12px 44px;display:flex;flex-direction:column;gap:8px;}',
+    P + '-obs-li{display:flex;gap:8px;align-items:baseline;font-size:var(--fs-body);color:var(--ink2);line-height:1.45;}',
+    P + '-obs-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;transform:translateY(-1px);background:var(--green-tx);}',
+    P + '-obs-dot.sev-high{background:var(--red-tx);}',
+    P + '-obs-dot.sev-mid{background:#d69a00;}',
+    P + '-obs-li b{font-weight:500;color:var(--ink);}',
+    P + '-obs-li span{color:var(--muted);}',
 
     // ── Панель ──
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column;}',
@@ -1956,23 +1963,30 @@ function obsHtml(what) {
   var list = obsList(MODEL.kpi, CFG.grains[MODEL.grain] || CFG.grains.d, what);
   var N = CFG.ns;
   if (!list.length) {
-    return '<div class="' + N + '-obs"><span class="' + N + '-obs-ico" aria-hidden="true">✓</span>' +
+    return '<div class="' + N + '-obs"><div class="' + N + '-obs-h"><span class="' + N + '-obs-ico" aria-hidden="true">✓</span>' +
       '<span class="' + N + '-obs-t">Что видно в данных</span>' +
-      '<span class="' + N + '-obs-lead">Отклонений выше порогов нет: показатели в пределах обычного разброса.</span></div>';
+      '<span class="' + N + '-obs-lead">Отклонений выше порогов нет: показатели в пределах обычного разброса.</span></div></div>';
   }
-  var i = Math.max(0, Math.min(state.obsI || 0, list.length - 1));
-  state.obsI = i;
-  var o = list[i];
-  return '<div class="' + N + '-obs sev-' + o.sev + '">' +
+  var o = list[0], open = !!state.obsOpen && list.length > 1;
+  var h = '<div class="' + N + '-obs sev-' + o.sev + '"><div class="' + N + '-obs-h">' +
     '<span class="' + N + '-obs-ico" aria-hidden="true">!</span>' +
     '<span class="' + N + '-obs-t">Что видно в данных</span>' +
-    '<span class="' + N + '-obs-lead"' + tip({ title: o.lead, text: o.body, note: 'Отбор по порогу: ' + o.rule }) + '>' + esc(o.lead) + '</span>' +
+    (open ? '' : '<span class="' + N + '-obs-lead"' + tip({ title: o.lead, text: o.body, note: 'Отбор по порогу: ' + o.rule }) + '>' + esc(o.lead) + '</span>') +
     (list.length > 1
-      ? '<span class="' + N + '-obs-nav"><button type="button" data-obs="prev" aria-label="Предыдущий факт"' + (i === 0 ? ' disabled' : '') + '>‹</button>' +
-        '<span class="' + N + '-obs-n">' + (i + 1) + ' / ' + list.length + '</span>' +
-        '<button type="button" data-obs="next" aria-label="Следующий факт"' + (i === list.length - 1 ? ' disabled' : '') + '>›</button></span>'
+      ? '<button type="button" class="' + N + '-obs-tog" data-obs="toggle" aria-expanded="' + open + '">' +
+        (open ? 'Свернуть ▴' : 'Ещё ' + (list.length - 1) + ' ▾') + '</button>'
       : '') +
     '</div>';
+  if (open) {
+    h += '<ul class="' + N + '-obs-list">';
+    for (var i = 0; i < list.length; i++) {
+      h += '<li class="' + N + '-obs-li"' + tip({ title: list[i].lead, text: 'Отбор по порогу: ' + list[i].rule }) + '>' +
+        '<i class="' + N + '-obs-dot sev-' + list[i].sev + '"></i>' +
+        '<div><b>' + esc(list[i].lead) + '</b> <span>' + esc(list[i].body) + '</span></div></li>';
+    }
+    h += '</ul>';
+  }
+  return h + '</div>';
 }
 
 function buildHTML() {
@@ -2634,10 +2648,10 @@ function dynTipHtml(el, i) {
         return;
       }
       // Корзина частоты: локальный фильтр списка + шина freq_f.
-      // «Что видно в данных»: листание карусели.
+      // «Что видно в данных»: раскрыть / свернуть список фактов.
       var ob = trigger(e.target, 'data-obs');
       if (ob) {
-        state.obsI = (state.obsI || 0) + (ob.getAttribute('data-obs') === 'next' ? 1 : -1);
+        state.obsOpen = !state.obsOpen;   // раскрыть список фактов вниз / свернуть
         render();
         return;
       }

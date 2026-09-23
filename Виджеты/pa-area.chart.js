@@ -833,8 +833,10 @@ function buildCSS() {
     P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
     P + '-frow-h{font-size:var(--fs-note);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
-    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:500;flex:0 0 auto;max-width:280px;cursor:default;}',
-    P + '-fpill .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:500;flex:0 1 auto;min-width:0;max-width:100%;cursor:default;}',
+    // Две пилюли делят строку поровну (длинное имя — «…»); три и больше — одна сводная.
+    P + '-fpill.two{max-width:calc(50% - 3px);}',
+    P + '-fpill .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:0 1 auto;}',
     P + '-fpill .k{opacity:.75;font-weight:400;}',
     P + '-fpill.own{background:var(--blue-bg);border-color:var(--act-line);color:var(--act-ink);padding-right:5px;}',
     P + '-fpill.ppl{background:#f3ecff;border-color:#e2d4ff;color:#5a2fc2;padding-right:5px;}',
@@ -1866,22 +1868,33 @@ function cohortZoneHtml(ai) {
 // чарта (снимается там). Высота строки постоянна: вёрстка от клика не двигается.
 function filterRowHtml(own, ext, hint, ownCls) {
   var N = CFG.ns, h = '';
+  // 1 пилюля — во всю строку, 2 — поровну, обе с «…» у длинных имён; 3+ — одна сводная
+  // «Применено N фильтров» (полный список во всплывашке, × снимает все).
+  if (own.length > 2) {
+    var all = [];
+    for (var q = 0; q < own.length; q++) all.push({ label: own[q].k || '', value: own[q].v });
+    h = '<span class="' + N + '-fpill ' + (ownCls || 'own') + '"' + tip({ title: 'Применённые фильтры', rows: all, note: 'Снять все — ×' }) + '>' +
+      '<span class="v">Применено ' + own.length + ' ' + plural(own.length, 'фильтр', 'фильтра', 'фильтров') + '</span>' +
+      '<button type="button" data-unpick="*" aria-label="Снять все фильтры">×</button></span>';
+    own = [];
+  }
+  var two = own.length + ext.length === 2 ? ' two' : '';
   for (var i = 0; i < own.length; i++) {
     var o = own[i];
-    h += '<span class="' + N + '-fpill ' + (ownCls || 'own') + '"' + tip({ title: o.title || o.k, text: o.full || o.v, note: 'Снять — ×' }) + '>' +
+    h += '<span class="' + N + '-fpill ' + (ownCls || 'own') + two + '"' + tip({ title: o.title || o.k, text: o.full || o.v, note: 'Снять — ×' }) + '>' +
       '<span class="v">' + (o.k ? '<span class="k">' + esc(o.k) + ':</span> ' : '') + esc(o.v) + '</span>' +
       '<button type="button" data-unpick="' + esc(o.id) + '" aria-label="Снять фильтр «' + esc(o.v) + '»">×</button></span>';
   }
   for (var j = 0; j < ext.length; j++) {
     var x = ext[j];
-    h += '<span class="' + N + '-fpill ext"' + tip({ title: x.title || x.k, text: (x.full ? x.full + '. ' : '') + x.from }) + '>' +
+    h += '<span class="' + N + '-fpill ext' + two + '"' + tip({ title: x.title || x.k, text: (x.full ? x.full + '. ' : '') + x.from }) + '>' +
       '<span class="v">' + (x.k ? '<span class="k">' + esc(x.k) + ':</span> ' : '') + esc(x.v) + '</span></span>';
   }
   // hint === null — строка без подписи и подсказки (подпись «Выбранные фильтры» одна на лист,
   // над каталогом); высота строки та же, пилюли появляются без сдвига вёрстки.
   return '<div class="' + N + '-frow">' + (hint === null ? '' : '<span class="' + N + '-frow-l">Выбранные фильтры</span>') +
     '<div class="' + N + '-frow-p">' + (h || (hint === null ? '' : '<span class="' + N + '-frow-h">' + esc(hint) + '</span>')) + '</div>' +
-    (own.length > 1 ? '<button type="button" class="' + N + '-frow-x" data-unpick="*">Снять все</button>' : '') +
+    (own.length === 2 ? '<button type="button" class="' + N + '-frow-x" data-unpick="*">Снять все</button>' : '') +
     '</div>';
 }
 // Пилюли панели: СВОЁ — людская шина, заданная кликами здесь (× снимает здесь же);

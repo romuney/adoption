@@ -642,7 +642,10 @@ function buildCSS() {
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
 
     // ── Таблицы ──
-    P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin-left:5px;padding:0;border:0;border-radius:6px;'
+    P + '-rname{display:flex;align-items:flex-start;gap:6px;min-width:0;}',
+    P + '-rname-t{flex:1 1 auto;min-width:0;}',
+    P + '-rname ' + P + '-lnkbtn{flex:0 0 auto;}',
+    P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin:-1px 0 0 -4px;padding:0;border:0;border-radius:6px;'
       + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.55;font:inherit;font-size:12px;font-weight:600;}',
     P + '-urow:hover ' + P + '-lnkbtn{opacity:1;}',
     P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
@@ -906,11 +909,14 @@ function reportTableHtml() {
         ],
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
       }) + '>' +
-      '<td class="txt">' + esc(x.m.dash_nm) +
+      // Скрепка слева, текст — отдельным блоком справа: вторая строка длинного
+      // названия и строка владельца выровнены по первой, а не уходят под иконку.
+      '<td class="txt"><div class="' + CFG.ns + '-rname">' +
         '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' + tip({ text: 'Скопировать ссылку на отчёт' }) + '>' + LINK_SVG + '</button>' +
+        '<div class="' + CFG.ns + '-rname-t">' + esc(x.m.dash_nm) +
         '<span class="' + CFG.ns + '-unit-sub">' +
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
-          esc(x.m.owner_login || '—') + '</span></td>' +
+          esc(x.m.owner_login || '—') + '</span></div></div></td>' +
       '<td class="lead">' + nf(x.k.users) + '</td>' +
       '<td>' + compact(x.k.views) + '</td>' +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +

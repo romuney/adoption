@@ -846,16 +846,16 @@ function rhythmOf(raw) {
 }
 // Последний заход (last_view_days отсчитан от последнего дня данных — вчера): 0 — «вчера».
 function lastSeen(v) { return v === 0 ? 'вчера' : days(v + 1); }
-// Подсказка ячейки «Ритм»: расклад людей по ритмам, ядро, последний заход — только о ритме.
+// Подсказка ячейки «Ритм»: ядро и последний заход. Расклад по Daily/Weekly/… не показываем:
+// он за 3 месяца и не сходится с «Польз.» выбранного периода — путал бы.
 function rhythmTip(k) {
   var r = k.rh;
   if (!r.n) return { title: 'Ритм · Dead', text: 'За последние 3 месяца в отчёт не заходил никто.', rows: [{ label: 'Последний заход', value: lastSeen(k.last_view_days) }] };
   return {
     title: 'Ритм · ' + r.label,
-    rows: [{ label: 'Daily', value: nf(r.d) }, { label: 'Weekly', value: nf(r.w) }, { label: 'Monthly', value: nf(r.m) }, { label: 'Rare', value: nf(r.o) },
-      { label: 'Ядро (возвращаются)', value: nf(r.core) + ' · ' + pct(r.core / r.n * 100, 0) },
+    rows: [{ label: 'Ядро (возвращаются)', value: pct(r.core / r.n * 100, 0) },
       { label: 'Последний заход', value: lastSeen(k.last_view_days) }],
-    note: 'Люди, заходившие за 3 месяца. Ритм — как пользуется хотя бы половина ядра; Rare — ядро меньше 10%.'
+    note: 'Ядро — доля тех, кто возвращается, среди заходивших за 3 месяца. Ритм — как пользуется хотя бы половина ядра; Rare — ядро меньше 10%.'
   };
 }
 // Подсказка скрепки: действие + ID отчёта (адрес целиком в подсказку не помещается).
@@ -975,9 +975,8 @@ function reportTableHtml() {
       '<td class="lead">' + nf(x.k.users) + '</td>' +
       '<td>' + compact(x.k.views) + '</td>' +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
-      // Ритм — пилюлей, под ней последний заход (как в бывшей «Тишине»); своя подсказка — только о ритме.
-      '<td class="rh"' + tip(rhythmTip(x.k)) + '><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span>' +
-        '<span class="' + CFG.ns + '-unit-sub">' + lastSeen(x.k.last_view_days) + '</span></td>' +
+      // Ритм — пилюлей; своя подсказка — только о ритме (ядро и последний заход).
+      '<td class="rh"' + tip(rhythmTip(x.k)) + '><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span></td>' +
       '</tr>';
   }
   return { html: h + '</tbody></table>', total: total };

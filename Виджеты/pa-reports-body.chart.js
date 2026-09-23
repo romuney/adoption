@@ -703,8 +703,10 @@ function filterRowHtml(own, ext, hint, ownCls) {
     h += '<span class="' + N + '-fpill ext"' + tip({ title: x.title || x.k, text: (x.full ? x.full + '. ' : '') + x.from }) + '>' +
       '<span class="v">' + (x.k ? '<span class="k">' + esc(x.k) + ':</span> ' : '') + esc(x.v) + '</span></span>';
   }
-  return '<div class="' + N + '-frow"><span class="' + N + '-frow-l">Выбранные фильтры</span>' +
-    '<div class="' + N + '-frow-p">' + (h || '<span class="' + N + '-frow-h">' + esc(hint) + '</span>') + '</div>' +
+  // hint === null — строка без подписи и подсказки (подпись «Выбранные фильтры» одна на лист,
+  // над каталогом); высота строки та же, пилюли появляются без сдвига вёрстки.
+  return '<div class="' + N + '-frow">' + (hint === null ? '' : '<span class="' + N + '-frow-l">Выбранные фильтры</span>') +
+    '<div class="' + N + '-frow-p">' + (h || (hint === null ? '' : '<span class="' + N + '-frow-h">' + esc(hint) + '</span>')) + '</div>' +
     (own.length > 1 ? '<button type="button" class="' + N + '-frow-x" data-unpick="*">Снять все</button>' : '') +
     '</div>';
 }

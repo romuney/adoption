@@ -1859,8 +1859,10 @@ function filterRowHtml(own, ext, hint, ownCls) {
     h += '<span class="' + N + '-fpill ext"' + tip({ title: x.title || x.k, text: (x.full ? x.full + '. ' : '') + x.from }) + '>' +
       '<span class="v">' + (x.k ? '<span class="k">' + esc(x.k) + ':</span> ' : '') + esc(x.v) + '</span></span>';
   }
-  return '<div class="' + N + '-frow"><span class="' + N + '-frow-l">Выбранные фильтры</span>' +
-    '<div class="' + N + '-frow-p">' + (h || '<span class="' + N + '-frow-h">' + esc(hint) + '</span>') + '</div>' +
+  // hint === null — строка без подписи и подсказки (подпись «Выбранные фильтры» одна на лист,
+  // над каталогом); высота строки та же, пилюли появляются без сдвига вёрстки.
+  return '<div class="' + N + '-frow">' + (hint === null ? '' : '<span class="' + N + '-frow-l">Выбранные фильтры</span>') +
+    '<div class="' + N + '-frow-p">' + (h || (hint === null ? '' : '<span class="' + N + '-frow-h">' + esc(hint) + '</span>')) + '</div>' +
     (own.length > 1 ? '<button type="button" class="' + N + '-frow-x" data-unpick="*">Снять все</button>' : '') +
     '</div>';
 }
@@ -1888,7 +1890,7 @@ function areaFilterRowHtml(ai) {
   if (state.headsOnly) own.push({ id: 'headsOnly|', k: '', v: 'Только руководители' });
   if (state.excl.length) own.push({ id: 'excl|', k: 'Исключено', v: String(state.excl.length), full: state.excl.map(function (x) { return fioOf[x] || x; }).slice(0, 8).join(', ') });
   // Только то, что снимается здесь же (×): выбор каталога виден в заголовке панели.
-  return filterRowHtml(own, [], 'кликните по группе, человеку или корзине частоты — выбор появится здесь', 'ppl');
+  return filterRowHtml(own, [], null, 'ppl');
 }
 function kpiCard(o) {
   return '<div class="' + CFG.ns + '-kpi">' +

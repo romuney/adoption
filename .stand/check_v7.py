@@ -35,6 +35,7 @@ def ok(cond, msg):
 CASES = [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'},
          {'pub_f': '0', 'act_f': '0', 'exc_f': '0'}, {'lvl3_f': ['Блок 3'], 'lvl4_f': ['Деп 5.0']},
          {'adg_f': ['ADG7', 'ALL']}, {'login_f': ['u1', 'u2']}, {'exl_f': ['u1', 'u2', 'u5']}, {'freq_f': ['4', '5'], 'exl_f': ['u7']},
+         {'org_f': ['Блок 3 › Деп 3.3', 'Блок 5']}, {'org_f': ['Блок 1 › Деп 1.1 › Упр 1.1.1 › Отдел 1 › Команда 1'], 'freq_f': ['5']},
          {'heads_f': '1', 'freq_f': ['5']}, {'heads_f': 'n', 'exl_f': ['u2']}, {'freq_f': ['4', '5']},
          {'freq_f': ['1'], 'period_param': 'w', 'spec_f': ['Спец 3']},
          {'stream_f': ["x'); DROP TABLE t;--"]}, {'lvl3_f': ['a\\b']}]
@@ -58,7 +59,17 @@ p = run(PPL, {})[0]
 for r in [x for x in p if x['section'] == 'freq']:
     t = [x for x in run(BODY, {'freq_f': [r['k']]})[0] if x['section'] == 'total']
     ok(str(t[0]['users'] if t else 0) == str(r['users']), f'корзина {r["k"]}: людей {r["users"]} → ИТОГО тела')
-for g, col in [('lvl3', 'lvl3_f'), ('spec', 'spec_f'), ('adg', 'adg_f'), ('stream', 'stream_f')]:
+# Оргструктура: узел любой глубины (УС-3…УС-7) → ИТОГО тела == людям узла в панели.
+orgs = [x for x in p if x['section'] == 'ctx' and x['g'] == 'org' and int(x['users']) > 0]
+for depth in range(1, 6):
+    for r in [x for x in orgs if len(x['k'].split(' › ')) == depth][:2]:
+        t = [x for x in run(BODY, {'org_f': [r['k']]})[0] if x['section'] == 'total'][0]
+        ok(str(t['users']) == str(r['users']), f'узел УС-{depth + 2} «{r["k"][-30:]}»: людей {r["users"]} → ИТОГО тела {t["users"]}')
+kids = {}
+for x in orgs: kids.setdefault(x['parent'], []).append(x)
+top = [x for x in orgs if x['parent'] == ''][0]
+ok(sum(int(x['users']) for x in kids.get(top['k'], [])) <= int(top['users']), f'дочерние узлы «{top["k"]}» не больше родителя')
+for g, col in [('spec', 'spec_f'), ('adg', 'adg_f'), ('stream', 'stream_f')]:
     for r in [x for x in p if x['section'] == 'ctx' and x['g'] == g][:3]:
         t = [x for x in run(BODY, {col: [r['k']]})[0] if x['section'] == 'total'][0]
         ok(str(t['users']) == str(r['users']), f'группа {g}={r["k"]}: людей {r["users"]} → ИТОГО тела {t["users"]}')

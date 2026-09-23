@@ -33,6 +33,8 @@
 {% set adgf = filter_values('adg_f') or [] %}
 {% set headsv = filter_values('heads_f')|first|default('0', true) %}{% set headsv = headsv if headsv in ['0', '1', 'n'] else '0' %}
 {% set loginf = filter_values('login_f') or [] %}
+{#- Узлы оргструктуры (группировка «Оргструктура» панели): путь «УС-3 › УС-4 › …», глубина = число звеньев. -#}
+{% set orgf = [] %}{% for v in (filter_values('org_f') or []) %}{% if v|string != '' and (v|string).split(' › ')|length <= 5 %}{% set _ = orgf.append(v|string) %}{% endif %}{% endfor %}
 {#- Исключённые логины (настройки «Кто смотрит»): люди выпадают из всех чисел. -#}
 {% set exlf = [] %}{% for v in (filter_values('exl_f') or []) %}{% if v|string != '' %}{% set _ = exlf.append(v|string) %}{% endif %}{% endfor %}
 {% set freqr = filter_values('freq_f') or [] %}
@@ -47,6 +49,7 @@
 {% if strm %}{% set _ = SJ.append('"stream":' ~ jal(strm)) %}{% endif %}
 {% if spcf %}{% set _ = SJ.append('"spec":' ~ jal(spcf)) %}{% endif %}
 {% if adgf %}{% set _ = SJ.append('"adg":' ~ jal(adgf)) %}{% endif %}
+{% if orgf %}{% set _ = SJ.append('"org":' ~ jal(orgf)) %}{% endif %}
 {% if loginf %}{% set _ = SJ.append('"login":' ~ jal(loginf)) %}{% endif %}
 {% if exlf %}{% set _ = SJ.append('"exl":' ~ jal(exlf)) %}{% endif %}
 {% if freqf %}{% set _ = SJ.append('"freq":' ~ jal(freqf)) %}{% endif %}

@@ -85,10 +85,15 @@ def gen(big=False):
       toInt32(number % 10 != 0), toInt32(number % 13 != 0), if(number % 17 = 0, 'cert', NULL),
       toDateTime('2024-01-01') + toIntervalDay(number % 600) FROM numbers({n_dash})""")
     S.query("""CREATE TABLE prod_proteus.pa_emp_attrs (login String, lvl3_management_unit_nm String, lvl4_management_unit_nm String,
+      lvl5_management_unit_nm String, lvl6_management_unit_nm String, lvl7_management_unit_nm String,
       emp_specialization_desc String, emp_stream_desc String, management_head_flg Int32, ad_groups Array(String),
       fio String, exp_nm String) ENGINE=MergeTree ORDER BY login""")
     S.query(f"""INSERT INTO prod_proteus.pa_emp_attrs SELECT concat('u', toString(number)),
-      if(number % 50 = 0, '', concat('Блок ', toString(number % 12))), if(number % 40 = 0, '', concat('Деп ', toString(number % 12), '.', toString(number % 5))),
+      if(number % 50 = 0, '', concat('Блок ', toString(number % 12))), if(number % 40 = 0 OR number % 50 = 0, '', concat('Деп ', toString(number % 12), '.', toString(number % 5))),
+      -- УС-5…7: иерархия (имя узла несёт путь родителя), пустой уровень обрывает цепочку ниже
+      if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0, '', concat('Упр ', toString(number % 12), '.', toString(number % 5), '.', toString(number % 3))),
+      if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0, '', concat('Отдел ', toString(number % 7))),
+      if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0 OR number % 6 = 0, '', concat('Команда ', toString(number % 2))),
       concat('Спец ', toString(number % 20)), concat('Стрим ', toString(number % 9)), toInt32(number % 11 = 0),
       arrayFilter(x -> x != '', [concat('ADG', toString(number % 30)), if(number % 4 = 0, 'ALL', '')]),
       concat('Фамилия ', toString(number)), ['до 1 года', '1–3 года', '3–5 лет'][1 + number % 3]

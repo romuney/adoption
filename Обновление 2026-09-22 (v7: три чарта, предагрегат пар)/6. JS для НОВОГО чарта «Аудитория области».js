@@ -55,7 +55,7 @@ var CFG = {
   // Порядок категорий — часть ТЗ (правило 15): и для разметки, и для автомока.
   order: {
     section: ['area', 'total', 'freq', 'ctx', 'list', 'ts', 'coh'],
-    g: ['lvl3', 'lvl4', 'spec', 'stream', 'head', 'dep', 'adg'],
+    g: ['org', 'spec', 'stream', 'head', 'adg'],
     bin: [1, 2, 3, 4, 5],
     is_head: [1, 0]
   },
@@ -65,12 +65,37 @@ var CFG = {
     { key: 'who', label: 'Кто смотрит' },
     { key: 'coh', label: 'Закрепляемость' }
   ],
-  // Группировки поимённого списка (макет app.js WHO_GROUPS, дословно).
+  // Группировки «Кто смотрит». none — поимённый список с пагинацией; любая
+  // другая — сводная таблица групп с итогами, свёрнутая до верхнего уровня.
+  // org — оргструктура одной опцией: УС-3 › УС-4 › … › УС-7, раскрытие вглубь
+  // (правка владельца 2026-09-23: «уровни УС-3…УС-7 — в одну опцию»).
   groups: [
-    { key: 'none', label: 'Без группировки' }, { key: 'lvl3', label: 'УС-3' },
-    { key: 'lvl4', label: 'Департамент' }, { key: 'spec', label: 'Специализация' },
-    { key: 'stream', label: 'Стрим' }, { key: 'adgroup', label: 'AD-группа' },
-    { key: 'heads', label: 'Тим-лиды' }
+    { key: 'none', label: 'Люди' }, { key: 'org', label: 'Оргструктура (УС-3…УС-7)' },
+    { key: 'spec', label: 'Специализация' }, { key: 'stream', label: 'Стрим' },
+    { key: 'adgroup', label: 'AD-группа' }, { key: 'heads', label: 'Тим-лиды' }
+  ],
+  // Разделитель звеньев пути оргструктуры — тот же, что в SQL (pa_people, org_f).
+  orgSep: ' › ',
+  // Колонки сводной таблицы групп: capability-метаданные (TABLES.md §3).
+  // prevOnly — показывается, только если у периода есть полный предыдущий.
+  gcols: [
+    { key: 'users', label: 'Людей', hint: 'Уникальные люди группы в области за период' },
+    { key: 'share', label: 'Доля', hint: 'Доля группы от всех людей области' },
+    { key: 'dUsers', label: 'Δ к пред.', hint: 'Изменение числа людей к предыдущему периоду той же длины', prevOnly: true },
+    { key: 'views', label: 'Просмотров', hint: 'Открытия отчётов области за период' },
+    { key: 'vpu', label: 'На чел.', hint: 'Просмотров на одного человека группы' },
+    { key: 'regShare', label: 'Постоянных', hint: 'Доля заходивших 8+ разных периодов (число — во всплывашке)' },
+    { key: 'new_u', label: 'Новых', hint: 'Первый визит в отчёты области пришёлся на этот период' }
+  ],
+  // Колонки поимённого списка (сортировка — по ключу).
+  pcols: [
+    { key: 'fio', label: 'Сотрудник', txt: true },
+    { key: 'org', label: 'Подразделение', txt: true },
+    { key: 'exp', label: 'Стаж', txt: true },
+    { key: 'days', label: 'Дней' },
+    { key: 'views', label: 'Просм.' },
+    { key: 'last', label: 'Визит' },
+    { key: 'bin', label: 'Сегмент', txt: true }
   ],
   // Грануляция периода задаётся полоской (period_param); датасет возвращает
   // её в area-строке (parent). prev — есть ли в 13 месяцах истории полный
@@ -114,8 +139,9 @@ var CFG = {
     dense: 16,                // больше N бакетов — плотная сетка
     headroom: 1.3, headroomDense: 1.22   // воздух над марками под подписи
   },
-  // Показ поимённого списка: первые N строк области (в ответе — топ-2000).
-  listShow: 60
+  // Поимённый список: строк на странице; людей внутри раскрытой группы —
+  // первые subShow, по «ещё» — до subMax. В ответе датасета — топ-3 000 по дням.
+  pageSize: 50, subShow: 15, subMax: 300, listCap: 3000
 };
 
 // ---------- БЛОК 2: ВХОД + СОСТОЯНИЕ + ХЕЛПЕРЫ ----------
@@ -133,8 +159,13 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   view: 'dyn',               // вкладка панели: dyn | who | coh (Динамика — первая)
   q: '',                     // поиск «Имя или логин»
   obsI: 0,                   // «Что видно в данных»: номер факта в карусели
-  whoCut: 'none',            // группировка поимённого списка
-  grpClosed: {},             // свёрнутые группы дерева (ключ → true)
+  whoCut: 'none',            // группировка: none (люди) | org | spec | stream | adgroup | heads
+  gOpen: {},                 // раскрытые группы сводной таблицы (cut:ключ → true)
+  gMore: {},                 // группы, где людей показано больше subShow
+  gSort: { key: 'users', dir: -1 },   // сортировка групп (у каждого уровня — своих соседей)
+  pSort: { key: 'days', dir: -1 },    // сортировка поимённого списка
+  page: 0,                   // страница поимённого списка (с 0)
+  toast: '',                 // короткое сообщение после копирования/выгрузки
   freqSel: null,             // корзина частоты: '1'..'5' | null
   headsOnly: false,          // настройки: только руководители
   excl: [],                  // настройки: исключённые логины
@@ -147,9 +178,20 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   ctBase: 'col',             // цвет когорт: медиана столбца | таблицы
   // Людская шина (→ каталог слева): выбор по разрезам, семантика как в
   // каталоге — клик переключает, Shift накапливает, повторный по единственной снимает.
-  picks: { lvl3: [], lvl4: [], spec: [], stream: [], adgroup: [], heads: [], login: [] }
+  picks: { org: [], spec: [], stream: [], adgroup: [], heads: [], login: [] }
 };
 var state = __S[CFG.ns];
+// Состояние из прошлой версии виджета (та же вкладка браузера): добиваем ключи.
+(function () {
+  var d = { gOpen: {}, gMore: {}, gSort: { key: 'users', dir: -1 }, pSort: { key: 'days', dir: -1 }, page: 0, toast: '' };
+  for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k) && state[k] == null) state[k] = d[k];
+  var pk = state.picks || (state.picks = {});
+  var need = ['org', 'spec', 'stream', 'adgroup', 'heads', 'login'];
+  for (var i = 0; i < need.length; i++) if (!pk[need[i]]) pk[need[i]] = [];
+  var ok = false;
+  for (var g = 0; g < CFG.groups.length; g++) if (CFG.groups[g].key === state.whoCut) ok = true;
+  if (!ok) state.whoCut = 'none';
+})();
 
 // Массив из data приходит и массивом, и JSON-строкой '[1,2,3]'.
 // Массив из ответа датасета. Proteus отдаёт Array-колонку по-разному: живым
@@ -350,8 +392,9 @@ function segOf(bin) {
 //   total — KPI области (текущий/предыдущий период, новые, постоянные,
 //           ушедшие, MAU двух последних закрытых месяцев);
 //   freq  — корзины частоты (k = 1..5, users) по всей области;
-//   ctx   — группы людей области (g = lvl3/lvl4/dep/spec/stream/head/adg);
-//   list  — поимённый список (топ-2000 по активным дням);
+//   ctx   — группы людей области с полными метриками (g = org/spec/stream/head/adg;
+//           org: k = путь «УС-3 › … › УС-7», parent = путь родителя);
+//   list  — поимённый список (топ-3 000 по активным дням), parent = путь человека;
 //   ts    — динамика: k = возраст бакета, users / new_u / react_u / views;
 //   coh   — когорты: k = месяц первого визита, cnt = размер, ages/acts.
 function buildModel() {
@@ -359,8 +402,10 @@ function buildModel() {
   var m = {
     grain: 'd', area: { mode: '', sel: [], name: '' }, kpi: null,
     ts: [], total: 0, freqCtx: {}, labels: freqLabels('d'),
-    ctx: { lvl3: {}, lvl4: {}, spec: {}, stream: {}, head: {} },
-    dep: [], adg: [], list: [], rows: [], coh: []
+    // gm[разрез][ключ] — группа с полными метриками (серверные, точные по области);
+    // orgKids[путь] — дочерние узлы оргструктуры (корни — под '').
+    gm: { org: {}, spec: {}, stream: {}, adg: {}, head: {} }, orgKids: {},
+    list: [], rows: [], coh: []
   };
   var gotGrain = false;
   for (i = 0; i < rawData.length; i++) {
@@ -394,17 +439,18 @@ function buildModel() {
         views: num(r[F.views]) || 0
       });
     } else if (sec === 'ctx') {
-      // Счётчик группы — люди, активные в ТЕКУЩЕМ периоде (users); строки
-      // «только предыдущий период» (users = 0) в дерево не попадают.
-      var gg = String(r[F.g] || ''), kk = String(r[F.k] || ''), cc = num(r[F.users]) || 0;
-      if (!cc) continue;
-      if (gg === 'dep') {
-        m.dep.push({ k: kk, parent: String(r[F.parent] || ''), cnt: cc });
-      } else if (gg === 'adg') {
-        m.adg.push({ k: kk, cnt: cc });
-      } else if (m.ctx[gg]) {
-        m.ctx[gg][kk] = cc;
-      }
+      // Группа — люди, активные в ТЕКУЩЕМ периоде (users); строки «только
+      // предыдущий период» (users = 0) в таблицу не попадают.
+      var gg = String(r[F.g] || ''), kk = String(r[F.k] || '');
+      if (!m.gm[gg] || !kk || !(num(r[F.users]) || 0)) continue;
+      var grp = {
+        k: kk, parent: String(r[F.parent] || ''),
+        users: num(r[F.users]) || 0, users_prev: num(r[F.users_prev]) || 0,
+        views: num(r[F.views]) || 0, views_prev: num(r[F.views_prev]) || 0,
+        new_u: num(r[F.new_u]) || 0, regular: num(r[F.regular]) || 0, sleeping: num(r[F.sleeping]) || 0
+      };
+      m.gm[gg][kk] = grp;
+      if (gg === 'org') (m.orgKids[grp.parent] = m.orgKids[grp.parent] || []).push(kk);
     } else if (sec === 'list') {
       var bin = num(r[F.bin]) || 1;
       var seg = segOf(bin);
@@ -413,6 +459,9 @@ function buildModel() {
         fio: String(r[F.fio] || ''),
         lvl3: String(r[F.lvl3] || ''),
         lvl4: String(r[F.lvl4] || ''),
+        // Путь в оргструктуре «УС-3 › … › УС-7» (parent list-строки pa_people);
+        // старый ответ без пути — собираем из УС-3/УС-4.
+        org: String(r[F.parent] || '') || [String(r[F.lvl3] || ''), String(r[F.lvl4] || '')].filter(function (x) { return x; }).join(CFG.orgSep),
         spec: String(r[F.spec] || ''),
         stream: String(r[F.stream] || ''),
         exp: String(r[F.exp] || ''),
@@ -457,8 +506,6 @@ function buildModel() {
   m.list.sort(function (a, b) {
     return (b.days - a.days) || (b.views - a.views) || (a.login < b.login ? -1 : (a.login > b.login ? 1 : 0));
   });
-  m.dep.sort(function (a, b) { return b.cnt - a.cnt; });
-  m.adg.sort(function (a, b) { return b.cnt - a.cnt; });
   m.coh.sort(function (a, b) { return (a.month.y - b.month.y) * 12 + (a.month.m - b.month.m); });
   m.rows = m.list;
   return m;
@@ -761,28 +808,56 @@ function buildCSS() {
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
     P + '-ptable.dense th{padding:8px 6px;font-size:var(--fs-cap);}',
     P + '-ptable.dense td{padding:7px 6px;}',
-    P + '-ptable tr.grp-h td{padding:6px 10px;font-weight:500;color:var(--ink);',
-    '  background:#f4f6f9;text-align:left;}',
+    P + '-ptable tr.grp-h td{padding:7px 8px;font-weight:400;color:var(--ink2);background:var(--card);text-align:right;}',
+    P + '-ptable tr.grp-h td.gname{text-align:left;color:var(--ink);}',
+    P + '-ptable tr.grp-h.d0 td{background:#f8f9fb;}',
     P + '-ptable tr.grp-h:hover td{background:#eef2f7;}',
-    P + '-ptable tr.grp-h.blk td,' + P + '-ptable tr.grp-h.flat td{padding-left:6px;}',
-    P + '-ptable tr.grp-h.blk td{font-weight:600;}',
-    P + '-ptable tr.grp-h.dep td{padding-left:30px;}',
-    P + '-ptable tr.grp-child>td:first-child{padding-left:30px;}',
-    P + '-ptable tr.grp-child.deep>td:first-child{padding-left:54px;}',
     P + '-ptable tr.grp-h{cursor:pointer;}',
     P + '-ptable tr.grp-h.sel td{background:var(--blue-bg);}',
     P + '-ptable tr.grp-h.sel .gh-name{color:var(--act-ink);}',
     P + '-ptable tr.grp-h.grp-dim .gh-name{color:var(--muted);font-weight:400;}',
-    P + '-ptable tr.grp-h.grp-dim .gh-cnt{opacity:.75;}',
     P + '-ptable tr.pk{cursor:pointer;}',
     P + '-ptable tr.pk:hover{background:#fafbfc;}',
     P + '-ptable tr.pk.sel td{background:var(--blue-bg);}',
     P + '-ptable tr.pk.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    // ── Сводная таблица групп и поимённый список (v7.3) ──
+    P + '-ptable th.srt{cursor:pointer;user-select:none;}',
+    P + '-ptable th.srt:hover,' + P + '-ptable th.srt.on{color:var(--ink2);}',
+    P + '-sa{display:inline-block;width:10px;font-style:normal;font-size:8px;margin-left:3px;color:var(--act);}',
+    P + '-ptable.gt td{font-variant-numeric:tabular-nums;}',
+    P + '-ptable.gt th:first-child,' + P + '-ptable.gt td.gname{width:34%;}',
+    P + '-ptable.gt td.gname{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:0;}',
+    P + '-ptable tr.grp-h.d0 td.gname .gh-name{font-weight:600;}',
+    P + '-ptable tr.g-tot td{font-weight:600;color:var(--ink);background:#f7f8fa;border-bottom:1px solid var(--line);}',
+    P + '-ptable tr.g-tot td.txt{font-weight:600;}',
+    P + '-gh-sp{display:inline-block;width:18px;}',
+    P + '-lvl{font-style:normal;font-size:9.5px;font-weight:500;color:var(--muted);background:#f1f3f6;border-radius:4px;padding:1px 5px;margin-left:7px;vertical-align:1px;}',
+    P + '-mbar{display:inline-block;width:38px;height:5px;border-radius:3px;background:#eef0f3;margin-right:7px;vertical-align:2px;overflow:hidden;}',
+    P + '-mbar i{display:block;height:100%;background:' + CFG.colors.act + ';border-radius:3px;}',
+    P + '-dnum{font-weight:500;}',
+    P + '-dnum.up{color:var(--green-tx);}',
+    P + '-dnum.down{color:var(--red-tx);}',
+    P + '-dnum.flat{color:var(--muted);}',
+    P + '-ptable td.loc{color:var(--act-ink);font-weight:500;}',
+    P + '-ptable tr.nest>td{padding:2px 8px 10px;background:#fbfbfc;white-space:normal;text-align:left;}',
+    P + '-ptable.sub{width:100%;border-collapse:collapse;font-size:var(--fs-note);}',
+    P + '-ptable.sub td{padding:5px 8px;border-bottom:1px solid var(--line2);color:var(--ink2);}',
+    P + '-ptable.sub td.txt{font-weight:400;}',
+    P + '-ptable.sub tr:last-child td{border-bottom:0;}',
+    P + '-empty-td{text-align:center !important;padding:14px !important;color:var(--muted) !important;}',
+    P + '-bar-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;}',
+    P + '-exp{display:inline-flex;align-items:center;gap:6px;}',
+    P + '-toast{font-size:var(--fs-note);color:var(--green-tx);max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-pager{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:8px 2px 0;font-size:var(--fs-note);color:var(--muted);flex:0 0 auto;}',
+    P + '-pager > span:first-child{margin-right:auto;}',
+    P + '-pg{border:1px solid var(--line);background:var(--card);border-radius:7px;width:26px;height:26px;cursor:pointer;color:var(--ink2);font:inherit;font-size:13px;}',
+    P + '-pg:hover{border-color:var(--act);color:var(--act);}',
+    P + '-pg[disabled]{opacity:.35;cursor:default;}',
+    P + '-pg-n{min-width:48px;text-align:center;font-variant-numeric:tabular-nums;color:var(--ink2);}',
     P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;',
     '  font-size:10px;width:18px;padding:0;font-family:inherit;line-height:1;}',
     P + '-gh-caret:hover{color:var(--ink);}',
     P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
-    P + '-gh-cnt{margin-left:8px;color:var(--muted);font-weight:400;font-size:var(--fs-note);}',
     P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
@@ -869,10 +944,16 @@ function buildCSS() {
 // ── Срезы списка (порядок макета: настройки → шина → корзина → поиск) ──
 // adgroup-шина локально НЕ сужает: членства человек→AD-группа в ответе нет
 // (хвост NOTES §6); каталог и динамику сужает сервер через adg_f.
+// Узел оргструктуры — префикс пути: человек «А › Б › В» входит в «А» и «А › Б».
+function orgUnder(path, node) { return path === node || path.indexOf(node + CFG.orgSep) === 0; }
+function orgParts(path) { return path ? path.split(CFG.orgSep) : []; }
 function matchesPicks(p) {
-  var pk = state.picks;
-  if (pk.lvl3.length && pk.lvl3.indexOf(p.lvl3) < 0) return false;
-  if (pk.lvl4.length && pk.lvl4.indexOf(p.lvl4) < 0) return false;
+  var pk = state.picks, i, hit;
+  if (pk.org.length) {
+    hit = false;
+    for (i = 0; i < pk.org.length; i++) if (orgUnder(p.org, pk.org[i])) hit = true;
+    if (!hit) return false;
+  }
   if (pk.spec.length && pk.spec.indexOf(p.spec) < 0) return false;
   if (pk.stream.length && pk.stream.indexOf(p.stream) < 0) return false;
   if (pk.heads.length === 1 && (pk.heads[0] === 'Тим-лиды') !== !!p.is_head) return false;
@@ -898,24 +979,57 @@ function pickCount() {
   for (var k in state.picks) if (Object.prototype.hasOwnProperty.call(state.picks, k)) n += state.picks[k].length;
   return n;
 }
-
-// Визит «вчера / N дн»: витрина за вчера, последняя возможная дата — вчера.
-function lastVisitHtml(p) {
-  if (!p.last_dt) return '<span class="mut">нет</span>';
-  var now = new Date();
-  var delta = Math.round((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    - Date.UTC(p.last_dt.y, p.last_dt.m, p.last_dt.d)) / 86400000);
-  if (delta <= 1) return 'вчера';
-  return daysFmt(delta);
+// Локальные условия списка активны → в сводной таблице появляется колонка
+// «В выборке» (серверные итоги групп — по всей области, выборка — по списку).
+function localActive() {
+  return !!(state.freqSel || state.q || state.headsOnly || state.excl.length || pickCount() - state.picks.login.length > 0);
 }
 
-// Строка человека (порт personRow, app.js 924–947).
-function personRowHtml(p, indented, deep) {
+// Визит «вчера / N дн»: витрина за вчера, последняя возможная дата — вчера.
+function daysAgo(p) {
+  if (!p.last_dt) return null;
+  var now = new Date();
+  return Math.round((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    - Date.UTC(p.last_dt.y, p.last_dt.m, p.last_dt.d)) / 86400000);
+}
+function lastVisitHtml(p) {
+  var d = daysAgo(p);
+  if (d == null) return '<span class="mut">нет</span>';
+  return d <= 1 ? 'вчера' : daysFmt(d);
+}
+function isoDate(t) { return t ? p2(t.d) + '.' + p2(t.m + 1) + '.' + t.y : ''; }
+
+// --- Поимённый список: сортировка → пагинация (TABLES.md §1) ----------------
+function personKey(p, key) {
+  if (key === 'fio') return (p.fio || p.login).toLowerCase();
+  if (key === 'org') return p.org ? p.org.toLowerCase() : null;
+  if (key === 'exp') return p.exp || null;
+  if (key === 'last') { var d = daysAgo(p); return d == null ? null : -d; }
+  return p[key];
+}
+function sortPeople(list) {
+  var sc = state.pSort, out = list.slice();
+  out.sort(function (a, b) {
+    var va = personKey(a, sc.key), vb = personKey(b, sc.key);
+    var ea = va == null || va === '', eb = vb == null || vb === '';
+    if (ea !== eb) return ea ? 1 : -1;          // пустые — всегда вниз (RETRO 29)
+    var r = ea ? 0 : (va > vb ? 1 : (va < vb ? -1 : 0)) * sc.dir;
+    return r || (b.days - a.days) || (b.views - a.views) || (a.login < b.login ? -1 : (a.login > b.login ? 1 : 0));
+  });
+  return out;
+}
+function orgShort(path) {
+  var ps = orgParts(path);
+  return ps.length ? ps[ps.length - 1] : '';
+}
+function personRowHtml(p) {
   var on = state.picks.login.indexOf(p.login) >= 0;
-  return '<tr class="' + (indented ? 'grp-child' + (deep ? ' deep' : '') : 'plain') + ' pk' + (on ? ' sel' : '') + '"' +
+  var ps = orgParts(p.org);
+  return '<tr class="pk' + (on ? ' sel' : '') + '"' +
     ' data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
     tip({
       title: p.fio || p.login,
+      text: p.org ? p.org : 'Подразделение не указано',
       rows: [
         { label: 'Активных дней', value: nf(p.days), color: CFG.colors.act },
         { label: 'Просмотров', value: p.views ? nf(p.views) : '—' },
@@ -924,123 +1038,335 @@ function personRowHtml(p, indented, deep) {
       note: 'Клик сузит каталог слева до отчётов этого человека; Shift — добавить к выбору'
     }) + '>' +
     '<td class="txt">' + esc(p.fio || p.login) +
-      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head"' + tip({ text: 'Руководитель' }) + '>рук.</i>' : '') +
+      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(p.login) + '</span></td>' +
-    '<td class="txt sec">' + esc(p.lvl3 || '—') + '<span class="' + CFG.ns + '-unit-sub">' + esc(p.spec || '—') + '</span></td>' +
+    '<td class="txt sec">' + esc(ps.length ? ps[ps.length - 1] : '—') +
+      '<span class="' + CFG.ns + '-unit-sub">' + esc(ps.length > 1 ? 'УС-' + (ps.length + 2) + ' · ' + ps[0] : (p.spec || '—')) + '</span></td>' +
     '<td class="txt">' + esc(p.exp || '—') + '</td>' +
     '<td class="lead">' + (p.days || '<span class="mut">0</span>') + '</td>' +
+    '<td>' + (p.views ? nf(p.views) : '<span class="mut">0</span>') + '</td>' +
     '<td>' + lastVisitHtml(p) + '</td>' +
     '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td>' +
     '</tr>';
 }
-
-// Группировка видимого списка по разрезу (для «В текущей выборке»).
-function byKeyLocal(list, cut) {
-  var m = {};
-  for (var i = 0; i < list.length; i++) {
-    var kk = cut === 'heads' ? (list[i].is_head ? 'Тим-лиды' : 'Остальные') : String(list[i][cut] || '—');
-    (m[kk] = m[kk] || []).push(list[i]);
-  }
-  return m;
+function sortTh(attr, col, sc, cls) {
+  var on = sc.key === col.key;
+  return '<th class="srt' + (col.txt ? ' txt' : '') + (on ? ' on' : '') + (cls ? ' ' + cls : '') + '" ' + attr + '="' + esc(col.key) + '"' +
+    (col.hint ? tip({ title: col.label, text: col.hint + '. Клик — сортировка.' }) : '') + '>' +
+    esc(col.label) + '<i class="' + CFG.ns + '-sa">' + (on ? (sc.dir < 0 ? '▼' : '▲') : '') + '</i></th>';
+}
+function pagerHtml(total) {
+  var PS = CFG.pageSize, pages = Math.max(1, Math.ceil(total / PS));
+  if (state.page > pages - 1) state.page = pages - 1;
+  if (state.page < 0) state.page = 0;
+  if (total <= PS) return '';
+  var a = state.page * PS + 1, b = Math.min(total, a + PS - 1);
+  return '<div class="' + CFG.ns + '-pager"><span>' + nf(a) + THIN + '–' + THIN + nf(b) + ' из ' + nf(total) + '</span>' +
+    '<button type="button" class="' + CFG.ns + '-pg" data-pg="prev"' + (state.page === 0 ? ' disabled' : '') + ' aria-label="Предыдущая страница">‹</button>' +
+    '<span class="' + CFG.ns + '-pg-n">' + (state.page + 1) + ' / ' + pages + '</span>' +
+    '<button type="button" class="' + CFG.ns + '-pg" data-pg="next"' + (state.page >= pages - 1 ? ' disabled' : '') + ' aria-label="Следующая страница">›</button></div>';
+}
+function peopleTableHtml(plist) {
+  var sorted = sortPeople(plist);
+  var PS = CFG.pageSize, pager = pagerHtml(sorted.length);
+  var page = sorted.slice(state.page * PS, state.page * PS + PS);   // в DOM — только страница (RETRO 30)
+  var th = '';
+  for (var c = 0; c < CFG.pcols.length; c++) th += sortTh('data-psort', CFG.pcols[c], state.pSort);
+  var rows = '';
+  for (var i = 0; i < page.length; i++) rows += personRowHtml(page[i]);
+  return '<div class="' + CFG.ns + '-tbl-scroll"><table class="' + CFG.ns + '-ptable dense who-people"><thead><tr>' + th + '</tr></thead><tbody>' +
+    (rows || '<tr><td colspan="' + CFG.pcols.length + '" class="' + CFG.ns + '-empty-td">Никто не подходит под корзину частоты, поиск и настройки.</td></tr>') +
+    '</tbody></table></div>' + pager;
 }
 
-// Контекст дерева (uN — счётчики ОБЛАСТИ с сервера; people не нужны).
-function ctxGroups(cut) {
-  var out = [], k;
-  if (cut === 'adgroup') {
-    for (var i = 0; i < MODEL.adg.length; i++) out.push({ key: MODEL.adg[i].k, uN: MODEL.adg[i].cnt });
-  } else if (cut === 'heads') {
-    var hd = MODEL.ctx.head['1'] || 0;
-    out.push({ key: 'Тим-лиды', uN: hd });
-    out.push({ key: 'Остальные', uN: Math.max(0, MODEL.total - hd) });
-  } else {
-    for (k in MODEL.ctx[cut]) {
-      if (Object.prototype.hasOwnProperty.call(MODEL.ctx[cut], k)) out.push({ key: k, uN: MODEL.ctx[cut][k] });
-    }
-  }
-  return out;
-}
-
-// Дерево групп (порт peopleGroupedRows, app.js 985–1049): контекстные
-// счётчики — с сервера, «текущая выборка» — локальный список; группы
-// с людьми наверх, пустые гаснут (grp-dim), но остаются кликабельными.
-var WHO_TREE_KEYS = [];
-function peopleRows(arr, deep, cap) {
-  var out = '', n = Math.min(arr.length, cap.left);
-  for (var i = 0; i < n; i++) out += personRowHtml(arr[i], true, deep);
-  cap.left -= n;
-  return out;
-}
-function grpRowHtml(key, cut, cls, stateKey, uN, cN, cap) {
-  var sel = (state.picks[cut] || []).indexOf(String(key)) >= 0;
-  var closed = !!state.grpClosed[stateKey];
-  var dim = !sel && !cN;
-  cap.keys.push(stateKey);
+// --- Сводная таблица групп ---------------------------------------------------
+// Итоги групп — серверные (ctx pa_people): точные уникальные люди по области,
+// не сумма строк списка. Людей внутри группы показывает список (топ-3 000).
+var ZERO_M = { users: 0, users_prev: 0, views: 0, views_prev: 0, new_u: 0, regular: 0, sleeping: 0 };
+function gMetrics(g) {
+  g = g || ZERO_M;
+  var tot = MODEL.total || 1, G = CFG.grains[MODEL.grain] || CFG.grains.d;
   return {
-    closed: closed,
-    html: '<tr class="grp-h ' + cls + (sel ? ' sel' : '') + (dim ? ' grp-dim' : '') + '"' +
-      ' data-who="' + esc(key) + '" data-whocut="' + esc(cut) + '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
-      tip({
-        title: key,
-        rows: [{ label: 'Человек в области', value: nf(uN), color: CFG.colors.act },
-          { label: 'Доля области', value: pct(uN / (MODEL.total || 1) * 100) }]
-          .concat(cN !== uN ? [{ label: 'В текущей выборке', value: nf(cN) }] : []),
-        note: dim
-          ? 'В текущей выборке никого — клик сделает группу условием: каталог слева сузится'
-          : 'Клик — людская шина: каталог слева сузится до отчётов этой публики; Shift добавит к выбору, повторный клик по единственной — снимет'
-      }) + '>' +
-      '<td colspan="6">' +
-      '<button class="' + CFG.ns + '-gh-caret" data-whogrp="' + esc(stateKey) + '" aria-expanded="' + !closed + '"' +
-        tip({ text: closed ? 'Раскрыть группу' : 'Свернуть группу' }) + ' aria-label="' + (closed ? 'Раскрыть' : 'Свернуть') + ' ' + esc(key) + '">' +
-        (closed ? '▸' : '▾') + '</button>' +
-      '<span class="' + CFG.ns + '-gh-name">' + esc(key) + '</span>' +
-      '<span class="' + CFG.ns + '-gh-cnt">' + nf(uN) + ' ' + plural(uN, 'человек', 'человека', 'человек') +
-        ' · ' + pct(uN / (MODEL.total || 1) * 100, 0) + '</span></td></tr>'
+    users: g.users, users_prev: g.users_prev, views: g.views, new_u: g.new_u, regular: g.regular, sleeping: g.sleeping,
+    share: g.users / tot * 100,
+    dUsers: G.prev && g.users_prev ? (g.users / g.users_prev - 1) * 100 : null,
+    vpu: g.users ? g.views / g.users : 0,
+    regShare: g.users ? g.regular / g.users * 100 : 0
   };
 }
-function orderGroups(groups, cOf) {
-  return groups.slice().sort(function (a, b) {
-    var ca = (cOf(a.key) || []).length, cb = (cOf(b.key) || []).length;
-    return (cb > 0 ? 1 : 0) - (ca > 0 ? 1 : 0) || cb - ca || b.uN - a.uN;
+function minusM(a, b) {
+  var o = {};
+  for (var k in ZERO_M) if (Object.prototype.hasOwnProperty.call(ZERO_M, k)) o[k] = Math.max(0, (a[k] || 0) - (b[k] || 0));
+  return o;
+}
+// Узел таблицы: id (ключ раскрытия), cut/k (людская шина), имя, глубина,
+// метрики, дочерние узлы и люди, прикреплённые к узлу.
+function makeNode(cut, k, name, depth, g, sub) {
+  return { id: cut + ':' + k, cut: cut, k: k, name: name, depth: depth, m: gMetrics(g), sub: sub || '' };
+}
+function nodeKids(nd) {
+  if (nd.cut !== 'org') return [];
+  var ks = MODEL.orgKids[nd.k] || [], out = [];
+  for (var i = 0; i < ks.length; i++) out.push(orgNode(ks[i]));
+  return out;
+}
+function orgNode(path) {
+  var ps = orgParts(path);
+  return makeNode('org', path, ps[ps.length - 1], ps.length - 1, MODEL.gm.org[path], 'УС-' + (ps.length + 2));
+}
+function rootNodes(cut) {
+  var out = [], k, src;
+  if (cut === 'org') {
+    var ks = MODEL.orgKids[''] || [];
+    for (var i = 0; i < ks.length; i++) out.push(orgNode(ks[i]));
+  } else if (cut === 'heads') {
+    var hd = MODEL.gm.head['1'] || ZERO_M;
+    out.push(makeNode('heads', 'Тим-лиды', 'Тим-лиды', 0, hd));
+    out.push(makeNode('heads', 'Остальные', 'Остальные', 0, minusM(MODEL.kpi || ZERO_M, hd)));
+  } else {
+    src = MODEL.gm[cut === 'adgroup' ? 'adg' : cut] || {};
+    for (k in src) if (Object.prototype.hasOwnProperty.call(src, k)) out.push(makeNode(cut, k, k, 0, src[k]));
+  }
+  return out;
+}
+// Люди списка, прикреплённые к узлу (для оргструктуры — ровно этот путь;
+// сотрудники нижних уровней живут в дочерних узлах).
+function peopleIndex(plist, cut) {
+  var ix = {}, key;
+  for (var i = 0; i < plist.length; i++) {
+    var p = plist[i];
+    if (cut === 'org') key = p.org;
+    else if (cut === 'heads') key = p.is_head ? 'Тим-лиды' : 'Остальные';
+    else if (cut === 'spec' || cut === 'stream') key = p[cut];
+    else continue;                     // AD-группы: членств в ответе нет
+    (ix[key] = ix[key] || []).push(p);
+  }
+  return ix;
+}
+// «В выборке»: люди текущего списка в группе (для узла — во всём поддереве).
+function localCounts(plist, cut) {
+  var c = {}, i, j;
+  for (i = 0; i < plist.length; i++) {
+    var p = plist[i];
+    if (cut === 'org') {
+      var ps = orgParts(p.org);
+      for (j = 1; j <= ps.length; j++) { var pre = ps.slice(0, j).join(CFG.orgSep); c[pre] = (c[pre] || 0) + 1; }
+    } else if (cut === 'heads') {
+      var hk = p.is_head ? 'Тим-лиды' : 'Остальные'; c[hk] = (c[hk] || 0) + 1;
+    } else if (cut === 'spec' || cut === 'stream') {
+      c[p[cut]] = (c[p[cut]] || 0) + 1;
+    }
+  }
+  return c;
+}
+function gColsNow() {
+  var G = CFG.grains[MODEL.grain] || CFG.grains.d, out = [];
+  for (var i = 0; i < CFG.gcols.length; i++) if (!CFG.gcols[i].prevOnly || G.prev) out.push(CFG.gcols[i]);
+  return out;
+}
+function sortNodes(nodes) {
+  var sc = state.gSort;
+  return nodes.slice().sort(function (a, b) {
+    var va = sc.key === 'name' ? a.name.toLowerCase() : a.m[sc.key];
+    var vb = sc.key === 'name' ? b.name.toLowerCase() : b.m[sc.key];
+    var ea = va == null, eb = vb == null;
+    if (ea !== eb) return ea ? 1 : -1;          // пустые — вниз (RETRO 29)
+    var r = ea ? 0 : (va > vb ? 1 : (va < vb ? -1 : 0)) * sc.dir;
+    return r || b.m.users - a.m.users || (a.name < b.name ? -1 : 1);
   });
 }
-function groupedRowsHtml(plist, cut) {
-  var cap = { left: CFG.listShow, keys: [] };
-  WHO_TREE_KEYS = cap.keys;
-  var cFlat = byKeyLocal(plist, cut);
-  var cN = function (key) { return (cFlat[key] || []).length; };
-  var html = '';
-  if (cut === 'lvl4') {
-    // Двухуровневое дерево: lvl3-блок → lvl4-департамент → люди.
-    var cBlk = byKeyLocal(plist, 'lvl3');
-    var blocks = ctxGroups('lvl3');
-    // Сортировка блоков — по людям текущей выборки, департаменты внутри.
-    blocks.sort(function (a, b) { return (cBlk[b.key] || []).length - (cBlk[a.key] || []).length || b.uN - a.uN; });
-    for (var i = 0; i < blocks.length; i++) {
-      var b = blocks[i];
-      var bh = grpRowHtml(b.key, 'lvl3', 'blk', 'B:' + b.key, b.uN, (cBlk[b.key] || []).length, cap);
-      html += bh.html;
-      if (bh.closed) continue;
-      var deps = [];
-      for (var j = 0; j < MODEL.dep.length; j++) {
-        if (MODEL.dep[j].parent === b.key) deps.push({ key: MODEL.dep[j].k, uN: MODEL.dep[j].cnt });
-      }
-      deps = orderGroups(deps, function (key) { return cFlat[key] || []; });
-      for (var d = 0; d < deps.length; d++) {
-        var dh = grpRowHtml(deps[d].key, 'lvl4', 'dep', 'D:' + deps[d].key, deps[d].uN, cN(deps[d].key), cap);
-        html += dh.html;
-        if (!dh.closed && cN(deps[d].key) > 0) html += peopleRows(cFlat[deps[d].key] || [], true, cap);
-      }
+function gCellHtml(key, m) {
+  if (key === 'users') return '<td class="lead">' + nf(m.users) + '</td>';
+  if (key === 'share') {
+    // Полоса — от крупнейшей группы верхнего уровня: доли 2–8% иначе не видны.
+    return '<td class="shr"><span class="' + CFG.ns + '-mbar"><i style="width:' + Math.min(100, m.share / (MAX_SHARE || 100) * 100).toFixed(1) + '%"></i></span>' + pct(m.share, m.share < 10 ? 1 : 0) + '</td>';
+  }
+  if (key === 'dUsers') {
+    if (m.dUsers == null) return '<td><span class="mut">—</span></td>';
+    var cls = Math.abs(m.dUsers) < 0.05 ? 'flat' : (m.dUsers > 0 ? 'up' : 'down');
+    return '<td><span class="' + CFG.ns + '-dnum ' + cls + '">' + signed(m.dUsers, 1, '%') + '</span></td>';
+  }
+  if (key === 'views') return '<td>' + compact(m.views) + '</td>';
+  if (key === 'vpu') return '<td>' + nf(m.vpu, 1) + '</td>';
+  if (key === 'regShare') return '<td>' + pct(m.regShare, 0) + '</td>';
+  if (key === 'new_u') return '<td>' + (m.new_u ? nf(m.new_u) : '<span class="mut">0</span>') + '</td>';
+  return '<td></td>';
+}
+function groupRowHtml(nd, cols, hasKids, open, lc) {
+  var sel = (state.picks[nd.cut] || []).indexOf(String(nd.k)) >= 0;
+  var local = lc != null;
+  var cN = local ? (lc[nd.k] || 0) : null;
+  var dim = local && !sel && !cN;
+  var m = nd.m, G = CFG.grains[MODEL.grain] || CFG.grains.d;
+  var rows = [{ label: 'Людей в области', value: nf(m.users), color: CFG.colors.act },
+    { label: 'Доля области', value: pct(m.share) }];
+  if (G.prev) rows.push({ label: 'В предыдущем периоде', value: nf(m.users_prev) });
+  rows.push({ label: 'Просмотров', value: nf(m.views) }, { label: 'Постоянных', value: nf(m.regular) + ' · ' + pct(m.regShare) },
+    { label: 'Новых', value: nf(m.new_u) });
+  if (G.prev) rows.push({ label: 'Ушли (были в прошлом периоде)', value: nf(m.sleeping) });
+  if (local) rows.push({ label: 'В текущей выборке', value: nf(cN) });
+  var h = '<tr class="grp-h' + (sel ? ' sel' : '') + (dim ? ' grp-dim' : '') + ' d' + Math.min(nd.depth, 4) + '"' +
+    ' data-who="' + esc(nd.k) + '" data-whocut="' + esc(nd.cut) + '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
+    tip({ title: nd.cut === 'org' ? nd.k : nd.name, rows: rows,
+      note: nd.cut === 'adgroup'
+        ? 'Людей внутри AD-групп в ответе нет. Клик — людская шина: каталог слева сузится до отчётов группы'
+        : 'Клик — людская шина: каталог слева сузится до отчётов этой группы; Shift добавит, повторный клик снимет. ▸ — раскрыть' }) + '>' +
+    '<td class="txt gname" style="padding-left:' + (6 + nd.depth * 18) + 'px">' +
+    (hasKids
+      ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-gtog="' + esc(nd.id) + '" aria-expanded="' + open + '" aria-label="' + (open ? 'Свернуть ' : 'Раскрыть ') + esc(nd.name) + '">' + (open ? '▾' : '▸') + '</button>'
+      : '<span class="' + CFG.ns + '-gh-sp"></span>') +
+    '<span class="' + CFG.ns + '-gh-name gh-name">' + esc(nd.name) + '</span>' +
+    (nd.sub ? '<i class="' + CFG.ns + '-lvl">' + esc(nd.sub) + '</i>' : '') + '</td>';
+  for (var c = 0; c < cols.length; c++) h += gCellHtml(cols[c].key, m);
+  if (local) h += '<td class="loc">' + (cN ? nf(cN) : '<span class="mut">0</span>') + '</td>';
+  return h + '</tr>';
+}
+// Люди внутри раскрытой группы — вложенная компактная таблица (свои колонки,
+// не ломают выравнивание итогов групп). Первые subShow, по «ещё» — до subMax.
+function nestPeopleHtml(nd, people, span) {
+  var sorted = sortPeople(people);
+  var lim = state.gMore[nd.id] ? CFG.subMax : CFG.subShow;
+  var h = '<tr class="nest"><td colspan="' + span + '" style="padding-left:' + (30 + nd.depth * 18) + 'px">' +
+    '<table class="' + CFG.ns + '-ptable sub"><tbody>';
+  for (var i = 0; i < sorted.length && i < lim; i++) {
+    var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
+    h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
+      tip({ title: p.fio || p.login, text: p.org || '', rows: [{ label: 'Активных дней', value: nf(p.days), color: CFG.colors.act }, { label: 'Просмотров', value: nf(p.views) }],
+        note: 'Клик сузит каталог слева до отчётов этого человека; Shift — добавить к выбору' }) + '>' +
+      '<td class="txt">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
+        ' <span class="' + CFG.ns + '-wo-login">' + esc(p.login) + '</span></td>' +
+      '<td>' + nf(p.days) + THIN + 'дн</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
+      '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td></tr>';
+  }
+  h += '</tbody></table>';
+  if (sorted.length > lim) {
+    h += '<button type="button" class="' + CFG.ns + '-btn ghost xs" data-gmore="' + esc(nd.id) + '">ещё ' +
+      nf(Math.min(sorted.length, CFG.subMax) - lim) + ' из ' + nf(sorted.length) + '</button>';
+  } else if (state.gMore[nd.id] && sorted.length > CFG.subShow) {
+    h += '<button type="button" class="' + CFG.ns + '-btn ghost xs" data-gmore="' + esc(nd.id) + '">свернуть</button>';
+  }
+  return h + '</td></tr>';
+}
+function groupTableHtml(plist, cut) {
+  var cols = gColsNow(), local = localActive();
+  var span = cols.length + 1 + (local ? 1 : 0);
+  var pix = peopleIndex(plist, cut), lc = local ? localCounts(plist, cut) : null;
+  var out = [], visible = [];
+  function walk(nodes) {
+    var s = sortNodes(nodes);
+    for (var i = 0; i < s.length; i++) {
+      var nd = s[i], kids = nodeKids(nd), people = pix[nd.k] || [];
+      var hasKids = kids.length > 0 || people.length > 0;
+      var open = !!state.gOpen[nd.id] && hasKids;
+      visible.push({ nd: nd, hasKids: hasKids, open: open });
+      out.push(groupRowHtml(nd, cols, hasKids, open, lc));
+      if (!open) continue;
+      if (kids.length) walk(kids);
+      if (people.length) out.push(nestPeopleHtml(nd, people, span));
     }
-    return html;
   }
-  var groups = orderGroups(ctxGroups(cut), function (key) { return cFlat[key] || []; });
-  for (var g = 0; g < groups.length; g++) {
-    var gh = grpRowHtml(groups[g].key, cut, 'flat', 'G:' + groups[g].key, groups[g].uN, cN(groups[g].key), cap);
-    html += gh.html;
-    if (!gh.closed && cN(groups[g].key) > 0) html += peopleRows(cFlat[groups[g].key] || [], false, cap);
+  var roots = rootNodes(cut);
+  MAX_SHARE = 0;
+  for (var ri = 0; ri < roots.length; ri++) if (roots[ri].m.share > MAX_SHARE) MAX_SHARE = roots[ri].m.share;
+  walk(roots);
+  VISIBLE_NODES = visible;
+  var tot = gMetrics(MODEL.kpi || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
+  for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c], state.gSort);
+  if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всей области.' }) + '>В выборке</th>';
+  var totRow = '<tr class="g-tot"><td class="txt">Итого по области</td>';
+  for (c = 0; c < cols.length; c++) totRow += cols[c].key === 'share' ? '<td class="shr">100%</td>' : gCellHtml(cols[c].key, tot);
+  // (строка итога строится ДО полос групп — MAX_SHARE к ней не применяется)
+  if (local) totRow += '<td class="loc">' + nf(plist.length) + '</td>';
+  totRow += '</tr>';
+  return '<div class="' + CFG.ns + '-tbl-scroll"><table class="' + CFG.ns + '-ptable dense gt"><thead><tr>' + th + '</tr></thead><tbody>' + totRow +
+    (out.length ? out.join('') : '<tr><td colspan="' + span + '" class="' + CFG.ns + '-empty-td">В области нет групп по этому разрезу.</td></tr>') +
+    '</tbody></table></div>';
+}
+var VISIBLE_NODES = [], MAX_SHARE = 100;
+
+// --- Выгрузка: из МОДЕЛИ, все найденные строки, не страница (RETRO 28, 33) ---
+function exportRows() {
+  var cut = state.whoCut, head, rows = [], i, c;
+  var num2 = function (v, d) { return v == null || !isFinite(v) ? '' : (d ? v.toFixed(d).replace('.', ',') : String(Math.round(v))); };
+  if (cut === 'none') {
+    head = ['ФИО', 'Логин', 'Руководитель', 'УС-3', 'УС-4', 'УС-5', 'УС-6', 'УС-7', 'Специализация', 'Стрим', 'Стаж',
+      'Активных дней', 'Просмотров', 'Последний визит', 'Сегмент'];
+    var ps = sortPeople(shownList());
+    for (i = 0; i < ps.length; i++) {
+      var p = ps[i], op = orgParts(p.org);
+      rows.push([p.fio, p.login, p.is_head ? 'да' : '', op[0] || '', op[1] || '', op[2] || '', op[3] || '', op[4] || '',
+        p.spec, p.stream, p.exp, String(p.days), String(p.views), isoDate(p.last_dt), p.seg]);
+    }
+    return { head: head, rows: rows };
   }
-  return html;
+  var cols = gColsNow();
+  head = [cut === 'org' ? 'Уровень' : 'Разрез', cut === 'org' ? 'Путь' : 'Группа', 'Название'];
+  for (c = 0; c < cols.length; c++) head.push(cols[c].label + (cols[c].key === 'share' || cols[c].key === 'dUsers' || cols[c].key === 'regShare' ? ', %' : ''));
+  head.push('Постоянных, чел.');
+  var cutLabel = '';
+  for (c = 0; c < CFG.groups.length; c++) if (CFG.groups[c].key === cut) cutLabel = CFG.groups[c].label;
+  function walk(nodes) {                 // все уровни, независимо от раскрытия
+    var s = sortNodes(nodes);
+    for (var j = 0; j < s.length; j++) {
+      var nd = s[j], m = nd.m, row = [nd.sub || cutLabel, nd.k, nd.name];
+      for (var q = 0; q < cols.length; q++) {
+        var key = cols[q].key;
+        row.push(key === 'share' || key === 'dUsers' || key === 'regShare' || key === 'vpu' ? num2(m[key], 1) : num2(m[key]));
+      }
+      row.push(num2(m.regular));
+      rows.push(row);
+      walk(nodeKids(nd));
+    }
+  }
+  walk(rootNodes(cut));
+  return { head: head, rows: rows };
+}
+function toDelim(t, sep) {
+  var cell = function (v) {
+    v = v == null ? '' : String(v);
+    if (sep === '\t') return v.replace(/[\t\r\n]+/g, ' ');
+    var DQ = String.fromCharCode(34);
+    return (v.indexOf(DQ) >= 0 || /[;\r\n]/.test(v)) ? DQ + v.split(DQ).join(DQ + DQ) + DQ : v;
+  };
+  var lines = [t.head.map(cell).join(sep)];
+  for (var i = 0; i < t.rows.length; i++) lines.push(t.rows[i].map(cell).join(sep));
+  return lines.join('\r\n');
+}
+// Буфер обмена: Clipboard API, при отказе (iframe без clipboard-write) —
+// textarea + execCommand('copy') в том же пользовательском жесте.
+function copyText(text, done) {
+  function fallback() {
+    var ta = document.createElement('textarea'), ok = false;
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:-2000px;left:0;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+    return ok;
+  }
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallback()); });
+      return;
+    }
+  } catch (e) { /* Clipboard API недоступен — ниже fallback */ }
+  done(fallback());
+}
+// CSV для Excel: «;» и BOM (кириллица). Скачивание из песочницы Proteus может
+// быть запрещено — тогда остаётся «Копировать» (вставка в Excel разложит по колонкам).
+function downloadCsv(text, name) {
+  try {
+    var blob = new Blob(['﻿' + text], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+    return true;
+  } catch (e) { return false; }
 }
 
 // Сигаретка частоты (порт freqStrip, app.js 1054–1076): числа — ПО СПИСКУ,
@@ -1145,52 +1471,46 @@ function optsDropHtml(area) {
 
 // Тулбар + таблица + примечание. Отдельной функцией: поиск в шапке
 // пересобирает ТОЛЬКО эту зону, не трогая поле ввода (RETRO 68).
+// none — поимённый список с сортировкой и пагинацией; любая группировка —
+// сводная таблица групп, свёрнутая до верхнего уровня (правка владельца 2026-09-23).
 function listZoneHtml() {
   var cut = state.whoCut;
   var grouped = cut !== 'none';
-  var area = busList();
   var plist = shownList();
-  var rows = '';
+  var N = CFG.ns, cnt;
   if (grouped) {
-    rows = groupedRowsHtml(plist, cut);
+    var nRoot = rootNodes(cut).length;
+    cnt = nf(nRoot) + ' ' + plural(nRoot, 'группа', 'группы', 'групп') + (cut === 'org' ? ' верхнего уровня' : '');
   } else {
-    var cap = Math.min(plist.length, CFG.listShow);
-    for (var i = 0; i < cap; i++) rows += personRowHtml(plist[i], false, false);
+    cnt = nf(plist.length) + ' ' + plural(plist.length, 'человек', 'человека', 'человек') +
+      (MODEL.total > plist.length ? ' из ' + nf(MODEL.total) : '');
   }
-  var shown = plist.length;
-  // Счётчик как в макете: «60 человек из 1 768» — ПОКАЗАНО строк (listShow)
-  // из области. Живой борд 2026-09-22 печатал весь серверный срез (2 000) —
-  // поправлено по скрину владельца.
-  var nShown = Math.min(plist.length, CFG.listShow);
-  var h = '<div class="' + CFG.ns + '-who-bar">' +
-    dropdownHtml('whoCut', cut, CFG.groups) +
+  var h = '<div class="' + N + '-who-bar">' +
+    '<span class="' + N + '-bar-l">Вид</span>' + dropdownHtml('whoCut', cut, CFG.groups) +
     optsDropHtml(MODEL.list) +
-    '<span class="' + CFG.ns + '-who-cnt">' + nf(nShown) + ' ' + plural(nShown, 'человек', 'человека', 'человек') +
-      (area.length > nShown ? ' из ' + nf(area.length) : '') +
+    '<span class="' + N + '-who-cnt">' + cnt +
       (pickCount() ? ' · <b class="who-sel"' +
         tip({ text: 'Активные условия людской шины: каталог слева сужен; клик по выбранной строке снимает условие' }) +
         '>выбрано: ' + pickCount() + '</b>' : '') +
     '</span>' +
     (grouped
-      ? '<button class="' + CFG.ns + '-btn ghost xs" data-wofold="all"' + tip({ text: 'Свернуть все группы дерева до заголовков' }) + ' type="button">Свернуть все</button>' +
-        '<button class="' + CFG.ns + '-btn ghost xs" data-wofold="none"' + tip({ text: 'Развернуть все группы дерева' }) + ' type="button">Развернуть все</button>'
+      ? '<button class="' + N + '-btn ghost xs" data-wofold="level"' + tip({ text: 'Раскрыть все видимые группы на один уровень вглубь' }) + ' type="button">Раскрыть уровень</button>' +
+        '<button class="' + N + '-btn ghost xs" data-wofold="all"' + tip({ text: 'Свернуть до верхнего уровня' }) + ' type="button">Свернуть все</button>'
       : '') +
+    '<span class="' + N + '-exp">' +
+      '<button class="' + N + '-btn xs" data-wexp="copy" type="button"' + tip({ title: 'Копировать', text: grouped
+        ? 'Все группы всех уровней с итогами — в буфер обмена; вставка в Excel разложит по колонкам.'
+        : 'Все люди списка с учётом поиска, корзины и настроек (не только страница) — в буфер обмена; вставка в Excel разложит по колонкам.' }) + '>Копировать</button>' +
+      '<button class="' + N + '-btn xs" data-wexp="csv" type="button"' + tip({ title: 'CSV', text: 'То же, файлом для Excel (разделитель «;»). Если Proteus запретит скачивание — используйте «Копировать».' }) + '>CSV</button>' +
+      '<span class="' + N + '-toast" role="status">' + esc(state.toast || '') + '</span>' +
+    '</span>' +
     '</div>' +
-    '<div class="' + CFG.ns + '-tbl-scroll">' +
-    '<table class="' + CFG.ns + '-ptable dense who-people"><thead><tr>' +
-      '<th class="txt">Сотрудник</th><th class="txt">Подразделение</th><th class="txt">Стаж</th>' +
-      '<th>Дней</th><th>Визит</th><th class="txt">Сегмент</th>' +
-    '</tr></thead><tbody>' +
-    (rows ||
-      '<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--muted)">Никто не подходит под корзину частоты, поиск и настройки.</td></tr>') +
-    '</tbody></table></div>' +
-    '<div class="' + CFG.ns + '-tbl-note">Сортировка — по убыванию активных дней' +
-    (grouped
-      ? '; группы — по числу людей: каретка сворачивает, клик по строке группы или человека — людская шина (каталог слева сузится), Shift накапливает'
-      : '; клик по человеку — людская шина: каталог слева сузится до его отчётов, Shift накапливает') +
-    '. ' + (shown > CFG.listShow
-      ? 'Показаны первые ' + CFG.listShow + ' из ' + nf(shown) + ' — уточните поиском или группировкой.'
-      : 'В ответе — топ-2 000 зрителей области по активным дням.') + '</div>';
+    (grouped ? groupTableHtml(plist, cut) : peopleTableHtml(plist)) +
+    '<div class="' + N + '-tbl-note">' + (grouped
+      ? 'Итоги групп — точные уникальные люди по всей области; ▸ раскрывает вглубь' + (cut === 'org' ? ' (УС-3 › … › УС-7)' : '') +
+        ', сотрудники — во вложенной таблице. Клик по строке — людская шина (каталог слева сузится), Shift накапливает; клик по заголовку — сортировка.'
+      : 'Клик по заголовку — сортировка; клик по человеку — людская шина (каталог слева сузится до его отчётов), Shift накапливает.') +
+    (MODEL.list.length >= CFG.listCap ? ' В ответе — топ-' + nf(CFG.listCap) + ' зрителей области по активным дням.' : '') + '</div>';
   return h;
 }
 
@@ -1882,7 +2202,7 @@ function dynTipHtml(el, i) {
     function bandHighlight(el) {
       var wrap = overlay.querySelector('.' + CFG.ns + '-ct-wrap');
       if (!wrap) return;
-      var cells = wrap.querySelectorAll('td[data-band]');
+      var cells = wrap.querySelectorAll('[data-band]');
       var band = el.getAttribute('data-ctband');
       for (var i = 0; i < cells.length; i++) {
         if (cells[i].getAttribute('data-band') === band) cells[i].classList.add('band-hit');
@@ -1995,8 +2315,9 @@ function dynTipHtml(el, i) {
     // filter_values()|default, а инцидент 783708 был про mode_param тела.
     function maskOf() {
       var fl = [], pk = state.picks;
-      if (pk.lvl3.length) fl.push({ column: 'lvl3_f', operator: 'IN', value: pk.lvl3.slice() });
-      if (pk.lvl4.length) fl.push({ column: 'lvl4_f', operator: 'IN', value: pk.lvl4.slice() });
+      // Узлы оргструктуры УС-3…УС-7 — путями «А › Б › …» (org_f): одноимённые
+      // отделы разных департаментов не склеиваются.
+      if (pk.org.length) fl.push({ column: 'org_f', operator: 'IN', value: pk.org.slice() });
       if (pk.spec.length) fl.push({ column: 'spec_f', operator: 'IN', value: pk.spec.slice() });
       if (pk.stream.length) fl.push({ column: 'stream_f', operator: 'IN', value: pk.stream.slice() });
       if (pk.adgroup.length) fl.push({ column: 'adg_f', operator: 'IN', value: pk.adgroup.slice() });
@@ -2057,28 +2378,86 @@ function dynTipHtml(el, i) {
       if (opt) {
         state.whoCut = opt.getAttribute('data-val') || 'none';
         state.dd = null;
+        state.page = 0;
         render();
         return;
       }
-      // Каретка дерева: свернуть/раскрыть группу.
-      var caret = trigger(e.target, 'data-whogrp');
-      if (caret) {
-        var gk = caret.getAttribute('data-whogrp');
-        if (state.grpClosed[gk]) delete state.grpClosed[gk];
-        else state.grpClosed[gk] = true;
+      // Каретка группы: раскрыть/свернуть (узел оргструктуры — на уровень вглубь).
+      var gt = trigger(e.target, 'data-gtog');
+      if (gt) {
+        var gid = gt.getAttribute('data-gtog');
+        if (state.gOpen[gid]) delete state.gOpen[gid];
+        else state.gOpen[gid] = true;
         render();
         return;
       }
-      // Свернуть/развернуть все группы.
+      // «Раскрыть уровень» — все видимые группы на уровень вглубь; «Свернуть все».
       var fold = trigger(e.target, 'data-wofold');
       if (fold) {
-        var all = fold.getAttribute('data-wofold') === 'all';
-        if (all) {
-          for (var fk = 0; fk < WHO_TREE_KEYS.length; fk++) state.grpClosed[WHO_TREE_KEYS[fk]] = true;
+        if (fold.getAttribute('data-wofold') === 'level') {
+          for (var vi = 0; vi < VISIBLE_NODES.length; vi++) {
+            if (VISIBLE_NODES[vi].hasKids && !VISIBLE_NODES[vi].open) state.gOpen[VISIBLE_NODES[vi].nd.id] = true;
+          }
         } else {
-          state.grpClosed = {};
+          var pre = state.whoCut + ':';
+          for (var ok in state.gOpen) if (Object.prototype.hasOwnProperty.call(state.gOpen, ok) && ok.indexOf(pre) === 0) delete state.gOpen[ok];
         }
         render();
+        return;
+      }
+      // Люди внутри группы: «ещё N» / «свернуть».
+      var more = trigger(e.target, 'data-gmore');
+      if (more) {
+        var mid = more.getAttribute('data-gmore');
+        if (state.gMore[mid]) delete state.gMore[mid];
+        else state.gMore[mid] = true;
+        render();
+        return;
+      }
+      // Сортировка: группы (data-gsort) и поимённый список (data-psort).
+      var gs = trigger(e.target, 'data-gsort') || trigger(e.target, 'data-psort');
+      if (gs) {
+        var isG = gs.hasAttribute('data-gsort');
+        var sk = gs.getAttribute(isG ? 'data-gsort' : 'data-psort');
+        var sc = isG ? state.gSort : state.pSort;
+        var txtKey = sk === 'name' || sk === 'fio' || sk === 'org' || sk === 'exp';
+        if (sc.key === sk) sc.dir *= -1;
+        else { sc.key = sk; sc.dir = txtKey ? 1 : -1; }
+        state.page = 0;              // пересорт — на первую страницу
+        render();
+        return;
+      }
+      // Пагинация поимённого списка.
+      var pg = trigger(e.target, 'data-pg');
+      if (pg) {
+        state.page += pg.getAttribute('data-pg') === 'next' ? 1 : -1;
+        render();
+        return;
+      }
+      // Выгрузка: копирование в буфер (TSV) / файл CSV — из модели, все строки.
+      var wx = trigger(e.target, 'data-wexp');
+      if (wx) {
+        var kind = wx.getAttribute('data-wexp'), tb = exportRows(), nR = tb.rows.length;
+        var say = function (msg) {
+          state.toast = msg;
+          var el = overlay.querySelector('.' + CFG.ns + '-toast');
+          if (el) el.textContent = msg;
+          setTimeout(function () {
+            if (state.toast !== msg) return;
+            state.toast = '';
+            var el2 = overlay.querySelector('.' + CFG.ns + '-toast');
+            if (el2) el2.textContent = '';
+          }, 4000);
+        };
+        if (kind === 'copy') {
+          copyText(toDelim(tb, '\t'), function (ok) {
+            say(ok ? 'Скопировано: ' + nf(nR) + ' ' + plural(nR, 'строка', 'строки', 'строк') : 'Браузер запретил доступ к буферу — попробуйте CSV');
+          });
+        } else {
+          var dt = new Date(), stamp = dt.getFullYear() + '-' + p2(dt.getMonth() + 1) + '-' + p2(dt.getDate());
+          var okD = downloadCsv(toDelim(tb, ';'), 'kto-smotrit-' + (state.whoCut === 'none' ? 'lyudi' : state.whoCut) + '-' + stamp + '.csv');
+          say(okD ? 'CSV: ' + nf(nR) + ' ' + plural(nR, 'строка', 'строки', 'строк') + ' (не скачался — «Копировать»)' : 'Скачивание запрещено — используйте «Копировать»');
+        }
         return;
       }
       // Корзина частоты: локальный фильтр списка + шина freq_f.
@@ -2093,6 +2472,7 @@ function dynTipHtml(el, i) {
       if (fb) {
         var bk = fb.getAttribute('data-freq');
         state.freqSel = state.freqSel === bk ? null : bk;
+        state.page = 0;
         render();
         emitBus();
         return;
@@ -2143,6 +2523,7 @@ function dynTipHtml(el, i) {
       var headCb = trigger(e.target, 'data-wohead');
       if (headCb) {
         state.headsOnly = !!headCb.checked;
+        state.page = 0;
         render();
         emitBus();
         return;
@@ -2183,6 +2564,7 @@ function dynTipHtml(el, i) {
       var id = inp.getAttribute('data-search');
       if (id === 'whoQ') {
         state.q = inp.value || '';
+        state.page = 0;
         var zone = overlay.querySelector('.' + CFG.ns + '-list-zone');
         if (zone) zone.innerHTML = listZoneHtml();
       } else if (id === 'woExQ') {

@@ -30,7 +30,9 @@ WITH
       bitAnd(p.msk, 1073741823) != 0 AS cur, bitAnd(p.msk, 1152921503533105152) != 0 AS prv,
       bitCount(bitAnd(p.msk, 1073741823)) AS nb_cur, bitCount(bitAnd(p.msk, 1152921503533105152)) AS nb_prev,
       multiIf(nb_cur <= 1, 1, nb_cur <= 3, 2, nb_cur <= 7, 3, nb_cur <= 15, 4, 5) AS bin,
-      toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,
+      toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,[lvl3, lvl4, toString(ifNull(a.lvl5_management_unit_nm, '')), toString(ifNull(a.lvl6_management_unit_nm, '')), toString(ifNull(a.lvl7_management_unit_nm, ''))] AS lv,
+      toUInt32(if(arrayFirstIndex(x -> x = '', lv) = 0, length(lv), arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
+      arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
       toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,
       toString(ifNull(a.fio, '')) AS fio, toString(ifNull(a.exp_nm, '')) AS exp,
@@ -40,14 +42,12 @@ WITH
       arrayJoin(arrayConcat(
         [('total', '', '', '', toInt64(-1))],
         if(cur, [('freq', '', toString(bin), '', toInt64(-1))], []),
-        if((cur OR prv) AND lvl3 != '', [('ctx', 'lvl3', lvl3, '', toInt64(-1))], []),
-        if((cur OR prv) AND lvl4 != '', [('ctx', 'lvl4', lvl4, '', toInt64(-1))], []),
-        if((cur OR prv) AND lvl4 != '' AND lvl3 != '', [('ctx', 'dep', lvl4, lvl3, toInt64(-1))], []),
+        if(cur OR prv, arrayMap(i -> ('ctx', 'org', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › '), toInt64(-1)), range(1, ol + 1)), []),
         if((cur OR prv) AND spec != '', [('ctx', 'spec', spec, '', toInt64(-1))], []),
         if((cur OR prv) AND stream != '', [('ctx', 'stream', stream, '', toInt64(-1))], []),
         if((cur OR prv) AND is_head = 1, [('ctx', 'head', '1', '', toInt64(-1))], []),
         if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),
-        if(cur, [('list', '', toString(p.login), '', toInt64(-1))], []),
+        if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
         if(gm < 12, [('coh', '', toString(p.c0), '', toInt64(-1))], []),
         if(cur, arrayMap(t -> ('ts', '', toString(t), '', t), (p.kv).1), [])
       )) AS rk
@@ -120,8 +120,10 @@ FROM (
     users, users_prev, views, views_prev, new_u, new_prev, react_u, regular, regular_prev,
     sleeping, mau, mau_prev, cnt, (am).1 AS ages, (am).2 AS acts
   FROM rnk
-  WHERE (role != 'list' OR rn <= 2000) AND (g != 'adg' OR rn <= 100)
+  WHERE (role != 'list' OR rn <= 3000) AND (g != 'adg' OR rn <= 100)
+
   UNION ALL
+  
   SELECT 'area' AS section, '' AS g,
     '' AS k, 'd' AS parent,
     NULL AS login,

@@ -54,6 +54,8 @@ distributed by (dashboard_id);
 -- (1 строка на логин: последнее состояние по log_dttm + ФИО и стаж).
 -- НОВОЕ 2026-09-22: fio (Фамилия Имя из proteus_users), exp_nm (группа стажа
 -- из mdm_employee_d, last_state_flg = 1) — закрывают хвост «ФИО/стаж — заглушки».
+-- НОВОЕ 2026-09-23: lvl5…lvl7_management_unit_nm — полная оргструктура УС-3…УС-7
+-- для группировки «Оргструктура» в «Кто смотрит» (колонки есть в proteus_views_1).
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_emp_attrs;
 create table usr_cross_data.pa_emp_attrs as
@@ -61,6 +63,9 @@ select
     t.login,
     t.lvl3_management_unit_nm,
     t.lvl4_management_unit_nm,
+    t.lvl5_management_unit_nm,
+    t.lvl6_management_unit_nm,
+    t.lvl7_management_unit_nm,
     t.emp_specialization_desc,
     t.emp_stream_desc,
     t.management_head_flg,
@@ -72,6 +77,9 @@ from (
         v.login::text                                           as login,
         coalesce(v.lvl3_management_unit_nm, '')::text           as lvl3_management_unit_nm,
         coalesce(v.lvl4_management_unit_nm, '')::text           as lvl4_management_unit_nm,
+        coalesce(v.lvl5_management_unit_nm, '')::text           as lvl5_management_unit_nm,
+        coalesce(v.lvl6_management_unit_nm, '')::text           as lvl6_management_unit_nm,
+        coalesce(v.lvl7_management_unit_nm, '')::text           as lvl7_management_unit_nm,
         coalesce(v.emp_specialization_desc, '')::text           as emp_specialization_desc,
         coalesce(v.emp_stream_desc, '')::text                   as emp_stream_desc,
         coalesce(v.management_head_flg::int, 0)                 as management_head_flg,

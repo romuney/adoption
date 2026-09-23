@@ -328,6 +328,16 @@ function filtersHtml() {
       '<span class="' + N + '-pill-k">' + esc(vals.length === 1 ? pl.one : pl.many) + ':</span> ' + esc(vals.length === 1 ? vals[0] : String(vals.length)) + '</span>';
     n++;
   }
+  // Узлы оргструктуры: путь «УС-3 › … › УС-7» — в пилюле последнее звено, путь — во всплывашке.
+  if (sj.org && sj.org.length) {
+    var last = function (x) { var ps = String(x).split(' › '); return ps[ps.length - 1]; };
+    var lvl = function (x) { return 'УС-' + (String(x).split(' › ').length + 2); };
+    var o1 = sj.org.length === 1;
+    h += '<span class="' + N + '-pill ppl"' + tip({ title: o1 ? lvl(sj.org[0]) : 'Подразделения', text: (o1 ? sj.org[0] + '. ' : '') + fromWho,
+      rows: o1 ? [] : sj.org.slice(0, 12).map(function (x) { return { label: last(x), value: lvl(x) }; }) }) + '>' +
+      '<span class="' + N + '-pill-k">' + (o1 ? esc(lvl(sj.org[0])) : 'Подразделения') + ':</span> ' + esc(o1 ? last(sj.org[0]) : String(sj.org.length)) + '</span>';
+    n++;
+  }
   if (sj.login && sj.login.length) {
     var nm = function (l) { return MODEL.ppl[l] || l; };
     h += '<span class="' + N + '-pill ppl"' + tip({ title: sj.login.length === 1 ? 'Человек' : 'Люди', text: fromWho,

@@ -6,9 +6,11 @@
     панель — её источник (BI-паттерн: источник себя не фильтрует).
     Одно чтение факта: evd сжимает факт до ОДНОЙ строки на логин (маска бакетов окна 2n,
     суммы, первый визит, месяцы активности для когорт), дальше строка логина
-    размножается по РОЛЯМ (total/freq/ctx/list/ts/coh) одним arrayJoin и сворачивается
+    размножается по РОЛЯМ (total/freq/ctx/list/ts/coh; ctx g='org' — узлы оргструктуры
+    УС-3…УС-7, k = путь «А › Б › В», parent = путь родителя; у list parent = путь человека) одним arrayJoin и сворачивается
     одним GROUP BY. UNION-плеч поверх общего CTE нет. -#}
 {% set HAS_FIO = true %}{#- false — если в pa_emp_attrs ещё нет колонок fio / exp_nm (GP-параграф «PA · атрибуты зрителей» из поставки 2026-09-22) -#}
+{% set HAS_ORG = true %}{#- false — если в pa_emp_attrs ещё нет lvl5…lvl7 (тот же параграф): оргструктура будет до УС-4 -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay', 'gap': 7}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday', 'gap': 1}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth', 'gap': 1}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter', 'gap': 1}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
 {% set grain = grain if grain in GRAINS else 'd' %}
@@ -16,7 +18,7 @@
 {% set CUR = 2 ** g.n - 1 %}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% set GAPM = 2 ** g.gap - 1 %}
-{% set LIST_N = 2000 %}{% set ADG_N = 100 %}
+{% set LIST_N = 3000 %}{% set ADG_N = 100 %}
 {% macro q(values) -%}
 {%- set out = [] -%}
 {%- for v in values -%}{%- set _ = out.append(v|string|replace('\\', '\\\\')) -%}{%- endfor -%}
@@ -74,6 +76,11 @@ WITH
       {# Атрибуты — строго не-Nullable: при join_use_nulls = 1 LEFT JOIN даёт NULL у логинов без атрибутов,
          а arrayConcat ролей в CH 24 приводит массивы к типу первого — NULL ронял запрос (Code 349). #}
       toString(ifNull(a.lvl3_management_unit_nm, '')) AS lvl3, toString(ifNull(a.lvl4_management_unit_nm, '')) AS lvl4,
+      {#- Оргструктура УС-3…УС-7: путь «УС-3 › УС-4 › …» до первого пустого уровня. Узел дерева = префикс пути,
+          поэтому одноимённые отделы разных департаментов не склеиваются. -#}
+      [lvl3, lvl4{% if HAS_ORG %}, toString(ifNull(a.lvl5_management_unit_nm, '')), toString(ifNull(a.lvl6_management_unit_nm, '')), toString(ifNull(a.lvl7_management_unit_nm, '')){% endif %}] AS lv,
+      toUInt32(if(arrayFirstIndex(x -> x = '', lv) = 0, length(lv), arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
+      arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
       toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,
       {% if HAS_FIO %}toString(ifNull(a.fio, '')) AS fio, toString(ifNull(a.exp_nm, '')) AS exp{% else %}'' AS fio, '' AS exp{% endif %},
@@ -83,14 +90,12 @@ WITH
       arrayJoin(arrayConcat(
         [('total', '', '', '', toInt64(-1))],
         if(cur, [('freq', '', toString(bin), '', toInt64(-1))], []),
-        if((cur OR prv) AND lvl3 != '', [('ctx', 'lvl3', lvl3, '', toInt64(-1))], []),
-        if((cur OR prv) AND lvl4 != '', [('ctx', 'lvl4', lvl4, '', toInt64(-1))], []),
-        if((cur OR prv) AND lvl4 != '' AND lvl3 != '', [('ctx', 'dep', lvl4, lvl3, toInt64(-1))], []),
+        if(cur OR prv, arrayMap(i -> ('ctx', 'org', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › '), toInt64(-1)), range(1, ol + 1)), []),
         if((cur OR prv) AND spec != '', [('ctx', 'spec', spec, '', toInt64(-1))], []),
         if((cur OR prv) AND stream != '', [('ctx', 'stream', stream, '', toInt64(-1))], []),
         if((cur OR prv) AND is_head = 1, [('ctx', 'head', '1', '', toInt64(-1))], []),
         if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),
-        if(cur, [('list', '', toString(p.login), '', toInt64(-1))], []),
+        if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
         if(gm < 12, [('coh', '', toString(p.c0), '', toInt64(-1))], []),
         if(cur, arrayMap(t -> ('ts', '', toString(t), '', t), (p.kv).1), [])
       )) AS rk

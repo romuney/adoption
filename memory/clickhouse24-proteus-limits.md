@@ -118,3 +118,4 @@ b0 отдавал ровно столько строк, сколько прин�
   в двух вложенных WITH. Сверять версии — независимыми зондами по числу строк.
 
 Связано: [[proteus-adoption-cube-dataset]], [[proteus-adoption-echarts-platform]].
+- Имя колонки бьёт одноимённый алиас (бой 24.8 ведёт себя как prefer_column_name_to_alias = 1): `groupBitOr(msk) AS msk … HAVING bitCount(bitAnd(msk, …))` → Code 215 NOT_AN_AGGREGATE (2026-09-23, клик по корзине в каталоге). Лечение — переименовать входную колонку (m0). Стенд chdb по умолчанию это НЕ ловит — check_v7 гоняет с этой настройкой.

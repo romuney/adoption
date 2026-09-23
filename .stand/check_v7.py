@@ -13,7 +13,7 @@
 6. Шапка pa_strip (файл 4): одна строка эха условий, без выбора таблиц не
    читает, подписи пилюль верные; KPI панели == ИТОГО каталога под опциями и областью.
 7. Старый анализатор ClickHouse (enable_analyzer = 0, как может стоять на боевом 24)
-   даёт те же строки, что новый.
+   и prefer_column_name_to_alias = 1 (как ведёт себя боевой 24.8) дают те же строки, что новый.
 """
 import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -187,10 +187,18 @@ ok(not any(x in stand.render(BODY, {'org_f': ['Блок 5 › Деп 5.2']}) for
 import json
 norm = lambda rows: sorted(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in rows)
 for pth in [BODY, FALL, PPL, HDR]:
-    for c in [{}, {'period_param': 'q'}, {'mode_param': 'collection', 'sel_f': ['Колл 5', 'Колл 7']}, {'freq_f': ['2'], 'login_f': ['u3']}, {'exl_f': ['u1'], 'heads_f': '1'}]:
+    for c in [{}, {'period_param': 'q'}, {'mode_param': 'collection', 'sel_f': ['Колл 5', 'Колл 7']}, {'freq_f': ['2'], 'login_f': ['u3']}, {'freq_f': ['2']}, {'freq_f': ['1', '4'], 'period_param': 'm'}, {'exl_f': ['u1'], 'heads_f': '1'}]:
         sql = stand.render(pth, c)
         a = json.loads(stand.S.query(sql, 'JSON').bytes())['data']
         b = json.loads(stand.S.query(sql + '\nSETTINGS enable_analyzer = 0', 'JSON').bytes())['data']
         ok(norm(a) == norm(b), f'старый анализатор == новый: {os.path.basename(pth)[:24]} {c}')
+        # Боевой CH 24.8 ведёт себя как prefer_column_name_to_alias = 1: имя колонки бьёт одноимённый
+        # алиас (HAVING по msk при groupBitOr(msk) AS msk → Code 215 на клике по корзине).
+        for st in ['prefer_column_name_to_alias = 1', 'enable_analyzer = 0, prefer_column_name_to_alias = 1']:
+            try:
+                d = json.loads(stand.S.query(sql + '\nSETTINGS ' + st, 'JSON').bytes())['data']
+                ok(norm(a) == norm(d), f'{st}: {os.path.basename(pth)[:24]} {c}')
+            except Exception as e:
+                ok(False, f'{st}: {os.path.basename(pth)[:24]} {c} — {str(e)[:120]}')
 print('\nИТОГ:', 'всё сходится' if not bad else f'{bad} расхождений')
 sys.exit(1 if bad else 0)

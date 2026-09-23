@@ -48,7 +48,7 @@
 {% set pplf = loginf or exlf or attrson or freqf %}
 {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n В ОТЧЁТАХ СТРОКИ каталога:
     у строки отчёта — заходы в этот отчёт, у коллекции / владельца — в их отчёты, у ИТОГО — во все
-    (= корзина правой панели без выбора). Фильтр — HAVING по маске человека внутри строки (kx; msk там — уже groupBitOr). -#}
+    (= корзина правой панели без выбора). Фильтр — HAVING по маске человека внутри строки (kx; маска пары внутри — m0, не msk: боевой CH 24.8 в HAVING берёт msk как колонку — Code 215). -#}
 {%- set FB = [] -%}
 {%- set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] -%}
 {%- for v in freqf -%}{%- set bi = v|int -%}{%- if bi == 1 %}{% set _ = FB.append('nb BETWEEN 1 AND ' ~ FBIN[0]) %}{% elif bi == 4 %}{% set _ = FB.append('nb > ' ~ FBIN[2]) %}{% elif bi in [2, 3] %}{% set _ = FB.append('nb BETWEEN ' ~ (FBIN[bi - 2] + 1) ~ ' AND ' ~ FBIN[bi - 1]) %}{% endif -%}{%- endfor %}
@@ -100,7 +100,7 @@ WITH
     {#- Ключ строки размножается: 0 = ИТОГО, 1 = отчёт, 2 = владелец, 3 = коллекция.
         Мета (владелец, коллекции) подтягивается ПОСЛЕ сжатия факта до пар. -#}
     SELECT kd, k0, login,
-      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
+      groupBitOr(m0) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
       groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm
     FROM (
       SELECT arrayJoin(arrayConcat(
@@ -111,14 +111,14 @@ WITH
           arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
-        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
+        p.login AS login, p.msk AS m0, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
         p.pd AS pd, p.pw AS pw, p.pm AS pm
       FROM evd p
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
     GROUP BY kd, k0, login
     {%- if FB %}
-    HAVING {{ FB|join(' OR ')|replace('nb', 'bitCount(bitAnd(msk, ' ~ CUR ~ '))') }}
+    HAVING {{ FB|join(' OR ')|replace('nb', 'bitCount(bitAnd(groupBitOr(m0), ' ~ CUR ~ '))') }}
     {%- endif %}
   ),
   agg AS (

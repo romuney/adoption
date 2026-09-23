@@ -1103,9 +1103,11 @@ function addPerson(g, p) {
 }
 function emptyAgg() { return { users: 0, users_prev: 0, views: 0, views_prev: 0, new_u: 0, new_prev: 0, regular: 0, regular_prev: 0, sleeping: 0, mau: 0, mau_prev: 0 }; }
 // KPI при фильтре людей: по отобранным (прошлого периода для них нет — дельты «не сравнивается»).
+// Корзина частоты на KPI НЕ влияет (фидбек владельца: по одной корзине KPI бесполезны —
+// «постоянных 100%» и т. п.); влияют только настройки списка (руководители, исключения).
 function effKpi() {
-  if (!peopleFilterOn() || !MODEL.kpi) return MODEL.kpi;
-  var ps = filteredPeople(), k = emptyAgg();
+  if (!(state.headsOnly || state.excl.length) || !MODEL.kpi) return MODEL.kpi;
+  var ps = baseList(), k = emptyAgg();
   for (var i = 0; i < ps.length; i++) addPerson(k, ps[i]);
   k.local = true;
   return k;
@@ -2105,7 +2107,7 @@ function kpisHtml() {
   var dPct = function (a, b) { return b ? (a / b - 1) * 100 : null; };
   // KPI по отобранным людям (корзина частоты / настройки списка): прошлого периода
   // для такой выборки нет — дельты «не сравнивается», в подписи — сколько во всей области.
-  var loc = !!k.local, whyLoc = 'Выбрана корзина частоты или настройки списка: KPI — по отобранным людям, сравнения с прошлым периодом для них нет.';
+  var loc = !!k.local, whyLoc = 'Включены настройки списка (руководители / исключения): KPI — по отобранным людям, сравнения с прошлым периодом для них нет.';
   var why = loc ? whyLoc : 'В витрине 13 месяцев истории: полного предыдущего периода (' + G.label + ') в ней нет.';
   var dl = function (v, o) { return G.prev && !loc ? delta(v, o) : delta(null, { why: why }); };
   var all = MODEL.kpi || k;

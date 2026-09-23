@@ -950,7 +950,8 @@ function buildCSS() {
     P + '-dnum.flat{color:var(--muted);}',
     P + '-ptable td.loc{color:var(--act-ink);font-weight:500;}',
     P + '-ptable tr.nest>td{padding:2px 8px 10px;background:#fbfbfc;white-space:normal;text-align:left;}',
-    P + '-ptable.sub{width:100%;border-collapse:collapse;font-size:var(--fs-note);}',
+    P + '-ptable.sub{width:100%;table-layout:fixed;border-collapse:collapse;font-size:var(--fs-note);}',
+    P + '-ptable.sub td.pn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.sub td{padding:5px 8px;border-bottom:1px solid var(--line2);color:var(--ink2);}',
     P + '-ptable.sub td.txt{font-weight:400;}',
     P + '-ptable.sub tr:last-child td{border-bottom:0;}',
@@ -1406,23 +1407,26 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
 function nestPeopleHtml(nd, people, span) {
   var sorted = sortPeople(people);
   var lim = state.gMore[nd.id] ? CFG.subMax : CFG.subShow;
-  var h = '<tr class="nest"><td colspan="' + span + '" style="padding-left:' + (30 + nd.depth * 18) + 'px">' +
-    '<table class="' + CFG.ns + '-ptable sub"><tbody>';
+  // Сетка вложенной таблицы фиксирована (table-layout:fixed + colgroup) и одна на все группы:
+  // колонки людей стоят на одной вертикали независимо от длины имён; глубина — отступом имени.
+  var h = '<tr class="nest"><td colspan="' + span + '">' +
+    '<table class="' + CFG.ns + '-ptable sub"><colgroup><col style="width:44%"><col style="width:12%"><col style="width:16%"><col style="width:12%"><col style="width:16%"></colgroup><tbody>';
   for (var i = 0; i < sorted.length && i < lim; i++) {
     var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
     h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
       '>' +
-      '<td class="txt">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
+      '<td class="txt pn" style="padding-left:' + (30 + nd.depth * 18) + 'px">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
         ' <span class="' + CFG.ns + '-wo-login">' + esc(p.login) + '</span></td>' +
       '<td>' + nf(p.days) + THIN + grainCfg().us + '</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
       '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td></tr>';
   }
   h += '</tbody></table>';
+  var ind = ' style="margin-left:' + (22 + nd.depth * 18) + 'px"';
   if (sorted.length > lim) {
-    h += '<button type="button" class="' + CFG.ns + '-btn ghost xs" data-gmore="' + esc(nd.id) + '">ещё ' +
+    h += '<button type="button" class="' + CFG.ns + '-btn ghost xs" data-gmore="' + esc(nd.id) + '"' + ind + '>ещё ' +
       nf(Math.min(sorted.length, CFG.subMax) - lim) + ' из ' + nf(sorted.length) + '</button>';
   } else if (state.gMore[nd.id] && sorted.length > CFG.subShow) {
-    h += '<button type="button" class="' + CFG.ns + '-btn ghost xs" data-gmore="' + esc(nd.id) + '">свернуть</button>';
+    h += '<button type="button" class="' + CFG.ns + '-btn ghost xs" data-gmore="' + esc(nd.id) + '"' + ind + '>свернуть</button>';
   }
   return h + '</td></tr>';
 }

@@ -90,6 +90,16 @@ for g in ['d', 'w', 'm', 'q']:
     for r in fr:
         t = [x for x in run(BODY, {'freq_f': [r['k']], 'period_param': g})[0] if x['section'] == 'total']
         ok(str(t[0]['users'] if t else 0) == str(r['users']), f'корзина {r["k"]} [{g}]: людей {r["users"]} → ИТОГО тела')
+# Порог вселенной (≥500 просмотров за жизнь) — по всем зрителям отчёта, людской фильтр его не двигает:
+# логин / корзина не выкидывают из каталога отчёт, который эти люди смотрят (баг «Ничего не найдено»).
+univ = {x['dashboard_id'] for x in run(BODY, {})[0] if x['section'] == 'rep'}
+for lg in ['u3', 'u8', 'u40']:
+    seen = {int(v) for v in str(stand.S.query(f"SELECT DISTINCT dashboard_id FROM prod_proteus.pa_pair WHERE login = '{lg}' AND bitAnd(msk_d, 1073741823) != 0 AND ifNull(own_flg, 0) = 0", 'CSV')).split()} & univ
+    rr = {x['dashboard_id'] for x in run(BODY, {'login_f': [lg]})[0] if x['section'] == 'rep' and int(x['users']) > 0}
+    ok(seen and rr == seen, f'login_f={lg}: в каталоге все его отчёты из вселенной ({len(rr)} из {len(seen)})')
+for c in [{'freq_f': ['1']}, {'freq_f': ['2']}]:
+    rr = {x['dashboard_id'] for x in run(BODY, c)[0] if x['section'] == 'rep'}
+    ok(rr <= univ and len(rr) > 0.5 * len(univ), f'{c}: отчёты каталога — внутри вселенной, порог не сужен ({len(rr)} из {len(univ)})')
 # Оргструктура: узел любой глубины (УС-3…УС-7) → ИТОГО тела == людям узла в панели.
 orgs = [x for x in p if x['section'] == 'ctx' and x['g'] == 'org' and int(x['users']) > 0]
 import re as _re

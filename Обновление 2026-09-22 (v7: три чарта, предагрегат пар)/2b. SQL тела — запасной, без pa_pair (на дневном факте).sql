@@ -38,6 +38,10 @@
 {% set freqr = filter_values('freq_f') or [] %}
 {% set freqf = [] %}{% for v in freqr %}{% if v|string in ['1', '2', '3', '4'] %}{% set _ = freqf.append(v|string) %}{% endif %}{% endfor %}
 {% set attrson = lv3 or lv4 or strm or spcf or adgf or headsv != '0' or orgf %}
+{#- Людской фильтр (шина правой панели): при нём v_tot считается лишь по отобранным людям, и порог
+    вселенной «≥500 просмотров за жизнь» ронял отчёты (корзина «2–5 дней» на отчёте → «Ничего не найдено»).
+    Порог тогда берётся по ВСЕМ зрителям отчёта (как без фильтра) — отдельным подзапросом. -#}
+{% set pplf = loginf or exlf or attrson or freqf %}
 {%- set OCOL = ['lvl3_management_unit_nm', 'lvl4_management_unit_nm', 'lvl5_management_unit_nm', 'lvl6_management_unit_nm', 'lvl7_management_unit_nm'] -%}
 {%- set OC = [] -%}
 {%- for L in [1, 2, 3, 4, 5] -%}{%- set vs = [] -%}{%- for v in orgf -%}{%- if v.split(' › ')|length == L -%}{%- set _ = vs.append(v) -%}{%- endif -%}{%- endfor -%}
@@ -151,4 +155,4 @@ SELECT
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
-WHERE kd != 1 OR v_tot >= 500
+WHERE kd != 1 OR {% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_evd_day u INNER JOIN dash_ok um ON um.dashboard_id = u.dashboard_id{% if excv == '1' %} WHERE NOT has(um.owners_string, u.login){% endif %} GROUP BY u.dashboard_id HAVING sum(u.views) >= 500){% else %}v_tot >= 500{% endif %}

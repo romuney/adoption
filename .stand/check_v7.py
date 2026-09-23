@@ -120,6 +120,14 @@ for pth in [BODY, FALL, PPL, HDR]:
     except Exception as e:
         err = str(e).split('\n')[0][:160]
     ok(not err, f'рендер при сохранении датасета (AlwaysTrueObject): {os.path.basename(pth)[:30]} {err}')
+# Бой без lvl5…lvl7 в pa_emp_attrs (GP-параграф «PA · атрибуты» ещё не перезапущен): с HAS_ORG = false
+# pa_people не обращается к этим колонкам, каталог — пока не выбран узел глубже УС-4.
+_src = open(PPL).read().replace('{% set HAS_ORG = true %}', '{% set HAS_ORG = false %}')
+_tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_noorg.sql'); open(_tmp, 'w').write(_src)
+_hit = [c for c in [{}, {'period_param': 'q'}] if any(x in stand.render(_tmp, c) for x in ('lvl5_', 'lvl6_', 'lvl7_'))]
+os.remove(_tmp)
+ok(not _hit, 'pa_people с HAS_ORG = false не читает lvl5…lvl7')
+ok(not any(x in stand.render(BODY, {'org_f': ['Блок 5 › Деп 5.2']}) for x in ('lvl5_', 'lvl6_', 'lvl7_')), 'каталог с узлом УС-4 не читает lvl5…lvl7')
 import json
 norm = lambda rows: sorted(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in rows)
 for pth in [BODY, FALL, PPL, HDR]:

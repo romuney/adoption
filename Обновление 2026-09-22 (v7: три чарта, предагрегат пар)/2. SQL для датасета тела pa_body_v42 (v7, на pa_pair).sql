@@ -7,12 +7,14 @@
     (mode_param/sel_f) НЕ читает — самовлияние тела выключено.
     Линейная цепочка maxd → dash_ok → evd → kx → agg → выход; каждый CTE — одна ссылка
     (dash_ok — справочник 32 тыс. строк).
-    Ответ — 16 колонок; KPI области считает правая панель (pa_people). -#}
+    Ответ — 17 колонок (+ ca_n, ca_wide при WITH_CA); KPI области считает правая панель (pa_people). -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay'}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday'}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth'}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter'}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
 {% set grain = grain if grain in GRAINS else 'd' %}
 {% set g = GRAINS[grain] %}
 {% set CUR = 2 ** g.n - 1 %}
+{% set WITH_CA = false %}{#- true — у датасета каталога вкладки «Аудитория»: +2 колонки ca_n / ca_wide (ЦА отчёта по правам
+    из pa_dash_ca, поставка 2026-09-24). У каталога «Отчётов» — false: ответ прежний, pa_dash_ca не нужна. -#}
 {% set REG = {'d': 6, 'w': 6, 'm': 4, 'q': 3}[grain] %}{#- «постоянный» = корзины частоты 3–4 (≥ FBIN[1]+1 активных периодов): 6 дней/недель, 4 месяца, 3 квартала — как сегмент «Постоянный» в «Кто смотрит» -#}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% macro q(values) -%}
@@ -150,6 +152,12 @@ SELECT
   CAST(ifNull(last_view_days, 0) AS Int64) AS last_view_days,
   CAST(if(kd = 1, rhythm, NULL) AS Nullable(String)) AS rhythm,
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
+  {%- if WITH_CA %},
+  {#- ЦА отчёта по правам (штат) и флаг «доступ почти у всех» — только у строк отчётов. -#}
+  CAST(if(kd = 1, c.ca_n, NULL) AS Nullable(Int64)) AS ca_n,
+  CAST(if(kd = 1, c.ca_wide, NULL) AS Nullable(UInt8)) AS ca_wide{% endif %}
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
+{%- if WITH_CA %}
+LEFT JOIN prod_proteus.pa_dash_ca c ON c.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0)){% endif %}
 WHERE kd != 1 OR {% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_pair u WHERE u.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(u.login){% if excv == '1' %} AND ifNull(u.own_flg, 0) = 0{% endif %} GROUP BY u.dashboard_id HAVING sum(ifNull(u.v_life, 0)) >= 500){% else %}v_tot >= 500{% endif %}

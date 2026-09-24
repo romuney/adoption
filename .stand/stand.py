@@ -104,6 +104,48 @@ def _bkt():
         S.query(f"INSERT INTO prod_proteus.pa_dash_bkt WITH (SELECT max(log_dttm) FROM prod_proteus.pa_evd_day) AS mdx {a}")
 
 
+def _aud(n_dash, n_login):
+    """Вкладка «Аудитория»: штат (pa_staff), права отчётов (pa_dash_acl), состав AD-групп прав
+    (pa_adg_member) и размер ЦА по правам на отчёт (pa_dash_ca) — эмуляция GP-параграфов
+    «PA · штат / права / состав групп / ЦА отчёта». Штат шире зрителей: u0…u(1,6·n) — зрители
+    pa_emp_attrs (u < 0,95·n) плюс ни разу не заходившие; own* — владельцы вне штата."""
+    for t in ['pa_staff', 'pa_dash_acl', 'pa_adg_member', 'pa_dash_ca']:
+        S.query(f'DROP TABLE IF EXISTS prod_proteus.{t}')
+    n_staff = int(n_login * 1.6)
+    S.query("""CREATE TABLE prod_proteus.pa_staff (login String, lvl3_management_unit_nm String, lvl4_management_unit_nm String,
+      lvl5_management_unit_nm String, lvl6_management_unit_nm String, lvl7_management_unit_nm String,
+      emp_specialization_desc String, emp_stream_desc String, management_head_flg Int32, fio String, exp_nm String)
+      ENGINE=MergeTree ORDER BY login""")
+    # атрибуты — той же формулой, что pa_emp_attrs (зрители совпадают с собой в штате)
+    S.query(f"""INSERT INTO prod_proteus.pa_staff SELECT concat('u', toString(number)),
+      if(number % 50 = 0, '', concat('Блок ', toString(number % 12))), if(number % 40 = 0 OR number % 50 = 0, '', concat('Деп ', toString(number % 12), '.', toString(number % 5))),
+      if(number % 13 = 0, '-', if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0, '', concat('Упр ', toString(number % 12), '.', toString(number % 5), '.', toString(number % 3)))),
+      if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0, '', concat('Отдел ', toString(number % 7))),
+      if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0 OR number % 6 = 0, '', concat('Команда ', toString(number % 2))),
+      concat('Спец ', toString(number % 20)), concat('Стрим ', toString(number % 9)), toInt32(number % 11 = 0),
+      concat('Фамилия ', toString(number)), ['до 1 года', '1–3 года', '3–5 лет'][1 + number % 3]
+      FROM numbers({n_staff})""")
+    # состав групп: ADG0…ADG29 — по остатку, ALL — почти весь штат (широкая группа, ≥30 %)
+    S.query("CREATE TABLE prod_proteus.pa_adg_member (ad_group String, login String) ENGINE=MergeTree ORDER BY (ad_group, login)")
+    S.query(f"""INSERT INTO prod_proteus.pa_adg_member SELECT g, concat('u', toString(number)) FROM numbers({n_staff})
+      ARRAY JOIN arrayFilter(x -> x != '', [concat('ADG', toString(number % 30)), concat('ADG', toString((number * 7 + 3) % 30)), if(number % 10 != 0, 'ALL', '')]) AS g""")
+    # права: у отчёта 1–2 группы (5 % — широкая ALL) и до 6 поимённых логинов; 3 % — без прав (только владельцы)
+    S.query("CREATE TABLE prod_proteus.pa_dash_acl (dashboard_id Int32, principal String, kind String) ENGINE=MergeTree ORDER BY (dashboard_id, kind, principal)")
+    S.query(f"""INSERT INTO prod_proteus.pa_dash_acl SELECT toInt32(number + 1), p.1, p.2 FROM numbers({n_dash})
+      ARRAY JOIN arrayFilter(t -> t.1 != '' AND number % 33 != 0, arrayConcat(
+        [(concat('ADG', toString(number % 30)), 'group'), (if(number % 3 = 0, concat('ADG', toString((number + 11) % 30)), ''), 'group'),
+         (if(number % 20 = 0, 'ALL', ''), 'group')],
+        arrayMap(i -> (concat('u', toString((number * 131 + i * 977) % {n_login})), 'user'), range(toUInt64(number % 7))))) AS p""")
+    # ЦА отчёта по правам: поимённые ∪ члены групп, только штат; wide — ЦА ≥ 30 % штата
+    S.query(f"""CREATE TABLE prod_proteus.pa_dash_ca ENGINE=MergeTree ORDER BY dashboard_id AS
+      SELECT dashboard_id, toInt64(uniqExact(login)) AS ca_n, toUInt8(uniqExact(login) >= 0.3 * (SELECT count() FROM prod_proteus.pa_staff)) AS ca_wide
+      FROM (SELECT a.dashboard_id AS dashboard_id, a.principal AS login FROM prod_proteus.pa_dash_acl a WHERE a.kind = 'user'
+            UNION ALL
+            SELECT a.dashboard_id, m.login FROM prod_proteus.pa_dash_acl a INNER JOIN prod_proteus.pa_adg_member m ON m.ad_group = a.principal WHERE a.kind = 'group')
+      WHERE login IN (SELECT login FROM prod_proteus.pa_staff)
+      GROUP BY dashboard_id""")
+
+
 def gen(big=False):
     n_dash, n_login = (16000, 47000) if big else (3000, 6400)
     S.query('CREATE DATABASE IF NOT EXISTS prod_proteus')
@@ -149,6 +191,7 @@ def gen(big=False):
       ) GROUP BY did, lg, dt""")
     _pair()
     _bkt()
+    _aud(n_dash, n_login)
     print(S.query('SELECT count(), uniqExact(login), uniqExact(dashboard_id) FROM prod_proteus.pa_evd_day', 'CSV'))
 
 

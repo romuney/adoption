@@ -140,13 +140,14 @@ def _aud(n_dash, n_login):
     # админы, доступ снят): тогда «Заходили вне ЦА» — меньшинство, как в бою
     S.query("""INSERT INTO prod_proteus.pa_dash_acl SELECT DISTINCT dashboard_id, login, 'user' FROM prod_proteus.pa_pair
       WHERE cityHash64(login, dashboard_id) % 100 < 85 AND login LIKE 'u%'""")
-    # ЦА отчёта по правам: поимённые ∪ члены групп, только штат; wide — ЦА ≥ 30 % штата
+    # ЦА отчёта по правам: поимённые ∪ члены групп, только штат, без владельцев отчёта; wide — ЦА ≥ 30 % штата
     S.query(f"""CREATE TABLE prod_proteus.pa_dash_ca ENGINE=MergeTree ORDER BY dashboard_id AS
       SELECT dashboard_id, toInt64(uniqExact(login)) AS ca_n, toUInt8(uniqExact(login) >= 0.3 * (SELECT count() FROM prod_proteus.pa_staff)) AS ca_wide
       FROM (SELECT a.dashboard_id AS dashboard_id, a.principal AS login FROM prod_proteus.pa_dash_acl a WHERE a.kind = 'user'
             UNION ALL
             SELECT a.dashboard_id, m.login FROM prod_proteus.pa_dash_acl a INNER JOIN prod_proteus.pa_adg_member m ON m.ad_group = a.principal WHERE a.kind = 'group')
       WHERE login IN (SELECT login FROM prod_proteus.pa_staff)
+        AND (dashboard_id, login) NOT IN (SELECT dashboard_id, arrayJoin(owners_string) FROM prod_proteus.pa_dash_meta)
       GROUP BY dashboard_id""")
 
 
@@ -160,7 +161,7 @@ def gen(big=False):
       certified_by Nullable(String), created_dt DateTime) ENGINE=MergeTree ORDER BY dashboard_id""")
     S.query(f"""INSERT INTO prod_proteus.pa_dash_meta SELECT toInt32(number+1), concat('Отчёт ', toString(number+1)),
       concat('own', toString(number % 400)),
-      arrayDistinct([concat('own', toString(number % 400)), concat('own', toString((number*7) % 400))]),
+      arrayDistinct([concat('own', toString(number % 400)), concat('own', toString((number*7) % 400)), concat('u', toString((number * 131) % 900))]),
       arrayFilter(x -> x != '', [if(number % 3 = 0, '', concat('Колл ', toString(number % 60))), if(number % 5 = 0, concat('Род ', toString(number % 8)), '')]),
       toInt32(number % 10 != 0), toInt32(number % 13 != 0), if(number % 17 = 0, 'cert', NULL),
       toDateTime('2024-01-01') + toIntervalDay(number % 600) FROM numbers({n_dash})""")

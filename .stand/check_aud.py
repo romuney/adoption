@@ -4,7 +4,7 @@
 
 1. Панель (файл 2): зрители в упаковке 'v' == зрители области в pa_pair (без владельцев);
    зрители + свёрнутый штат 'h' == штат ⋃ зрители; у каждого человека одна строка.
-2. ЦА по правам одного отчёта (поле acc, при exc_f = 0) == pa_dash_ca.ca_n этого отчёта.
+2. ЦА по правам одного отчёта (поле acc, «Без владельцев» по умолчанию) == pa_dash_ca.ca_n этого отчёта.
 3. Зрители периода (бит окна в маске) == KPI «Пользователей» правой панели первой вкладки
    (pa_people) на той же области — числа вкладок сходятся.
 4. Каталог вкладки (файл 3, WITH_CA = true) == каталог «Отчётов» + 2 колонки; ca_n == pa_dash_ca.
@@ -59,16 +59,18 @@ for c in [{}, {'mode_param': 'report', 'sel_f': [str(reps[0])]}, {'mode_param': 
       WHERE dashboard_id IN (SELECT dashboard_id FROM area) AND own_flg = 0""")[0]['u']
     ok(len(vw) == int(ref), f'{c}: зрителей в упаковке {len(vw)} == по парам {ref}')
     nst = sum(1 for p in vw.values() if not p['stf'])
-    ok(len(vw) + h == staff + nst, f'{c}: зрители {len(vw)} + штат без визитов {h} == штат {staff} + зрители вне штата {nst}')
+    own = 0 if c.get('exc_f') == '0' else int(q(f"""WITH area AS ({ids}) SELECT count() c FROM (SELECT o FROM area ARRAY JOIN owners_string AS o GROUP BY o
+      HAVING count() = (SELECT count() FROM area)) WHERE o IN (SELECT login FROM prod_proteus.pa_staff)""")[0]['c'])
+    ok(len(vw) + h == staff + nst - own, f'{c}: зрители {len(vw)} + штат без визитов {h} == штат {staff} + зрители вне штата {nst} − владельцы области {own}')
     # сходимость с первой вкладкой: зрители периода == KPI «Пользователей» pa_people
     n = int(json.loads([r for r in rows if r['section'] == 'total'][0]['state_j'])['n'])
     cur = sum(1 for p in vw.values() if p['msk'] & ((1 << n) - 1))
     kp = [r for r in run(PPL, c) if r['section'] == 'total']
     ok(kp and int(kp[0]['users']) == cur, f'{c}: зрителей периода {cur} == KPI первой вкладки {kp[0]["users"] if kp else "—"}')
 
-# ЦА по правам одного отчёта == pa_dash_ca (владельцев не вычитаем: exc_f = 0)
+# ЦА по правам одного отчёта == pa_dash_ca (владельцы отчёта не входят ни туда, ни туда — умолчание «Без владельцев»)
 for did in reps:
-    vw, h, ha = people(run(AUD, {'mode_param': 'report', 'sel_f': [str(did)], 'exc_f': '0'}))
+    vw, h, ha = people(run(AUD, {'mode_param': 'report', 'sel_f': [str(did)]}))
     ca = sum(1 for p in vw.values() if p['acc'] and p['stf']) + ha
     ref = q(f'SELECT ca_n FROM prod_proteus.pa_dash_ca WHERE dashboard_id = {did}')
     ok(ref and int(ref[0]['ca_n']) == ca, f'отчёт {did}: ЦА по правам {ca} == pa_dash_ca {ref[0]["ca_n"] if ref else "—"}')
@@ -90,4 +92,19 @@ for pth in [AUD, CAT]:
                 ok(norm(a) == norm(q(sql + '\nSETTINGS ' + st)), f'{st}: {os.path.basename(pth)[:30]} {c}')
             except Exception as e:
                 ok(False, f'{st}: {os.path.basename(pth)[:30]} {c} — {str(e)[:120]}')
+# Сохранение датасета: filter_values = AlwaysTrueObject; враждебный ввод фильтров — без падений.
+for pth in [AUD, CAT]:
+    try:
+        q(stand.render(pth, always_true=True)); err = ''
+    except Exception as e:
+        err = str(e)[:160]
+    ok(not err, f'рендер при сохранении датасета (AlwaysTrueObject): {os.path.basename(pth)[:30]} {err}')
+    for c in [{'mode_param': 'report', 'sel_f': ["1); DROP TABLE t;--", 'abc']}, {'mode_param': 'owner', 'sel_f': ["o'x", 'a\\b']},
+              {'mode_param': 'collection', 'sel_f': ['"]); --']}, {'mode_param': 'xx', 'sel_f': ['1']}, {'period_param': 'zz'},
+              {'pub_f': "1' OR 1=1", 'exc_f': '5'}, {'org_f': ["Блок 1 › '"], 'freq_f': ['9', "1'"]}]:
+        try:
+            rows = q(stand.render(pth, c)); err = ''
+        except Exception as e:
+            rows, err = [], str(e)[:160]
+        ok(not err and (pth == CAT or any(r['section'] == 'total' for r in rows)), f'враждебный ввод {c}: {os.path.basename(pth)[:24]} {err}')
 print('\nИТОГ:', 'всё сходится' if not bad else f'{bad} расхождений')

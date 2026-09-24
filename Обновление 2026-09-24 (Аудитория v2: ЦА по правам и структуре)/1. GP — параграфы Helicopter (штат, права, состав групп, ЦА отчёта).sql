@@ -89,6 +89,7 @@ distributed by (ad_group);
 -- Параграф «PA · ЦА отчёта» → usr_cross_data.pa_dash_ca
 -- Размер ЦА по правам на отчёт (для колонки «Охват ЦА» каталога) и флаг «широкий
 -- доступ»: ЦА ≥ 30 % штата — проценты охвата по такому знаменателю не показываем.
+-- Владельцы отчёта в ЦА не входят (как в панели при «Без владельцев» — умолчание).
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_dash_ca;
 create table usr_cross_data.pa_dash_ca as
@@ -108,6 +109,10 @@ select c.dashboard_id::int as dashboard_id,
        (count(*) >= 0.3 * max(hc.n))::int as ca_wide
 from ca c
 inner join usr_cross_data.pa_staff s on s.login = c.login
+left join (
+    select dashboard_id, lower(unnest(owners_string)) as login from usr_cross_data.pa_dash_meta
+) ow on ow.dashboard_id = c.dashboard_id and ow.login = c.login
 cross join hc
+where ow.login is null
 group by c.dashboard_id
 distributed by (dashboard_id);

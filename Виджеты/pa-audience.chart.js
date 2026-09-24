@@ -974,7 +974,20 @@ function buildCSS2() {
   var P = '.' + CFG.ns;
   return [
     '<style>',
-    P + '-panel-b.path-wrap{overflow:auto;}',
+    P + '-panel-b.path-wrap{overflow:auto;display:flex;flex-direction:column;gap:18px;}',
+    // Настройки ЦА — жёлтая рамка (макет .scopebar.wide): слева «с чем сравниваем», справа база и условия.
+    P + '-scopebar{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);gap:20px;border:1px solid #f0dcb4;border-radius:10px;'
+      + 'background:linear-gradient(100deg,#fffaf1 0,#fff 55%);padding:14px 16px;flex:0 0 auto;}',
+    P + '-sb-col{min-width:0;display:flex;flex-direction:column;gap:8px;}',
+    P + '-sb-set{border-left:1px solid #f3e6cc;padding-left:20px;}',
+    P + '-as-t{font-size:var(--fs-body);font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.35;}',
+    P + '-as-t ' + P + '-sig-chip{flex:0 0 auto;}',
+    P + '-as-x{font-size:var(--fs-note);color:var(--muted);line-height:1.5;}',
+    P + '-as-x b{color:var(--ink2);font-weight:500;}',
+    P + '-sig-chip.warn{background:#fff0d6;color:#8a5a00;}',
+    P + '-ca-row .' + CFG.ns + '-ca-l, ' + P + '-ca-row > ' + P + '-ca-l{flex:0 0 64px;}',
+    P + '-ca-row.chips{padding-left:70px;}',
+    P + '-fn-box{flex:0 0 auto;}',
     P + '-path{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:16px;align-items:start;}',
     P + '-card2{border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:12px;}',
     P + '-cap2{font-size:var(--fs-cap);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;}',
@@ -1875,86 +1888,131 @@ function caPickerHtml(id, label, kind) {
   return h + '</div>';
 }
 function caCardHtml() {
-  var c = caCfg(), t = caTotals(), N = CFG.ns, W = wide();
-  var h = '<div class="' + N + '-card2">' +
-    '<div class="' + N + '-cap2">Кого считаем целевой аудиторией</div>' +
-    '<div class="' + N + '-ca-n"><b>' + nf(t.ca) + '</b><span>' + plural(t.ca, 'человек', 'человека', 'человек') + ' · ' +
-      (c.base === 'acc' ? 'есть право на отчёты области' : 'весь штат') + (caAttrsOn(c) ? ' · с условиями' : '') + '</span></div>' +
-    '<div class="' + N + '-ca-sec"><span class="' + N + '-ca-l">База</span>' +
-      '<div class="' + N + '-sub-tabs tiny" role="tablist">' + tabsHtml('caBase', [
-        { key: 'acc', label: 'По правам доступа', on: c.base === 'acc' },
-        { key: 'all', label: 'Весь штат', on: c.base === 'all' }]) + '</div></div>';
-  // Как роздан доступ: крупнейшие AD-группы прав и поимённые права.
-  var gs = MODEL.acl.groups;
-  h += '<div class="' + N + '-ca-sec"><span class="' + N + '-ca-l">Как роздан доступ · ' + nf(gs.length) + ' ' + plural(gs.length, 'группа', 'группы', 'групп') +
-    (MODEL.acl.users ? ' · ' + nf(MODEL.acl.users) + ' поимённо' : '') + '</span>';
-  if (gs.length) {
-    h += '<div class="' + N + '-acl">';
-    for (var i = 0; i < gs.length && i < 5; i++) {
-      h += '<div class="' + N + '-acl-r"' + tip({ title: gs[i].name, text: 'Сотрудников штата в группе: ' + nf(gs[i].n) }) + '><span>' + esc(gs[i].name) + '</span><b>' + nf(gs[i].n) + '</b></div>';
-    }
-    if (gs.length > 5) h += '<div class="' + N + '-note2">и ещё ' + nf(gs.length - 5) + '</div>';
-    h += '</div>';
-  } else if (!MODEL.acl.users) {
-    h += '<div class="' + N + '-note2">Прав на отчёты области в данных нет — ЦА по правам пуста. Выберите «Весь штат» и условия.</div>';
+  var c = caCfg(), t = caTotals(), N = CFG.ns, W = wide(), gs = MODEL.acl.groups, i;
+  var ppl = function (n) { return nf(n) + ' ' + plural(n, 'человек', 'человека', 'человек'); };
+  var gl = [];
+  for (i = 0; i < gs.length && i < 4; i++) gl.push('<b>' + esc(gs[i].name) + '</b>');
+  var gTxt = gl.join(', ') + (gs.length > 4 ? ' и ещё ' + nf(gs.length - 4) : '');
+  var title, chip, text;
+  if (caAttrsOn(c) || c.base === 'all') {
+    title = c.base === 'all' ? 'Собрана по структуре' : 'Права доступа с условиями';
+    chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
+    text = c.base === 'all'
+      ? 'Берём весь штат, попавший под условия справа, и смотрим, сколько из них дошло до области. Ступень <b>«Есть доступ»</b> на воронке отделяет «не роздали права» от «роздали, но не ходят».'
+      : 'Из тех, у кого есть право на отчёты области, оставляем попавших под условия справа.';
+  } else if (W) {
+    title = 'Доступ роздан почти всей компании';
+    chip = '<span class="' + N + '-sig-chip warn">охват не считаем</span>';
+    text = 'Права выданы через ' + (gTxt || 'широкую группу') + ' — это <b>' + ppl(t.ca) + '</b>, ' + pct(t.ca / (MODEL.staff || 1) * 100, 0) +
+      ' штата. Такой знаменатель не описывает, для кого делали отчёт, поэтому долю охвата по нему не показываем. <b>Добавьте условия справа</b> — и доли вернутся.';
+  } else if (!gs.length && MODEL.acl.users) {
+    title = 'Поимённый список доступа';
+    chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
+    text = 'Права выданы поимённо (' + nf(MODEL.acl.users) + '). Самый точный вид ЦА: охват и «не заходили» считаются без допущений.';
+  } else if (!gs.length) {
+    title = 'Прав на отчёты области в данных нет';
+    chip = '<span class="' + N + '-sig-chip warn">ЦА пуста</span>';
+    text = 'Выберите справа «Весь штат» и условия — ЦА соберётся по структуре.';
+  } else {
+    title = 'Доступ через AD-группы';
+    chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
+    text = 'Права выданы ' + plural(gs.length, 'группе', 'группам', 'группам') + ' ' + gTxt +
+      (MODEL.acl.users ? ' плюс ' + nf(MODEL.acl.users) + ' поимённо' : '') + ' — всего <b>' + ppl(t.ca) + '</b>. Считаем их целевой аудиторией, пока не заданы условия.';
   }
-  h += '</div>';
-  if (W) {
-    h += '<div class="' + N + '-warn">Доступ открыт почти всей компании: ' + nf(t.ca) + ' из ' + nf(MODEL.staff) + ' сотрудников. ' +
-      'Проценты охвата скрыты — добавьте условия ниже, и они вернутся.</div>';
-  }
-  // Условия: сужают базу.
-  h += '<div class="' + N + '-ca-sec"><span class="' + N + '-ca-l">Условия — сужают базу</span>' +
-    '<div class="' + N + '-ca-row">' +
-      caPickerHtml('caOrg', 'Подразделения', 'org') +
-      caPickerHtml('caSpec', 'Специализации', 'spec') +
-      caPickerHtml('caStream', 'Стримы', 'stream') +
-      dropdownHtml('caHeads', c.heads || '', [{ key: '', label: 'Все сотрудники' }, { key: '1', label: 'Только руководители' }, { key: 'n', label: 'Без руководителей' }]) +
-    '</div>';
+  var h = '<div class="' + N + '-scopebar' + (W ? ' wide' : '') + '">' +
+    '<div class="' + N + '-sb-col">' +
+      '<div class="' + N + '-cap2">Целевая аудитория — с чем сравниваем охват</div>' +
+      '<div class="' + N + '-as-t">' + esc(title) + chip + '</div>' +
+      '<div class="' + N + '-as-x">' + text + '</div>' +
+    '</div>' +
+    '<div class="' + N + '-sb-col ' + N + '-sb-set">' +
+      '<div class="' + N + '-ca-row"><span class="' + N + '-ca-l">База</span>' +
+        '<div class="' + N + '-sub-tabs tiny" role="tablist">' + tabsHtml('caBase', [
+          { key: 'acc', label: 'По правам доступа', on: c.base === 'acc' },
+          { key: 'all', label: 'Весь штат', on: c.base === 'all' }]) + '</div></div>' +
+      '<div class="' + N + '-ca-row"><span class="' + N + '-ca-l">Условия</span>' +
+        caPickerHtml('caOrg', 'Подразделения', 'org') +
+        caPickerHtml('caSpec', 'Специализации', 'spec') +
+        caPickerHtml('caStream', 'Стримы', 'stream') +
+        dropdownHtml('caHeads', c.heads || '', [{ key: '', label: 'Все сотрудники' }, { key: '1', label: 'Только руководители' }, { key: 'n', label: 'Без руководителей' }]) +
+      '</div>';
   var chips = '';
-  var chip = function (kind, v, label, full) {
+  var chipH = function (kind, v, label, full) {
     chips += '<span class="' + N + '-chip"' + tip({ text: full || label }) + '><span>' + esc(label) + '</span><button type="button" data-caun="' + esc(kind + '|' + v) + '" aria-label="Убрать условие">×</button></span>';
   };
-  for (i = 0; i < c.org.length; i++) chip('org', c.org[i], orgShort(c.org[i]), c.org[i]);
-  for (i = 0; i < c.spec.length; i++) chip('spec', c.spec[i], c.spec[i]);
-  for (i = 0; i < c.stream.length; i++) chip('stream', c.stream[i], c.stream[i]);
-  if (c.heads) chip('heads', c.heads, c.heads === '1' ? 'Только руководители' : 'Без руководителей');
-  if (chips) h += '<div class="' + N + '-ca-row">' + chips + '</div>';
-  h += '</div>';
+  for (i = 0; i < c.org.length; i++) chipH('org', c.org[i], orgShort(c.org[i]), c.org[i]);
+  for (i = 0; i < c.spec.length; i++) chipH('spec', c.spec[i], c.spec[i]);
+  for (i = 0; i < c.stream.length; i++) chipH('stream', c.stream[i], c.stream[i]);
+  if (c.heads) chipH('heads', c.heads, c.heads === '1' ? 'Только руководители' : 'Без руководителей');
+  if (chips) h += '<div class="' + N + '-ca-row chips">' + chips + '</div>';
   var dirty = c.base !== 'acc' || caAttrsOn(c);
-  h += '<div class="' + N + '-note2">Настройка ЦА хранится в этом браузере для выбранной области и пересчитывает весь экран без запроса.' +
-    (dirty ? ' <button class="' + N + '-btn ghost xs" data-careset="1" type="button">Сбросить ЦА</button>' : '') + '</div>';
-  return h + '</div>';
+  h += '<div class="' + N + '-note2">Настройка хранится в этом браузере для области и пересчитывает весь экран без запроса.' +
+    (dirty ? ' <button class="' + N + '-btn ghost xs" data-careset="1" type="button">Вернуть «как роздан доступ»</button>' : '') + '</div>';
+  return h + '</div></div>';
+}
+// Воронка (порт U.funnelSvg макета): центрированные бары сверху вниз, ширина ровно
+// пропорциональна значению (масштаб — по самому большому этапу), название НАД баром,
+// число слева, конверсия с предыдущего этапа справа, между барами — диагонали.
+// Высота ступени фиксирована: растянутая на всю панель воронка читается как фон.
+var FN_ROW = 74, FN_MIN_H = 300, FN_MAX_BAR = 460;
+function funnelSteps() {
+  var t = caTotals(), c = caCfg(), G = CFG.grains[MODEL.grain] || CFG.grains.d;
+  var st = [{ name: 'Целевая аудитория', value: t.ca, note: c.base === 'acc' ? 'Как роздан доступ' + (caAttrsOn(c) ? ', с условиями' : '') : 'Собрана по структуре' }];
+  if (c.base === 'all') st.push({ name: 'Есть доступ к области', value: t.acc, note: 'Права выданы AD-группой или поимённо' });
+  st.push({ name: 'Открыли хотя бы раз', value: t.reach, note: G.label });
+  st.push({ name: 'Вернулись ещё раз', value: t.ret, note: 'Заходили в двух и более разных ' + G.units });
+  st.push({ name: 'Заходят регулярно', value: t.reg, note: G.reg + '+ разных ' + G.units + ' за период' });
+  return st;
+}
+function funnelSvg(steps, w) {
+  var n = steps.length, i;
+  if (!n || !w) return '';
+  var H = Math.max(FN_MIN_H, n * FN_ROW), rowH = (H - 12) / n;
+  var max = 1;
+  for (i = 0; i < n; i++) if (steps[i].value > max) max = steps[i].value;
+  var cx = w / 2, sideW = 64, maxBar = Math.max(60, Math.min(FN_MAX_BAR, w - sideW * 2 - 20));
+  var W = wide(), body = '';
+  for (i = 0; i < n; i++) {
+    var st = steps[i], y = i * rowH + 16;
+    var bh = Math.max(14, Math.min(FN_ROW - 26, rowH - 26));
+    var bw = st.value / max * maxBar;
+    var prev = i > 0 ? steps[i - 1].value : null;
+    var conv = prev != null ? (prev ? st.value / prev * 100 : 0) : null;
+    var color = CFG.colors.fun[Math.min(i, CFG.colors.fun.length - 1)];
+    var rows = [{ label: 'Человек', value: nf(st.value), color: color }];
+    if (conv != null) rows.push({ label: 'С предыдущего этапа', value: pct(conv, 0) });
+    if (i > 0 && !W) rows.push({ label: 'От целевой аудитории', value: pct(steps[0].value ? st.value / steps[0].value * 100 : 0, 0), dash: true, color: CFG.colors.bench });
+    body += '<text x="' + r1(cx) + '" y="' + r1(y - 5) + '" font-size="11" font-weight="600" text-anchor="middle" fill="#8a909c">' + esc(st.name) + '</text>';
+    body += '<g' + tip({ title: st.name, rows: rows, note: st.note || null }) + '>' +
+      '<rect x="0" y="' + r1(y - 14) + '" width="' + r1(w) + '" height="' + r1(bh + 18) + '" fill="transparent"/>' +
+      (bw > 0.5
+        ? '<g class="bar" data-d="' + (i * 45) + '"><rect x="' + r1(cx - bw / 2) + '" y="' + r1(y) + '" width="' + r1(bw) + '" height="' + r1(bh) + '" rx="2" fill="' + color + '"/></g>'
+        : '<line x1="' + r1(cx - 9) + '" y1="' + r1(y + bh / 2) + '" x2="' + r1(cx + 9) + '" y2="' + r1(y + bh / 2) + '" stroke="#d4d7de" stroke-width="2"/>') +
+      '</g>';
+    body += '<text class="fade" x="' + r1(cx - bw / 2 - 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5" font-weight="600" text-anchor="end" fill="#1f1f1f">' + esc(nf(st.value)) + '</text>';
+    if (conv != null) {
+      body += '<text class="fade" x="' + r1(cx + bw / 2 + 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5" font-weight="500" text-anchor="start" fill="#8a909c">' + pct(conv, 0) + '</text>';
+    }
+    if (i < n - 1) {
+      var nb = steps[i + 1].value / max * maxBar, ny = (i + 1) * rowH + 16;
+      body += '<path d="M' + r1(cx - bw / 2) + ' ' + r1(y + bh) + 'L' + r1(cx - nb / 2) + ' ' + r1(ny) +
+        'M' + r1(cx + bw / 2) + ' ' + r1(y + bh) + 'L' + r1(cx + nb / 2) + ' ' + r1(ny) + '" fill="none" stroke="#dfe3ea" stroke-width="1"/>';
+    }
+  }
+  return '<svg viewBox="0 0 ' + r1(w) + ' ' + r1(H) + '" width="100%" data-dyn-svg="1" style="height:auto;display:block;overflow:visible" font-family="' + CFG.fonts.family +
+    '" role="img" aria-label="Путь целевой аудитории">' + body + '</svg>';
 }
 function funnelHtml() {
-  var t = caTotals(), c = caCfg(), N = CFG.ns, W = wide(), G = CFG.grains[MODEL.grain] || CFG.grains.d;
-  var steps = [{ key: 'ca', label: 'Целевая аудитория', sub: c.base === 'acc' ? 'по правам' : 'весь штат', n: t.ca,
-    text: 'Все люди ЦА области.' }];
-  if (c.base === 'all') steps.push({ key: 'acc', label: 'Есть доступ', sub: 'право на отчёт', n: t.acc, text: 'Людям ЦА выдано право хотя бы на один отчёт области. Разница с ЦА — «не роздали права».' });
-  steps.push({ key: 'reach', label: 'Открыли', sub: G.label, n: t.reach, text: 'Люди ЦА, заходившие за период хотя бы раз.' });
-  steps.push({ key: 'ret', label: 'Вернулись ещё раз', sub: '2+ ' + G.units, n: t.ret, text: 'Заходили в двух и более разных ' + G.units + ' за период.' });
-  steps.push({ key: 'reg', label: 'Заходят регулярно', sub: G.reg + '+ ' + G.units, n: t.reg, text: 'Постоянные: ' + G.reg + ' и более разных ' + G.units + ' за период.' });
-  var h = '<div class="' + N + '-card2"><div class="' + N + '-cap2">Путь целевой аудитории · от ЦА до регулярного использования</div><div class="' + N + '-fun">';
-  for (var i = 0; i < steps.length; i++) {
-    var s = steps[i], w = t.ca ? s.n / t.ca * 100 : 0, conv = i && steps[i - 1].n ? s.n / steps[i - 1].n * 100 : null;
-    h += '<div class="' + N + '-fun-r"' + tip({ title: s.label, text: s.text,
-        rows: [{ label: 'Человек', value: nf(s.n), color: CFG.colors.fun[Math.min(4, i + (steps.length < 5 ? 1 : 0))] },
-          conv == null ? null : { label: 'От предыдущей ступени', value: pct(conv) },
-          W ? null : { label: 'От ЦА', value: pct(w) }] }) + '>' +
-      '<div class="' + N + '-fun-l">' + esc(s.label) + '<small>' + esc(s.sub) + '</small></div>' +
-      '<div class="' + N + '-fun-b ' + N + '-cellbar"><i style="width:' + Math.max(0.5, w).toFixed(1) + '%;background:' + CFG.colors.fun[Math.min(4, i + (steps.length < 5 ? 1 : 0))] + '"></i></div>' +
-      '<div class="' + N + '-fun-v"><b>' + nf(s.n) + '</b><small>' + (conv == null ? (W ? 'доступ почти у всех' : '100%') : pct(conv, 0) + ' от пред.' + (W ? '' : ' · ' + pct(w, 0) + ' ЦА')) + '</small></div>' +
-      '</div>';
-  }
-  h += '</div><div class="' + N + '-fun-foot">' +
-    '<span>Ни разу за период: <b>' + nf(Math.max(0, t.ca - t.reach)) + '</b></span>' +
-    '<span>Разовые: <b>' + nf(t.once) + '</b></span>' +
-    '<span' + tip({ text: 'Заходили за период, но в ЦА не входят: права через владельца или админа, ЦА задана узко.' }) + '>Заходили вне ЦА: <b>' + nf(t.out) + '</b></span>' +
-    '</div></div>';
-  return h;
+  var t = caTotals(), c = caCfg(), N = CFG.ns;
+  return '<div class="' + N + '-dynhead"><span class="' + N + '-cap">Путь целевой аудитории · от выданного доступа до регулярного использования</span></div>' +
+    funnelSvg(funnelSteps(), SVG_W) +
+    '<div class="' + N + '-tbl-note">Каждый следующий этап — подмножество предыдущего. ' +
+    (c.base === 'all' ? 'Ступень <b>«Есть доступ»</b> отделяет «не роздали права» от «роздали, но не ходят». ' : '') +
+    'Ни разу за период: <b>' + nf(Math.max(0, t.ca - t.reach)) + '</b> · разовые: <b>' + nf(t.once) + '</b> · заходили вне ЦА: <b>' + nf(t.out) + '</b>. ' +
+    '<b>Когда</b> этапы набирались — на вкладке «Динамика».</div>';
 }
 function pathHtml() {
-  return '<div class="' + CFG.ns + '-path">' + caCardHtml() + funnelHtml() + '</div>';
+  return caCardHtml() + '<div class="' + CFG.ns + '-fn-box">' + funnelHtml() + '</div>';
 }
 
 function buildHTML() {

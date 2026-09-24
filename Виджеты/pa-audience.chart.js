@@ -977,7 +977,7 @@ function buildCSS2() {
     P + '-panel-b.path-wrap{overflow:auto;display:flex;flex-direction:column;gap:18px;}',
     // Настройки ЦА — жёлтая рамка (макет .scopebar.wide): слева «с чем сравниваем», справа база и условия.
     P + '-scopebar{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);gap:20px;border:1px solid #f0dcb4;border-radius:10px;'
-      + 'background:#fff;padding:14px 16px;flex:0 0 auto;}',
+      + 'background:linear-gradient(100deg,#fffaf1 0,#fff 55%);padding:14px 16px;flex:0 0 auto;}',
     P + '-sb-col{min-width:0;display:flex;flex-direction:column;gap:8px;}',
     P + '-sb-set{border-left:1px solid #f3e6cc;padding-left:20px;}',
     P + '-as-t{font-size:var(--fs-body);font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.35;}',

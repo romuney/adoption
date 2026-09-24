@@ -5,15 +5,18 @@
     ЦА считает клиент: по ПРАВАМ (флаг acc у человека) или по СТРУКТУРЕ (узлы оргструктуры
     конструктора — по пути человека). Поэтому ответ несёт ЛЮДЕЙ области, а не готовые проценты:
       section = 'v'   — зрители области, упакованы по пути оргструктуры (parent = путь, k = строки
-                        через \n, поля через \t): логин · ФИО · acc 1/0 · штат 1/0 · маска бакетов окна 2n
-                        (bit k = активен в бакете возраста k) · возраст бакета первого визита ·
-                        заходил в этом году 1/0 · дней с последнего визита · id спец. · id стрима · рук. 1/0;
+                        через \n, поля через \t): логин · ФИО · acc 1/0 · штат 1/0 · маска ТЕКУЩЕГО окна
+                        (bit k = активен в бакете возраста k < n) · маска ПРЕДЫДУЩЕГО окна (bit j = возраст n + j;
+                        две маски по n ≤ 30 бит — JS хранит целые точно только до 2^53) · возраст бакета первого визита ·
+                        заходил в этом году 1/0 · дней с последнего визита · id спец. · id стрима · рук. 1/0 ·
+                        просмотров за период · группа стажа;
       section = 'h'   — штат БЕЗ визитов в область, свёрнут: parent = путь, k = строки
                         «id спец. \t id стрима \t рук. \t человек \t из них с доступом»;
       section = 'd'   — словарь: g = 'spec' | 'stream', k = id, parent = название;
       section = 'acl' — как роздан доступ: g = 'group' (k = группа, n = человек штата в ней) | 'users'
                         (n = поимённых прав);
-      section = 'total' — n = штат, state_j — эхо условий, дата свежести md, число отчётов области.
+      section = 'total' — n = штат, k = названия первых трёх отчётов области (через \n),
+                        state_j — эхо условий, дата свежести md, число отчётов области.
     Одна строка на человека из pa_staff ⋃ зрители pa_pair; дневной факт не читается. -#}
 {% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
 {% set GRAINS = {'d': {'n': 30}, 'w': {'n': 20}, 'm': {'n': 12}, 'q': {'n': 8}} %}
@@ -46,7 +49,7 @@
 WITH
   maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   area AS (
-    SELECT dashboard_id, owners_string
+    SELECT dashboard_id, owners_string, dashboard_nm
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %}
     {%- if have and pmode == 'report' %} AND dashboard_id IN ({{ repids|join(', ') if repids else '0' }}){% endif %}
@@ -59,6 +62,7 @@ WITH
       groupBitOr(toUInt64(ifNull(e.msk_{{ grain }}, 0))) AS msk,
       max(ifNull(e.kmax_{{ grain }}, 0)) AS fk,
       groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon,
+      sum(ifNull(e.v_{{ grain }}, 0)) AS vc,
       max(e.dmax) AS dmax
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM area) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
@@ -72,13 +76,13 @@ WITH
       if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
       arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(s.emp_specialization_desc, '')) AS spec, toString(ifNull(s.emp_stream_desc, '')) AS stream,
-      toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hd, toString(ifNull(s.fio, '')) AS fio,
+      toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hd, toString(ifNull(s.fio, '')) AS fio, toString(ifNull(s.exp_nm, '')) AS exn,
       toUInt8(lg IN (
         SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT dashboard_id FROM area)
         UNION ALL
         SELECT m.login FROM prod_proteus.pa_adg_member m
         WHERE m.ad_group IN (SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'group' AND dashboard_id IN (SELECT dashboard_id FROM area)))) AS acc,
-      ifNull(v.msk, toUInt64(0)) AS msk, ifNull(v.fk, 0) AS fk, ifNull(v.mon, toUInt64(0)) AS mon, v.dmax AS dmax
+      ifNull(v.msk, toUInt64(0)) AS msk, ifNull(v.fk, 0) AS fk, ifNull(v.mon, toUInt64(0)) AS mon, ifNull(v.vc, 0) AS vc, v.dmax AS dmax
     FROM prod_proteus.pa_staff s
     FULL OUTER JOIN vw v ON v.login = s.login
     {%- if excv == '1' %}
@@ -90,10 +94,10 @@ WITH
   k1 AS (
     {#- Зрители — строкой на человека, остальной штат — свёрнут до (путь, спец., стрим, рук.). -#}
     SELECT isv, opath, if(isv = 1, '', {{ hid('spec') }}) AS sid, if(isv = 1, '', {{ hid('stream') }}) AS tid, if(isv = 1, 0, hd) AS h0,
-      if(isv = 1, arrayStringConcat([lg, fio, toString(acc), toString(stf), toString(msk), toString(fk),
+      if(isv = 1, arrayStringConcat([lg, fio, toString(acc), toString(stf), toString(bitAnd(msk, {{ 2 ** g.n - 1 }})), toString(bitShiftRight(msk, {{ g.n }})), toString(fk),
           toString(toUInt8(bitAnd(mon, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toMonth((SELECT md FROM maxd))))) - 1) != 0)),
           toString(if(isNull(dmax), -1, dateDiff('day', toStartOfDay(dmax), toStartOfDay((SELECT md FROM maxd))))),
-          {{ hid('spec') }}, {{ hid('stream') }}, toString(hd)], '\t'), '') AS ln,
+          {{ hid('spec') }}, {{ hid('stream') }}, toString(hd), toString(vc), exn], '\t'), '') AS ln,
       count() AS c, countIf(acc = 1) AS ca
     FROM pp
     GROUP BY isv, opath, sid, tid, h0, ln
@@ -125,5 +129,6 @@ UNION ALL
 SELECT 'acl', 'users', '', '', toInt64(uniqExact(principal)), toInt64(0), NULL
 FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT dashboard_id FROM area)
 UNION ALL
-SELECT 'total', '', '', '', toInt64((SELECT count() FROM prod_proteus.pa_staff)), toInt64(0),
+SELECT 'total', '', arrayStringConcat((SELECT groupArray(nm) FROM (SELECT toString(dashboard_nm) AS nm FROM area ORDER BY dashboard_id LIMIT 3)), '\n'), '',
+  toInt64((SELECT count() FROM prod_proteus.pa_staff)), toInt64(0),
   concat('{{ "{" ~ SJ|join(", ") }}', ', "md":"', toString(toDate((SELECT md FROM maxd))), '", "areaN":', toString((SELECT count() FROM area)), '}')

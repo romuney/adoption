@@ -136,6 +136,10 @@ def _aud(n_dash, n_login):
         [(concat('ADG', toString(number % 30)), 'group'), (if(number % 3 = 0, concat('ADG', toString((number + 11) % 30)), ''), 'group'),
          (if(number % 20 = 0, 'ALL', ''), 'group')],
         arrayMap(i -> (concat('u', toString((number * 131 + i * 977) % {n_login})), 'user'), range(toUInt64(number % 7))))) AS p""")
+    # зрители почти всегда имеют доступ: 85 % зрителей отчёта — поимённым правом (остальные — владельцы,
+    # админы, доступ снят): тогда «Заходили вне ЦА» — меньшинство, как в бою
+    S.query("""INSERT INTO prod_proteus.pa_dash_acl SELECT DISTINCT dashboard_id, login, 'user' FROM prod_proteus.pa_pair
+      WHERE cityHash64(login, dashboard_id) % 100 < 85 AND login LIKE 'u%'""")
     # ЦА отчёта по правам: поимённые ∪ члены групп, только штат; wide — ЦА ≥ 30 % штата
     S.query(f"""CREATE TABLE prod_proteus.pa_dash_ca ENGINE=MergeTree ORDER BY dashboard_id AS
       SELECT dashboard_id, toInt64(uniqExact(login)) AS ca_n, toUInt8(uniqExact(login) >= 0.3 * (SELECT count() FROM prod_proteus.pa_staff)) AS ca_wide

@@ -1,7 +1,8 @@
 // Стенд-борд листа «Отчёты»: три чарта в сетке как в Proteus (шапка во всю
 // ширину, каталог ~38% | панель ~62%), каждый — в своём iframe, как в бою.
 // node board.mjs <папка моков> <out.png> [ширина] [clicks.json]
-// В папке моков: strip.json, body.json, area.json (ответы датасетов со стенда).
+// В папке моков: strip.json, body.json, area.json (ответы датасетов со стенда);
+// для листа «Аудитория» — aud.json вместо area.json.
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright'); // NODE_PATH=$(npm root -g)
 import fs from 'fs';
@@ -13,6 +14,8 @@ const frame = (js, mock) => '<!DOCTYPE html><html><head><meta charset="utf-8"><s
   '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"><canvas></canvas></div>' +
   '<script>window.applyCrossFilter=function(f){parent.__calls.push(JSON.parse(JSON.stringify(f)));};var data=' +
   fs.readFileSync(path.join(dir, mock), 'utf8') + ';var option=null;<\/script><script>' + fs.readFileSync(W_ + js, 'utf8') + '<\/script></body></html>';
+// Лист «Аудитория»: в папке моков aud.json вместо area.json — справа панель ЦА.
+const AUD = fs.existsSync(path.join(dir, 'aud.json'));
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 const cw = Math.round((W - GAP * 3) * 0.38), pw = W - GAP * 3 - cw;
 const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#f6f6f6;font-family:Inter,Arial}' +
@@ -20,7 +23,7 @@ const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
   '.h{grid-column:1/3;height:' + HEAD + 'px}.r{height:' + ROW + 'px}</style></head><body><script>window.__calls=[];<\/script><div class="g">' +
   '<iframe class="h" style="width:100%" srcdoc="' + esc(frame('pa-strip.chart.js', 'strip.json')) + '"></iframe>' +
   '<iframe class="r" style="width:100%" srcdoc="' + esc(frame('pa-reports-body.chart.js', 'body.json')) + '"></iframe>' +
-  '<iframe class="r" style="width:100%" srcdoc="' + esc(frame('pa-area.chart.js', 'area.json')) + '"></iframe>' +
+  '<iframe class="r" style="width:100%" srcdoc="' + esc(AUD ? frame('pa-audience.chart.js', 'aud.json') : frame('pa-area.chart.js', 'area.json')) + '"></iframe>' +
   '</div></body></html>';
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: W, height: HEAD + ROW + GAP * 3 } });

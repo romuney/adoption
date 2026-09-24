@@ -36,7 +36,7 @@ def people(rows):
         if r['section'] == 'v':
             for ln in r['k'].split('\n'):
                 x = ln.split('\t')
-                vw[x[0]] = {'acc': x[2] == '1', 'stf': x[3] == '1', 'msk': int(x[4]), 'path': r['parent']}
+                vw[x[0]] = {'acc': x[2] == '1', 'stf': x[3] == '1', 'msk': int(x[4]), 'prev': int(x[5]), 'path': r['parent']}
         elif r['section'] == 'h':
             for ln in r['k'].split('\n'):
                 x = ln.split('\t')

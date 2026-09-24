@@ -50,7 +50,9 @@ var CFG = {
     published: 'published', certified: 'certified', created_dt: 'created_dt',
     users: 'users', views: 'views', regular_users: 'regular_users',
     last_view_days: 'last_view_days', rhythm: 'rhythm',
-    state_j: 'state_j'
+    state_j: 'state_j',
+    // Только у каталога вкладки «Аудитория» (датасет pa_body_aud, WITH_CA = true): ЦА отчёта по правам.
+    ca_n: 'ca_n', ca_wide: 'ca_wide'
   },
   text: { noData: 'Нет данных' },
   // Каталог — снимок за период; ось времени живёт в правой панели.
@@ -248,6 +250,7 @@ function buildModel() {
     grps: {},             // grain -> { group_key -> { val -> {kpi} } }
     ids: [],              // id отчётов в порядке data (стабильность сортировок)
     repMode: false,
+    hasCa: false,         // каталог вкладки «Аудитория» (есть колонки ЦА)
     stateJ: null          // JSON активных условий из total-строки (или null)
   };
 
@@ -259,7 +262,8 @@ function buildModel() {
       views: num(r[F.views]) || 0,
       regular_users: num(r[F.regular_users]) || 0,
       last_view_days: num(r[F.last_view_days]) || 0,
-      rh: rhythmOf(r[F.rhythm])
+      rh: rhythmOf(r[F.rhythm]),
+      ca_n: num(r[F.ca_n]), ca_wide: num(r[F.ca_wide]) === 1
     };
   }
 
@@ -268,6 +272,8 @@ function buildModel() {
     var sec = String(r[F.section] == null ? '' : r[F.section]);
     var gr = String(r[F.grain] == null ? '' : r[F.grain]);
     var row = { kpi: kpiOf(r) };
+    // Каталог вкладки «Аудитория»: в ответе есть колонки ЦА → вместо «Просм.» — «Охват ЦА».
+    if (Object.prototype.hasOwnProperty.call(r, F.ca_n)) M.hasCa = true;
 
     if (sec === 'rep' || sec === 'total' || sec === 'grp') {
       M.grainsAvail[gr] = true;
@@ -910,7 +916,7 @@ function reportTableHtml() {
     if (q && (String(m.dash_nm || '').toLowerCase().indexOf(q) < 0) &&
       !collsMatch(m, q) && String(m.owner_login || '').toLowerCase().indexOf(q) < 0) continue;
     var kp = byId[id].kpi;
-    rows.push({ id: id, m: m, k: kp, vpu: kp.users ? kp.views / kp.users : 0, rs: kp.users ? kp.regular_users / kp.users * 100 : 0 });
+    rows.push({ id: id, m: m, k: kp, vpu: kp.users ? kp.views / kp.users : 0, rs: kp.users ? kp.regular_users / kp.users * 100 : 0, cov: covOf(kp) });
   }
   var sc = state.repSort;
   rows.sort(function (a, b) {
@@ -918,6 +924,7 @@ function reportTableHtml() {
     var val = function (x) {
       if (sc.col === 'dashboard_nm') return String(x.m.dash_nm || '');
       if (sc.col === 'vpu') return x.vpu;
+      if (sc.col === 'cov') return x.cov == null || x.k.ca_wide ? -1 : x.cov;
       if (sc.col === 'regular_users') return x.rs;
       if (sc.col === 'rhythm') return x.k.rh.rank + x.k.rh.share;   // чаще → выше; при равном ритме — у кого он твёрже
       return x.k[sc.col] != null ? x.k[sc.col] : 0;
@@ -947,7 +954,9 @@ function reportTableHtml() {
   var h = '<table class="' + CFG.ns + '-ptable dense sortable"><thead><tr>' +
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
-    th('users', 'Польз.') + th('views', 'Просм.') +
+    th('users', 'Польз.') + (MODEL.hasCa
+      ? th('cov', 'Охват ЦА', { title: 'Охват целевой аудитории', text: 'Пользователи за период от ЦА отчёта по правам (AD-группы + поимённо). «—» — доступ почти у всей компании (ЦА ≥ 30% штата) или прав нет. Точный охват с настройкой ЦА — в панели справа.' })
+      : th('views', 'Просм.')) +
     th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
     th('rhythm', 'Ритм', { title: 'Ритм отчёта', text: 'Как пользуется отчётом его ядро — те, кто возвращается (разовые визиты не в счёт): Daily — хотя бы половина ядра заходит 12+ дней из последних 30, Weekly — 6+ недель из 8, Monthly — 2 из последних 3 месяцев. Rare — возвращающихся меньше 10% всех зрителей, Dead — за 3 месяца не заходил никто. Не зависит от периода полоски.' }) +
     '</tr></thead><tbody>';
@@ -960,7 +969,7 @@ function reportTableHtml() {
         rows: [
           { label: 'Пользователи', value: nf(x.k.users), color: CFG.colors.ret },
           { label: 'Постоянные', value: nf(x.k.regular_users) + ' · ' + pct(x.rs, 0) },
-          { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) }
+          MODEL.hasCa ? { label: 'ЦА по правам', value: x.k.ca_n ? nf(x.k.ca_n) + (x.k.ca_wide ? ' · почти вся компания' : '') : 'прав нет' } : { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) }
         ],
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
       }) + '>' +
@@ -973,13 +982,20 @@ function reportTableHtml() {
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
           esc(x.m.owner_login || '—') + '</span></div></div></td>' +
       '<td class="lead">' + nf(x.k.users) + '</td>' +
-      '<td>' + compact(x.k.views) + '</td>' +
+      (MODEL.hasCa ? covCellHtml(x) : '<td>' + compact(x.k.views) + '</td>') +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
       // Ритм — пилюлей; своя подсказка — только о ритме (ядро и последний заход).
       '<td class="rh"' + tip(rhythmTip(x.k)) + '><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span></td>' +
       '</tr>';
   }
   return { html: h + '</tbody></table>', total: total };
+}
+// Охват ЦА отчёта: пользователи за период / ЦА по правам (потолок 100%: в каталоге не видно,
+// кто из зрителей входит в ЦА — зрители почти всегда с доступом; точно — в панели справа).
+function covOf(k) { return k.ca_n ? Math.min(100, k.users / k.ca_n * 100) : null; }
+function covCellHtml(x) {
+  if (x.cov == null || x.k.ca_wide) return '<td><span class="mut">—</span></td>';
+  return '<td>' + pct(x.cov, x.cov < 10 ? 1 : 0) + '</td>';
 }
 function collsMatch(m, q) {
   for (var i = 0; i < (m.colls || []).length; i++) if (String(m.colls[i]).toLowerCase().indexOf(q) >= 0) return true;
@@ -1123,7 +1139,7 @@ function catalogTableHtml() {
     var cells = [];
     if (cat.axis === 'grp') cells.push(nf(cr.reports));
     cells.push(nf(cr.k.users));
-    cells.push(compact(cr.k.views));
+    if (!MODEL.hasCa) cells.push(compact(cr.k.views));
     barRows.push({
       key: cr.key, label: cr.label, cells: cells, bar: cr.k.users,
       tip: {
@@ -1137,11 +1153,11 @@ function catalogTableHtml() {
   var totCells = [];
   if (cat.axis === 'grp') totCells.push(nf(repRows().length));
   totCells.push(nf(cat.total.users));
-  totCells.push(compact(cat.total.views));
+  if (!MODEL.hasCa) totCells.push(compact(cat.total.views));
   var table2 = barTableHtml({
     cutKey: state.mode, selected: pickList(state.mode),
     firstH: modeInfo.one, firstW: '34%', colW: '15%', barH: 'Доля пользователей', dense: true,
-    cols: [{ label: 'Отчётов' }, { label: 'Польз.', hint: { text: 'Уникальные пользователи группы за период' } }, { label: 'Просм.' }],
+    cols: [{ label: 'Отчётов' }, { label: 'Польз.', hint: { text: 'Уникальные пользователи группы за период' } }].concat(MODEL.hasCa ? [] : [{ label: 'Просм.' }]),
     total: {
       cells: totCells,
       tip: { title: 'ИТОГО', text: 'Пользователи в ИТОГО — уникальные по всей выборке, а не сумма строк: один человек, открывший отчёты двух групп, посчитан один раз.' }

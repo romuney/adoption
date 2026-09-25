@@ -331,6 +331,13 @@ function rowHtml(attr, val, checked, label, n, extra) {
 function orgRows() {
   var d = state.draft, f = caFacet(d), q = (state.q.org || '').toLowerCase(), out = [], N = CFG.ns;
   var chosen = function (path) { for (var i = 0; i < d.org.length; i++) if (orgUnder(path, d.org[i])) return d.org[i]; return null; };
+  // Нули не показываем: узел, где под остальными условиями никого, скрыт — кроме выбранного
+  // (и узлов на пути к выбранному), чтобы галочку можно было снять.
+  var live = function (path) {
+    if (f.org[path]) return true;
+    for (var i = 0; i < d.org.length; i++) if (orgUnder(d.org[i], path)) return true;
+    return false;
+  };
   var byN = function (x, y) { return ((f.org[y] || 0) - (f.org[x] || 0)) || ((MODEL.staffBy.org[y] || 0) - (MODEL.staffBy.org[x] || 0)); };
   var row = function (path, depth, sub, kids) {
     var ch = chosen(path), self = ch === path, open = !!state.openNodes[path], n = f.org[path] || 0;
@@ -342,7 +349,7 @@ function orgRows() {
   if (q) {
     var all = [], walk = function (par) { var ks = MODEL.orgKids[par] || []; for (var i = 0; i < ks.length; i++) { all.push(ks[i]); walk(ks[i]); } };
     walk('');
-    all = all.filter(function (x) { return orgShort(x).toLowerCase().indexOf(q) >= 0; }).sort(byN);
+    all = all.filter(function (x) { return live(x) && orgShort(x).toLowerCase().indexOf(q) >= 0; }).sort(byN);
     for (var a = 0; a < all.length && a < CFG.listMax; a++) {
       var nm = orgParts(all[a]);
       out.push(row(all[a], 0, 'УС-' + (nm.length + 2) + (nm.length > 1 ? ' · ' + nm.slice(0, -1).join(CFG.orgSep) : ''), false));
@@ -350,28 +357,29 @@ function orgRows() {
     return out.length ? out.join('') : '<div class="' + N + '-empty">Ничего не найдено</div>';
   }
   var tree = function (par, depth) {
-    var ks = (MODEL.orgKids[par] || []).slice().sort(byN);
+    var ks = (MODEL.orgKids[par] || []).filter(live).sort(byN);
     for (var i = 0; i < ks.length; i++) {
-      var kids = (MODEL.orgKids[ks[i]] || []).length > 0;
+      var kids = (MODEL.orgKids[ks[i]] || []).filter(live).length > 0;
       out.push(row(ks[i], depth, '', kids));
       if (kids && state.openNodes[ks[i]]) tree(ks[i], depth + 1);
     }
   };
   tree('', 0);
-  return out.join('') || '<div class="' + CFG.ns + '-empty">' + CFG.text.noData + '</div>';
+  return out.join('') || '<div class="' + CFG.ns + '-empty">' + (MODEL.units.length ? 'Под выбранными условиями никого' : CFG.text.noData) + '</div>';
 }
 function valueRows(kind) {
   var d = state.draft, f = caFacet(d), q = (state.q[kind] || '').toLowerCase(), src = MODEL.staffBy[kind] || {}, opts = [], k, h = '';
-  for (k in src) if (Object.prototype.hasOwnProperty.call(src, k) && (!q || dash(k).toLowerCase().indexOf(q) >= 0)) opts.push({ v: k, n: f[kind][k] || 0, all: src[k] });
+  for (k in src) if (Object.prototype.hasOwnProperty.call(src, k) && (!q || dash(k).toLowerCase().indexOf(q) >= 0) && (f[kind][k] || d[kind].indexOf(k) >= 0)) opts.push({ v: k, n: f[kind][k] || 0, all: src[k] });
   opts.sort(function (a, b) { return (b.n - a.n) || (b.all - a.all); });
   for (var i = 0; i < opts.length && i < CFG.listMax; i++) h += rowHtml('data-cack', kind + '|' + opts[i].v, d[kind].indexOf(opts[i].v) >= 0, esc(dash(opts[i].v)), opts[i].n);
   if (opts.length > CFG.listMax) h += '<div class="' + CFG.ns + '-empty">и ещё ' + nf(opts.length - CFG.listMax) + ' — уточните поиск</div>';
-  return h || '<div class="' + CFG.ns + '-empty">Ничего не найдено</div>';
+  return h || '<div class="' + CFG.ns + '-empty">' + (q ? 'Ничего не найдено' : 'Под выбранными условиями никого') + '</div>';
 }
 function headRows() {
   var d = state.draft, f = caFacet(d), N = CFG.ns, h = '';
   var hs = [{ v: '', l: 'Все', n: f.heads['1'] + f.heads.n }, { v: '1', l: 'Только руководители', n: f.heads['1'] }, { v: 'n', l: 'Без руководителей', n: f.heads.n }];
   for (var i = 0; i < hs.length; i++) {
+    if (!hs[i].n && d.heads !== hs[i].v) continue;           // нули не показываем
     h += '<label class="' + N + '-row' + (hs[i].n ? '' : ' z') + '"><input type="radio" name="' + N + '-head" data-cahead="' + hs[i].v + '"' + (d.heads === hs[i].v ? ' checked' : '') + '>' +
       '<span>' + hs[i].l + '</span><i>' + nf(hs[i].n) + '</i></label>';
   }

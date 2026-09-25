@@ -11,7 +11,7 @@
 -- ---------------------------------------------------------------------------
 -- Параграф «PA · штат» → usr_cross_data.pa_staff
 -- Весь действующий штат (не только зрители): знаменатель охвата и ЦА «по структуре».
--- Оргструктура и атрибуты — как у зрителей в pa_emp_attrs (mapped-уровни УС).
+-- Оргструктура и атрибуты — как у зрителей в pa_emp_attrs (mapped-уровни УС); HQ и IT — условия ЦА.
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_staff;
 create table usr_cross_data.pa_staff as
@@ -26,7 +26,9 @@ select
     coalesce(t.emp_stream_desc, '')::text                    as emp_stream_desc,
     coalesce(t.management_head_flg::int, 0)                  as management_head_flg,
     coalesce(nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
-    coalesce(t.experience_group_nm, '')::text                as exp_nm
+    coalesce(t.experience_group_nm, '')::text                as exp_nm,
+    coalesce(t.emp_specialization_oper_code, '')::text       as hq_code,   -- HQ | nonHQ | … (как фильтр «HQ|nonHQ» старого борда)
+    coalesce(t.emp_specialization_it_code, '')::text         as it_code    -- IT | nonIT
 from (
     select m.*,
         row_number() over (partition by lower(m.ad_login) order by m.mdm_employee_rk desc) as rn

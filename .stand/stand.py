@@ -114,7 +114,8 @@ def _aud(n_dash, n_login):
     n_staff = int(n_login * 1.6)
     S.query("""CREATE TABLE prod_proteus.pa_staff (login String, lvl3_management_unit_nm String, lvl4_management_unit_nm String,
       lvl5_management_unit_nm String, lvl6_management_unit_nm String, lvl7_management_unit_nm String,
-      emp_specialization_desc String, emp_stream_desc String, management_head_flg Int32, fio String, exp_nm String)
+      emp_specialization_desc String, emp_stream_desc String, management_head_flg Int32, fio String, exp_nm String,
+      hq_code String, it_code String)
       ENGINE=MergeTree ORDER BY login""")
     # атрибуты — той же формулой, что pa_emp_attrs (зрители совпадают с собой в штате)
     S.query(f"""INSERT INTO prod_proteus.pa_staff SELECT concat('u', toString(number)),
@@ -123,7 +124,8 @@ def _aud(n_dash, n_login):
       if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0, '', concat('Отдел ', toString(number % 7))),
       if(number % 40 = 0 OR number % 50 = 0 OR number % 9 = 0 OR number % 4 = 0 OR number % 6 = 0, '', concat('Команда ', toString(number % 2))),
       concat('Спец ', toString(number % 20)), concat('Стрим ', toString(number % 9)), toInt32(number % 11 = 0),
-      concat('Фамилия ', toString(number)), ['до 1 года', '1–3 года', '3–5 лет'][1 + number % 3]
+      concat('Фамилия ', toString(number)), ['до 1 года', '1–3 года', '3–5 лет'][1 + number % 3],
+      ['HQ', 'nonHQ', 'HQ line support', 'nonHQ'][1 + number % 4], ['IT', 'nonIT', 'nonIT'][1 + number % 3]
       FROM numbers({n_staff})""")
     # состав групп: ADG0…ADG29 — по остатку, ALL — почти весь штат (широкая группа, ≥30 %)
     S.query("CREATE TABLE prod_proteus.pa_adg_member (ad_group String, login String) ENGINE=MergeTree ORDER BY (ad_group, login)")

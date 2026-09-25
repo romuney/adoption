@@ -40,7 +40,7 @@ def people(rows):
         elif r['section'] == 'h':
             for ln in r['k'].split('\n'):
                 x = ln.split('\t')
-                h += int(x[3]); ha += int(x[4])
+                h += int(x[5]); ha += int(x[6])   # sid · tid · рук · hq · it · человек · с доступом · в ЦА
     return vw, h, ha
 
 
@@ -92,6 +92,29 @@ for pth in [AUD, CAT]:
                 ok(norm(a) == norm(q(sql + '\nSETTINGS ' + st)), f'{st}: {os.path.basename(pth)[:30]} {c}')
             except Exception as e:
                 ok(False, f'{st}: {os.path.basename(pth)[:30]} {c} — {str(e)[:120]}')
+# ЦА «по условиям» (эмит панели ca_*_f): каталог показывает только зрителей ЦА, знаменатель — размер ЦА;
+# панель на той же области даёт те же числа; не заходившие из ЦА приходят поимённо (≤ NAMES_MAX).
+def vl(rows, i):
+    return [l.split('\t') for r in rows if r['section'] == 'v' for l in r['k'].split('\n')]
+for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['Спец 3', 'Спец 5'], 'ca_head_f': 'n'},
+             {'ca_org_f': ['Блок 2 › Деп 2.2'], 'ca_hq_f': ['HQ', 'HQ line support']}, {'ca_stream_f': ['Стрим 1'], 'period_param': 'm'}]:
+    cat = {int(r['dashboard_id']): r for r in run(CAT, cond) if r['section'] == 'rep'}
+    for did in reps:
+        pan = run(AUD, dict(cond, mode_param='report', sel_f=[str(did)]))
+        n = int(json.loads([r for r in pan if r['section'] == 'total'][0]['state_j'])['n'])
+        vv = vl(pan, 0)
+        reach = sum(1 for x in vv if x[16] == '1' and int(x[4]) > 0)
+        caV = sum(1 for x in vv if x[16] == '1')
+        caH = sum(int(l.split('\t')[7]) for r in pan if r['section'] == 'h' for l in r['k'].split('\n'))
+        names = sum(int(r['n']) for r in pan if r['section'] == 'n')
+        c = cat.get(did)
+        ok(c is not None and int(c['users']) == reach, f'ЦА {cond} · отчёт {did}: зрителей ЦА в каталоге {c["users"] if c else "—"} == дошли из ЦА в панели {reach}')
+        ok(c is not None and int(c['ca_n']) >= caV + caH and int(c['ca_n']) - (caV + caH) <= 3, f'ЦА {cond} · отчёт {did}: ca_n {c["ca_n"] if c else "—"} == ЦА панели {caV + caH} (± владельцы отчёта)')
+        ok(names == caH, f'ЦА {cond} · отчёт {did}: имён не заходивших {names} == ЦА без визитов {caH}')
+# Отсечка имён: при NAMES_MAX меньше числа не заходивших строк 'n' нет, а итоги 'h' на месте.
+sql = stand.render(AUD, {}).replace('nnever <= 20000', 'nnever <= 100')
+rows = q(sql)
+ok(not any(r['section'] == 'n' for r in rows) and any(r['section'] == 'h' for r in rows), 'имён больше NAMES_MAX → строк n нет, свёрнутый штат h на месте')
 # Сохранение датасета: filter_values = AlwaysTrueObject; враждебный ввод фильтров — без падений.
 for pth in [AUD, CAT]:
     try:

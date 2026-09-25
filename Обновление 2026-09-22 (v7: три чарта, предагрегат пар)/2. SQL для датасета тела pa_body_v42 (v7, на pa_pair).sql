@@ -47,7 +47,36 @@
 {#- Людской фильтр (шина правой панели): при нём v_tot считается лишь по отобранным людям, и порог
     вселенной «≥500 просмотров за жизнь» ронял отчёты (корзина «2–5 дней» на отчёте → «Ничего не найдено»).
     Порог тогда берётся по ВСЕМ зрителям отчёта (как без фильтра) — отдельным подзапросом. -#}
-{% set pplf = loginf or exlf or attrson or freqf %}
+{#- Применённая ЦА вкладки «Аудитория» (эмит панели «Аудитория: ЦА области»; только при WITH_CA):
+    ЦА «по условиям» — фиксированный набор людей штата; каталог показывает только их визиты,
+    «Охват ЦА» = зрители из ЦА / размер ЦА. Нет условий — ЦА «по правам» отчёта (pa_dash_ca). -#}
+{% set caorg = [] %}{% set caspec = [] %}{% set castrm = [] %}{% set cahq = [] %}{% set cait = [] %}{% set cahead = '' %}
+{% if WITH_CA %}
+{% for v in (filter_values('ca_org_f') or []) %}{% if v|string != '' and (v|string).split(' › ')|length <= 5 %}{% set _ = caorg.append(v|string) %}{% endif %}{% endfor %}
+{% for v in (filter_values('ca_spec_f') or []) %}{% if v|string != '' %}{% set _ = caspec.append(v|string) %}{% endif %}{% endfor %}
+{% for v in (filter_values('ca_stream_f') or []) %}{% if v|string != '' %}{% set _ = castrm.append(v|string) %}{% endif %}{% endfor %}
+{% for v in (filter_values('ca_hq_f') or []) %}{% set _ = cahq.append(v|string) %}{% endfor %}
+{% for v in (filter_values('ca_it_f') or []) %}{% set _ = cait.append(v|string) %}{% endfor %}
+{% set cahead = filter_values('ca_head_f')|first|default('', true) %}{% set cahead = cahead if cahead in ['1', 'n'] else '' %}
+{% endif %}
+{% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' %}
+{#- Нормализация уровня УС — как в панели (заглушки «-», «…» = пусто, путь обрывается на них). -#}
+{% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
+{#- Логины ЦА «по условиям»: те же условия и тот же нормализованный путь, что в SQL панели. -#}
+{% macro caset() -%}
+SELECT lg FROM (
+      SELECT lower(toString(s.login)) AS lg,
+        [{{ ou('s.lvl3_management_unit_nm') }}, {{ ou('s.lvl4_management_unit_nm') }}, {{ ou('s.lvl5_management_unit_nm') }}, {{ ou('s.lvl6_management_unit_nm') }}, {{ ou('s.lvl7_management_unit_nm') }}] AS lvz,
+        arrayStringConcat(arraySlice(lvz, 1, if(arrayFirstIndex(x -> x = '', lvz) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', lvz) - 1))), ' › ') AS op,
+        toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
+        toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf
+      FROM prod_proteus.pa_staff s) WHERE 1
+      {%- if caorg %} AND arrayExists(pz -> op = pz OR startsWith(op, concat(pz, ' › ')), {{ qa(caorg) }}){% endif %}
+      {%- if caspec %} AND sp IN {{ q(caspec) }}{% endif %}{% if castrm %} AND st IN {{ q(castrm) }}{% endif %}
+      {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
+      {%- if cahead == '1' %} AND hdf = 1{% elif cahead == 'n' %} AND hdf = 0{% endif %}
+{%- endmacro %}
+{% set pplf = loginf or exlf or attrson or freqf or custom %}
 {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n В ОТЧЁТАХ СТРОКИ каталога:
     у строки отчёта — заходы в этот отчёт, у коллекции / владельца — в их отчёты, у ИТОГО — во все
     (= корзина правой панели без выбора). Фильтр — HAVING по маске человека внутри строки (kx; маска пары внутри — m0, не msk: боевой CH 24.8 в HAVING берёт msk как колонку — Code 215). -#}
@@ -96,6 +125,7 @@ WITH
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
     {%- if exlf %} AND e.login NOT IN {{ q(exlf) }}{% endif %}
+    {%- if custom %} AND lower(toString(e.login)) IN ({{ caset() }}){% endif %}
     {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% elif headsv == 'n' %} AND management_head_flg = 0{% endif %}{% if OC %} AND ({{ OC|join(' OR ') }}){% endif %}){% endif %}
   ),
   kx AS (
@@ -154,8 +184,8 @@ SELECT
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
   {%- if WITH_CA %},
   {#- ЦА отчёта по правам (штат) и флаг «доступ почти у всех» — только у строк отчётов. -#}
-  CAST(if(kd = 1, c.ca_n, NULL) AS Nullable(Int64)) AS ca_n,
-  CAST(if(kd = 1, c.ca_wide, NULL) AS Nullable(UInt8)) AS ca_wide{% endif %}
+  CAST(if(kd = 1, {% if custom %}(SELECT count() FROM ({{ caset() }})){% else %}c.ca_n{% endif %}, NULL) AS Nullable(Int64)) AS ca_n,
+  CAST(if(kd = 1, {% if custom %}toUInt8(0){% else %}c.ca_wide{% endif %}, NULL) AS Nullable(UInt8)) AS ca_wide{% endif %}
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
 {%- if WITH_CA %}

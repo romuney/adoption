@@ -42,7 +42,7 @@
    селекторами (серая заливка активной, серая полоса) — здесь у каждого селектора
    вес идентификатора — «:not(#pa-tabs-v2)»: он сильнее любой цепочки классов форка, фон снимается со всей полосы и со всех элементов внутри вкладки, подчёркивание —
    псевдоэлементом ::after (его не перекрывает фон вкладки). v3: полоса ниже, подчёркивание лежит прямо на
-   серой линии. Старое правило в CSS борда (.ant-tabs-nav-wrap height 68px, отступы 20/16px) удалено
+   серой линии; шрифт и отступы не трогают значки внутри вкладки (значок ссылки не ломается). Старое правило в CSS борда (.ant-tabs-nav-wrap height 68px, отступы 20/16px) удалено
    владельцем; если такое правило вернётся — этот блок его перебьёт.
    Заменяет прежний блок «Вкладки листов» целиком.
    ========================================================================== */
@@ -86,7 +86,7 @@
   border-radius: 0 !important;
   box-shadow: none !important;
 }
-.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab * {
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]) {
   padding: 0 !important;
   margin: 0 !important;
 }
@@ -97,7 +97,7 @@
   border: 0 !important;
 }
 .dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab,
-.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab * {
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]) {
   font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
   font-size: 15px !important;
   font-weight: 500 !important;
@@ -109,9 +109,17 @@
   color: #23272e !important;
 }
 .dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active,
-.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active * {
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]) {
   color: #23272e !important;
   font-weight: 600 !important;
+}
+/* значок ссылки на вкладку (появляется при наведении): шрифт иконок и размеры форка не трогаем,
+   только отступ от названия и цвет */
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab [class*="anchor"],
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .anticon {
+  margin-left: 6px !important;
+  color: #8a909c !important;
+  vertical-align: middle !important;
 }
 /* подчёркивание активной */
 .dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active::after {

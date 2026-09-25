@@ -26,7 +26,7 @@ const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
   + '<div class="full cell" style="height:' + HEAD + 'px"><iframe sandbox="allow-scripts" data-f="strip"></iframe></div>'
   // Нативные вкладки дашборда (разметка Superset/antd) — если задан TABS="Имя1|Имя2", активна вторая.
   + (process.env.TABS ? '<div class="full dashboard-component dashboard-component-tabs css-5smd5r"><div id="TABS-0_qu3WRrvg" class="ant-tabs ant-tabs-top ant-tabs-card css-blq4an"><div class="ant-tabs-nav" role="tablist"><div class="ant-tabs-nav-wrap"><div class="ant-tabs-nav-list">'
-    + process.env.TABS.split('|').map((t, i) => '<div class="ant-tabs-tab' + (i === 1 ? ' ant-tabs-tab-active' : '') + '"><div class="ant-tabs-tab-btn" role="tab">' + t + '</div></div>').join('')
+    + process.env.TABS.split('|').map((t, i) => '<div class="ant-tabs-tab' + (i === 1 ? ' ant-tabs-tab-active' : '') + '"><div class="ant-tabs-tab-btn" role="tab"><span class="editable-title">' + t + '</span><span class="anchor-link-container"><span role="img" class="anticon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span></span></div></div>').join('')
     + '<div class="ant-tabs-ink-bar"></div></div></div></div></div></div>' : '')
   + '<div class="full cell dashboard-component-chart-holder" style="height:' + BAR + 'px"><div class="dashboard-chart dashboard-chart-id-' + CID + '">'
   + '<div class="chart-container"><div class="slice_container"><div id="chart-id-' + CID + '" style="width:100%;height:100%"><div class="react_sanbbox">'

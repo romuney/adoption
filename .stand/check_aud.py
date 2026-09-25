@@ -40,7 +40,7 @@ def people(rows):
         elif r['section'] == 'h':
             for ln in r['k'].split('\n'):
                 x = ln.split('\t')
-                h += int(x[5]); ha += int(x[6])   # sid · tid · рук · hq · it · человек · с доступом · в ЦА
+                h += int(x[5]); ha += int(x[6])   # sid · tid · рук · hq · it · человек · с доступом · в ЦА · в ЦА и с доступом
     return vw, h, ha
 
 

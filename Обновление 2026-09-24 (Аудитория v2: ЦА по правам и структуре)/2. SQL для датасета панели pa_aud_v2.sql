@@ -15,7 +15,7 @@
       section = 'n' — НЕ заходившие из ЦА поимённо (только если их ≤ NAMES_MAX): логин · ФИО · id спец. ·
                       id стрима · рук. · id HQ · id IT · доступ 1/0 · стаж;
       section = 'h' — штат без визитов, свёрнут: «id спец. · id стрима · рук. · id HQ · id IT · человек ·
-                      с доступом · в ЦА» (для счётчика настройки ЦА и итогов групп);
+                      с доступом · в ЦА · в ЦА и с доступом» (для счётчика настройки ЦА и итогов групп);
       section = 'd' — словарь: g = spec | stream | hq | it, k = id, parent = значение;
       section = 'acl' — как роздан доступ: g = group (k = группа, n = людей штата) | users (n = поимённых);
       section = 'total' — n = штат, k = названия до 3 отчётов области, state_j — эхо условий
@@ -136,14 +136,14 @@ WITH
           {{ hid('spec') }}, {{ hid('stream') }}, toString(hd), toString(vc), exn, {{ hid('hq') }}, {{ hid('it') }}, toString(inca)], '\t'),
         rl = 'n', arrayStringConcat([lg, fio, {{ hid('spec') }}, {{ hid('stream') }}, toString(hd), {{ hid('hq') }}, {{ hid('it') }}, toString(acc), exn], '\t'),
         '') AS ln,
-      count() AS c, countIf(acc = 1) AS ca, countIf(inca = 1) AS cn
+      count() AS c, countIf(acc = 1) AS ca, countIf(inca = 1) AS cn, countIf(inca = 1 AND acc = 1) AS cna
     FROM pp
     ARRAY JOIN if(isv = 1, ['v'], if(inca = 1, ['h', 'n'], ['h'])) AS rl
     GROUP BY rl, opath, sid, tid, h0, qid, iid, ln
   ),
   k2 AS (
     SELECT rl AS section, opath,
-      arrayStringConcat(arraySort(groupArray(if(rl = 'h', arrayStringConcat([sid, tid, toString(h0), qid, iid, toString(c), toString(ca), toString(cn)], '\t'), ln))), '\n') AS pk,
+      arrayStringConcat(arraySort(groupArray(if(rl = 'h', arrayStringConcat([sid, tid, toString(h0), qid, iid, toString(c), toString(ca), toString(cn), toString(cna)], '\t'), ln))), '\n') AS pk,
       sum(c) AS n, sum(ca) AS na
     FROM k1 GROUP BY section, opath
   ),

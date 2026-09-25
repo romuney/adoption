@@ -1,6 +1,6 @@
 """Регресс SQL вкладки «Аудитория» на стенде.
 
-    python3 .stand/check_aud.py <папка поставки «Аудитория»> <папка поставки v7>
+    python3 .stand/check_aud.py "Лист Аудитория — актуальные файлы" <папка поставки v7>
 
 1. Панель (файл 2): зрители в упаковке 'v' == зрители области в pa_pair (без владельцев);
    зрители + свёрнутый штат 'h' == штат ⋃ зрители; у каждого человека одна строка.
@@ -16,7 +16,9 @@ import stand
 
 D, V7 = sys.argv[1], sys.argv[2]
 f = lambda d, p: os.path.join(d, [x for x in os.listdir(d) if x.startswith(p)][0])
-AUD, CAT, PPL = f(D, '2. '), f(D, '3. '), f(V7, '3. ')
+# D — папка «Лист Аудитория — актуальные файлы»: файлы ищутся по имени датасета.
+g = lambda d, key: os.path.join(d, [x for x in os.listdir(d) if key in x and x.endswith('.sql')][0])
+AUD, CAT, PPL = g(D, 'pa_aud_v2'), g(D, 'pa_body_aud'), f(V7, '3. ')
 q = lambda sql: json.loads(stand.S.query(sql, 'JSON').bytes())['data']
 run = lambda p, c: q(stand.render(p, c))
 norm = lambda rows: sorted(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in rows)
@@ -112,9 +114,9 @@ for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['С
         ok(c is not None and int(c['users']) == reach, f'ЦА {cond} · отчёт {did}: зрителей ЦА в каталоге {c["users"] if c else "—"} == дошли из ЦА в панели {reach}')
         ok(c is not None and int(c['ca_n']) == caV + caH, f'ЦА {cond} · отчёт {did}: ca_n {c["ca_n"] if c else "—"} == ЦА панели {caV + caH}')
         ok(names == caH, f'ЦА {cond} · отчёт {did}: имён не заходивших {names} == ЦА без визитов {caH}')
-# Строка «Целевая аудитория» (файл 7, pa_ca_dict): число «в ЦА» считается в браузере по справочнику штата —
+# Строка «Целевая аудитория» (pa_ca_dict): число «в ЦА» считается в браузере по справочнику штата —
 # оно обязано совпасть с ЦА панели и ca_n каталога на сервере (условия без AD-групп: их считает только сервер).
-BAR = [x for x in os.listdir(D) if x.startswith('7. ')]
+BAR = [x for x in os.listdir(D) if 'pa_ca_dict' in x and x.endswith('.sql')]
 if BAR:
     brows = run(os.path.join(D, BAR[0]), {})
     dct = {}

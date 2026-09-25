@@ -86,7 +86,7 @@
   border-radius: 0 !important;
   box-shadow: none !important;
 }
-.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]) {
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]):not([class*="anchor"] *) {
   padding: 0 !important;
   margin: 0 !important;
 }
@@ -96,9 +96,17 @@
   padding: 6px 2px 8px !important;
   border: 0 !important;
 }
+/* шрифт — только самой вкладке и её тексту: значок ссылки рисуется шрифтом иконок, чужой шрифт
+   превращает его в квадратик */
 .dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab,
-.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]) {
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .ant-tabs-tab-btn,
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab [role="tab"],
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .editable-title,
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .editable-title * {
   font-family: Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif !important;
+}
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab,
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]):not([class*="anchor"] *) {
   font-size: 15px !important;
   font-weight: 500 !important;
   color: #8a909c !important;
@@ -109,7 +117,7 @@
   color: #23272e !important;
 }
 .dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active,
-.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]) {
+.dashboard-component-tabs:not(#pa-tabs-v2) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]):not([class*="anchor"] *) {
   color: #23272e !important;
   font-weight: 600 !important;
 }

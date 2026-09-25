@@ -1,4 +1,4 @@
-// Если вкладки листов после CSS не стали «подчёркнутыми»: открой борд, F12 → Console, вставь всё ниже,
+// Если вкладки листов после CSS не стали «подчёркнутыми» или значок ссылки у вкладки — квадратик: открой борд, F12 → Console, вставь всё ниже,
 // Enter — и пришли вывод целиком (текстом или скрином). Покажет классы и фоны вкладок и их родителей.
 (function () {
   var t = [].slice.call(document.querySelectorAll('[role="tab"], .ant-tabs-tab, [class*="tab"]'))
@@ -11,7 +11,9 @@
       + ' bg=' + cs.backgroundColor + ' radius=' + cs.borderRadius);
   }
   var inner = [].slice.call(t.querySelectorAll('*')).map(function (e) {
-    var cs = getComputedStyle(e); return '  └ <' + e.tagName.toLowerCase() + '> class="' + e.className + '" bg=' + cs.backgroundColor;
+    var cs = getComputedStyle(e), b = getComputedStyle(e, '::before');
+    return '  └ <' + e.tagName.toLowerCase() + '> class="' + (e.className && e.className.baseVal != null ? e.className.baseVal : e.className) + '" bg=' + cs.backgroundColor
+      + ' font=' + cs.fontFamily.slice(0, 40) + ' w=' + cs.fontWeight + (b.content && b.content !== 'none' ? ' ::before=' + b.content + ' font=' + b.fontFamily.slice(0, 40) : '');
   });
   console.log(out.concat(inner).join('\n'));
 })();

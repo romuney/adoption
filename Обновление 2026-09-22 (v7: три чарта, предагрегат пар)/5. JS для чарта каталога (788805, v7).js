@@ -618,7 +618,7 @@ function buildCSS() {
     P + '-thi{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:3px;border-radius:50%;border:1px solid #c9ced6;color:var(--muted);font:600 9px/1 Georgia,serif;font-style:italic;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
     P + '-thi:hover{border-color:var(--act);color:var(--act);}',
     // Легенда «Ритма» в подсказке: пилюля + условие строкой, подсказка шире обычной.
-    P + '-tip:has(' + P + '-leg){max-width:380px;padding:10px 12px;}',
+    P + '-tip:has(' + P + '-leg){max-width:380px;padding:10px 12px;font-family:' + CFG.fonts.family + ';}',
     P + '-leg{display:flex;flex-direction:column;gap:7px;margin-top:9px;}',
     P + '-leg-r{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:start;font-size:11.5px;line-height:1.35;color:#3a3f4a;}',
     P + '-leg-r ' + P + '-sig-chip{justify-self:start;display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;white-space:nowrap;}',

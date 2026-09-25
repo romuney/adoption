@@ -615,6 +615,17 @@ function buildCSS() {
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
     P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
+    P + '-thi{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:3px;border-radius:50%;border:1px solid #c9ced6;color:var(--muted);font:600 9px/1 Georgia,serif;font-style:italic;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
+    P + '-thi:hover{border-color:var(--act);color:var(--act);}',
+    // Легенда «Ритма» в подсказке: пилюля + условие строкой, подсказка шире обычной.
+    P + '-tip:has(' + P + '-leg){max-width:380px;padding:10px 12px;}',
+    P + '-leg{display:flex;flex-direction:column;gap:7px;margin-top:9px;}',
+    P + '-leg-r{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:start;font-size:11.5px;line-height:1.35;color:#3a3f4a;}',
+    P + '-leg-r ' + P + '-sig-chip{justify-self:start;display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;white-space:nowrap;}',
+    // подсказка живёт в body, вне корня с переменными — цвета пилюль легенды те же, но явно
+    P + '-leg-r ' + P + '-sig-chip.good{background:#bff2cd;color:#0a8f3c;}' + P + '-leg-r ' + P + '-sig-chip.note{background:#EAF0FC;color:#1B4AA8;}' +
+      P + '-leg-r ' + P + '-sig-chip.neutral{background:#f3f4f6;color:#8a909c;}' + P + '-leg-r ' + P + '-sig-chip.dead{background:#ffcccc;color:#d11414;}',
+    P + '-tip ' + P + '-t-x b{font-weight:600;color:#23272e;}',
     P + '-ptable td{text-align:right;padding:6px 8px;height:44px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
     P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:500;color:var(--ink);white-space:normal;min-width:0;}',
     P + '-ptable td.lead{font-weight:500;color:var(--ink);}',
@@ -852,17 +863,37 @@ function rhythmOf(raw) {
 }
 // Последний заход (last_view_days отсчитан от последнего дня данных — вчера): 0 — «вчера».
 function lastSeen(v) { return v === 0 ? 'вчера' : days(v + 1); }
-// Подсказка ячейки «Ритм»: ядро и последний заход. Расклад по Daily/Weekly/… не показываем:
-// он за 3 месяца и не сходится с «Польз.» выбранного периода — путал бы.
+// Подсказка пилюли «Ритм» у отчёта: почему у него такой ритм — одной фразой, на его числах.
+// Правило целиком — в легенде у заголовка колонки (значок ⓘ, rhythmLegendHtml).
 function rhythmTip(k) {
-  var r = k.rh;
-  if (!r.n) return { title: 'Ритм · Dead', text: 'За последние 3 месяца в отчёт не заходил никто.', rows: [{ label: 'Последний заход', value: lastSeen(k.last_view_days) }] };
+  var r = k.rh, core = r.core, last = { label: 'Последний заход', value: lastSeen(k.last_view_days) };
+  if (!r.n) return { title: 'Dead', text: 'За последние 3 месяца отчёт не открывал никто.', rows: [last] };
+  var why = r.rank === 4 ? pct(r.d / core * 100, 0) + ' постоянных зрителей заходят почти каждый день (12+ дней из 30).'
+    : r.rank === 3 ? pct((r.d + r.w) / core * 100, 0) + ' постоянных зрителей заходят каждую неделю (6+ недель из 8) или чаще.'
+    : r.rank === 2 ? 'Постоянные зрители заходят в основном раз в месяц: каждую неделю — только ' + pct((r.d + r.w) / core * 100, 0) + '.'
+    : 'Возвращаются только ' + pct(core / r.n * 100, 0) + ' зрителей — почти все открыли отчёт в одном месяце из трёх.';
   return {
-    title: 'Ритм · ' + r.label,
-    rows: [{ label: 'Ядро (возвращаются)', value: pct(r.core / r.n * 100, 0) },
-      { label: 'Последний заход', value: lastSeen(k.last_view_days) }],
-    note: 'Ядро — доля тех, кто возвращается, среди заходивших за 3 месяца. Ритм — как пользуется хотя бы половина ядра; Rare — ядро меньше 10%.'
+    title: r.label, text: why,
+    rows: [{ label: 'Открывали за 3 месяца', value: nf(r.n) },
+      { label: 'Из них возвращаются', value: nf(core) + ' · ' + pct(core / r.n * 100, 0) }, last]
   };
+}
+// Легенда колонки «Ритм»: все пилюли и кто в какую попадает (значок ⓘ у заголовка).
+function rhythmLegendHtml() {
+  var N = CFG.ns, rows = [
+    ['good', 'Daily', 'хотя бы половина постоянных зрителей заходит почти каждый день — 12+ дней из последних 30'],
+    ['good', 'Weekly', 'хотя бы половина постоянных зрителей заходит каждую неделю — 6+ недель из последних 8'],
+    ['note', 'Monthly', 'постоянные зрители заходят в основном раз в месяц — в 2–3 месяцах из последних трёх'],
+    ['neutral', 'Rare', 'возвращается меньше 10% зрителей: почти все открыли отчёт в одном месяце из трёх'],
+    ['dead', 'Dead', 'за последние 3 месяца отчёт не открывал никто']
+  ], h = '<span class="' + N + '-t-h">Ритм отчёта — как им пользуются</span>' +
+    '<span class="' + N + '-t-x">Смотрим на всех, кто открывал отчёт за последние 3 месяца. <b>Постоянные зрители</b> — те, кто ' +
+    'возвращается: заходил хотя бы в 2 разных месяцах из 3 (или чаще). Ритм — как заходит большинство из них.</span>' +
+    '<span class="' + N + '-leg">';
+  for (var i = 0; i < rows.length; i++) {
+    h += '<span class="' + N + '-leg-r"><span class="' + N + '-sig-chip ' + rows[i][0] + '">' + rows[i][1] + '</span><span>' + esc(rows[i][2]) + '</span></span>';
+  }
+  return h + '</span><span class="' + N + '-t-n">Ритм не зависит от периода в шапке — всегда последние 3 месяца. Разовые визиты (например, после рассылки) ритм не портят: он считается по постоянным зрителям.</span>';
 }
 // Подсказка скрепки: действие + ID отчёта (адрес целиком в подсказку не помещается).
 function linkTip(id) { return { text: 'Скопировать ссылку на отчёт', rows: [{ label: 'ID отчёта', value: String(id) }] }; }
@@ -958,7 +989,8 @@ function reportTableHtml() {
       ? th('cov', 'Охват ЦА', { title: 'Охват целевой аудитории', text: 'Зрители за период, входящие в ЦА отчёта, от размера ЦА (по правам: AD-группы + поимённо; или по условиям строки «Целевая аудитория»). Совпадает с «Дошли / ЦА» в панели. «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет.' })
       : th('views', 'Просм.')) +
     th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
-    th('rhythm', 'Ритм', { title: 'Ритм отчёта', text: 'Как пользуется отчётом его ядро — те, кто возвращается (разовые визиты не в счёт): Daily — хотя бы половина ядра заходит 12+ дней из последних 30, Weekly — 6+ недель из 8, Monthly — 2 из последних 3 месяцев. Rare — возвращающихся меньше 10% всех зрителей, Dead — за 3 месяца не заходил никто. Не зависит от периода полоски.' }) +
+    // «Ритм»: сортировка по клику на заголовок, правило — в легенде по значку ⓘ (не сортирует).
+    th('rhythm', 'Ритм').replace('</th>', '<i class="' + CFG.ns + '-thi" data-nosort="1"' + tip(rhythmLegendHtml()) + ' aria-label="Как считается ритм">i</i></th>') +
     '</tr></thead><tbody>';
   for (var r = 0; r < pageRows.length; r++) {
     var x = pageRows[r], sel = indexOfId(picked, x.id) >= 0;
@@ -1450,7 +1482,7 @@ function buildHTML() {
         return;
       }
       // Сортировка каталога отчётов.
-      var th = trigger(e.target, 'data-sort');
+      var th = trigger(e.target, 'data-nosort') ? null : trigger(e.target, 'data-sort');
       if (th) {
         var col = th.getAttribute('data-sort');
         if (state.repSort.col === col) state.repSort.dir *= -1;

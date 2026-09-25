@@ -933,10 +933,18 @@ function copyText(text, done) {
   } catch (e) { /* Clipboard API недоступен — ниже fallback */ }
   done(fallback());
 }
+// Поиск по ID отчёта: цифры (можно с «#») — ID, начинающиеся с них; вставленная ссылка на дашборд
+// (…/dashboard/123/…) — ровно этот ID. null — запрос не про ID.
+function queryId(q) {
+  var t = String(q || '').trim(), m = /\/dashboard\/(\d+)/.exec(t);
+  if (m) return { v: m[1], exact: true };
+  m = /^#?\s*(\d+)$/.exec(t);
+  return m ? { v: m[1], exact: false } : null;
+}
 function reportTableHtml() {
   var g = curGrain(), byId = MODEL.reps[g] || {};
   var rows = [];
-  var q = (state.repQuery || '').toLowerCase();
+  var q = (state.repQuery || '').toLowerCase(), qid = queryId(state.repQuery);
   // Кросс-фильтр вкладок: во вкладке «Отчёты» список сужают пики коллекций
   // и владельцев (правка владельца 2026-09-18: «клик должен фильтровать
   // другие вкладки»). Пики самих отчётов список не сужают — они подсвечены.
@@ -946,8 +954,9 @@ function reportTableHtml() {
     if (!byId[id]) continue;
     if (rel != null && indexOfId(rel, id) < 0) continue;
     var m = MODEL.meta[id] || {};
-    if (q && (String(m.dash_nm || '').toLowerCase().indexOf(q) < 0) &&
-      !collsMatch(m, q) && String(m.owner_login || '').toLowerCase().indexOf(q) < 0) continue;
+    var idHit = qid && (qid.exact ? String(id) === qid.v : String(id).indexOf(qid.v) === 0);
+    if (q && !idHit && (qid && qid.exact || (String(m.dash_nm || '').toLowerCase().indexOf(q) < 0) &&
+      !collsMatch(m, q) && String(m.owner_login || '').toLowerCase().indexOf(q) < 0)) continue;
     var kp = byId[id].kpi;
     rows.push({ id: id, m: m, k: kp, vpu: kp.users ? kp.views / kp.users : 0, rs: kp.users ? kp.regular_users / kp.users * 100 : 0, cov: covOf(kp) });
   }
@@ -1226,7 +1235,7 @@ function buildHTML() {
     // здесь только карточка каталога. Выбор снимается тут же.
     cls: 'cat', title: 'Каталог',
     sub: 'клик — выбрать область · Shift — несколько',
-    right: searchBoxHtml('repQ', state.mode === 'report' ? 'Найти в каталоге' : 'Найти: ' + modeInfo.one.toLowerCase(), state.repQuery),
+    right: searchBoxHtml('repQ', state.mode === 'report' ? 'Название, ID или владелец' : 'Найти: ' + modeInfo.one.toLowerCase(), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
   }));
 

@@ -29,6 +29,7 @@ for (const s of steps) {
     await el.click({ modifiers: s.shift ? ['Shift'] : [] });
     await p.waitForTimeout(60);
   }
+  if (s.fill) { await p.fill(s.fill, s.value || ''); await p.waitForTimeout(60); }   // ввод в поле (поиск)
   if (s.rerun) {   // перезапуск скрипта (как Proteus после ответа датасета)
     await p.evaluate((src) => { data = window.__nextData || data; (0, eval)(src); }, fs.readFileSync(chart, 'utf8'));
     await p.waitForTimeout(60);

@@ -1,37 +1,36 @@
 /* ==========================================================================
    Строка «Целевая аудитория» (чарт «Аудитория: настройка ЦА») — выпадашки поверх листа.
-   Костыль до нативного resize-канала платформы (заявка 2026-09-14, как фильтр борда 59922):
-   чарт при открытой выпадашке шлёт в канал скриншотов PNG с маркером UEEtQ0EtREQtT04x,
-   родитель кладёт его в img.echarts-plugin рядом с iframe — и эти правила разворачивают iframe
-   вниз поверх сетки. Закрыли выпадашку — PNG без маркера, правила гаснут.
-   ЗАМЕНИТЕ 000000 на id чарта строки (все места): Ctrl+H «000000» → id.
+   Тот же костыль, что у иерархического фильтра борда 59922 (чарт 783469), с его проверенными
+   правилами: виджет при открытой выпадашке шлёт в канал скриншотов PNG, в base64 которого стоит
+   маркер UEEtQ0EtREQtT04x; родитель кладёт dataUrl в img.echarts-plugin РЯДОМ с iframe, и эти
+   правила разворачивают iframe слоем поверх нижних чартов. Закрыли — чистый PNG, iframe обратно.
+   ЗАМЕНИТЕ 000000 на id чарта строки — во ВСЕХ местах (Ctrl+H «000000» → id).
+   Красные «!» редактора у строк с :has(...) — линтер не знает :has, на работу не влияет.
    ========================================================================== */
 
-/* 1. Сам iframe: во всю ширину ячейки, вниз на 640 px (не больше 85 % экрана), поверх сетки. */
+/* ячейки не должны резать развёрнутый iframe */
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .slice_container,
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .chart-container,
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .dashboard-chart {
+  overflow: visible !important;
+}
+
+/* якорь — #chart-id-000000 (обёртка iframe внутри области чарта), а не ячейка с заголовком:
+   так строка при открытии не прыгает на высоту заголовка (урок борда 59922). */
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) #chart-id-000000 {
+  position: relative !important;
+}
+
+/* сам слой: во всю ширину строки, вниз до 640 px (не больше 85 % экрана), выше сетки */
 .dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) iframe {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   width: 100% !important;
   height: min(640px, 85vh) !important;
-  z-index: 998 !important;
+  z-index: 998 !important;           /* выше сетки, ниже системных модалок */
   background: transparent !important;
 }
 
-/* 2. Обёртки чарта не режут развёрнутый iframe и остаются прозрачными. */
-.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]),
-.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .chart-container,
-.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .slice_container,
-.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .react_sanbbox {
-  overflow: visible !important;
-  position: relative;
-}
-
-/* 3. Ячейка и строка сетки над соседями: иначе чарты ниже перекрывают развёрнутый iframe. */
-.dashboard-component-chart-holder:has(.dashboard-chart-id-000000 img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]),
-.grid-row:has(.dashboard-chart-id-000000 img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]),
-.dragdroppable:has(.dashboard-chart-id-000000 img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) {
-  overflow: visible !important;
-  z-index: 998 !important;
-  position: relative;
-}
+/* Пока выпадашка открыта, область под iframe закрыта для кликов: клик туда закрывает выпадашку
+   (виджет слушает клики и blur своего окна), Esc — тоже. */

@@ -689,7 +689,7 @@ function buildCSS() {
     P + '-rname-t{flex:1 1 auto;min-width:0;}',
     P + '-rname ' + P + '-lnkbtn{flex:0 0 auto;}',
     P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin:-1px 0 0 -4px;padding:0;border:0;border-radius:6px;'
-      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.55;font:inherit;font-size:12px;font-weight:600;}',
+      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.7;font:inherit;font-size:12px;font-weight:600;}',
     P + '-urow:hover ' + P + '-lnkbtn{opacity:1;}',
     P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
     P + '-lnkbtn.ok{opacity:1;color:var(--green-tx, #0a8f3c);background:#e6f6ec;}',
@@ -932,8 +932,8 @@ function dashUrl(id) {
   return origin + CFG.dashPath + id + '/';
 }
 // Иконка «ссылка» (две скобы цепи), рисуется currentColor.
-var LINK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-  '<path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5"/><path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5"/></svg>';
+var LINK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
 // Буфер обмена: Clipboard API, при отказе (iframe песочницы без clipboard-write) —
 // textarea + execCommand('copy') в том же пользовательском жесте.
 function copyText(text, done) {

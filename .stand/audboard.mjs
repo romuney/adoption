@@ -4,7 +4,9 @@
 // ECHARTS_UPDATE_DATA_URL в img, CSS борда — из файла поставки. Так видно раскрытие поверх листа.
 // node audboard.mjs <папка моков> <board.css> <сценарий.json> <папка скринов> [ширина]
 // Моки: strip.json, bar.json, cat.json, aud.json (+ любые для шага reload).
-// Сценарий: [{frame:'bar'|'cat'|'pan'|'strip', click:sel, i?, type?:текст, reload?:{cat:'x.json',pan:'y.json'}, shot?:'имя'}]
+// Сценарий: [{frame:'bar'|'cat'|'pan'|'strip', click:sel, i?, type?:текст, reload?:{cat:'x.json',pan:'y.json'}, shot?:'имя',
+//   probe?:{sel, ms}}] — probe: после клика ms миллисекунд пишет y элемента sel на странице (ловит дёргание).
+// DELAY=мс — родитель кладёт маркер в img с задержкой (как Proteus), иначе мгновенно.
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright'); // NODE_PATH=$(npm root -g)
 import fs from 'fs';
@@ -34,7 +36,7 @@ const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
   + '<div class="cell" style="height:' + ROW + 'px"><iframe sandbox="allow-scripts" data-f="cat"></iframe></div>'
   + '<div class="cell" style="height:' + ROW + 'px"><iframe sandbox="allow-scripts" data-f="pan"></iframe></div>'
   + '</div><script>window.__emits=[];window.addEventListener("message",function(e){var d=e.data||{};'
-  + 'if(d.type==="ECHARTS_UPDATE_DATA_URL")document.querySelector("img.echarts-plugin").src=d.dataUrl;'
+  + 'if(d.type==="ECHARTS_UPDATE_DATA_URL")setTimeout(function(){document.querySelector("img.echarts-plugin").src=d.dataUrl;},' + (+process.env.DELAY || 0) + ');'
   + 'if(d.type==="ECHARTS_APPLY_CROSS_FILTER")window.__emits.push(JSON.stringify(d.filters));});<\/script></body></html>';
 const SRC = { strip: ['pa-strip.chart.js', 'strip.json'], bar: ['pa-ca-bar.chart.js', 'bar.json'], cat: ['pa-reports-body.chart.js', 'cat.json'], pan: ['pa-audience.chart.js', 'aud.json'] };
 const b = await chromium.launch();
@@ -54,14 +56,17 @@ for (const s of JSON.parse(fs.readFileSync(scen, 'utf8'))) {
     const f = await frameOf(s.frame || 'bar');
     const el = (await f.$$(s.click))[s.i || 0];
     if (!el) { log.push({ s: s.click, err: 'нет элемента' }); continue; }
+    if (s.probe) await f.evaluate(([q, ms]) => { const ys = []; window.__ys = ys; const t0 = performance.now();
+      (function tick() { const el = document.querySelector(q); if (el) ys.push(Math.round(el.getBoundingClientRect().top)); if (performance.now() - t0 < ms) requestAnimationFrame(tick); })(); }, [s.probe.sel, s.probe.ms]);
     await el.click();
-    await p.waitForTimeout(250);
+    await p.waitForTimeout(s.probe ? s.probe.ms + 100 : 250);
   }
   if (s.type) { await p.keyboard.type(s.type, { delay: 20 }); await p.waitForTimeout(200); }
   if (s.shot) await p.screenshot({ path: path.join(outDir, s.shot + '.png') });
   const txt = s.text ? await (await frameOf(s.frame || 'bar')).evaluate((q) => Array.prototype.map.call(document.querySelectorAll(q), (e) => e.textContent.replace(/\s+/g, ' ').trim()).slice(0, 14), s.text) : undefined;
   const ifr = await p.evaluate(() => { const r = document.querySelector('iframe[data-f="bar"]').getBoundingClientRect(); return Math.round(r.height); });
-  log.push({ step: s.shot || s.click || 'reload', barIframe: ifr, emits: await p.evaluate(() => window.__emits.splice(0)), txt });
+  const ys = s.probe ? [...new Set(await (await frameOf(s.frame || 'bar')).evaluate(() => window.__ys))] : undefined;
+  log.push({ step: s.shot || s.click || 'reload', ys, barIframe: ifr, emits: await p.evaluate(() => window.__emits.splice(0)), txt });
 }
 console.log(JSON.stringify({ errs, log }, null, 1));
 await b.close();

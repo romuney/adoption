@@ -566,7 +566,16 @@ function buildHTML() {
       document.documentElement.style.background = tr;
       document.body.style.background = tr;
       host.style.background = tr;
-      overlay.style.height = open && state.baseH ? state.baseH + 'px' : '100%';
+      // Высота строки закреплена, пока iframe развёрнут. При закрытии родитель сжимает iframe не сразу
+      // (новый маркер → CSS борда): если отпустить высоту сразу, строка на кадр центрируется по 640 px
+      // и дёргается вниз-вверх. Отпускаем, когда окно iframe действительно вернулось к высоте строки.
+      if (open || (state.baseH && window.innerHeight > state.baseH + 4)) {
+        overlay.style.height = state.baseH ? state.baseH + 'px' : '100%';
+        state.pin = !open && !!state.baseH;
+      } else { overlay.style.height = '100%'; state.pin = false; }
+    }
+    function unpinIfShrunk() {
+      if (state.pin && !state.dd && window.innerHeight <= state.baseH + 4) { overlay.style.height = '100%'; state.pin = false; }
     }
 
     function placeDd() {
@@ -600,7 +609,7 @@ function buildHTML() {
       renderTip();
     }
     function openDd(k) {
-      if (!state.dd && !state.sig) state.baseH = overlay.clientHeight || state.baseH;
+      if (!state.dd && !state.sig && !state.pin) state.baseH = overlay.clientHeight || state.baseH;
       state.dd = k;
       state.tip = null;
       hideTip();
@@ -700,7 +709,7 @@ function buildHTML() {
 
     // Глобальные слушатели переживают перезапуск скрипта — старые снимаем явно.
     if (state.onWinResize) window.removeEventListener('resize', state.onWinResize);
-    state.onWinResize = function () { placeDd(); if (state.tip) renderTip(); };
+    state.onWinResize = function () { unpinIfShrunk(); placeDd(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
     // Клик мимо выпадашки: внутри развёрнутого iframe — это клик по прозрачной части;
     // за пределами iframe — окно iframe теряет фокус (blur).

@@ -142,6 +142,10 @@ def _aud(n_dash, n_login):
     # админы, доступ снят): тогда «Заходили вне ЦА» — меньшинство, как в бою
     S.query("""INSERT INTO prod_proteus.pa_dash_acl SELECT DISTINCT dashboard_id, login, 'user' FROM prod_proteus.pa_pair
       WHERE cityHash64(login, dashboard_id) % 100 < 85 AND login LIKE 'u%'""")
+    S.query('DROP TABLE IF EXISTS prod_proteus.pa_adg_size')
+    S.query("""CREATE TABLE prod_proteus.pa_adg_size ENGINE=MergeTree ORDER BY ad_group AS
+      SELECT ad_group, toInt64(uniqExact(login)) AS n FROM prod_proteus.pa_adg_member
+      WHERE login IN (SELECT login FROM prod_proteus.pa_staff) GROUP BY ad_group""")
     # ЦА отчёта по правам: поимённые ∪ члены групп, только штат, без владельцев отчёта; wide — ЦА ≥ 30 % штата
     S.query(f"""CREATE TABLE prod_proteus.pa_dash_ca ENGINE=MergeTree ORDER BY dashboard_id AS
       SELECT dashboard_id, toInt64(uniqExact(login)) AS ca_n, toUInt8(uniqExact(login) >= 0.3 * (SELECT count() FROM prod_proteus.pa_staff)) AS ca_wide

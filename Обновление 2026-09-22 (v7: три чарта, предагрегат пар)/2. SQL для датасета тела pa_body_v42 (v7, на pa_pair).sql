@@ -50,7 +50,7 @@
 {#- Применённая ЦА вкладки «Аудитория» (эмит панели «Аудитория: ЦА области»; только при WITH_CA):
     ЦА «по условиям» — фиксированный набор людей штата; каталог показывает только их визиты,
     «Охват ЦА» = зрители из ЦА / размер ЦА. Нет условий — ЦА «по правам» отчёта (pa_dash_ca). -#}
-{% set caorg = [] %}{% set caspec = [] %}{% set castrm = [] %}{% set cahq = [] %}{% set cait = [] %}{% set cahead = '' %}
+{% set caorg = [] %}{% set caspec = [] %}{% set castrm = [] %}{% set cahq = [] %}{% set cait = [] %}{% set cahead = '' %}{% set caadg = [] %}
 {% if WITH_CA %}
 {% for v in (filter_values('ca_org_f') or []) %}{% if v|string != '' and (v|string).split(' › ')|length <= 5 %}{% set _ = caorg.append(v|string) %}{% endif %}{% endfor %}
 {% for v in (filter_values('ca_spec_f') or []) %}{% if v|string != '' %}{% set _ = caspec.append(v|string) %}{% endif %}{% endfor %}
@@ -58,8 +58,9 @@
 {% for v in (filter_values('ca_hq_f') or []) %}{% set _ = cahq.append(v|string) %}{% endfor %}
 {% for v in (filter_values('ca_it_f') or []) %}{% set _ = cait.append(v|string) %}{% endfor %}
 {% set cahead = filter_values('ca_head_f')|first|default('', true) %}{% set cahead = cahead if cahead in ['1', 'n'] else '' %}
+{% for v in (filter_values('ca_adg_f') or []) %}{% if v|string != '' %}{% set _ = caadg.append(v|string) %}{% endif %}{% endfor %}
 {% endif %}
-{% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' %}
+{% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' or caadg %}
 {#- Нормализация уровня УС — как в панели (заглушки «-», «…» = пусто, путь обрывается на них). -#}
 {% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
 {#- Логины ЦА «по условиям»: те же условия и тот же нормализованный путь, что в SQL панели. -#}
@@ -75,6 +76,7 @@ SELECT lg FROM (
       {%- if caspec %} AND sp IN {{ q(caspec) }}{% endif %}{% if castrm %} AND st IN {{ q(castrm) }}{% endif %}
       {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
       {%- if cahead == '1' %} AND hdf = 1{% elif cahead == 'n' %} AND hdf = 0{% endif %}
+      {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
 {%- endmacro %}
 {% set pplf = loginf or exlf or attrson or freqf or custom %}
 {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n В ОТЧЁТАХ СТРОКИ каталога:
@@ -184,10 +186,14 @@ SELECT
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
   {%- if WITH_CA %},
   {#- ЦА отчёта по правам (штат) и флаг «доступ почти у всех» — только у строк отчётов. -#}
-  CAST(if(kd = 1, {% if custom %}(SELECT count() FROM ({{ caset() }})){% else %}c.ca_n{% endif %}, NULL) AS Nullable(Int64)) AS ca_n,
+  CAST(if(kd = 1, {% if custom %}(SELECT count() FROM ({{ caset() }})){% if excv == '1' %} - ifNull(oc.n_own, 0){% endif %}{% else %}c.ca_n{% endif %}, NULL) AS Nullable(Int64)) AS ca_n,
   CAST(if(kd = 1, {% if custom %}toUInt8(0){% else %}c.ca_wide{% endif %}, NULL) AS Nullable(UInt8)) AS ca_wide{% endif %}
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
 {%- if WITH_CA %}
-LEFT JOIN prod_proteus.pa_dash_ca c ON c.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0)){% endif %}
+LEFT JOIN prod_proteus.pa_dash_ca c ON c.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
+{%- if custom and excv == '1' %}
+{#- ЦА по условиям без владельцев отчёта (как панель при «Без владельцев»): их визиты — свои. #}
+LEFT JOIN (SELECT dashboard_id, toInt64(count()) AS n_own FROM (SELECT dashboard_id, lower(toString(arrayJoin(owners_string))) AS ow FROM prod_proteus.pa_dash_meta)
+  WHERE ow IN ({{ caset() }}) GROUP BY dashboard_id) oc ON oc.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0)){% endif %}{% endif %}
 WHERE kd != 1 OR {% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_pair u WHERE u.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(u.login){% if excv == '1' %} AND ifNull(u.own_flg, 0) = 0{% endif %} GROUP BY u.dashboard_id HAVING sum(ifNull(u.v_life, 0)) >= 500){% else %}v_tot >= 500{% endif %}

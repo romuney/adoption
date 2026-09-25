@@ -77,6 +77,10 @@ FROM (
   GROUP BY m.ad_group ORDER BY cnt DESC, ad_group LIMIT 40
 )
 UNION ALL
+SELECT 'adg', '', toString(ad_group), '', toInt64(n),
+  toInt64(ad_group IN (SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'group' AND dashboard_id IN (SELECT dashboard_id FROM area))), NULL
+FROM prod_proteus.pa_adg_size WHERE ifNull(n, 0) > 0
+UNION ALL
 SELECT 'acl', 'users', '', '', toInt64(uniqExact(principal)), toInt64(0), NULL
 FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT dashboard_id FROM area)
 UNION ALL

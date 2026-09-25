@@ -97,7 +97,8 @@ for pth in [AUD, CAT]:
 def vl(rows, i):
     return [l.split('\t') for r in rows if r['section'] == 'v' for l in r['k'].split('\n')]
 for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['Спец 3', 'Спец 5'], 'ca_head_f': 'n'},
-             {'ca_org_f': ['Блок 2 › Деп 2.2'], 'ca_hq_f': ['HQ', 'HQ line support']}, {'ca_stream_f': ['Стрим 1'], 'period_param': 'm'}]:
+             {'ca_org_f': ['Блок 2 › Деп 2.2'], 'ca_hq_f': ['HQ', 'HQ line support']}, {'ca_stream_f': ['Стрим 1'], 'period_param': 'm'},
+             {'ca_adg_f': ['ADG3', 'ADG7']}, {'ca_adg_f': ['ADG5'], 'ca_head_f': '1', 'ca_it_f': ['nonIT']}]:
     cat = {int(r['dashboard_id']): r for r in run(CAT, cond) if r['section'] == 'rep'}
     for did in reps:
         pan = run(AUD, dict(cond, mode_param='report', sel_f=[str(did)]))
@@ -109,7 +110,7 @@ for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['С
         names = sum(int(r['n']) for r in pan if r['section'] == 'n')
         c = cat.get(did)
         ok(c is not None and int(c['users']) == reach, f'ЦА {cond} · отчёт {did}: зрителей ЦА в каталоге {c["users"] if c else "—"} == дошли из ЦА в панели {reach}')
-        ok(c is not None and int(c['ca_n']) >= caV + caH and int(c['ca_n']) - (caV + caH) <= 3, f'ЦА {cond} · отчёт {did}: ca_n {c["ca_n"] if c else "—"} == ЦА панели {caV + caH} (± владельцы отчёта)')
+        ok(c is not None and int(c['ca_n']) == caV + caH, f'ЦА {cond} · отчёт {did}: ca_n {c["ca_n"] if c else "—"} == ЦА панели {caV + caH}')
         ok(names == caH, f'ЦА {cond} · отчёт {did}: имён не заходивших {names} == ЦА без визитов {caH}')
 # Отсечка имён: при NAMES_MAX меньше числа не заходивших строк 'n' нет, а итоги 'h' на месте.
 sql = stand.render(AUD, {}).replace('nnever <= 20000', 'nnever <= 100')

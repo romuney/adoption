@@ -88,6 +88,19 @@ where child.item_type = 'Person'
 distributed by (ad_group);
 
 -- ---------------------------------------------------------------------------
+-- Параграф «PA · размер групп» → usr_cross_data.pa_adg_size   (НОВЫЙ 2026-09-25)
+-- Сколько людей действующего штата в каждой AD-группе прав — список «AD-группы»
+-- в настройке ЦА (считается раз в сутки, а не на каждый клик).
+-- ---------------------------------------------------------------------------
+drop table if exists usr_cross_data.pa_adg_size;
+create table usr_cross_data.pa_adg_size as
+select m.ad_group::text as ad_group, count(distinct m.login)::bigint as n
+from usr_cross_data.pa_adg_member m
+inner join usr_cross_data.pa_staff s on s.login = m.login
+group by m.ad_group
+distributed by (ad_group);
+
+-- ---------------------------------------------------------------------------
 -- Параграф «PA · ЦА отчёта» → usr_cross_data.pa_dash_ca
 -- Размер ЦА по правам на отчёт (для колонки «Охват ЦА» каталога) и флаг «широкий
 -- доступ»: ЦА ≥ 30 % штата — проценты охвата по такому знаменателю не показываем.

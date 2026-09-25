@@ -1,5 +1,6 @@
--- Helicopter-нода 844437 · ЗАМЕНА параграфа «PA · штат» (поставка 2026-09-24): +2 колонки
--- hq_code (HQ | nonHQ | …) и it_code (IT | nonIT) — условия настройки ЦА. Остальные параграфы не меняются.
+-- Helicopter-нода 844437 · 1) ЗАМЕНА параграфа «PA · штат» (поставка 2026-09-24): +2 колонки
+-- hq_code (HQ | nonHQ | …) и it_code (IT | nonIT) — условия настройки ЦА.
+-- 2) НОВЫЙ параграф «PA · размер групп» — после «PA · состав групп прав», до «PA · ЦА отчёта».
 
 -- ---------------------------------------------------------------------------
 -- Параграф «PA · штат» → usr_cross_data.pa_staff
@@ -37,3 +38,16 @@ left join (
 ) u on u.username = lower(t.ad_login)
 where t.rn = 1
 distributed by (login);
+
+-- ---------------------------------------------------------------------------
+-- Параграф «PA · размер групп» → usr_cross_data.pa_adg_size   (НОВЫЙ 2026-09-25)
+-- Сколько людей действующего штата в каждой AD-группе прав — список «AD-группы»
+-- в настройке ЦА (считается раз в сутки, а не на каждый клик).
+-- ---------------------------------------------------------------------------
+drop table if exists usr_cross_data.pa_adg_size;
+create table usr_cross_data.pa_adg_size as
+select m.ad_group::text as ad_group, count(distinct m.login)::bigint as n
+from usr_cross_data.pa_adg_member m
+inner join usr_cross_data.pa_staff s on s.login = m.login
+group by m.ad_group
+distributed by (ad_group);

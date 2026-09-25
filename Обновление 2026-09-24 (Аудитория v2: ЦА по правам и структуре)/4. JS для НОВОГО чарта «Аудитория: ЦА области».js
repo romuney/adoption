@@ -135,7 +135,7 @@ var state = __S[CFG.ns];
   var pk = state.picks || (state.picks = {});
   var need = ['org', 'spec', 'stream', 'heads', 'login'];
   for (var i = 0; i < need.length; i++) if (!pk[need[i]]) pk[need[i]] = [];
-  var d0 = { caOpen: false, caDraft: null, caOpenNodes: {}, caQ: '', caQ_spec: '', caQ_stream: '', caSent: null };
+  var d0 = { caOpen: false, caDraft: null, caOpenNodes: {}, caQ: '', caQ_spec: '', caQ_stream: '', caQ_adg: '', caSent: null };
   for (var k0 in d0) if (Object.prototype.hasOwnProperty.call(d0, k0) && state[k0] === undefined) state[k0] = d0[k0];
 })();
 
@@ -342,7 +342,7 @@ function buildModel() {
     area: { mode: '', sel: [], names: [], n: 0 },
     dict: { spec: {}, stream: {}, hq: {}, it: {} }, acl: { groups: [], users: 0 },
     caMode: 'acc', caApplied: caEmpty(),
-    people: [], never: [], hold: [], orgKids: {},
+    people: [], never: [], hold: [], orgKids: {}, adg: [],
     staffBy: { org: {}, spec: {}, stream: {}, hq: {}, it: {} }, namesOmitted: false };
   var vRows = [], hRows = [], nRows = [];
   for (i = 0; i < rawData.length; i++) {
@@ -359,13 +359,15 @@ function buildModel() {
       m.md = toDate(sj.md);
       m.caMode = sj.caMode === 'cond' ? 'cond' : 'acc';
       var ca = sj.ca || {};
-      m.caApplied = { org: ca.org || [], spec: ca.spec || [], stream: ca.stream || [], hq: ca.hq || [], it: ca.it || [], heads: ca.head || '' };
+      m.caApplied = { org: ca.org || [], spec: ca.spec || [], stream: ca.stream || [], hq: ca.hq || [], it: ca.it || [], heads: ca.head || '', adg: ca.adg || [] };
     } else if (sec === 'd') {
       var dg = String(r[F.g] || '');
       if (m.dict[dg]) m.dict[dg][String(r[F.k] || '')] = String(r[F.parent] == null ? '' : r[F.parent]);
     } else if (sec === 'acl') {
       if (String(r[F.g]) === 'users') m.acl.users = num(r[F.n]) || 0;
       else m.acl.groups.push({ name: String(r[F.k] || ''), n: num(r[F.n]) || 0 });
+    } else if (sec === 'adg') {
+      m.adg.push({ name: String(r[F.k] || ''), n: num(r[F.n]) || 0, acc: (num(r[F.a]) || 0) === 1 });
     } else if (sec === 'v') vRows.push(r);
     else if (sec === 'h') hRows.push(r);
     else if (sec === 'n') nRows.push(r);
@@ -452,11 +454,11 @@ if (state.caSent && JSON.stringify(state.caSent) === JSON.stringify(MODEL.caAppl
 // base: 'acc' — у кого есть право на отчёт области (поимённо или через AD-группу);
 //       'all' — весь штат. Условия сужают базу: подразделения (узел УС и всё под ним),
 //       специализации, стримы, руководители ('1' — только, 'n' — без).
-function caEmpty() { return { org: [], spec: [], stream: [], hq: [], it: [], heads: '' }; }
-function caCopy(c) { return { org: c.org.slice(), spec: c.spec.slice(), stream: c.stream.slice(), hq: c.hq.slice(), it: c.it.slice(), heads: c.heads || '' }; }
+function caEmpty() { return { org: [], spec: [], stream: [], hq: [], it: [], heads: '', adg: [] }; }
+function caCopy(c) { return { org: c.org.slice(), spec: c.spec.slice(), stream: c.stream.slice(), hq: c.hq.slice(), it: c.it.slice(), heads: c.heads || '', adg: (c.adg || []).slice() }; }
 // Применённая ЦА — ровно то, что сервер вернул эхом (фильтр самой панели): единственный источник правды.
 function caCfg() { return MODEL.caApplied; }
-function caAttrsOn(c) { return !!(c.org.length || c.spec.length || c.stream.length || c.hq.length || c.it.length || c.heads); }
+function caAttrsOn(c) { return !!(c.org.length || c.spec.length || c.stream.length || c.hq.length || c.it.length || c.heads || (c.adg && c.adg.length)); }
 function caMatch(c, x) {
   if (c.org.length) {
     var hit = false;
@@ -993,6 +995,7 @@ function buildCSS2() {
     P + '-sh-col{min-width:0;min-height:0;display:flex;flex-direction:column;gap:8px;}',
     P + '-sh-col ' + P + '-psearch input{width:100%;}',
     P + '-sh-list{flex:1;min-height:0;overflow:auto;border:1px solid var(--line2);border-radius:8px;padding:4px;display:flex;flex-direction:column;}',
+    P + '-adg-acc{display:inline-block;font-size:10px;font-weight:500;color:var(--act-ink);background:var(--blue-bg);border-radius:4px;padding:0 5px;margin-left:4px;}',
     P + '-tr{display:flex;align-items:center;gap:4px;min-height:28px;border-radius:6px;padding-right:6px;}',
     P + '-tr:hover{background:#f6f8fa;}',
     P + '-tr.on{background:var(--blue-bg);}',
@@ -1878,6 +1881,26 @@ function caListRows(kind) {
   }
   return h || '<div class="' + N + '-pickempty">Ничего не найдено</div>';
 }
+// AD-группы прав Proteus: сначала дающие доступ к отчётам области, дальше — по размеру; поиск по имени.
+function caAdgRows() {
+  var d = caDraft(), q = (state.caQ_adg || '').toLowerCase(), N = CFG.ns, out = [], i;
+  var list = MODEL.adg.filter(function (g) { return !q || g.name.toLowerCase().indexOf(q) >= 0 || d.adg.indexOf(g.name) >= 0; });
+  list.sort(function (a, b) {
+    var sa = d.adg.indexOf(a.name) >= 0, sb = d.adg.indexOf(b.name) >= 0;
+    if (sa !== sb) return sa ? -1 : 1;                       // выбранные — сверху
+    if (a.acc !== b.acc) return a.acc ? -1 : 1;              // затем дающие доступ к области
+    return b.n - a.n;
+  });
+  for (i = 0; i < list.length && i < 200; i++) {
+    var g = list[i];
+    out.push('<label class="' + N + '-pickrow"' + tip({ title: g.name, text: 'Людей штата в группе: ' + nf(g.n) + (g.acc ? '. Группа даёт доступ к отчётам области.' : '') }) + '>' +
+      '<input type="checkbox" data-cack="' + esc('adg|' + g.name) + '"' + (d.adg.indexOf(g.name) >= 0 ? ' checked' : '') + '>' +
+      '<span>' + esc(g.name) + (g.acc ? ' <b class="' + N + '-adg-acc">доступ</b>' : '') + '</span><i>' + nf(g.n) + '</i></label>');
+  }
+  if (!out.length) return '<div class="' + N + '-pickempty">' + (MODEL.adg.length ? 'Ничего не найдено' : 'Список групп пуст — нет таблицы pa_adg_size') + '</div>';
+  if (list.length > 200) out.push('<div class="' + N + '-pickempty">и ещё ' + nf(list.length - 200) + ' — уточните поиск</div>');
+  return out.join('');
+}
 function caPills(kind, label) {
   var d = caDraft(), src = MODEL.staffBy[kind] || {}, opts = [], N = CFG.ns, k;
   for (k in src) if (Object.prototype.hasOwnProperty.call(src, k)) opts.push({ v: k, n: src[k] });
@@ -1903,17 +1926,22 @@ function caSheetHtml() {
       '<div class="' + N + '-sh-col wide"><span class="' + N + '-ca-l">Подразделения · УС-3 → УС-7</span>' + searchBoxHtml('caQ', 'Поиск по всем уровням', state.caQ) +
         '<div class="' + N + '-sh-list" data-calist="org">' + caTreeRows() + '</div></div>' +
       '<div class="' + N + '-sh-col"><span class="' + N + '-ca-l">Специализация</span>' + searchBoxHtml('caQ_spec', 'Найти', state.caQ_spec) +
-        '<div class="' + N + '-sh-list" data-calist="spec">' + caListRows('spec') + '</div></div>' +
-      '<div class="' + N + '-sh-col"><span class="' + N + '-ca-l">Стрим</span>' + searchBoxHtml('caQ_stream', 'Найти', state.caQ_stream) +
+        '<div class="' + N + '-sh-list" data-calist="spec">' + caListRows('spec') + '</div>' +
+        '<span class="' + N + '-ca-l">Стрим</span>' + searchBoxHtml('caQ_stream', 'Найти', state.caQ_stream) +
         '<div class="' + N + '-sh-list" data-calist="stream">' + caListRows('stream') + '</div></div>' +
+      '<div class="' + N + '-sh-col"><span class="' + N + '-ca-l">AD-группы' + (d.adg.length ? ' · ' + d.adg.length : '') + '</span>' + searchBoxHtml('caQ_adg', 'Имя группы', state.caQ_adg) +
+        '<div class="' + N + '-sh-list" data-calist="adg">' + caAdgRows() + '</div></div>' +
       '<div class="' + N + '-sh-col">' + caPills('hq', 'HQ') + caPills('it', 'IT') +
         '<div class="' + N + '-ca-grp"><span class="' + N + '-ca-l">Руководители</span><div class="' + N + '-ca-row">' + hh + '</div></div></div>' +
     '</div>' +
     '<div class="' + N + '-sheet-f">' +
-      '<div class="' + N + '-sheet-n">' + (on
-        ? 'В ЦА попадёт <b>' + nf(pv.n) + '</b> ' + plural(pv.n, 'человек', 'человека', 'человек') + ' · с доступом к области <b>' + nf(pv.acc) + '</b>' +
-          (pv.n ? ' (' + pct(pv.acc / pv.n * 100, 0) + ')' : '')
-        : 'Условий нет — ЦА <b>по правам доступа</b> к отчётам области') + '</div>' +
+      '<div class="' + N + '-sheet-n">' + (!on
+        ? 'Условий нет — ЦА <b>по правам доступа</b> к отчётам области'
+        : (d.adg.length
+          // Состав AD-групп по людям в браузер не приходит (миллионы строк членства): точное число — от сервера.
+          ? 'Без учёта AD-групп — <b>' + nf(pv.n) + '</b> ' + plural(pv.n, 'человек', 'человека', 'человек') + '; с группами (' + d.adg.length + ') точное число — после «Применить»'
+          : 'В ЦА попадёт <b>' + nf(pv.n) + '</b> ' + plural(pv.n, 'человек', 'человека', 'человек') + ' · с доступом к области <b>' + nf(pv.acc) + '</b>' +
+            (pv.n ? ' (' + pct(pv.acc / pv.n * 100, 0) + ')' : ''))) + '</div>' +
       '<button type="button" class="' + N + '-btn ghost" data-caclear="1"' + (on ? '' : ' disabled') + '>Очистить</button>' +
       '<button type="button" class="' + N + '-btn ghost" data-caclose="1">Отмена</button>' +
       '<button type="button" class="' + N + '-btn primary" data-caapply="1"' + (on && !pv.n ? ' disabled' : '') + '>Применить</button>' +
@@ -1928,6 +1956,7 @@ function caCondText(c) {
   if (c.hq.length) parts.push('HQ: <b>' + esc(lst(c.hq.map(dash))) + '</b>');
   if (c.it.length) parts.push('IT: <b>' + esc(lst(c.it.map(dash))) + '</b>');
   if (c.heads) parts.push('<b>' + (c.heads === '1' ? 'только руководители' : 'без руководителей') + '</b>');
+  if (c.adg && c.adg.length) parts.push('AD-группы: <b>' + esc(lst(c.adg)) + '</b>');
   return parts.join(' <span class="mut">и</span> ');
 }
 function dash(v) { return v === '' ? '— не указано' : v; }
@@ -2576,6 +2605,7 @@ function dynTipHtml(el, i) {
       if (ca.hq.length) fl.push({ column: 'ca_hq_f', operator: 'IN', value: ca.hq.slice() });
       if (ca.it.length) fl.push({ column: 'ca_it_f', operator: 'IN', value: ca.it.slice() });
       if (ca.heads) fl.push({ column: 'ca_head_f', operator: 'IN', value: [ca.heads] });
+      if (ca.adg && ca.adg.length) fl.push({ column: 'ca_adg_f', operator: 'IN', value: ca.adg.slice() });
       return fl;
     }
     function emitBus() {
@@ -2884,12 +2914,12 @@ function dynTipHtml(el, i) {
         if (tz) tz.innerHTML = whoTableHtml();
         var cz = overlay.querySelector('.' + CFG.ns + '-who-cnt');
         if (cz) cz.innerHTML = whoCountHtml();
-      } else if (id === 'caQ' || id === 'caQ_spec' || id === 'caQ_stream') {
+      } else if (id === 'caQ' || id === 'caQ_spec' || id === 'caQ_stream' || id === 'caQ_adg') {
         // Поиск в плашке ЦА: пересобирается только список своей колонки — фокус и каретка на месте.
         state[id] = inp.value || '';
         var lk = id === 'caQ' ? 'org' : id.slice(4);
         var cbx = overlay.querySelector('[data-calist="' + lk + '"]');
-        if (cbx) cbx.innerHTML = lk === 'org' ? caTreeRows() : caListRows(lk);
+        if (cbx) cbx.innerHTML = lk === 'org' ? caTreeRows() : (lk === 'adg' ? caAdgRows() : caListRows(lk));
       } else if (id === 'woExQ') {
         state.exQ = inp.value || '';
         var box = overlay.querySelector('.' + CFG.ns + '-wo-ex');

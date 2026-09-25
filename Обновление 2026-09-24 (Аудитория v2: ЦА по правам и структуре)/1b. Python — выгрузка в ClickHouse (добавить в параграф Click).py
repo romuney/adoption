@@ -11,5 +11,8 @@ try:
                     order_by_columns='(ad_group, login)')
     ppy.gp_to_click('usr_cross_data.pa_dash_ca', 'prod_proteus.pa_dash_ca',
                     order_by_columns='(dashboard_id)')
+    # НОВОЕ 2026-09-25: размер AD-групп прав — список «AD-группы» в настройке ЦА.
+    ppy.gp_to_click('usr_cross_data.pa_adg_size', 'prod_proteus.pa_adg_size',
+                    order_by_columns='(ad_group)')
 except Exception:
     sys.exit(100);

@@ -1,0 +1,62 @@
+// Рендер листа «Аудитория» как в Proteus: шапка периода · строка «Целевая аудитория» · каталог | панель.
+// Каждый чарт — в своём <iframe sandbox="allow-scripts">; строка ЦА обёрнута в разметку ячейки Proteus
+// (.dashboard-chart-id-N › … › #chart-id-N › iframe + img.echarts-plugin), родитель кладёт dataUrl из
+// ECHARTS_UPDATE_DATA_URL в img, CSS борда — из файла поставки. Так видно раскрытие поверх листа.
+// node audboard.mjs <папка моков> <board.css> <сценарий.json> <папка скринов> [ширина]
+// Моки: strip.json, bar.json, cat.json, aud.json (+ любые для шага reload).
+// Сценарий: [{frame:'bar'|'cat'|'pan'|'strip', click:sel, i?, type?:текст, reload?:{cat:'x.json',pan:'y.json'}, shot?:'имя'}]
+import { createRequire } from 'module';
+const { chromium } = createRequire(import.meta.url)('playwright'); // NODE_PATH=$(npm root -g)
+import fs from 'fs';
+import path from 'path';
+const [,, dir, cssFile, scen, outDir, width] = process.argv;
+const W = +(width || 1600), GAP = 16, HEAD = 64, BAR = 64, ROW = 980, CID = '000000';
+const WD = decodeURIComponent(new URL('../Виджеты/', import.meta.url).pathname);
+const inner = (js, mock) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#f6f6f6}</style></head><body>'
+  + '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"><canvas></canvas></div>'
+  + '<script>window.applyCrossFilter=function(f){parent.postMessage({type:"ECHARTS_APPLY_CROSS_FILTER",filters:f},"*");};var data='
+  + fs.readFileSync(path.join(dir, mock), 'utf8') + ';var option=null;<\/script><script>' + fs.readFileSync(WD + js, 'utf8') + '<\/script></body></html>';
+const cw = Math.round((W - GAP * 3) * 0.38), pw = W - GAP * 3 - cw;
+const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#f6f6f6;font-family:Inter,Arial}'
+  + '.g{display:grid;gap:' + GAP + 'px;padding:' + GAP + 'px;grid-template-columns:' + cw + 'px ' + pw + 'px}'
+  + '.full{grid-column:1/3}.cell{border-radius:12px;background:#fff}iframe{border:0;display:block;width:100%;height:100%;background:transparent}'
+  + '.dashboard-chart,.chart-container,.slice_container,.react_sanbbox{width:100%;height:100%}img.echarts-plugin{display:none}'
+  + fs.readFileSync(cssFile, 'utf8').split('000000').join(CID) + '</style></head><body>'
+  + '<div class="g">'
+  + '<div class="full cell" style="height:' + HEAD + 'px"><iframe sandbox="allow-scripts" data-f="strip"></iframe></div>'
+  + '<div class="full cell dashboard-component-chart-holder" style="height:' + BAR + 'px"><div class="dashboard-chart dashboard-chart-id-' + CID + '">'
+  + '<div class="chart-container"><div class="slice_container"><div id="chart-id-' + CID + '" style="width:100%;height:100%"><div class="react_sanbbox">'
+  + '<iframe sandbox="allow-scripts" data-f="bar"></iframe></div></div><img class="echarts-plugin"></div></div></div></div>'
+  + '<div class="cell" style="height:' + ROW + 'px"><iframe sandbox="allow-scripts" data-f="cat"></iframe></div>'
+  + '<div class="cell" style="height:' + ROW + 'px"><iframe sandbox="allow-scripts" data-f="pan"></iframe></div>'
+  + '</div><script>window.__emits=[];window.addEventListener("message",function(e){var d=e.data||{};'
+  + 'if(d.type==="ECHARTS_UPDATE_DATA_URL")document.querySelector("img.echarts-plugin").src=d.dataUrl;'
+  + 'if(d.type==="ECHARTS_APPLY_CROSS_FILTER")window.__emits.push(JSON.stringify(d.filters));});<\/script></body></html>';
+const SRC = { strip: ['pa-strip.chart.js', 'strip.json'], bar: ['pa-ca-bar.chart.js', 'bar.json'], cat: ['pa-reports-body.chart.js', 'cat.json'], pan: ['pa-audience.chart.js', 'aud.json'] };
+const b = await chromium.launch();
+const p = await b.newPage({ viewport: { width: W, height: HEAD + BAR + ROW + GAP * 4 } });
+const errs = [];
+p.on('pageerror', e => errs.push(String(e)));
+await p.setContent(page);
+const load = async (k, mock) => { await p.evaluate(([k, s]) => { document.querySelector('iframe[data-f="' + k + '"]').srcdoc = s; }, [k, inner(SRC[k][0], mock || SRC[k][1])]); };
+for (const k of Object.keys(SRC)) await load(k);
+await p.waitForTimeout(1200);
+const frameOf = async (k) => (await (await p.$('iframe[data-f="' + k + '"]')).contentFrame());
+fs.mkdirSync(outDir, { recursive: true });
+const log = [];
+for (const s of JSON.parse(fs.readFileSync(scen, 'utf8'))) {
+  if (s.reload) { for (const k of Object.keys(s.reload)) await load(k, s.reload[k]); await p.waitForTimeout(900); }
+  if (s.click) {
+    const f = await frameOf(s.frame || 'bar');
+    const el = (await f.$$(s.click))[s.i || 0];
+    if (!el) { log.push({ s: s.click, err: 'нет элемента' }); continue; }
+    await el.click();
+    await p.waitForTimeout(250);
+  }
+  if (s.type) { await p.keyboard.type(s.type, { delay: 20 }); await p.waitForTimeout(200); }
+  if (s.shot) await p.screenshot({ path: path.join(outDir, s.shot + '.png') });
+  const ifr = await p.evaluate(() => { const r = document.querySelector('iframe[data-f="bar"]').getBoundingClientRect(); return Math.round(r.height); });
+  log.push({ step: s.shot || s.click || 'reload', barIframe: ifr, emits: await p.evaluate(() => window.__emits.splice(0)) });
+}
+console.log(JSON.stringify({ errs, log }, null, 1));
+await b.close();

@@ -27,6 +27,7 @@
 | «Проверить SQL без SQL Lab» | `.stand/` — встроенный ClickHouse (chdb) на синтетике той же схемы: `python3 .stand/stand.py`, затем `check_v7.py` |
 | «Прогнать весь лист (3 чарта)» | `NODE_PATH=$(npm root -g) node .stand/board.mjs <папка моков strip/body/area.json> <out.png> [ширина] [клики.json]` |
 | «Выпадашка поверх листа (iframe + CSS борда)» | `NODE_PATH=$(npm root -g) node .stand/ifstand.mjs <chart.js> <mock.json> <board.css> <chartId> <сценарий.json> <shot-prefix>` — родитель как в Proteus: канал скриншотов → img.echarts-plugin, CSS по маркеру |
+| «Показать лист „Аудитория“ целиком со строкой ЦА (до внедрения)» | `NODE_PATH=$(npm root -g) node .stand/audboard.mjs .stand/mocks_audbar <board.css> <сценарий.json> <папка скринов> [ширина]` — шапка · строка ЦА (iframe + CSS борда) · каталог · панель; шаг `reload` подменяет ответы после «Применить» |
 | «Прогнать виджет в браузере» | `NODE_PATH=$(npm root -g) node .stand/wstand.mjs <chart.js> <mock.json> <сценарий.json> [shot.png]` — клики, spy `applyCrossFilter`, скриншот |
 | «Проверить джиню шаблона» | python3 + jinja2: `.jt6.py` (куб v6) / `.jt_who.py` (who) / `.jt_aud.py` (аудитория); v5.1 — `.jt5.py` |
 

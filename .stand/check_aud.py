@@ -80,7 +80,7 @@ for did in reps:
 # Каталог вкладки: тот же ответ + ca_n / ca_wide
 base = run(f(V7, '2. '), {})
 cat = run(CAT, {})
-ok(norm([{k: v for k, v in r.items() if k not in ('ca_n', 'ca_wide')} for r in cat]) == norm(base), 'каталог «Аудитории» == каталог «Отчётов» + 2 колонки')
+ok(norm([{k: v for k, v in r.items() if k not in ('ca_n', 'ca_wide', 'ca_users')} for r in cat]) == norm(base), 'каталог «Аудитории» == каталог «Отчётов» + 3 колонки')
 mism = q('SELECT dashboard_id, ca_n FROM prod_proteus.pa_dash_ca')
 mp = {int(r['dashboard_id']): int(r['ca_n']) for r in mism}
 ok(all(r['ca_n'] is None or mp.get(int(r['dashboard_id']), 0) == int(r['ca_n']) for r in cat if r['section'] == 'rep'), 'ca_n каталога == pa_dash_ca (нет прав — 0)')
@@ -167,6 +167,15 @@ for c in [{}, {'mode_param': 'report', 'sel_f': [str(reps[0])]}]:
     n = int(json.loads([r for r in pv if r['section'] == 'total'][0]['state_j'])['n'])
     f2 = {x[0] for x in vl(pv, 0) if x[3] == '0' and int(x[4]) & ((1 << n) - 1)}
     ok(f1 == f2 and len(lst[0]) == 14, f'{c}: уволенных за период на первом листе {len(f1)} == в панели {len(f2)}')
+# «Охват ЦА» каталога по правам = зрители из ЦА / ЦА — та же мера, что «Дошли / ЦА» панели на одном отчёте
+# (скрин владельца 2026-09-25: каталог 73 % против панели 59 % — в числителе каталога были все зрители).
+catd = {int(r['dashboard_id']): r for r in run(CAT, {}) if r['section'] == 'rep'}
+for did in reps:
+    pan = run(AUD, {'mode_param': 'report', 'sel_f': [str(did)]})
+    n = int(json.loads([r for r in pan if r['section'] == 'total'][0]['state_j'])['n'])
+    reach = sum(1 for x in vl(pan, 0) if x[16] == '1' and int(x[4]) & ((1 << n) - 1))
+    c = catd.get(did)
+    ok(c is not None and int(c['ca_users']) == reach, f'отчёт {did}: зрителей из ЦА в каталоге {c["ca_users"] if c else "—"} == «Дошли» панели {reach} (всех зрителей {c["users"] if c else "—"})')
 # Отсечка имён: при NAMES_MAX меньше числа не заходивших строк 'n' нет, а итоги 'h' на месте.
 sql = stand.render(AUD, {}).replace('nnever <= 20000', 'nnever <= 100')
 rows = q(sql)

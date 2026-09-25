@@ -169,3 +169,33 @@ cross join hc
 where ow.login is null
 group by c.dashboard_id
 distributed by (dashboard_id);
+
+-- ---------------------------------------------------------------------------
+-- Параграф «PA · доступ зрителей» → usr_cross_data.pa_pair_acc   (НОВЫЙ 2026-09-25, после «PA · ЦА отчёта»)
+-- Пары «отчёт × зритель» из pa_pair, где зритель — действующий сотрудник с AD-логином (pa_staff) с правом
+-- на отчёт: поимённо или через AD-группу. Числитель «Охвата ЦА» каталога вкладки: зрители из ЦА, а не все.
+-- Считается от пар к группам зрителя (не от групп ко всем их членам) — без взрыва на широких группах.
+-- ---------------------------------------------------------------------------
+drop table if exists usr_cross_data.pa_pair_acc;
+create table usr_cross_data.pa_pair_acc as
+with pr as (
+    select distinct p.dashboard_id::int as dashboard_id, lower(p.login)::text as login
+    from usr_cross_data.pa_pair p
+    where p.login is not null and p.login <> ''
+),
+acc as (
+    select pr.dashboard_id, pr.login
+    from pr
+    inner join usr_cross_data.pa_dash_acl a
+        on a.kind = 'user' and a.dashboard_id = pr.dashboard_id and a.principal = pr.login
+    union
+    select pr.dashboard_id, pr.login
+    from pr
+    inner join usr_cross_data.pa_adg_member m on m.login = pr.login
+    inner join usr_cross_data.pa_dash_acl a
+        on a.kind = 'group' and a.dashboard_id = pr.dashboard_id and a.principal = m.ad_group
+)
+select acc.dashboard_id, acc.login
+from acc
+inner join usr_cross_data.pa_staff s on s.login = acc.login
+distributed by (dashboard_id);

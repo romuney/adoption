@@ -7,7 +7,7 @@
     (mode_param/sel_f) НЕ читает — самовлияние тела выключено.
     Линейная цепочка maxd → dash_ok → evd → kx → agg → выход; каждый CTE — одна ссылка
     (dash_ok — справочник 32 тыс. строк).
-    Ответ — 17 колонок (+ ca_n, ca_wide при WITH_CA); KPI области считает правая панель (pa_people). -#}
+    Ответ — 17 колонок (+ ca_n, ca_wide, ca_users при WITH_CA); KPI области считает правая панель (pa_people). -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay'}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday'}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth'}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter'}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
 {% set grain = grain if grain in GRAINS else 'd' %}
@@ -123,6 +123,11 @@ WITH
       toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax,
       {#- маски дней/недель/месяцев — для ритма отчёта (не зависят от грануляции) -#}
       toUInt64(ifNull(e.msk_d, 0)) AS pd, toUInt64(ifNull(e.msk_w, 0)) AS pw, toUInt64(ifNull(e.msk_m, 0)) AS pm
+      {%- if WITH_CA %},
+      {#- a0 = 1 — зритель входит в ЦА отчёта: по правам — пара есть в pa_pair_acc (право на отчёт поимённо или
+          через AD-группу, действующий сотрудник); по условиям — все пары уже отобраны по ЦА выше. -#}
+      {% if custom %}toUInt8(1){% else %}toUInt8((toInt32(ifNull(e.dashboard_id, 0)), lower(toString(e.login))) IN (SELECT toInt32(ifNull(dashboard_id, 0)), toString(ifNull(login, '')) FROM prod_proteus.pa_pair_acc)){% endif %} AS a0
+      {%- endif %}
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
@@ -135,7 +140,7 @@ WITH
         Мета (владелец, коллекции) подтягивается ПОСЛЕ сжатия факта до пар. -#}
     SELECT kd, k0, login,
       groupBitOr(m0) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
-      groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm
+      groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm{% if WITH_CA %}, max(a1) AS acc{% endif %}
     FROM (
       SELECT arrayJoin(arrayConcat(
           {# Все элементы — строго Tuple(UInt8, String): arrayConcat в CH 24 приводит массивы к типу
@@ -146,7 +151,7 @@ WITH
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
         p.login AS login, p.msk AS m0, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
-        p.pd AS pd, p.pw AS pw, p.pm AS pm
+        p.pd AS pd, p.pw AS pw, p.pm AS pm{% if WITH_CA %}, p.a0 AS a1{% endif %}
       FROM evd p
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
@@ -164,6 +169,9 @@ WITH
       sum(v_life) AS v_tot,
       {#- Ритм отчёта: людей каждого ритма «Daily, Weekly, Monthly, Rare»; «0,0,0,0» — Dead. -#}
       arrayStringConcat([toString(countIf({{ RC }} = 4)), toString(countIf({{ RC }} = 3)), toString(countIf({{ RC }} = 2)), toString(countIf({{ RC }} = 1))], ',') AS rhythm
+      {%- if WITH_CA %},
+      {#- зрители за период, входящие в ЦА отчёта — числитель «Охвата ЦА» (посторонние зрители не в счёт) -#}
+      countIf(bitAnd(msk, {{ CUR }}) != 0 AND acc = 1) AS ca_u{% endif %}
     FROM kx GROUP BY kd, k0
   )
 SELECT
@@ -187,7 +195,8 @@ SELECT
   {%- if WITH_CA %},
   {#- ЦА отчёта по правам (штат) и флаг «доступ почти у всех» — только у строк отчётов. -#}
   CAST(if(kd = 1, {% if custom %}(SELECT count() FROM ({{ caset() }})){% if excv == '1' %} - ifNull(oc.n_own, 0){% endif %}{% else %}c.ca_n{% endif %}, NULL) AS Nullable(Int64)) AS ca_n,
-  CAST(if(kd = 1, {% if custom %}toUInt8(0){% else %}c.ca_wide{% endif %}, NULL) AS Nullable(UInt8)) AS ca_wide{% endif %}
+  CAST(if(kd = 1, {% if custom %}toUInt8(0){% else %}c.ca_wide{% endif %}, NULL) AS Nullable(UInt8)) AS ca_wide,
+  CAST(if(kd = 1, ca_u, NULL) AS Nullable(UInt64)) AS ca_users{% endif %}
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
 {%- if WITH_CA %}

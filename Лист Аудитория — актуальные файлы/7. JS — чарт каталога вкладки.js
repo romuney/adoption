@@ -52,7 +52,7 @@ var CFG = {
     last_view_days: 'last_view_days', rhythm: 'rhythm',
     state_j: 'state_j',
     // Только у каталога вкладки «Аудитория» (датасет pa_body_aud, WITH_CA = true): ЦА отчёта по правам.
-    ca_n: 'ca_n', ca_wide: 'ca_wide'
+    ca_n: 'ca_n', ca_wide: 'ca_wide', ca_users: 'ca_users'
   },
   text: { noData: 'Нет данных' },
   // Каталог — снимок за период; ось времени живёт в правой панели.
@@ -263,7 +263,7 @@ function buildModel() {
       regular_users: num(r[F.regular_users]) || 0,
       last_view_days: num(r[F.last_view_days]) || 0,
       rh: rhythmOf(r[F.rhythm]),
-      ca_n: num(r[F.ca_n]), ca_wide: num(r[F.ca_wide]) === 1
+      ca_n: num(r[F.ca_n]), ca_wide: num(r[F.ca_wide]) === 1, ca_users: num(r[F.ca_users])
     };
   }
 
@@ -955,7 +955,7 @@ function reportTableHtml() {
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
     th('users', 'Польз.') + (MODEL.hasCa
-      ? th('cov', 'Охват ЦА', { title: 'Охват целевой аудитории', text: 'Пользователи за период от ЦА отчёта по правам (AD-группы + поимённо). «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет. Точный охват с настройкой ЦА — в панели справа.' })
+      ? th('cov', 'Охват ЦА', { title: 'Охват целевой аудитории', text: 'Зрители за период, входящие в ЦА отчёта, от размера ЦА (по правам: AD-группы + поимённо; или по условиям строки «Целевая аудитория»). Совпадает с «Дошли / ЦА» в панели. «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет.' })
       : th('views', 'Просм.')) +
     th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
     th('rhythm', 'Ритм', { title: 'Ритм отчёта', text: 'Как пользуется отчётом его ядро — те, кто возвращается (разовые визиты не в счёт): Daily — хотя бы половина ядра заходит 12+ дней из последних 30, Weekly — 6+ недель из 8, Monthly — 2 из последних 3 месяцев. Rare — возвращающихся меньше 10% всех зрителей, Dead — за 3 месяца не заходил никто. Не зависит от периода полоски.' }) +
@@ -969,7 +969,8 @@ function reportTableHtml() {
         rows: [
           { label: 'Пользователи', value: nf(x.k.users), color: CFG.colors.ret },
           { label: 'Постоянные', value: nf(x.k.regular_users) + ' · ' + pct(x.rs, 0) },
-          MODEL.hasCa ? { label: 'ЦА по правам', value: x.k.ca_n ? nf(x.k.ca_n) + (x.k.ca_wide ? ' · почти вся компания' : '') : 'прав нет' } : { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) }
+          MODEL.hasCa ? { label: 'ЦА', value: x.k.ca_n ? nf(x.k.ca_n) + (x.k.ca_wide ? ' · почти вся компания' : '') : 'прав нет' } : { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) },
+          MODEL.hasCa && x.k.ca_users != null ? { label: 'Из них заходили', value: nf(x.k.ca_users) } : null
         ],
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
       }) + '>' +
@@ -990,9 +991,10 @@ function reportTableHtml() {
   }
   return { html: h + '</tbody></table>', total: total };
 }
-// Охват ЦА отчёта: пользователи за период / ЦА по правам (потолок 100%: в каталоге не видно,
-// кто из зрителей входит в ЦА — зрители почти всегда с доступом; точно — в панели справа).
-function covOf(k) { return k.ca_n ? Math.min(100, k.users / k.ca_n * 100) : null; }
+// Охват ЦА отчёта: зрители за период, входящие в ЦА (ca_users) / размер ЦА — та же мера, что «Дошли / ЦА»
+// в панели. Посторонние зрители (права сняты, выданы иначе, уволены) в числитель не идут.
+// Старый датасет без ca_users — все пользователи (потолок 100%).
+function covOf(k) { return k.ca_n ? Math.min(100, (k.ca_users != null ? k.ca_users : k.users) / k.ca_n * 100) : null; }
 function covCellHtml(x) {
   if (x.cov == null || x.k.ca_wide) return '<td><span class="mut">—</span></td>';
   return '<td>' + pct(x.cov, x.cov < 10 ? 1 : 0) + '</td>';

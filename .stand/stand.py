@@ -109,7 +109,7 @@ def _aud(n_dash, n_login):
     (pa_adg_member) и размер ЦА по правам на отчёт (pa_dash_ca) — эмуляция GP-параграфов
     «PA · штат / права / состав групп / ЦА отчёта». Штат шире зрителей: u0…u(1,6·n) — зрители
     pa_emp_attrs (u < 0,95·n) плюс ни разу не заходившие; own* — владельцы вне штата."""
-    for t in ['pa_staff', 'pa_dash_acl', 'pa_adg_member', 'pa_dash_ca']:
+    for t in ['pa_staff', 'pa_dash_acl', 'pa_adg_member', 'pa_dash_ca', 'pa_pair_acc']:
         S.query(f'DROP TABLE IF EXISTS prod_proteus.{t}')
     n_staff = int(n_login * 1.6)
     S.query("""CREATE TABLE prod_proteus.pa_staff (login String, lvl3_management_unit_nm String, lvl4_management_unit_nm String,
@@ -155,6 +155,15 @@ def _aud(n_dash, n_login):
       WHERE login IN (SELECT login FROM prod_proteus.pa_staff)
         AND (dashboard_id, login) NOT IN (SELECT dashboard_id, arrayJoin(owners_string) FROM prod_proteus.pa_dash_meta)
       GROUP BY dashboard_id""")
+    # доступ зрителей: пары pa_pair, где зритель — сотрудник с правом на отчёт (поимённо или через группу)
+    S.query("""CREATE TABLE prod_proteus.pa_pair_acc ENGINE=MergeTree ORDER BY (dashboard_id, login) AS
+      SELECT DISTINCT did AS dashboard_id, lg AS login FROM (
+        SELECT p.dashboard_id AS did, lower(p.login) AS lg FROM prod_proteus.pa_pair p
+        WHERE (p.dashboard_id, lower(p.login)) IN (SELECT dashboard_id, principal FROM prod_proteus.pa_dash_acl WHERE kind = 'user')
+        UNION ALL
+        SELECT p.dashboard_id, lower(p.login) FROM prod_proteus.pa_pair p INNER JOIN prod_proteus.pa_adg_member m ON m.login = lower(p.login)
+        WHERE (p.dashboard_id, m.ad_group) IN (SELECT dashboard_id, principal FROM prod_proteus.pa_dash_acl WHERE kind = 'group'))
+      WHERE lg IN (SELECT login FROM prod_proteus.pa_staff)""")
 
 
 def gen(big=False):

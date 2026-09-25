@@ -19,11 +19,15 @@ const inner = (js, mock) => '<!DOCTYPE html><html><head><meta charset="utf-8"><s
 const cw = Math.round((W - GAP * 3) * 0.38), pw = W - GAP * 3 - cw;
 const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#f6f6f6;font-family:Inter,Arial}'
   + '.g{display:grid;gap:' + GAP + 'px;padding:' + GAP + 'px;grid-template-columns:' + cw + 'px ' + pw + 'px}'
-  + '.full{grid-column:1/3}.cell{border-radius:12px;background:#fff}iframe{border:0;display:block;width:100%;height:100%;background:transparent}'
+  + (process.env.TABS ? '.ant-tabs-nav{display:flex;position:relative}.ant-tabs-nav::before{content:"";position:absolute;left:0;right:0;bottom:0;border-bottom:1px solid #f0f0f0}.ant-tabs-nav-wrap{display:flex;flex:auto}.ant-tabs-nav-list{display:flex;position:relative}.ant-tabs-tab{position:relative;display:inline-flex;align-items:center;cursor:pointer}.ant-tabs-ink-bar{position:absolute;bottom:0;display:none}' : '') + (process.env.TABS_OLD ? '.ant-tabs-nav-list{display:flex;gap:10px}.ant-tabs-tab{background:#e3e5e9;border-radius:8px;padding:6px 12px;font:14px Inter,Arial;color:#6b7280}.ant-tabs-tab-active{background:#5f6673;color:#fff}' : '') + '.full{grid-column:1/3}.cell{border-radius:12px;background:#fff}iframe{border:0;display:block;width:100%;height:100%;background:transparent}'
   + '.dashboard-chart,.chart-container,.slice_container,.react_sanbbox{width:100%;height:100%}img.echarts-plugin{display:none}'
   + fs.readFileSync(cssFile, 'utf8').split('000000').join(CID) + '</style></head><body>'
   + '<div class="g">'
   + '<div class="full cell" style="height:' + HEAD + 'px"><iframe sandbox="allow-scripts" data-f="strip"></iframe></div>'
+  // Нативные вкладки дашборда (разметка Superset/antd) — если задан TABS="Имя1|Имя2", активна вторая.
+  + (process.env.TABS ? '<div class="full dashboard-component-tabs"><div class="ant-tabs ant-tabs-top"><div class="ant-tabs-nav" role="tablist"><div class="ant-tabs-nav-wrap"><div class="ant-tabs-nav-list">'
+    + process.env.TABS.split('|').map((t, i) => '<div class="ant-tabs-tab' + (i === 1 ? ' ant-tabs-tab-active' : '') + '"><div class="ant-tabs-tab-btn" role="tab">' + t + '</div></div>').join('')
+    + '<div class="ant-tabs-ink-bar"></div></div></div></div></div></div>' : '')
   + '<div class="full cell dashboard-component-chart-holder" style="height:' + BAR + 'px"><div class="dashboard-chart dashboard-chart-id-' + CID + '">'
   + '<div class="chart-container"><div class="slice_container"><div id="chart-id-' + CID + '" style="width:100%;height:100%"><div class="react_sanbbox">'
   + '<iframe sandbox="allow-scripts" data-f="bar"></iframe></div></div><img class="echarts-plugin"></div></div></div></div>'
@@ -34,7 +38,7 @@ const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
   + 'if(d.type==="ECHARTS_APPLY_CROSS_FILTER")window.__emits.push(JSON.stringify(d.filters));});<\/script></body></html>';
 const SRC = { strip: ['pa-strip.chart.js', 'strip.json'], bar: ['pa-ca-bar.chart.js', 'bar.json'], cat: ['pa-reports-body.chart.js', 'cat.json'], pan: ['pa-audience.chart.js', 'aud.json'] };
 const b = await chromium.launch();
-const p = await b.newPage({ viewport: { width: W, height: HEAD + BAR + ROW + GAP * 4 } });
+const p = await b.newPage({ viewport: { width: W, height: HEAD + BAR + ROW + GAP * 4 + (process.env.TABS ? 60 : 0) } });
 const errs = [];
 p.on('pageerror', e => errs.push(String(e)));
 await p.setContent(page);

@@ -115,20 +115,22 @@ for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['С
         ok(c is not None and int(c['ca_n']) == caV + caH, f'ЦА {cond} · отчёт {did}: ca_n {c["ca_n"] if c else "—"} == ЦА панели {caV + caH}')
         ok(names == caH, f'ЦА {cond} · отчёт {did}: имён не заходивших {names} == ЦА без визитов {caH}')
 # Строка «Целевая аудитория» (pa_ca_dict): число «в ЦА» считается в браузере по справочнику штата —
-# оно обязано совпасть с ЦА панели и ca_n каталога на сервере (условия без AD-групп: их считает только сервер).
+# оно обязано совпасть с ЦА панели и ca_n каталога на сервере — в том числе с условием «AD-группы».
 BAR = [x for x in os.listdir(D) if 'pa_ca_dict' in x and x.endswith('.sql')]
 if BAR:
     brows = run(os.path.join(D, BAR[0]), {})
-    dct = {}
+    dct, gnm = {}, {}
     for r in brows:
         if r['section'] == 'd': dct[(r['g'], r['k'])] = r['parent']
+        if r['section'] == 'adg': gnm[r['parent']] = r['k']
     units = []
     for r in brows:
         if r['section'] != 's': continue
         for ln in r['k'].split('\n'):
             x = ln.split('\t')
             units.append({'org': r['parent'], 'spec': dct[('spec', x[0])], 'stream': dct[('stream', x[1])], 'hd': x[2] == '1',
-                          'hq': dct[('hq', x[3])], 'it': dct[('it', x[4])], 'n': int(x[5])})
+                          'hq': dct[('hq', x[3])], 'it': dct[('it', x[4])], 'n': int(x[5]),
+                          'g': {gnm[i] for i in x[6].split(',') if i} if len(x) > 6 else set()})
     tot = [r for r in brows if r['section'] == 'total'][0]
     ok(sum(u['n'] for u in units) == int(tot['n']) == staff, f'строка ЦА: справочник {sum(u["n"] for u in units)} == штат {staff}')
     def bar_n(c):
@@ -138,10 +140,12 @@ if BAR:
                 if c.get(f) and u[k] not in c[f]: return False
             if c.get('ca_head_f') == '1' and not u['hd']: return False
             if c.get('ca_head_f') == 'n' and u['hd']: return False
+            if c.get('ca_adg_f') and not (u['g'] & set(c['ca_adg_f'])): return False
             return True
         return sum(u['n'] for u in units if hit(u))
     for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['Спец 3', 'Спец 5'], 'ca_head_f': 'n'},
-                 {'ca_org_f': ['Блок 2 › Деп 2.2'], 'ca_hq_f': ['HQ', 'HQ line support']}, {'ca_stream_f': ['Стрим 1']}, {'ca_hq_f': ['nonHQ']}]:
+                 {'ca_org_f': ['Блок 2 › Деп 2.2'], 'ca_hq_f': ['HQ', 'HQ line support']}, {'ca_stream_f': ['Стрим 1']}, {'ca_hq_f': ['nonHQ']},
+                 {'ca_adg_f': ['ADG3', 'ADG7']}, {'ca_adg_f': ['ADG5'], 'ca_head_f': '1', 'ca_it_f': ['nonIT']}, {'ca_adg_f': ['ALL'], 'ca_org_f': ['Блок 2']}]:
         pan = run(AUD, dict(cond, mode_param='report', sel_f=[str(reps[0])]))
         vv = vl(pan, 0)
         caP = sum(1 for x in vv if x[16] == '1') + sum(int(l.split('\t')[7]) for r in pan if r['section'] == 'h' for l in r['k'].split('\n'))
@@ -154,6 +158,15 @@ if BAR:
     for st in ['prefer_column_name_to_alias = 1', 'enable_analyzer = 0']:
         sql = stand.render(os.path.join(D, BAR[0]), {})
         ok(norm(q(sql)) == norm(q(sql + '\nSETTINGS ' + st)), f'{st}: строка ЦА')
+# «Уволен» (нет среди действующих сотрудников с AD-логином): первый лист (pa_people, 14-е поле списка)
+# и панель второго (зритель без флага «сотрудник») помечают одних и тех же людей периода.
+for c in [{}, {'mode_param': 'report', 'sel_f': [str(reps[0])]}]:
+    lst = [l.split('\t') for r in run(PPL, c) if r['section'] == 'list' for l in (r['k'] or '').split('\n') if l]
+    f1 = {x[0].lower() for x in lst if len(x) > 13 and x[13] == '1'}
+    pv = run(AUD, c)
+    n = int(json.loads([r for r in pv if r['section'] == 'total'][0]['state_j'])['n'])
+    f2 = {x[0] for x in vl(pv, 0) if x[3] == '0' and int(x[4]) & ((1 << n) - 1)}
+    ok(f1 == f2 and len(lst[0]) == 14, f'{c}: уволенных за период на первом листе {len(f1)} == в панели {len(f2)}')
 # Отсечка имён: при NAMES_MAX меньше числа не заходивших строк 'n' нет, а итоги 'h' на месте.
 sql = stand.render(AUD, {}).replace('nnever <= 20000', 'nnever <= 100')
 rows = q(sql)

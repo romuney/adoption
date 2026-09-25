@@ -396,6 +396,7 @@ function buildModel() {
         fk: num(f[6]), yr: f[7] === '1', org: path,
         spec: dv('spec', f[9]), stream: dv('stream', f[10]), is_head: f[11] === '1' ? 1 : 0,
         views: num(f[12]) || 0, exp: f[13] || '', hq: dv('hq', f[14]), it: dv('it', f[15]), ca: f[16] === '1',
+        fired: f[3] !== '1',   // зритель не из базы сотрудников (действующие с AD-логином) — уволен
         days: days, daysPrev: bits(prev),
         last_dt: dt ? { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate() } : null
       };
@@ -550,7 +551,7 @@ function obsList(k, G, what) {
   if (wide()) {
     out.push({ sev: 'mid', lead: 'Доступ открыт почти всей компании — проценты охвата скрыты',
       body: 'В ЦА по правам ' + nf(t.ca) + ' из ' + nf(MODEL.staff) + ' сотрудников: знаменатель не описывает, для кого делали отчёт. Настройте ЦА условиями — проценты вернутся.',
-      rule: 'ЦА ≥ ' + Math.round(CFG.wideShare * 100) + '% штата' });
+      rule: 'ЦА ≥ ' + Math.round(CFG.wideShare * 100) + '% сотрудников' });
   } else if (t.ca && cov < CFG.covLow) {
     out.push({ sev: 'high', lead: 'Охват ЦА ' + pct(cov) + ' — меньше ' + CFG.covLow + '%',
       body: 'Из ' + nf(t.ca) + ' человек ЦА за период заходили ' + nf(t.reach) + '.', rule: 'охват < ' + CFG.covLow + '%' });
@@ -858,6 +859,7 @@ function buildCSS() {
     P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
+    P + '-rflag.fired{background:#fde8e8;color:#b42318;}',
     P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
     '  border-radius:999px;padding:2px 9px;}',
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
@@ -1103,7 +1105,7 @@ function personRowHtml(p) {
     ' data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
     '>' +
     '<td class="txt">' + esc(p.fio || p.login) +
-      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
+      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином">уволен</i>' : '') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(p.login) + '</span></td>' +
     '<td class="txt sec">' + esc(ps.length ? ps[ps.length - 1] : '—') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(ps.length > 1 ? 'УС-' + (ps.length + 2) + ' · ' + ps[0] : (p.spec || '—')) + '</span></td>' +
@@ -1336,7 +1338,7 @@ function nestPeopleHtml(nd, people, span) {
     var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
     h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
       '>' +
-      '<td class="txt pn" style="padding-left:' + (30 + nd.depth * 18) + 'px">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') +
+      '<td class="txt pn" style="padding-left:' + (30 + nd.depth * 18) + 'px">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином">уволен</i>' : '') +
         ' <span class="' + CFG.ns + '-wo-login">' + esc(p.login) + '</span></td>' +
       '<td>' + nf(p.days) + THIN + grainCfg().us + '</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
       '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td></tr>';
@@ -1413,12 +1415,12 @@ function exportRows() {
   var num2 = function (v, d) { return v == null || !isFinite(v) ? '' : (d ? v.toFixed(d).replace('.', ',') : String(Math.round(v))); };
   if (cut === 'none') {
     head = ['ФИО', 'Логин', 'Руководитель', 'УС-3', 'УС-4', 'УС-5', 'УС-6', 'УС-7', 'Специализация', 'Стрим', 'Стаж',
-      'В ЦА', 'Доступ', actLabel(), 'Просмотров', 'Последний визит', 'Сегмент'];
+      'В ЦА', 'Доступ', actLabel(), 'Просмотров', 'Последний визит', 'Сегмент', 'Уволен'];
     var ps = sortPeople(shownList());
     for (i = 0; i < ps.length; i++) {
       var p = ps[i], op = orgParts(p.org);
       rows.push([p.fio, p.login, p.is_head ? 'да' : '', op[0] || '', op[1] || '', op[2] || '', op[3] || '', op[4] || '',
-        p.spec, p.stream, p.exp, p.ca ? 'да' : '', p.acc ? 'да' : '', String(p.days), String(p.views), isoDate(p.last_dt), p.seg]);
+        p.spec, p.stream, p.exp, p.ca ? 'да' : '', p.acc ? 'да' : '', String(p.days), String(p.views), isoDate(p.last_dt), p.seg, p.fired ? 'да' : '']);
     }
     return { head: head, rows: rows };
   }
@@ -1708,9 +1710,9 @@ function kpisHtml() {
   var baseTxt = caModeNow() === 'cond' ? 'по условиям' : 'по правам доступа';
   return '<div class="' + CFG.ns + '-kpis">' +
     kpiCard({ label: 'Целевая аудитория', value: nf(t.ca),
-      hint: { title: 'Целевая аудитория (ЦА)', text: 'Кого считаем аудиторией области: ' + baseTxt + '. Меняется кнопкой «Настроить ЦА» на вкладке «Путь ЦА». Только действующий штат.' },
+      hint: { title: 'Целевая аудитория (ЦА)', text: 'Кого считаем аудиторией области: ' + baseTxt + '. Меняется в строке «Целевая аудитория» над листом. База — действующие сотрудники с AD-логином (штатные и ГПХ).' },
       delta: W ? hidden : '<span class="' + CFG.ns + '-k-sub">' + esc(baseTxt) + '</span>',
-      sub: W ? '<b>' + pct(t.ca / MODEL.staff * 100) + '</b> штата компании' : (MODEL.staff ? '<b>' + pct(t.ca / MODEL.staff * 100, 1) + '</b> штата' : '') }) +
+      sub: W ? '<b>' + pct(t.ca / MODEL.staff * 100) + '</b> всех сотрудников' : (MODEL.staff ? '<b>' + pct(t.ca / MODEL.staff * 100, 1) + '</b> сотрудников' : '') }) +
     kpiCard({ label: 'Adoption за год', value: W || !t.ca ? '—' : pct(t.yr / t.ca * 100),
       hint: { title: 'Adoption за год', text: 'Доля ЦА, открывавшая отчёты области хотя бы раз с 1 января. Накопленный охват: от периода полоски не зависит.' },
       delta: W ? hidden : '',
@@ -1785,13 +1787,13 @@ function caCardHtml() {
   if (cond) {
     title = 'Собрана по условиям';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
-    text = 'Весь штат, где ' + caCondText(c) + '. Эта ЦА — фильтр и для каталога слева: там отчёты, которыми она пользуется, и охват от неё.' +
+    text = 'Все сотрудники с AD-логином, где ' + caCondText(c) + '. Эта ЦА — фильтр и для каталога слева: там отчёты, которыми она пользуется, и охват от неё.' +
       ' Доступ к области есть у <b>' + ppl(t.acc) + '</b> — ступень «Есть доступ» на воронке.'
   } else if (W) {
     title = 'Доступ роздан почти всей компании';
     chip = '<span class="' + N + '-sig-chip warn">охват не считаем</span>';
     text = 'Права выданы через ' + (gTxt || 'широкую группу') + ' — это <b>' + ppl(t.ca) + '</b>, ' + pct(t.ca / (MODEL.staff || 1) * 100, 0) +
-      ' штата. Такой знаменатель не описывает, для кого делали отчёт. <b>Настройте ЦА условиями</b> — и доли вернутся.';
+      ' сотрудников. Такой знаменатель не описывает, для кого делали отчёт. <b>Настройте ЦА условиями</b> — и доли вернутся.';
   } else if (!gs.length && MODEL.acl.users) {
     title = 'Поимённый список доступа';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
@@ -1884,7 +1886,7 @@ function pathHtml() {
 function buildHTML() {
   if (!MODEL.people.length && !MODEL.hold.length) {
     return buildCSS() + buildCSS2() + '<div class="' + CFG.ns + '-root"><div class="' + CFG.ns + '-empty"><b>' + esc(CFG.text.noData) + '</b>' +
-      'В области нет ни зрителей, ни штата — снимите часть условий в каталоге или в полоске.</div></div>';
+      'В области нет ни зрителей, ни сотрудников — снимите часть условий в каталоге или в полоске.</div></div>';
   }
   var N = CFG.ns, ai = areaInfo();
   var view = state.view === 'who' || state.view === 'dyn' ? state.view : 'path';

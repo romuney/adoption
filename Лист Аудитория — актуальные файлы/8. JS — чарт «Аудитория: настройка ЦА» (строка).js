@@ -37,7 +37,7 @@ var CFG = {
   ns: 'paca',
   // 5 колонок датасета pa_ca_dict.
   fields: { section: 'section', g: 'g', k: 'k', parent: 'parent', n: 'n' },
-  text: { noData: 'Нет данных штата (pa_staff)' },
+  text: { noData: 'Нет данных о сотрудниках (pa_staff)' },
   orgSep: ' › ',
   overlay: {
     // «PA-CA-DD-ON1» в base64: 12 байт = ровно 16 символов, стоит в строке PNG как есть.
@@ -117,16 +117,16 @@ function orgShort(path) { var ps = orgParts(path); return ps.length ? ps[ps.leng
 function dash(v) { return v === '' ? '— не указано' : v; }
 
 // ---------- БЛОК 3: ТРАНСФОРМАЦИЯ ДАННЫХ ----------
-// Штат — «единицы» (путь, спец., стрим, рук., HQ, IT, человек): из них в браузере считаются
-// все числа выпадашек. Словарь id → значение (как в pa_aud_v2).
+// Сотрудники — «единицы» (путь, спец., стрим, рук., HQ, IT, человек, набор AD-групп): из них в браузере
+// считаются все числа выпадашек, включая AD-группы. Словарь id → значение (как в pa_aud_v2).
 function buildModel() {
-  var F = CFG.fields, m = { units: [], orgKids: {}, staffBy: { org: {}, spec: {}, stream: {}, hq: {}, it: {} }, adg: [], staff: 0 };
-  var dict = { spec: {}, stream: {}, hq: {}, it: {} }, sRows = [], i, j;
+  var F = CFG.fields, m = { units: [], orgKids: {}, staffBy: { org: {}, spec: {}, stream: {}, hq: {}, it: {} }, adg: [], staff: 0, adgExact: false };
+  var dict = { spec: {}, stream: {}, hq: {}, it: {} }, sRows = [], gName = {}, i, j;
   for (i = 0; i < rawData.length; i++) {
     var r = rawData[i] || {}, sec = String(r[F.section] || '');
     if (sec === 's') sRows.push(r);
     else if (sec === 'd') { var dg = String(r[F.g] || ''); if (dict[dg]) dict[dg][String(r[F.k] || '')] = String(r[F.parent] == null ? '' : r[F.parent]); }
-    else if (sec === 'adg') m.adg.push({ name: String(r[F.k] || ''), n: num(r[F.n]) || 0 });
+    else if (sec === 'adg') { m.adg.push({ name: String(r[F.k] || ''), n: num(r[F.n]) || 0 }); gName[String(r[F.parent] == null ? '' : r[F.parent])] = String(r[F.k] || ''); }
     else if (sec === 'total') m.staff = num(r[F.n]) || 0;
   }
   var dv = function (g, id) { return dict[g][id] == null ? '' : dict[g][id]; };
@@ -141,7 +141,13 @@ function buildModel() {
     for (j = 0; j < lines.length; j++) {
       var x = lines[j].split('\t');
       if (x.length < 6) continue;
-      var u = { org: path, spec: dv('spec', x[0]), stream: dv('stream', x[1]), is_head: x[2] === '1' ? 1 : 0, hq: dv('hq', x[3]), it: dv('it', x[4]), n: num(x[5]) || 0 };
+      var u = { org: path, spec: dv('spec', x[0]), stream: dv('stream', x[1]), is_head: x[2] === '1' ? 1 : 0, hq: dv('hq', x[3]), it: dv('it', x[4]), n: num(x[5]) || 0, g: [] };
+      // 7-е поле — номера AD-групп (есть в датасете с 2026-09-25; нет — группы считает только сервер).
+      if (x.length > 6) {
+        m.adgExact = true;
+        var gs = x[6] ? x[6].split(',') : [];
+        for (q = 0; q < gs.length; q++) if (gName[gs[q]] != null) u.g.push(gName[gs[q]]);
+      }
       m.units.push(u);
       for (q = 1; q <= ps.length; q++) { var nd = ps.slice(0, q).join(CFG.orgSep); m.staffBy.org[nd] = (m.staffBy.org[nd] || 0) + u.n; }
       var kk = ['spec', 'stream', 'hq', 'it'];
@@ -154,9 +160,9 @@ function buildModel() {
 var MODEL = buildModel();
 
 // Условия складываются через «и», внутри условия — «или». Число у значения — «фасет»:
-// сколько людей штата пройдут ВСЕ ОСТАЛЬНЫЕ выбранные условия и это значение.
-// AD-группы — размер группы в штате: состав групп по людям в браузер не приходит.
-var CA_KINDS = ['org', 'spec', 'stream', 'hq', 'it', 'heads'];
+// сколько сотрудников пройдут ВСЕ ОСТАЛЬНЫЕ выбранные условия и это значение. AD-группы — такое же
+// условие («состоит хотя бы в одной из выбранных»), если датасет отдаёт наборы групп (MODEL.adgExact).
+var CA_KINDS = ['org', 'spec', 'stream', 'hq', 'it', 'heads', 'adg'];
 function caTest(c, x, k) {
   if (k === 'org') {
     if (!c.org.length) return true;
@@ -164,13 +170,18 @@ function caTest(c, x, k) {
     return false;
   }
   if (k === 'heads') return !c.heads || (c.heads === '1') === !!x.is_head;
+  if (k === 'adg') {
+    if (!c.adg.length || !MODEL.adgExact) return true;
+    for (var a = 0; a < x.g.length; a++) if (c.adg.indexOf(x.g[a]) >= 0) return true;
+    return false;
+  }
   return !c[k].length || c[k].indexOf(x[k]) >= 0;
 }
 var FACET = { key: null };
 function caFacet(d) {
   var key = JSON.stringify(d);
   if (FACET.key === key) return FACET;
-  var f = { key: key, org: {}, spec: {}, stream: {}, hq: {}, it: {}, heads: { '1': 0, n: 0 }, n: 0 };
+  var f = { key: key, org: {}, spec: {}, stream: {}, hq: {}, it: {}, adg: {}, heads: { '1': 0, n: 0 }, n: 0 };
   for (var i = 0; i < MODEL.units.length; i++) {
     var x = MODEL.units[i], miss = null, k, K, bad = false;
     for (k = 0; k < CA_KINDS.length; k++) {
@@ -186,6 +197,7 @@ function caFacet(d) {
         var ps = orgParts(x.org);
         for (var q = 1; q <= ps.length; q++) { var nd = ps.slice(0, q).join(CFG.orgSep); f.org[nd] = (f.org[nd] || 0) + x.n; }
       } else if (K === 'heads') f.heads[x.is_head ? '1' : 'n'] += x.n;
+      else if (K === 'adg') { for (var a = 0; a < x.g.length; a++) f.adg[x.g[a]] = (f.adg[x.g[a]] || 0) + x.n; }
       else f[K][x[K]] = (f[K][x[K]] || 0) + x.n;
     }
     if (!miss) f.n += x.n;
@@ -252,7 +264,7 @@ function buildCSS() {
     P + '-t-x{font-size:11.5px;color:' + C.ink2 + ';line-height:1.45;}',
     // ── Строка ──
     P + '-bar{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;width:100%;min-width:0;}',
-    P + '-ttl{display:flex;flex-direction:column;gap:2px;margin-right:8px;flex:0 1 250px;min-width:170px;}',
+    P + '-ttl{display:flex;flex-direction:column;gap:2px;margin-right:8px;flex:0 1 310px;min-width:170px;}',
     P + '-ttl b{display:flex;align-items:center;gap:7px;font-size:13px;color:' + C.ink + ';font-weight:600;white-space:nowrap;}',
     P + '-ttl b em{font-style:normal;font-size:10.5px;font-weight:500;color:' + C.mut + ';background:' + C.line2 + ';border-radius:999px;padding:1px 7px;}',
     P + '-ttl b em.cond{color:' + C.actInk + ';background:' + C.blueBg + ';}',
@@ -271,7 +283,7 @@ function buildCSS() {
     P + '-cf-n{flex:0 0 auto;min-width:18px;height:18px;border-radius:999px;background:' + C.act + ';color:#fff;font-size:10.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}',
     P + '-cf-x{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:' + C.actInk + ';font-size:14px;line-height:1;}',
     P + '-cf-x:hover{background:rgba(0,115,160,.14);}',
-    P + '-sel{display:flex;flex-wrap:wrap;gap:5px;max-height:64px;overflow:auto;}',
+    P + '-sel{display:flex;flex-wrap:wrap;gap:5px;max-height:64px;overflow:auto;flex:0 0 auto;}',
     P + '-chip{display:inline-flex;align-items:center;gap:3px;max-width:100%;height:24px;padding:0 3px 0 9px;border-radius:999px;background:' + C.blueBg + ';color:' + C.actInk + ';font-size:11.5px;font-weight:500;}',
     P + '-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-chip button{border:0;background:transparent;color:' + C.actInk + ';cursor:pointer;font:inherit;font-size:13px;width:18px;height:18px;border-radius:50%;padding:0;}',
@@ -288,14 +300,14 @@ function buildCSS() {
     // ── Выпадашка (в body iframe, position:fixed) ──
     P + '-dd{position:fixed;z-index:9000;background:#fff;border:1px solid ' + C.line + ';border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.18);'
       + 'padding:10px;display:flex;flex-direction:column;gap:8px;font-family:' + CFG.fonts.family + ';font-size:12.5px;color:' + C.ink2 + ';}',
-    P + '-dd-h{display:flex;align-items:baseline;gap:8px;}',
+    P + '-dd-h{display:flex;align-items:baseline;gap:8px;flex:0 0 auto;}',
     P + '-dd-h b{font-size:12.5px;font-weight:600;color:' + C.ink + ';}',
     P + '-dd-h span{font-size:11px;color:' + C.mut + ';}',
-    P + '-psearch{position:relative;color:' + C.mut + ';}',
+    P + '-psearch{position:relative;color:' + C.mut + ';flex:0 0 auto;}',
     P + '-psearch input{width:100%;height:32px;border:1px solid ' + C.line + ';background:#fff;border-radius:999px;padding:0 12px 0 30px;font-size:12.5px;color:' + C.ink + ';font-family:inherit;}',
     P + '-psearch input:focus{outline:none;border-color:' + C.act + ';}',
     P + '-psearch svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);pointer-events:none;}',
-    P + '-note{font-size:11px;color:' + C.mut + ';line-height:1.4;}',
+    P + '-note{font-size:11px;color:' + C.mut + ';line-height:1.4;flex:0 0 auto;}',
     P + '-list{flex:1 1 auto;min-height:60px;overflow:auto;display:flex;flex-direction:column;}',
     P + '-row{display:flex;align-items:center;gap:8px;min-height:28px;padding:2px 4px;border-radius:6px;cursor:pointer;color:' + C.ink2 + ';}',
     P + '-row:hover{background:#f6f8fa;}',
@@ -311,7 +323,7 @@ function buildCSS() {
     P + '-car:hover{background:#eef1f5;color:' + C.ink + ';}',
     P + '-car.sp{cursor:default;background:transparent;}',
     P + '-empty{font-size:11.5px;color:' + C.mut + ';padding:6px 4px;}',
-    P + '-dd-f{display:flex;align-items:center;gap:6px;border-top:1px solid ' + C.line2 + ';padding-top:8px;}',
+    P + '-dd-f{display:flex;flex:0 0 auto;align-items:center;gap:6px;border-top:1px solid ' + C.line2 + ';padding-top:8px;}',
     P + '-dd-f em{font-style:normal;flex:1;font-size:11.5px;color:' + C.mut + ';}',
     P + '-dd-f em b{color:' + C.ink + ';font-weight:600;}',
     '</style>'
@@ -386,10 +398,15 @@ function headRows() {
   return h;
 }
 function adgRows() {
-  var d = state.draft, q = (state.q.adg || '').toLowerCase(), out = [], i;
-  var list = MODEL.adg.filter(function (g) { return !q || g.name.toLowerCase().indexOf(q) >= 0 || d.adg.indexOf(g.name) >= 0; });
-  list.sort(function (a, b) { var sa = d.adg.indexOf(a.name) >= 0, sb = d.adg.indexOf(b.name) >= 0; return sa !== sb ? (sa ? -1 : 1) : b.n - a.n; });
-  for (i = 0; i < list.length && i < CFG.listMax; i++) out.push(rowHtml('data-cack', 'adg|' + list[i].name, d.adg.indexOf(list[i].name) >= 0, esc(list[i].name), list[i].n));
+  var d = state.draft, f = caFacet(d), q = (state.q.adg || '').toLowerCase(), out = [], i;
+  // Число у группы — сотрудники группы под остальными условиями (как у прочих списков); нули скрыты.
+  var cnt = function (g) { return MODEL.adgExact ? (f.adg[g.name] || 0) : g.n; };
+  var list = MODEL.adg.filter(function (g) {
+    var sel = d.adg.indexOf(g.name) >= 0;
+    return (sel || cnt(g) > 0) && (!q || sel || g.name.toLowerCase().indexOf(q) >= 0);
+  });
+  list.sort(function (a, b) { var sa = d.adg.indexOf(a.name) >= 0, sb = d.adg.indexOf(b.name) >= 0; return sa !== sb ? (sa ? -1 : 1) : cnt(b) - cnt(a); });
+  for (i = 0; i < list.length && i < CFG.listMax; i++) out.push(rowHtml('data-cack', 'adg|' + list[i].name, d.adg.indexOf(list[i].name) >= 0, esc(list[i].name), cnt(list[i])));
   if (!out.length) return '<div class="' + CFG.ns + '-empty">' + (MODEL.adg.length ? 'Ничего не найдено' : 'Список групп пуст — нет таблицы pa_adg_size') + '</div>';
   if (list.length > CFG.listMax) out.push('<div class="' + CFG.ns + '-empty">и ещё ' + nf(list.length - CFG.listMax) + ' — уточните поиск</div>');
   return out.join('');
@@ -410,14 +427,16 @@ function ddHtml() {
   var o = kindCfg(state.dd), d = state.draft, N = CFG.ns, f = caFacet(d);
   if (!o) return '';
   var pk = picked(d, o.k);
-  return '<div class="' + N + '-dd-h"><b>' + esc(o.l) + '</b><span>' + (o.k === 'adg'
-      ? 'число — людей штата в группе'
-      : 'число — сколько людей пройдут остальные условия') + '</span></div>' +
+  return '<div class="' + N + '-dd-h"><b>' + esc(o.l) + '</b><span>' + (o.k === 'adg' && !MODEL.adgExact
+      ? 'число — сотрудников в группе'
+      : 'число — сколько сотрудников пройдут остальные условия') + '</span></div>' +
     (pk.length ? '<div class="' + N + '-sel">' + selChips(o.k) + '</div>' : '') +
     (o.q ? searchBoxHtml(o.k, o.ph) : '') +
-    (o.k === 'adg' ? '<div class="' + N + '-note">Пересечение групп с остальными условиями посчитает сервер после «Применить».</div>' : '') +
+    (o.k === 'adg' ? '<div class="' + N + '-note">' + (MODEL.adgExact
+      ? 'Сотрудник в ЦА, если состоит хотя бы в одной из выбранных групп.'
+      : 'Пересечение групп с остальными условиями посчитает сервер после «Применить» (обновите датасет строки).') + '</div>' : '') +
     '<div class="' + N + '-list" data-calist="' + o.k + '">' + rowsOf(o.k) + '</div>' +
-    '<div class="' + N + '-dd-f"><em>В ЦА <b>' + ppl(f.n) + '</b>' + (d.adg.length ? ' без учёта групп' : '') + '</em>' +
+    '<div class="' + N + '-dd-f"><em>В ЦА <b>' + ppl(f.n) + '</b>' + (d.adg.length && !MODEL.adgExact ? ' без учёта групп' : '') + '</em>' +
       '<button type="button" class="' + N + '-btn sm" data-caun="' + o.k + '"' + (pk.length ? '' : ' disabled') + '>Сбросить</button>' +
       '<button type="button" class="' + N + '-btn primary sm" data-cadd="' + o.k + '">Готово</button></div>';
 }
@@ -428,7 +447,7 @@ function buildHTML() {
   h.push('<div class="' + N + '-root"><div class="' + N + '-bar">');
   // Слева — что это за строка и в каком состоянии ЦА.
   var st = pend ? '<em class="pend">не применено</em>' : '<em' + (caAttrsOn(a) ? ' class="cond">по условиям' : '>по правам доступа') + '</em>';
-  h.push('<div class="' + N + '-ttl"><b>Целевая аудитория' + st + '</b><span>настройка для углублённого анализа: кого считаем аудиторией отчётов</span></div>');
+  h.push('<div class="' + N + '-ttl"><b>Целевая аудитория' + st + '</b><span>настройка для углублённого анализа: кого из сотрудников с AD-логином считаем аудиторией отчётов</span></div>');
   // Пилюля условия: пусто — название; одно значение — само значение (без названия);
   // несколько — название и счётчик. × снимает условие, клик по пилюле открывает выпадашку.
   for (var i = 0; i < CFG.kinds.length; i++) {
@@ -441,7 +460,7 @@ function buildHTML() {
       (pk.length ? '<span class="' + N + '-cf-x" data-caclr="' + o.k + '" aria-label="Снять условие">×</span>' : '<span class="' + N + '-cf-car">▾</span>') + '</button>');
   }
   h.push('<span class="' + N + '-sp"></span>');
-  h.push('<span class="' + N + '-cnt">' + (on ? 'в ЦА <b>' + nf(f.n) + '</b>' + (d.adg.length ? ' без учёта групп' : '') : 'штат <b>' + nf(MODEL.staff) + '</b>') + '</span>');
+  h.push('<span class="' + N + '-cnt">' + (on ? 'в ЦА <b>' + nf(f.n) + '</b>' + (d.adg.length && !MODEL.adgExact ? ' без учёта групп' : '') : 'сотрудников <b>' + nf(MODEL.staff) + '</b>') + '</span>');
   h.push('<button type="button" class="' + N + '-btn" data-careset="1"' + (on || caAttrsOn(a) ? '' : ' disabled') + ' aria-label="Сбросить условия: ЦА «как роздан доступ»">Сбросить</button>');
   h.push('<button type="button" class="' + N + '-btn primary" data-caapply="1"' + (!pend || (on && !f.n) ? ' disabled' : '') + '>Применить</button>');
   h.push('</div></div>');

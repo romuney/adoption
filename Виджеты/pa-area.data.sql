@@ -203,7 +203,8 @@ FROM (
   {# Поимённый список — ВСЕ зрители области, упакованные: одна строка на подразделение
      (parent = путь «УС-3 › … › УС-7»), в k — сотрудники через \n, поля через \t:
      логин, ФИО, специализация, стрим, стаж, рук., активных периодов, просмотров, последний визит, корзина,
-     новый 1/0, MAU 1/0, MAU пред. месяца 1/0 (KPI и сводная по корзине частоты считаются в чарте).
+     новый 1/0, MAU 1/0, MAU пред. месяца 1/0, уволен 1/0 (логина нет среди действующих сотрудников с AD-логином —
+     GP «PA · штат» → pa_staff) (KPI и сводная по корзине частоты считаются в чарте).
      Путь не повторяется у каждого человека, 30 пустых колонок на человека не едут —
      ответ в ~6 раз легче построчного (весь Proteus: 21 МБ → ~3 МБ). cnt — людей в строке. #}
   SELECT 'list' AS section, '' AS g,
@@ -212,7 +213,8 @@ FROM (
       replaceRegexpAll(ifNull(toString(lp.spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.stream), ''), '[\t\n\r]', ' '), '\t',
       replaceRegexpAll(ifNull(toString(lp.exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(lp.is_head), ''), '\t', ifNull(toString(lp.days), ''), '\t',
       ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''), '\t',
-      toString(ifNull(lp.new_u, 0)), '\t', toString(ifNull(lp.mau, 0)), '\t', toString(ifNull(lp.mau_prev, 0)))), '\n') AS k,
+      toString(ifNull(lp.new_u, 0)), '\t', toString(ifNull(lp.mau, 0)), '\t', toString(ifNull(lp.mau_prev, 0)), '\t',
+      toString(toUInt8(lower(toString(ifNull(lp.login, ''))) NOT IN (SELECT login FROM prod_proteus.pa_staff))))), '\n') AS k,
     lp.parent AS parent,
     NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
     NULL AS days, NULL AS last_dt, NULL AS bin,

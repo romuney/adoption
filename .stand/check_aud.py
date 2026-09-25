@@ -176,6 +176,17 @@ for did in reps:
     reach = sum(1 for x in vl(pan, 0) if x[16] == '1' and int(x[4]) & ((1 << n) - 1))
     c = catd.get(did)
     ok(c is not None and int(c['ca_users']) == reach, f'отчёт {did}: зрителей из ЦА в каталоге {c["ca_users"] if c else "—"} == «Дошли» панели {reach} (всех зрителей {c["users"] if c else "—"})')
+# Синхронизация выбора каталогов двух листов: cat_sync_f возвращается эхом в state_j.sync (JSON цел даже
+# при враждебном вводе), на строки каталога не влияет.
+for pth in [CAT, g(V7, 'pa_body_v42') if any('pa_body_v42' in x for x in os.listdir(V7)) else CAT]:
+    for code in ['r=2,3;c=;o=', 'r=;c=%D0%9A%D0%BE%D0%BB%D0%BB%205;o=own1', "r=1'); DROP;c=\"x\\"]:
+        rows = run(pth, {'cat_sync_f': [code]})
+        try:
+            sj = json.loads([r for r in rows if r['section'] == 'total'][0]['state_j']); good = 'sync' in sj
+        except Exception:
+            good = False
+        same = norm([{k: v for k, v in r.items() if k != 'state_j'} for r in rows]) == norm([{k: v for k, v in r.items() if k != 'state_j'} for r in run(pth, {})])
+        ok(good and same, f'эхо выбора каталога {os.path.basename(pth)[:24]} {code[:24]}: state_j.sync есть, строки те же')
 # Отсечка имён: при NAMES_MAX меньше числа не заходивших строк 'n' нет, а итоги 'h' на месте.
 sql = stand.render(AUD, {}).replace('nnever <= 20000', 'nnever <= 100')
 rows = q(sql)

@@ -103,6 +103,12 @@ SELECT lg FROM (
 {% if loginf %}{% set _ = SJ.append('"login":' ~ jal(loginf)) %}{% endif %}
 {% if exlf %}{% set _ = SJ.append('"exl":' ~ jal(exlf)) %}{% endif %}
 {% if freqf %}{% set _ = SJ.append('"freq":' ~ jal(freqf)) %}{% endif %}
+{#- Синхронизация выбора между каталогами листов «Использование» и «Охват ЦА»: каталог эмитит свой выбор
+    служебной колонкой cat_sync_f (строка «r=id,id;c=…;o=…», значения — encodeURIComponent: без кавычек
+    и обратных слэшей), другой каталог получает её эхом в state_j.sync и принимает выбор. Датасеты её
+    не читают — только эхо. Список строится циклом: при сохранении датасета filter_values = AlwaysTrueObject. -#}
+{% set syncv = [] %}{% for v in (filter_values('cat_sync_f') or []) %}{% if v|string != '' and v|string|length < 20000 %}{% set _ = syncv.append(v|string) %}{% endif %}{% endfor %}
+{% if syncv %}{% set _ = SJ.append('"sync":"' ~ jes(syncv[0]|replace('"', '')|replace('\\', '')) ~ '"') %}{% endif %}
 {#- Ритм пользователя отчёта (не зависит от периода полоски): 4 — Daily (12+ активных дней
     из последних 30), 3 — Weekly (6+ недель из 8), 2 — Monthly (2+ из последних 3 месяцев),
     1 — Rare (заходил за 3 месяца реже), 0 — не заходил 3 месяца (в ритм не входит; все 0 — Dead). -#}

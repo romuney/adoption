@@ -615,7 +615,9 @@ function buildCSS() {
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
     P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
-    P + '-thi{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:3px;border-radius:50%;border:1px solid #c9ced6;color:var(--muted);font:600 9px/1 Georgia,serif;font-style:italic;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
+    // Значок «i» — один вид на всём борде (как -info в KPI чартов области и аудитории).
+    P + '-thi{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:3px;border-radius:50%;flex:0 0 auto;'
+      + 'border:1px solid var(--muted2);color:var(--muted);font-family:inherit;font-size:9px;line-height:1;font-weight:600;font-style:normal;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
     P + '-thi:hover{border-color:var(--act);color:var(--act);}',
     // Легенда «Ритма» в подсказке: пилюля + условие строкой, подсказка шире обычной.
     P + '-tip:has(' + P + '-leg){max-width:380px;padding:10px 12px;font-family:' + CFG.fonts.family + ';}',

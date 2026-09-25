@@ -717,7 +717,8 @@ function buildCSS() {
     P + '-k-sub{font-size:var(--fs-note);color:var(--muted);}',
     P + '-k-sub b{color:var(--ink2);font-weight:500;}',
     P + '-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;flex:0 0 auto;'
-      + 'border:1px solid var(--muted2);color:var(--muted);font-size:9px;font-weight:600;font-style:normal;cursor:help;}',
+      + 'border:1px solid var(--muted2);color:var(--muted);font-size:9px;line-height:1;font-weight:600;font-style:normal;cursor:help;}',
+    P + '-info:hover{border-color:var(--act);color:var(--act);}',
     P + '-delta{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-note);font-weight:500;border-radius:999px;padding:2px 8px;}',
     P + '-d-vs{font-weight:400;font-size:10.5px;opacity:.8;}',
     P + '-up{background:var(--green-bg);color:var(--green-tx);}',

@@ -46,7 +46,7 @@ var CFG = {
   },
   // Условия: порядок кнопок; q — ключ поиска; w — ширина выпадашки.
   kinds: [
-    { k: 'org', l: 'Подразделения', q: true, ph: 'Поиск по всем уровням УС', w: 460 },
+    { k: 'org', l: 'Управленческая структура', q: true, ph: 'Поиск по всем уровням УС', w: 460 },
     { k: 'spec', l: 'Специализация', q: true, ph: 'Найти специализацию', w: 360 },
     { k: 'stream', l: 'Стрим', q: true, ph: 'Найти стрим', w: 340 },
     { k: 'hq', l: 'HQ', w: 280 },
@@ -231,7 +231,7 @@ function tipHtml(o) {
 function tip(o) { return ' data-tip="' + esc(tipHtml(o)) + '"'; }
 // Что выбрано в условии: подпись кнопки.
 function picked(c, k) {
-  if (k === 'heads') return c.heads ? [c.heads === '1' ? 'только руководители' : 'без руководителей'] : [];
+  if (k === 'heads') return c.heads ? [c.heads === '1' ? 'Только руководители' : 'Без руководителей'] : [];
   return c[k].map(function (v) { return k === 'org' ? orgShort(v) : dash(v); });
 }
 
@@ -252,18 +252,30 @@ function buildCSS() {
     P + '-t-x{font-size:11.5px;color:' + C.ink2 + ';line-height:1.45;}',
     // ── Строка ──
     P + '-bar{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;width:100%;min-width:0;}',
-    P + '-ttl{display:flex;flex-direction:column;gap:1px;margin-right:4px;flex:0 0 auto;}',
-    P + '-ttl b{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:' + C.mut + ';font-weight:500;white-space:nowrap;}',
-    P + '-ttl span{font-size:12px;color:' + C.ink + ';font-weight:500;white-space:nowrap;}',
-    P + '-ttl span.pend{color:' + C.warnTx + ';}',
+    P + '-ttl{display:flex;flex-direction:column;gap:2px;margin-right:8px;flex:0 1 250px;min-width:170px;}',
+    P + '-ttl b{display:flex;align-items:center;gap:7px;font-size:13px;color:' + C.ink + ';font-weight:600;white-space:nowrap;}',
+    P + '-ttl b em{font-style:normal;font-size:10.5px;font-weight:500;color:' + C.mut + ';background:' + C.line2 + ';border-radius:999px;padding:1px 7px;}',
+    P + '-ttl b em.cond{color:' + C.actInk + ';background:' + C.blueBg + ';}',
+    P + '-ttl b em.pend{color:' + C.warnTx + ';background:' + C.warnBg + ';box-shadow:inset 0 0 0 1px ' + C.warnLine + ';}',
+    P + '-ttl span{font-size:11px;color:' + C.mut + ';line-height:1.3;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}',
     P + '-cf{display:inline-flex;align-items:center;gap:5px;height:32px;flex:0 1 auto;min-width:0;max-width:220px;border:1px solid ' + C.line + ';background:#fff;border-radius:9px;padding:0 9px 0 11px;cursor:pointer;font:inherit;font-size:12.5px;color:' + C.ink2 + ';}',
     P + '-cf:hover{border-color:#d3d8e0;}',
     P + '-cf.open{border-color:' + C.act + ';}',
     P + '-cf.on{background:' + C.blueBg + ';border-color:' + C.actLine + ';}',
-    P + '-cf-l{color:' + C.mut + ';flex:0 0 auto;white-space:nowrap;}',
-    P + '-cf-v{color:' + C.ink + ';font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-cf-l{color:' + C.ink2 + ';flex:0 0 auto;white-space:nowrap;}',
+    P + '-cf-v{color:' + C.ink + ';font-weight:500;min-width:0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-cf.on ' + P + '-cf-v{color:' + C.actInk + ';}',
     P + '-cf-car{color:' + C.mut + ';font-size:10px;flex:0 0 auto;}',
+    P + '-cf.on{padding-right:4px;}',
+    P + '-cf.on ' + P + '-cf-l{color:' + C.actInk + ';font-weight:500;}',
+    P + '-cf-n{flex:0 0 auto;min-width:18px;height:18px;border-radius:999px;background:' + C.act + ';color:#fff;font-size:10.5px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;}',
+    P + '-cf-x{flex:0 0 auto;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:' + C.actInk + ';font-size:14px;line-height:1;}',
+    P + '-cf-x:hover{background:rgba(0,115,160,.14);}',
+    P + '-sel{display:flex;flex-wrap:wrap;gap:5px;max-height:64px;overflow:auto;}',
+    P + '-chip{display:inline-flex;align-items:center;gap:3px;max-width:100%;height:24px;padding:0 3px 0 9px;border-radius:999px;background:' + C.blueBg + ';color:' + C.actInk + ';font-size:11.5px;font-weight:500;}',
+    P + '-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-chip button{border:0;background:transparent;color:' + C.actInk + ';cursor:pointer;font:inherit;font-size:13px;width:18px;height:18px;border-radius:50%;padding:0;}',
+    P + '-chip button:hover{background:rgba(0,115,160,.14);}',
     P + '-sp{flex:1 1 0;min-width:4px;}',
     P + '-cnt{font-size:12px;color:' + C.mut + ';white-space:nowrap;flex:0 0 auto;}',
     P + '-cnt b{color:' + C.ink + ';font-weight:600;font-variant-numeric:tabular-nums;}',
@@ -374,6 +386,15 @@ function adgRows() {
   if (list.length > CFG.listMax) out.push('<div class="' + CFG.ns + '-empty">и ещё ' + nf(list.length - CFG.listMax) + ' — уточните поиск</div>');
   return out.join('');
 }
+// Выбранные значения условия — чипами с × над списком (видно всё выбранное, даже если в списке не найти).
+function selChips(k) {
+  var d = state.draft, N = CFG.ns, pk = picked(d, k), raw = k === 'heads' ? [d.heads] : d[k], h = '';
+  for (var i = 0; i < pk.length; i++) {
+    h += '<span class="' + N + '-chip"' + (k === 'org' ? ' title="' + esc(raw[i]) + '"' : '') + '><span>' + esc(pk[i]) + '</span>' +
+      '<button type="button" data-caun1="' + esc(k + '|' + raw[i]) + '" aria-label="Убрать">×</button></span>';
+  }
+  return h;
+}
 function rowsOf(k) { return k === 'org' ? orgRows() : k === 'adg' ? adgRows() : k === 'heads' ? headRows() : valueRows(k); }
 function kindCfg(k) { for (var i = 0; i < CFG.kinds.length; i++) if (CFG.kinds[i].k === k) return CFG.kinds[i]; return null; }
 // Содержимое выпадашки открытого условия (узел — в body, см. БЛОК 6).
@@ -384,6 +405,7 @@ function ddHtml() {
   return '<div class="' + N + '-dd-h"><b>' + esc(o.l) + '</b><span>' + (o.k === 'adg'
       ? 'число — людей штата в группе'
       : 'число — сколько людей пройдут остальные условия') + '</span></div>' +
+    (pk.length ? '<div class="' + N + '-sel">' + selChips(o.k) + '</div>' : '') +
     (o.q ? searchBoxHtml(o.k, o.ph) : '') +
     (o.k === 'adg' ? '<div class="' + N + '-note">Пересечение групп с остальными условиями посчитает сервер после «Применить».</div>' : '') +
     '<div class="' + N + '-list" data-calist="' + o.k + '">' + rowsOf(o.k) + '</div>' +
@@ -396,19 +418,23 @@ function buildHTML() {
   var N = CFG.ns, d = state.draft, a = state.applied, f = caFacet(d), h = [];
   var pend = !caSame(d, a), on = caAttrsOn(d);
   h.push('<div class="' + N + '-root"><div class="' + N + '-bar">');
-  h.push('<div class="' + N + '-ttl"><b>Целевая аудитория</b>' + (pend
-    ? '<span class="pend">изменения не применены</span>'
-    : '<span>' + (caAttrsOn(a) ? 'по условиям' : 'по правам доступа') + '</span>') + '</div>');
+  // Слева — что это за строка и в каком состоянии ЦА.
+  var st = pend ? '<em class="pend">не применено</em>' : '<em' + (caAttrsOn(a) ? ' class="cond">по условиям' : '>по правам доступа') + '</em>';
+  h.push('<div class="' + N + '-ttl"><b>Целевая аудитория' + st + '</b><span>настройка для углублённого анализа: кого считаем аудиторией отчётов</span></div>');
+  // Пилюля условия: пусто — название; одно значение — само значение (без названия);
+  // несколько — название и счётчик. × снимает условие, клик по пилюле открывает выпадашку.
   for (var i = 0; i < CFG.kinds.length; i++) {
     var o = CFG.kinds[i], pk = picked(d, o.k), op = state.dd === o.k;
-    var val = !pk.length ? 'все' : pk[0] + (pk.length > 1 ? ' +' + (pk.length - 1) : '');
+    var body = !pk.length ? '<span class="' + N + '-cf-l">' + esc(o.l) + '</span>'
+      : pk.length === 1 ? '<span class="' + N + '-cf-v">' + esc(pk[0]) + '</span>'
+      : '<span class="' + N + '-cf-l">' + esc(o.l) + '</span><span class="' + N + '-cf-n">' + pk.length + '</span>';
     h.push('<button type="button" class="' + N + '-cf' + (op ? ' open' : '') + (pk.length ? ' on' : '') + '" data-cadd="' + o.k + '" aria-expanded="' + op + '"' +
-      (pk.length > 1 ? tip({ title: o.l, text: pk.join(', ') }) : '') + '>' +
-      '<span class="' + N + '-cf-l">' + esc(o.l) + '</span><span class="' + N + '-cf-v">' + esc(val) + '</span><span class="' + N + '-cf-car">▾</span></button>');
+      ' aria-label="' + esc(o.l + (pk.length ? ': ' + pk.join(', ') : '')) + '">' + body +
+      (pk.length ? '<span class="' + N + '-cf-x" data-caclr="' + o.k + '" aria-label="Снять условие">×</span>' : '<span class="' + N + '-cf-car">▾</span>') + '</button>');
   }
   h.push('<span class="' + N + '-sp"></span>');
   h.push('<span class="' + N + '-cnt">' + (on ? 'в ЦА <b>' + nf(f.n) + '</b>' + (d.adg.length ? ' без учёта групп' : '') : 'штат <b>' + nf(MODEL.staff) + '</b>') + '</span>');
-  h.push('<button type="button" class="' + N + '-btn" data-careset="1"' + (on || caAttrsOn(a) ? '' : ' disabled') + tip({ title: 'Сбросить условия', text: 'Вернуть ЦА «как роздан доступ»: у каждого отчёта — люди штата с правом на него.' }) + '>Сбросить</button>');
+  h.push('<button type="button" class="' + N + '-btn" data-careset="1"' + (on || caAttrsOn(a) ? '' : ' disabled') + ' aria-label="Сбросить условия: ЦА «как роздан доступ»">Сбросить</button>');
   h.push('<button type="button" class="' + N + '-btn primary" data-caapply="1"' + (!pend || (on && !f.n) ? ' disabled' : '') + '>Применить</button>');
   h.push('</div></div>');
   return buildCSS() + h.join('');
@@ -585,6 +611,16 @@ function buildHTML() {
 
     function onClick(e) {
       var d = state.draft;
+      // × на пилюле снимает условие целиком (черновик), выпадашку не открывает.
+      var clr = trigger(e.target, 'data-caclr');
+      if (clr) { var ck0 = clr.getAttribute('data-caclr'); if (ck0 === 'heads') d.heads = ''; else d[ck0] = []; render(); return; }
+      var un1 = trigger(e.target, 'data-caun1');
+      if (un1) {
+        var uv1 = un1.getAttribute('data-caun1'), uk1 = uv1.split('|')[0], uval1 = uv1.slice(uk1.length + 1);
+        if (uk1 === 'heads') d.heads = ''; else { var ui1 = d[uk1].indexOf(uval1); if (ui1 >= 0) d[uk1].splice(ui1, 1); }
+        render();
+        return;
+      }
       var cdd = trigger(e.target, 'data-cadd');
       if (cdd) { var k = cdd.getAttribute('data-cadd'); openDd(state.dd === k ? null : k); return; }
       var ctg = trigger(e.target, 'data-catog');

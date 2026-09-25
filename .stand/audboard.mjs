@@ -55,8 +55,9 @@ for (const s of JSON.parse(fs.readFileSync(scen, 'utf8'))) {
   }
   if (s.type) { await p.keyboard.type(s.type, { delay: 20 }); await p.waitForTimeout(200); }
   if (s.shot) await p.screenshot({ path: path.join(outDir, s.shot + '.png') });
+  const txt = s.text ? await (await frameOf(s.frame || 'bar')).evaluate((q) => Array.prototype.map.call(document.querySelectorAll(q), (e) => e.textContent.replace(/\s+/g, ' ').trim()).slice(0, 14), s.text) : undefined;
   const ifr = await p.evaluate(() => { const r = document.querySelector('iframe[data-f="bar"]').getBoundingClientRect(); return Math.round(r.height); });
-  log.push({ step: s.shot || s.click || 'reload', barIframe: ifr, emits: await p.evaluate(() => window.__emits.splice(0)) });
+  log.push({ step: s.shot || s.click || 'reload', barIframe: ifr, emits: await p.evaluate(() => window.__emits.splice(0)), txt });
 }
 console.log(JSON.stringify({ errs, log }, null, 1));
 await b.close();

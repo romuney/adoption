@@ -951,13 +951,14 @@ function buildCSS2() {
     P + '-btn.primary:hover{background:#1B4AA8;}',
     P + '-btn[disabled]{opacity:.45;cursor:default;}',
     // Настройки ЦА — жёлтая рамка (макет .scopebar.wide): слева «с чем сравниваем», справа база и условия.
-    P + '-scopebar{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);gap:20px;border:1px solid #f0dcb4;border-radius:10px;'
-      + 'background:linear-gradient(100deg,#fffaf1 0,#fff 55%);padding:14px 16px;flex:0 0 auto;}',
-    P + '-sb-col{min-width:0;display:flex;flex-direction:column;gap:8px;}',
-    P + '-sb-set{border-left:1px solid #f3e6cc;padding-left:20px;}',
+    P + '-scopebar{display:grid;grid-template-columns:minmax(210px,.62fr) minmax(0,1.38fr);gap:16px;align-items:center;border:1px solid #f0dcb4;border-radius:10px;'
+      + 'background:linear-gradient(100deg,#fffaf1 0,#fff 55%);padding:10px 14px;flex:0 0 auto;}',
+    P + '-sb-col{min-width:0;display:flex;flex-direction:column;gap:4px;}',
+    P + '-sb-set{border-left:1px solid #f3e6cc;padding-left:16px;}',
     P + '-as-t{font-size:var(--fs-body);font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.35;}',
     P + '-as-t ' + P + '-sig-chip{flex:0 0 auto;}',
-    P + '-as-x{font-size:var(--fs-note);color:var(--muted);line-height:1.5;}',
+    P + '-as-x{font-size:var(--fs-note);color:var(--muted);line-height:1.45;}',
+    P + '-as-h{color:#a08556;}',
     P + '-as-x b{color:var(--ink2);font-weight:500;}',
     P + '-sig-chip.warn{background:#fff0d6;color:#8a5a00;}',
     P + '-ca-row .' + CFG.ns + '-ca-l, ' + P + '-ca-row > ' + P + '-ca-l{flex:0 0 64px;}',
@@ -1787,13 +1788,13 @@ function caCardHtml() {
   if (cond) {
     title = 'Собрана по условиям';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
-    text = 'Все сотрудники с AD-логином, где ' + caCondText(c) + '. Эта ЦА — фильтр и для каталога слева: там отчёты, которыми она пользуется, и охват от неё.' +
-      ' Доступ к области есть у <b>' + ppl(t.acc) + '</b> — ступень «Есть доступ» на воронке.'
+    text = 'Все сотрудники с AD-логином, где ' + caCondText(c) + '. Доступ к области есть у <b>' + ppl(t.acc) + '</b> — ступень «Есть доступ». ' +
+      'Эта же ЦА — фильтр каталога слева.'
   } else if (W) {
     title = 'Доступ роздан почти всей компании';
     chip = '<span class="' + N + '-sig-chip warn">охват не считаем</span>';
     text = 'Права выданы через ' + (gTxt || 'широкую группу') + ' — это <b>' + ppl(t.ca) + '</b>, ' + pct(t.ca / (MODEL.staff || 1) * 100, 0) +
-      ' сотрудников. Такой знаменатель не описывает, для кого делали отчёт. <b>Настройте ЦА условиями</b> — и доли вернутся.';
+      ' сотрудников: такой знаменатель не описывает, для кого делали отчёт. Настройте ЦА условиями — и доли вернутся.';
   } else if (!gs.length && MODEL.acl.users) {
     title = 'Поимённый список доступа';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
@@ -1806,16 +1807,19 @@ function caCardHtml() {
     title = 'Доступ через AD-группы';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
     text = 'Права выданы ' + plural(gs.length, 'группе', 'группам', 'группам') + ' ' + gTxt +
-      (MODEL.acl.users ? ' плюс ' + nf(MODEL.acl.users) + ' поимённо' : '') + ' — всего <b>' + ppl(t.ca) + '</b>. Считаем их целевой аудиторией, пока не настроены условия.';
+      (MODEL.acl.users ? ' плюс ' + nf(MODEL.acl.users) + ' поимённо' : '') + '. Считаем их целевой аудиторией, пока не настроены условия.';
   }
+  // Компактно (правка владельца: с ЦА по условиям не влезала воронка): слева — что за ЦА и сколько,
+  // справа — пояснение и где её менять, одним абзацем.
   return '<div class="' + N + '-scopebar' + (W ? ' wide' : '') + '">' +
     '<div class="' + N + '-sb-col">' +
-      '<div class="' + N + '-cap2">Целевая аудитория — с чем сравниваем охват</div>' +
+      '<div class="' + N + '-cap2">Целевая аудитория</div>' +
       '<div class="' + N + '-as-t">' + esc(title) + chip + '</div>' +
-      '<div class="' + N + '-as-x">' + text + '</div>' +
-      '<div class="' + N + '-note2">' + (cond
-        ? 'Условия меняются в строке <b>«Целевая аудитория»</b> над листом; «Сбросить» там вернёт ЦА «как роздан доступ».'
-        : 'Собрать ЦА по структуре — в строке <b>«Целевая аудитория»</b> над листом: подразделения, специализация, стрим, HQ, IT, руководители, AD-группы.') + '</div>' +
+    '</div>' +
+    '<div class="' + N + '-sb-col ' + N + '-sb-set">' +
+      '<div class="' + N + '-as-x">' + text + ' <span class="' + N + '-as-h">' + (cond
+        ? 'Изменить или сбросить — в строке «Целевая аудитория» над листом.'
+        : 'Собрать ЦА по структуре — в строке «Целевая аудитория» над листом.') + '</span></div>' +
     '</div></div>';
 }
 // Воронка (порт U.funnelSvg макета): центрированные бары сверху вниз, ширина ровно

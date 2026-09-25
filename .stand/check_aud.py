@@ -112,6 +112,46 @@ for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['С
         ok(c is not None and int(c['users']) == reach, f'ЦА {cond} · отчёт {did}: зрителей ЦА в каталоге {c["users"] if c else "—"} == дошли из ЦА в панели {reach}')
         ok(c is not None and int(c['ca_n']) == caV + caH, f'ЦА {cond} · отчёт {did}: ca_n {c["ca_n"] if c else "—"} == ЦА панели {caV + caH}')
         ok(names == caH, f'ЦА {cond} · отчёт {did}: имён не заходивших {names} == ЦА без визитов {caH}')
+# Строка «Целевая аудитория» (файл 7, pa_ca_dict): число «в ЦА» считается в браузере по справочнику штата —
+# оно обязано совпасть с ЦА панели и ca_n каталога на сервере (условия без AD-групп: их считает только сервер).
+BAR = [x for x in os.listdir(D) if x.startswith('7. ')]
+if BAR:
+    brows = run(os.path.join(D, BAR[0]), {})
+    dct = {}
+    for r in brows:
+        if r['section'] == 'd': dct[(r['g'], r['k'])] = r['parent']
+    units = []
+    for r in brows:
+        if r['section'] != 's': continue
+        for ln in r['k'].split('\n'):
+            x = ln.split('\t')
+            units.append({'org': r['parent'], 'spec': dct[('spec', x[0])], 'stream': dct[('stream', x[1])], 'hd': x[2] == '1',
+                          'hq': dct[('hq', x[3])], 'it': dct[('it', x[4])], 'n': int(x[5])})
+    tot = [r for r in brows if r['section'] == 'total'][0]
+    ok(sum(u['n'] for u in units) == int(tot['n']) == staff, f'строка ЦА: справочник {sum(u["n"] for u in units)} == штат {staff}')
+    def bar_n(c):
+        def hit(u):
+            if c.get('ca_org_f') and not any(u['org'] == z or u['org'].startswith(z + ' › ') for z in c['ca_org_f']): return False
+            for k, f in [('spec', 'ca_spec_f'), ('stream', 'ca_stream_f'), ('hq', 'ca_hq_f'), ('it', 'ca_it_f')]:
+                if c.get(f) and u[k] not in c[f]: return False
+            if c.get('ca_head_f') == '1' and not u['hd']: return False
+            if c.get('ca_head_f') == 'n' and u['hd']: return False
+            return True
+        return sum(u['n'] for u in units if hit(u))
+    for cond in [{'ca_org_f': ['Блок 3'], 'ca_it_f': ['IT']}, {'ca_spec_f': ['Спец 3', 'Спец 5'], 'ca_head_f': 'n'},
+                 {'ca_org_f': ['Блок 2 › Деп 2.2'], 'ca_hq_f': ['HQ', 'HQ line support']}, {'ca_stream_f': ['Стрим 1']}, {'ca_hq_f': ['nonHQ']}]:
+        pan = run(AUD, dict(cond, mode_param='report', sel_f=[str(reps[0])]))
+        vv = vl(pan, 0)
+        caP = sum(1 for x in vv if x[16] == '1') + sum(int(l.split('\t')[7]) for r in pan if r['section'] == 'h' for l in r['k'].split('\n'))
+        # владельцы отчёта выпадают из ЦА панели (excv=1) — строка их не знает; сравниваем с поправкой
+        ids = stand.render(AUD, dict(cond, mode_param='report', sel_f=[str(reps[0])])).split('area AS (')[1].split('),\n  vw AS')[0]
+        own = int(q(f"""WITH area AS ({ids}) SELECT count() c FROM (SELECT o FROM area ARRAY JOIN owners_string AS o GROUP BY o
+          HAVING count() = (SELECT count() FROM area)) WHERE o IN (SELECT login FROM prod_proteus.pa_staff)""")[0]['c'])
+        bn = bar_n(cond)
+        ok(caP <= bn and bn - caP <= own, f'строка ЦА {cond}: «в ЦА» {bn} == ЦА панели {caP} (+ владельцы отчёта {bn - caP} ≤ {own})')
+    for st in ['prefer_column_name_to_alias = 1', 'enable_analyzer = 0']:
+        sql = stand.render(os.path.join(D, BAR[0]), {})
+        ok(norm(q(sql)) == norm(q(sql + '\nSETTINGS ' + st)), f'{st}: строка ЦА')
 # Отсечка имён: при NAMES_MAX меньше числа не заходивших строк 'n' нет, а итоги 'h' на месте.
 sql = stand.render(AUD, {}).replace('nnever <= 20000', 'nnever <= 100')
 rows = q(sql)

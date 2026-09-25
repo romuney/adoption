@@ -1385,6 +1385,9 @@ function buildHTML() {
     function curPt(e) { return { left: e.clientX, top: e.clientY, width: 0, height: 0, pt: true }; }
     // Тултип за курсором: на mousemove — только позиция, содержимое не пересобирается.
     function onTipMove(e) {
+      // Курсор уже не над целью подсказки (mouseout потерялся: быстрый выход, прокрутка, пересборка
+      // разметки по клику) — гасим.
+      if (state.tip && !trigger(e.target, 'data-tip')) { state.tip = null; hideTip(); return; }
       if (!state.tip || !state.tip.rect || !state.tip.rect.pt) return;
       state.tip.rect = curPt(e);
       showTip(state.tip.html || state.tip.key || '', state.tip.rect);
@@ -1617,6 +1620,15 @@ function buildHTML() {
     overlay.addEventListener('mousemove', onTipMove);
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('input', onInput);
+    // Подсказка не должна оставаться висеть: курсор ушёл из iframe чарта (mouseout на быстром выходе
+    // браузер не шлёт), окно потеряло фокус, список прокрутили под курсором.
+    state.tipOff = function () { if (state.tip) { state.tip = null; hideTip(); } };
+    overlay.addEventListener('scroll', function () { state.tipOff(); }, { passive: true });
+    if (!state.tipGuard) {
+      state.tipGuard = true;
+      document.addEventListener('mouseout', function (e) { if (!e.relatedTarget && state.tipOff) state.tipOff(); });
+      window.addEventListener('blur', function () { if (state.tipOff) state.tipOff(); });
+    }
 
     render();
 

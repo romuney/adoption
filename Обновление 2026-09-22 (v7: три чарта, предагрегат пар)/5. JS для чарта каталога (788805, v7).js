@@ -93,17 +93,17 @@ var CFG = {
     // снимает clampHostPad в mount().
     bg: '#f6f6f6',
     panel: '#fff',
-    act: '#0073A0',            // активный тон интерфейса
-    ret: '#5CC0EE',            // продолжающие — светлая ступень стека
+    act: '#245FD4',            // активный тон интерфейса
+    ret: '#7FA3EA',            // продолжающие — светлая ступень стека
     react: '#AA77FF',          // вернувшиеся
-    new: '#0073A0',            // новые — основание стека
+    new: '#245FD4',            // новые — основание стека
     views: '#5b6478',          // просмотры: вторая панель
     bench: '#c7c8cc',
-    seg2: '#218DAE', seg1: '#5CC0EE', seg0: '#d9dce1',
+    seg2: '#4A7BE0', seg1: '#7FA3EA', seg0: '#d9dce1',
     label: '#2b2b2b', axis: '#808080', axisLine: 'rgb(155, 164, 181)',
     split: '#f0f1f3',
     divLo: '#FFD758',          // ниже медианы — жёлтый
-    divHi: '#62CDFF',          // выше медианы — голубой
+    divHi: '#8AAAEC',          // выше медианы — голубой
     txt: '#3a3f4a', mut: '#8a909c',
     up: '#1e8e5a', down: '#c2452d', flat: '#8a909c',
     good: '#1e8e5a', high: '#c2452d', mid: '#b8860b'
@@ -551,7 +551,7 @@ function buildCSS() {
     '  --ink:#23272e;--ink2:#454b55;--muted:#8a909c;--muted2:#aab0bb;',
     '  --green:#12b048;--green-bg:#bff2cd;--green-tx:#0a8f3c;',
     '  --red:#f51f1f;--red-bg:#ffcccc;--red-tx:#d11414;',
-    '  --act:#0073A0;--act-ink:#015A7D;--blue-bg:#E8F4F9;--act-line:#C4E2ED;',
+    '  --act:#245FD4;--act-ink:#1B4AA8;--blue-bg:#EAF0FC;--act-line:#C3D4F5;',
     '  --new-bg:#F1E9FF;--new-tx:#6C36C9;',
     '  --fs-micro:9.5px;--fs-cap:10.5px;--fs-note:11.5px;--fs-body:12.5px;',
     '  --fs-lead:13.5px;--fs-hero:24px;',
@@ -601,8 +601,8 @@ function buildCSS() {
     P + '-fpill.own{background:var(--blue-bg);border-color:var(--act-line);color:var(--act-ink);padding-right:5px;}',
     P + '-fpill.ppl{background:#f3ecff;border-color:#e2d4ff;color:#5a2fc2;padding-right:5px;}',
     P + '-fpill.ext{background:var(--card);color:var(--ink2);}',
-    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(23,103,127,.14);color:inherit;font:inherit;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
-    P + '-fpill button:hover{background:rgba(23,103,127,.3);}',
+    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(27,74,168,.14);color:inherit;font:inherit;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
+    P + '-fpill button:hover{background:rgba(27,74,168,.3);}',
     P + '-frow-x{border:0;background:transparent;color:var(--act);font:inherit;font-size:var(--fs-note);cursor:pointer;padding:4px 6px;border-radius:6px;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-x:hover{background:var(--blue-bg);}',
     // ── /ВЫБРАННЫЕ ФИЛЬТРЫ ──

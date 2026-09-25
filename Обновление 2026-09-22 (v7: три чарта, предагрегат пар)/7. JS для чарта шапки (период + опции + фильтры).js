@@ -63,10 +63,10 @@ var CFG = {
     { key: 'adg', one: 'AD-группа', many: 'AD-группы' }
   ],
   colors: {
-    bg: '#f6f6f6', card: '#fff', act: '#0073A0', actInk: '#015A7D', blueBg: '#E8F4F9', actLine: '#C4E2ED',
+    bg: '#f6f6f6', card: '#fff', act: '#245FD4', actInk: '#1B4AA8', blueBg: '#EAF0FC', actLine: '#C3D4F5',
     ppl: '#5a2fc2', pplBg: '#f3ecff', pplLine: '#e2d4ff',
     ink: '#23272e', ink2: '#454b55', mut: '#8a909c', mut2: '#aab0bb', line: '#e7e9ee', line2: '#eef0f3',
-    bgAlt: '#eef0f3', ret: '#5CC0EE', bench: '#c7c8cc',
+    bgAlt: '#eef0f3', ret: '#7FA3EA', bench: '#c7c8cc',
     green: '#12b048', greenBg: '#d9f5e2', greenTx: '#0a8f3c', redBg: '#ffe0e0', redTx: '#c8251f'
   },
   fonts: {

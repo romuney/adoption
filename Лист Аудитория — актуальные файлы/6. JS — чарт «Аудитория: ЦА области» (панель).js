@@ -91,17 +91,17 @@ var CFG = {
   wideShare: 0.3, covLow: 40, accLow: 85, outHigh: 20,
   areaLabels: { report: ['Отчёт', 'Отчёты'], owner: ['Владелец', 'Владельцы'], collection: ['Коллекция', 'Коллекции'] },
   colors: {
-    bg: '#f6f6f6', panel: '#fff', act: '#0073A0',
-    ret: '#5CC0EE', react: '#AA77FF', new: '#0073A0',   // стек динамики: пришли впервые / не впервые
-    cov: '#0073A0', covP: '#5CC0EE',                    // охват: накоплено / за период
+    bg: '#f6f6f6', panel: '#fff', act: '#245FD4',
+    ret: '#7FA3EA', react: '#AA77FF', new: '#245FD4',   // стек динамики: пришли впервые / не впервые
+    cov: '#245FD4', covP: '#7FA3EA',                    // охват: накоплено / за период
     views: '#5b6478', bench: '#c7c8cc',
     label: '#2b2b2b', axis: '#808080', axisLine: 'rgb(155, 164, 181)',
     split: '#f0f1f3', txt: '#3a3f4a', mut: '#8a909c',
     // Сегменты ЦА (полоса над списком): постоянные → эпизодические → разовые → не заходили.
-    seg: ['#0073a0', '#2ba8c6', '#6cc6ec', '#dfe3e8'],
+    seg: ['#245FD4', '#4A7BE0', '#8AAAEC', '#dfe3e8'],
     // Ступени воронки: ЦА → доступ → открыли → вернулись → регулярно.
-    fun: ['#c3e6f7', '#8fd3f0', '#5CC0EE', '#2ba8c6', '#0073a0'],
-    freq: ['#c3e6f7', '#6cc6ec', '#2ba8c6', '#0073a0']
+    fun: ['#D3E0FA', '#A9C1F2', '#7FA3EA', '#4A7BE0', '#245FD4'],
+    freq: ['#D3E0FA', '#8AAAEC', '#4A7BE0', '#245FD4']
   },
   fonts: { family: 'Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif', val: 11, dense: 10, title: 13, title2: 12, legend: 12 },
   spacing: { stackGap: 26, barGap: 8, barMax: 72, barMin: 3, dense: 16, headroom: 1.3, headroomDense: 1.22 },
@@ -589,7 +589,7 @@ function buildCSS() {
     '  --ink:#23272e;--ink2:#454b55;--muted:#8a909c;--muted2:#aab0bb;',
     '  --green:#12b048;--green-bg:#bff2cd;--green-tx:#0a8f3c;',
     '  --red:#f51f1f;--red-bg:#ffcccc;--red-tx:#d11414;',
-    '  --blue:#0b57d0;--act:#0073A0;--act-ink:#015A7D;--blue-bg:#E8F4F9;--act-line:#C4E2ED;',
+    '  --blue:#245FD4;--act:#245FD4;--act-ink:#1B4AA8;--blue-bg:#EAF0FC;--act-line:#C3D4F5;',
     '  --fs-cap:10.5px;--fs-note:11.5px;--fs-body:12.5px;--fs-lead:13.5px;',
     '  --chart-gap:' + CFG.spacing.stackGap + 'px;color-scheme:light;}',
     P + '-root *{box-sizing:border-box;font-family:inherit;}',
@@ -775,8 +775,8 @@ function buildCSS() {
     P + '-fpill.own{background:var(--blue-bg);border-color:var(--act-line);color:var(--act-ink);padding-right:5px;}',
     P + '-fpill.ppl{background:#f3ecff;border-color:#e2d4ff;color:#5a2fc2;padding-right:5px;}',
     P + '-fpill.ext{background:var(--card);color:var(--ink2);}',
-    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(23,103,127,.14);color:inherit;font:inherit;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
-    P + '-fpill button:hover{background:rgba(23,103,127,.3);}',
+    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(27,74,168,.14);color:inherit;font:inherit;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
+    P + '-fpill button:hover{background:rgba(27,74,168,.3);}',
     P + '-frow-x{border:0;background:transparent;color:var(--act);font:inherit;font-size:var(--fs-note);cursor:pointer;padding:4px 6px;border-radius:6px;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-x:hover{background:var(--blue-bg);}',
     // ── /ВЫБРАННЫЕ ФИЛЬТРЫ ──
@@ -948,7 +948,7 @@ function buildCSS2() {
     P + '-aud-sum button{margin-left:auto;}',
     P + '-root{position:relative;}',
     P + '-btn.primary{background:var(--act);color:#fff;border-color:var(--act);}',
-    P + '-btn.primary:hover{background:#015A7D;}',
+    P + '-btn.primary:hover{background:#1B4AA8;}',
     P + '-btn[disabled]{opacity:.45;cursor:default;}',
     // Настройки ЦА — жёлтая рамка (макет .scopebar.wide): слева «с чем сравниваем», справа база и условия.
     P + '-scopebar{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1fr);gap:20px;border:1px solid #f0dcb4;border-radius:10px;'
@@ -975,7 +975,7 @@ function buildCSS2() {
     P + '-chip{display:inline-flex;align-items:center;gap:6px;max-width:100%;height:26px;padding:0 4px 0 10px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:var(--fs-note);font-weight:500;}',
     P + '-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-chip button{border:0;background:transparent;color:var(--act-ink);cursor:pointer;font:inherit;font-size:13px;width:20px;height:20px;border-radius:50%;}',
-    P + '-chip button:hover{background:rgba(0,115,160,.12);}',
+    P + '-chip button:hover{background:rgba(36,95,212,.12);}',
     P + '-acl{display:flex;flex-direction:column;gap:4px;}',
     P + '-acl-r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;font-size:var(--fs-note);color:var(--ink2);}',
     P + '-acl-r span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
@@ -2069,7 +2069,7 @@ function covChartSvg(ts, grain) {
   };
   var sC = line('covCum'), sA = line('covAct');
   var cid = revealClip(H);
-  var body = cid.defs + '<path clip-path="url(#' + cid.id + ')" d="' + sC + 'L' + r1(padL + (n - 1) * step + step / 2) + ' ' + (top + pH) + 'L' + r1(padL + step / 2) + ' ' + (top + pH) + 'Z" fill="rgba(0,115,160,.07)" stroke="none"/>' +
+  var body = cid.defs + '<path clip-path="url(#' + cid.id + ')" d="' + sC + 'L' + r1(padL + (n - 1) * step + step / 2) + ' ' + (top + pH) + 'L' + r1(padL + step / 2) + ' ' + (top + pH) + 'Z" fill="rgba(36,95,212,.07)" stroke="none"/>' +
     '<path class="ln" pathLength="1" stroke-dasharray="1" d="' + sC + '" fill="none" stroke="' + C.cov + '" stroke-width="2"/>' +
     '<path d="' + sA + '" fill="none" stroke="' + C.covP + '" stroke-width="1.6" stroke-dasharray="4 3" clip-path="url(#' + cid.id + ')"/>';
   var stepL = labelStep(n), bk = [];

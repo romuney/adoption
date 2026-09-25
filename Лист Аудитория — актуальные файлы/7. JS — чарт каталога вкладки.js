@@ -350,31 +350,6 @@ function repRows() {
   return out;
 }
 function pickList(k) { return state.picks[k] || []; }
-// Синхронизация выбора между каталогами двух листов (служебная колонка cat_sync_f → эхо state_j.sync
-// у другого каталога). Код выбора: «r=id,id;c=имя;o=логин», значения через encodeURIComponent,
-// отсортированы — одинаковый выбор даёт одинаковую строку.
-function picksCode(p) {
-  var ks = [['r', 'report'], ['c', 'collection'], ['o', 'owner']], out = [];
-  for (var i = 0; i < ks.length; i++) {
-    var l = (p[ks[i][1]] || []).map(function (v) { return encodeURIComponent(String(v)); }).sort();
-    out.push(ks[i][0] + '=' + l.join(','));
-  }
-  return out.join(';');
-}
-function picksDecode(code) {
-  var p = { report: [], collection: [], owner: [] }, map = { r: 'report', c: 'collection', o: 'owner' };
-  var parts = String(code || '').split(';');
-  for (var i = 0; i < parts.length; i++) {
-    var key = map[parts[i].charAt(0)], v = parts[i].slice(2);
-    if (!key || !v) continue;
-    var vals = v.split(',');
-    for (var j = 0; j < vals.length; j++) {
-      var x = decodeURIComponent(vals[j]);
-      p[key].push(key === 'report' ? pickId(x) : x);
-    }
-  }
-  return p;
-}
 function pickCount() {
   var n = 0;
   for (var i = 0; i < CFG.modes.length; i++) n += pickList(CFG.modes[i].key).length;
@@ -1462,8 +1437,7 @@ function buildHTML() {
     }
     function emitSel() {
       if (typeof applyCrossFilter !== 'function') return;
-      // + служебная cat_sync_f: весь выбор каталога — для каталога другого листа (панели её не читают).
-      var fl = areaMask().concat([{ column: 'cat_sync_f', operator: 'IN', value: [picksCode(state.picks)] }]), key = JSON.stringify(fl);
+      var fl = areaMask(), key = JSON.stringify(fl);
       if (state.lastEmit === key) return;
       state.lastEmit = key;
       applyCrossFilter(fl);
@@ -1644,17 +1618,7 @@ function buildHTML() {
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('input', onInput);
 
-    // Выбор, сделанный в каталоге другого листа, приходит эхом (state_j.sync). Новое эхо (не то, что уже
-    // видели) и отличается от своего выбора → принимаем его и переотправляем своей панели. Своё эхо
-    // каталог не видит (самовлияние выключено), поэтому обмен сходится за один круг.
-    var syncEcho = MODEL.stateJ && typeof MODEL.stateJ.sync === 'string' ? MODEL.stateJ.sync : null, adopted = false;
-    if (syncEcho != null && syncEcho !== state.syncSeen) {
-      state.syncSeen = syncEcho;
-      if (syncEcho !== picksCode(state.picks)) { state.picks = picksDecode(syncEcho); state.page = 0; adopted = true; }
-    }
-
     render();
-    if (adopted) emitSel();
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     // Старый observer отключаем: иначе он держит удалённый overlay.

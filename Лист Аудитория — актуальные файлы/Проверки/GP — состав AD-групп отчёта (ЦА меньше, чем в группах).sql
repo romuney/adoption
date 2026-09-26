@@ -4,7 +4,7 @@
 -- Поставь ID отчёта в строке «params» (ID — в ссылке на отчёт или в подсказке значка ссылки в каталоге).
 -- При 0 берутся ВСЕ отчёты, чьё имя подходит под шаблон из той же строки, — по каждому свои строки.
 -- Пришли таблицу целиком.
-with params as (select 0::int as dash_id, '%Team Pulse: Управленческая структура HQ%'::text as dash_like),
+with params as (select 34136::int as dash_id, '%Team Pulse: Управленческая структура HQ%'::text as dash_like),
 d as (
     select m.dashboard_id::int as dashboard_id, m.dashboard_nm from usr_cross_data.pa_dash_meta m, params p
     where (p.dash_id > 0 and m.dashboard_id = p.dash_id) or (p.dash_id = 0 and m.dashboard_nm like p.dash_like)
@@ -58,7 +58,7 @@ from grp g
 order by 6 desc;
 
 -- Второй запрос (отдельно): все права этих отчётов как есть — сколько групп и поимённых прав видит GP.
--- with params as (select 0::int as dash_id, '%Team Pulse: Управленческая структура HQ%'::text as dash_like)
+-- with params as (select 34136::int as dash_id, '%Team Pulse: Управленческая структура HQ%'::text as dash_like)
 -- select m.dashboard_id, m.dashboard_nm, a.access_type, count(*) as n, string_agg(a.user_or_group_name, ', ') as names
 -- from usr_cross_data.pa_dash_meta m cross join params p
 -- left join prod_v_sse.proteus_dashboard_access a on a.dashboard_id = m.dashboard_id

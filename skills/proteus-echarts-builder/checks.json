@@ -1,0 +1,920 @@
+{
+  "_": [
+    "ЕДИНЫЙ ИСТОЧНИК ИСТИНЫ о проверках скилла. Читают: validate.py (severity/modes),",
+    "selftest обоих чекеров (согласованность манифест ↔ call-sites ↔ фикстуры),",
+    "ретро-обзор при правках. Если правишь набор проверок — правь ЗДЕСЬ и рядом",
+    "с вызовом add()/check() одновременно: selftest ловит рассогласование и падает.",
+    "",
+    "Поля:",
+    "  domain: artifact  — про сдаваемый виджет (код/CSS/SQL/FIELDS)",
+    "          process   — про служебные файлы (NOTES/SELF_CHECK-формат)",
+    "          browser   — smoke.mjs, поведение в браузере",
+    "  sev:    block     — FAIL роняет сдачу",
+    "          warn      — виден в отчёте, сдачу не роняет",
+    "          info      — служебная строка (B0), не вердикт",
+    "  modes:  A | B | AB — в каком режиме работы проверка применима",
+    "  cond:   true      — проверка условная (печатается не всегда); покрытие",
+    "                      фикстурой желательно, но не обязательно",
+    "  fx:     hard      — (только browser) фикстура обязательна, selftest падает",
+    "",
+    "Severity в манифесте — БАЗА; флаг warn=True у вызова — условное понижение",
+    "(is_tpl, dyn и т.п.). Итог: FAIL понижается до WARN, если база warn ИЛИ флаг.",
+    "Проверки с modes без текущего режима вообще не попадают в отчёт."
+  ],
+  "version": 4,
+  "checks": {
+    "P5": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "node --check: синтаксис",
+      "owner": "validate"
+    },
+    "H3": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "каркас шаблона на месте",
+      "owner": "validate"
+    },
+    "H1": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "нет console.*",
+      "owner": "validate"
+    },
+    "H2": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет кода ради валидатора",
+      "owner": "validate"
+    },
+    "H4": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет упрощений в комментарии",
+      "owner": "validate"
+    },
+    "C1": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "блоки 1-7 по порядку",
+      "owner": "validate"
+    },
+    "C3a": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "canvas скрывается",
+      "owner": "validate"
+    },
+    "C3b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "старый overlay удаляется",
+      "owner": "validate"
+    },
+    "C3c": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "host position:relative",
+      "owner": "validate"
+    },
+    "C4": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "observer не зовёт render()",
+      "owner": "validate"
+    },
+    "C5": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "ветка нет данных",
+      "owner": "validate"
+    },
+    "C6": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "try/catch вокруг монтажа",
+      "owner": "validate"
+    },
+    "C6b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "catch выводит ошибку в overlay",
+      "owner": "validate"
+    },
+    "C7": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "состояние в __pvtState",
+      "owner": "validate"
+    },
+    "C8": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "есть esc()",
+      "owner": "validate"
+    },
+    "S1": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "option глобально, без мутаций",
+      "owner": "validate"
+    },
+    "S2": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "хост через _echarts_instance_",
+      "owner": "validate"
+    },
+    "S2b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "overlay монтируется appendChild",
+      "owner": "validate"
+    },
+    "S3": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "монтаж реально вызван",
+      "owner": "validate"
+    },
+    "S5": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "селекторы префиксованы",
+      "owner": "validate"
+    },
+    "S5b": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "префикс только через P/CFG.ns",
+      "owner": "validate"
+    },
+    "S5c": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "owner": "validate",
+      "what": "собранный CSS синтаксически валиден (две точки, скобки)"
+    },
+    "S5d": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "owner": "validate",
+      "what": "объявления CSS разделены ;"
+    },
+    "S6": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "классы со стилями",
+      "owner": "validate"
+    },
+    "S6b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "префикс класса в HTML и CSS совпадает",
+      "owner": "validate"
+    },
+    "S6c": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "классы без правила вообще",
+      "owner": "validate"
+    },
+    "S7": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "тултип монтируется в body",
+      "owner": "validate"
+    },
+    "S8": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "скрытие через style",
+      "owner": "validate"
+    },
+    "S9": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "слушатели вне render()",
+      "owner": "validate"
+    },
+    "S10": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "универсальный парсер даты",
+      "owner": "validate"
+    },
+    "S11a": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет backticks",
+      "owner": "validate"
+    },
+    "S11b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет стрелочных функций",
+      "owner": "validate"
+    },
+    "S11c": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет let/const",
+      "owner": "validate"
+    },
+    "S12": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет getElementById",
+      "owner": "validate"
+    },
+    "S14": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "render() вызывается",
+      "owner": "validate"
+    },
+    "S14b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "render() зовёт buildHTML()",
+      "owner": "validate"
+    },
+    "S15": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "классы без ведущей точки",
+      "owner": "validate"
+    },
+    "S16": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "координаты fixed-тултипа",
+      "owner": "validate"
+    },
+    "S17": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет глобальных слушателей в render()",
+      "owner": "validate"
+    },
+    "S18": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "состояние разметки обновляется",
+      "owner": "validate"
+    },
+    "S19": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "корень без фикс-ширины",
+      "owner": "validate"
+    },
+    "S19b": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "width:100% у корня",
+      "owner": "validate"
+    },
+    "S20": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "нет оконных @media",
+      "owner": "validate"
+    },
+    "S21": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "слушатели overlay безусловно",
+      "owner": "validate"
+    },
+    "T1": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "тултип вне пересобираемой разметки",
+      "owner": "validate"
+    },
+    "T2": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "тултип не пересоздаётся в render()",
+      "owner": "validate"
+    },
+    "T3": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "font-family в root и тултипе",
+      "owner": "validate"
+    },
+    "T4": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "font-family:inherit",
+      "owner": "validate"
+    },
+    "T5": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "скрытие тултипа снимается",
+      "owner": "validate"
+    },
+    "T6": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "hover не зовёт полный render()",
+      "owner": "validate"
+    },
+    "T7": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "триггеры видны smoke.mjs",
+      "owner": "validate"
+    },
+    "T7b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "имена атрибутов не склеены с CFG.ns",
+      "owner": "validate"
+    },
+    "D1a": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет import/require",
+      "owner": "validate"
+    },
+    "D1b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет fetch",
+      "owner": "validate"
+    },
+    "D1c": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет внешних URL/CDN",
+      "owner": "validate"
+    },
+    "D2": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "option — пустой scatter",
+      "owner": "validate"
+    },
+    "M4": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "CFG.fields заполнен/пуст по режиму",
+      "owner": "validate"
+    },
+    "M4b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "нет незакрытых [ЗАПОЛНИ]",
+      "owner": "validate"
+    },
+    "M7": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "читается весь data",
+      "owner": "validate"
+    },
+    "M7b": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "what": "Array.isArray на входе",
+      "owner": "validate"
+    },
+    "M7c": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "rawData[0] объяснён",
+      "owner": "validate"
+    },
+    "V1": {
+      "domain": "artifact",
+      "sev": "block",
+      "modes": "AB",
+      "cond": true,
+      "what": "экспорт строится из модели",
+      "owner": "validate"
+    },
+    "V2": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "экспорт не завязан на pageRows",
+      "owner": "validate"
+    },
+    "V3": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "comparator обрабатывает пустые",
+      "owner": "validate"
+    },
+    "V4": {
+      "domain": "artifact",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "в DOM идёт срез страницы",
+      "owner": "validate"
+    },
+    "K1": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "AB",
+      "what": "комплект файлов проекта",
+      "owner": "validate"
+    },
+    "K2": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "AB",
+      "cond": true,
+      "what": "болванка = копия шаблона (--template)",
+      "owner": "validate"
+    },
+    "K3": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "AB",
+      "what": "хелперы БЛОКА 2 из шаблона",
+      "owner": "validate"
+    },
+    "K3b": {
+      "domain": "process",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "машинерия тултипа не переписана",
+      "owner": "validate"
+    },
+    "Z0": {
+      "domain": "process",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "режим объявлен в NOTES §0",
+      "owner": "validate"
+    },
+    "Z1": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "A",
+      "what": "M в NOTES §2 синхронизирован машиной",
+      "owner": "validate"
+    },
+    "Z1b": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "A",
+      "what": "диапазоны покрывают 1..M без дыр",
+      "owner": "validate"
+    },
+    "Z2": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "A",
+      "what": "реестр NOTES §1 закрыт",
+      "owner": "validate"
+    },
+    "Z2b": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "A",
+      "what": "реестр начат до кода",
+      "owner": "validate"
+    },
+    "Z3": {
+      "domain": "process",
+      "sev": "warn",
+      "modes": "A",
+      "what": "все блоки DONE в §5",
+      "owner": "validate"
+    },
+    "Z4": {
+      "domain": "process",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "хвосты §6 проговорены",
+      "owner": "validate"
+    },
+    "Z5b": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "AB",
+      "what": "вопросы §4 имеют ответы",
+      "owner": "validate"
+    },
+    "Z6": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "AB",
+      "what": "отчёт: машинная часть свежая, суждения заполнены",
+      "owner": "check"
+    },
+    "F1": {
+      "domain": "process",
+      "sev": "block",
+      "modes": "AB",
+      "what": "FIELDS.md по шаблону",
+      "owner": "validate"
+    },
+    "F2": {
+      "domain": "process",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "галочки не за пользователя",
+      "owner": "validate"
+    },
+    "B0": {
+      "domain": "browser",
+      "sev": "info",
+      "modes": "AB",
+      "what": "playwright недоступен — раздел N/A",
+      "owner": "smoke"
+    },
+    "E1": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "ошибок в консоли нет",
+      "owner": "smoke"
+    },
+    "E2": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "overlay смонтирован в хост",
+      "owner": "smoke"
+    },
+    "E3": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "ветка catch не сработала",
+      "owner": "smoke"
+    },
+    "E4": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "canvas скрыт",
+      "owner": "smoke"
+    },
+    "E5": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "корень отрисован",
+      "owner": "smoke"
+    },
+    "E6": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "fx": "hard",
+      "what": "тултип отрисован в пикселях (центр+периметр)",
+      "owner": "smoke"
+    },
+    "E7": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "клик перерисовывает разметку",
+      "owner": "smoke"
+    },
+    "E8": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "перезапуск не плодит overlay",
+      "owner": "smoke"
+    },
+    "E9": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "тултип не дублируется",
+      "owner": "smoke"
+    },
+    "E10": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "ресайз без ошибок",
+      "owner": "smoke"
+    },
+    "E11": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "пустой data → noData",
+      "owner": "smoke"
+    },
+    "E12": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "hover не пересобирает разметку",
+      "owner": "smoke"
+    },
+    "E13": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "корень тянется за хостом",
+      "owner": "smoke"
+    },
+    "E14": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "SVG в пределах viewBox",
+      "owner": "smoke"
+    },
+    "E15": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "переключалки меняют экран",
+      "owner": "smoke"
+    },
+    "E15b": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "часть вкладок даёт один экран",
+      "owner": "smoke"
+    },
+    "E16": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "видна ровно одна панель",
+      "owner": "smoke"
+    },
+    "E17": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "select меняет экран",
+      "owner": "smoke"
+    },
+    "E18": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "выбор переживает перезапуск",
+      "owner": "smoke"
+    },
+    "E19": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "интерактив жив после перезапуска",
+      "owner": "smoke"
+    },
+    "E20": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "fx": "hard",
+      "what": "поповер открывается по data-action",
+      "owner": "smoke"
+    },
+    "E21": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "fx": "hard",
+      "what": "консоль чиста в открытом состоянии",
+      "owner": "smoke"
+    },
+    "E22": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "fx": "hard",
+      "what": "фокус после открытия в виджете",
+      "owner": "smoke"
+    },
+    "E23": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "fx": "hard",
+      "what": "поиск фильтрует список",
+      "owner": "smoke"
+    },
+    "E23b": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "fx": "hard",
+      "what": "каретка жива после фильтрации",
+      "owner": "smoke"
+    },
+    "E24": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "fx": "hard",
+      "what": "поповер закрывается (Esc/повтор/мимо)",
+      "owner": "smoke"
+    },
+    "ET0": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "cap триггеров",
+      "owner": "smoke"
+    },
+    "ET1": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "тултип появляется при наведении",
+      "owner": "smoke"
+    },
+    "ET2": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "what": "тултип на всех триггерах",
+      "owner": "smoke"
+    },
+    "ET3": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "тултип не выходит за вьюпорт",
+      "owner": "smoke"
+    },
+    "ET4": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "what": "тултип гаснет после ухода",
+      "owner": "smoke"
+    },
+    "EM1": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "cond": true,
+      "what": "тултипы макета: появление",
+      "owner": "smoke"
+    },
+    "EM2": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "тултипы макета: полнота",
+      "owner": "smoke"
+    },
+    "EM3": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "cond": true,
+      "what": "тултипы макета: вьюпорт",
+      "owner": "smoke"
+    },
+    "EM4": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "cond": true,
+      "what": "тултипы макета: гашение",
+      "owner": "smoke"
+    },
+    "EV1": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "триггеров не меньше макета",
+      "owner": "smoke"
+    },
+    "EV2": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "cond": true,
+      "what": "тултип работает как в макете",
+      "owner": "smoke"
+    },
+    "EV3": {
+      "domain": "browser",
+      "sev": "block",
+      "modes": "AB",
+      "cond": true,
+      "what": "виды триггеров макета перенесены",
+      "owner": "smoke"
+    },
+    "EV4": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "цветных элементов не меньше",
+      "owner": "smoke"
+    },
+    "EV5": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "палитра макета перенесена",
+      "owner": "smoke"
+    },
+    "EV6": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "подписи макета встречаются",
+      "owner": "smoke"
+    },
+    "EV7": {
+      "domain": "browser",
+      "sev": "warn",
+      "modes": "AB",
+      "cond": true,
+      "what": "нет выдуманных текстов",
+      "owner": "smoke"
+    }
+  }
+}

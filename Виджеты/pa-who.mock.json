@@ -1,0 +1,613 @@
+[
+ {
+  "section": "total",
+  "cnt": 1768
+ },
+ {
+  "section": "freq",
+  "k": "1",
+  "cnt": 475
+ },
+ {
+  "section": "freq",
+  "k": "2",
+  "cnt": 283
+ },
+ {
+  "section": "freq",
+  "k": "3",
+  "cnt": 370
+ },
+ {
+  "section": "freq",
+  "k": "4",
+  "cnt": 524
+ },
+ {
+  "section": "freq",
+  "k": "5",
+  "cnt": 116
+ },
+ {
+  "section": "ts",
+  "k": "29",
+  "users": 1079,
+  "new_u": 97,
+  "react_u": 101,
+  "views": 4828
+ },
+ {
+  "section": "ts",
+  "k": "28",
+  "users": 1102,
+  "new_u": 124,
+  "react_u": 132,
+  "views": 4772
+ },
+ {
+  "section": "ts",
+  "k": "27",
+  "users": 922,
+  "new_u": 147,
+  "react_u": 62,
+  "views": 2662
+ },
+ {
+  "section": "ts",
+  "k": "26",
+  "users": 1198,
+  "new_u": 79,
+  "react_u": 97,
+  "views": 3067
+ },
+ {
+  "section": "ts",
+  "k": "25",
+  "users": 922,
+  "new_u": 117,
+  "react_u": 114,
+  "views": 3798
+ },
+ {
+  "section": "ts",
+  "k": "24",
+  "users": 1122,
+  "new_u": 74,
+  "react_u": 112,
+  "views": 3918
+ },
+ {
+  "section": "ts",
+  "k": "23",
+  "users": 961,
+  "new_u": 143,
+  "react_u": 53,
+  "views": 3945
+ },
+ {
+  "section": "ts",
+  "k": "22",
+  "users": 944,
+  "new_u": 59,
+  "react_u": 101,
+  "views": 3755
+ },
+ {
+  "section": "ts",
+  "k": "21",
+  "users": 1159,
+  "new_u": 164,
+  "react_u": 135,
+  "views": 4619
+ },
+ {
+  "section": "ts",
+  "k": "20",
+  "users": 911,
+  "new_u": 86,
+  "react_u": 57,
+  "views": 3478
+ },
+ {
+  "section": "ts",
+  "k": "19",
+  "users": 1015,
+  "new_u": 91,
+  "react_u": 115,
+  "views": 3173
+ },
+ {
+  "section": "ts",
+  "k": "18",
+  "users": 1162,
+  "new_u": 135,
+  "react_u": 77,
+  "views": 3979
+ },
+ {
+  "section": "ts",
+  "k": "17",
+  "users": 1072,
+  "new_u": 109,
+  "react_u": 79,
+  "views": 4482
+ },
+ {
+  "section": "ts",
+  "k": "16",
+  "users": 1080,
+  "new_u": 103,
+  "react_u": 116,
+  "views": 3968
+ },
+ {
+  "section": "ts",
+  "k": "15",
+  "users": 1020,
+  "new_u": 120,
+  "react_u": 70,
+  "views": 2726
+ },
+ {
+  "section": "ts",
+  "k": "14",
+  "users": 1077,
+  "new_u": 121,
+  "react_u": 93,
+  "views": 3328
+ },
+ {
+  "section": "ts",
+  "k": "13",
+  "users": 1036,
+  "new_u": 70,
+  "react_u": 116,
+  "views": 3009
+ },
+ {
+  "section": "ts",
+  "k": "12",
+  "users": 936,
+  "new_u": 136,
+  "react_u": 92,
+  "views": 3496
+ },
+ {
+  "section": "ts",
+  "k": "11",
+  "users": 1180,
+  "new_u": 100,
+  "react_u": 104,
+  "views": 3879
+ },
+ {
+  "section": "ts",
+  "k": "10",
+  "users": 1089,
+  "new_u": 139,
+  "react_u": 75,
+  "views": 3141
+ },
+ {
+  "section": "ts",
+  "k": "9",
+  "users": 1085,
+  "new_u": 65,
+  "react_u": 79,
+  "views": 4398
+ },
+ {
+  "section": "ts",
+  "k": "8",
+  "users": 1130,
+  "new_u": 117,
+  "react_u": 90,
+  "views": 3976
+ },
+ {
+  "section": "ts",
+  "k": "7",
+  "users": 976,
+  "new_u": 87,
+  "react_u": 115,
+  "views": 2992
+ },
+ {
+  "section": "ts",
+  "k": "6",
+  "users": 1078,
+  "new_u": 71,
+  "react_u": 129,
+  "views": 4176
+ },
+ {
+  "section": "ts",
+  "k": "5",
+  "users": 1035,
+  "new_u": 80,
+  "react_u": 120,
+  "views": 3184
+ },
+ {
+  "section": "ts",
+  "k": "4",
+  "users": 966,
+  "new_u": 102,
+  "react_u": 108,
+  "views": 3118
+ },
+ {
+  "section": "ts",
+  "k": "3",
+  "users": 900,
+  "new_u": 92,
+  "react_u": 53,
+  "views": 4033
+ },
+ {
+  "section": "ts",
+  "k": "2",
+  "users": 983,
+  "new_u": 116,
+  "react_u": 96,
+  "views": 4224
+ },
+ {
+  "section": "ts",
+  "k": "1",
+  "users": 1116,
+  "new_u": 176,
+  "react_u": 79,
+  "views": 3296
+ },
+ {
+  "section": "ts",
+  "k": "0",
+  "users": 1049,
+  "new_u": 104,
+  "react_u": 118,
+  "views": 3685
+ },
+ {
+  "section": "ctx",
+  "g": "lvl3",
+  "k": "Розница",
+  "cnt": 445
+ },
+ {
+  "section": "ctx",
+  "g": "lvl3",
+  "k": "Технологии",
+  "cnt": 520
+ },
+ {
+  "section": "ctx",
+  "g": "lvl3",
+  "k": "Финансы",
+  "cnt": 380
+ },
+ {
+  "section": "ctx",
+  "g": "lvl3",
+  "k": "Риски",
+  "cnt": 423
+ },
+ {
+  "section": "ctx",
+  "g": "dep",
+  "k": "Департамент продаж",
+  "parent": "Розница",
+  "cnt": 221
+ },
+ {
+  "section": "ctx",
+  "g": "lvl4",
+  "k": "Департамент продаж",
+  "cnt": 221
+ },
+ {
+  "section": "ctx",
+  "g": "dep",
+  "k": "Департамент разработки",
+  "parent": "Технологии",
+  "cnt": 300
+ },
+ {
+  "section": "ctx",
+  "g": "lvl4",
+  "k": "Департамент разработки",
+  "cnt": 300
+ },
+ {
+  "section": "ctx",
+  "g": "dep",
+  "k": "Департамент рисков",
+  "parent": "Риски",
+  "cnt": 180
+ },
+ {
+  "section": "ctx",
+  "g": "lvl4",
+  "k": "Департамент рисков",
+  "cnt": 180
+ },
+ {
+  "section": "ctx",
+  "g": "dep",
+  "k": "Департамент аудита",
+  "parent": "Риски",
+  "cnt": 150
+ },
+ {
+  "section": "ctx",
+  "g": "lvl4",
+  "k": "Департамент аудита",
+  "cnt": 150
+ },
+ {
+  "section": "ctx",
+  "g": "dep",
+  "k": "Департамент финансов",
+  "parent": "Финансы",
+  "cnt": 210
+ },
+ {
+  "section": "ctx",
+  "g": "lvl4",
+  "k": "Департамент финансов",
+  "cnt": 210
+ },
+ {
+  "section": "ctx",
+  "g": "dep",
+  "k": "Департамент данных",
+  "parent": "Технологии",
+  "cnt": 190
+ },
+ {
+  "section": "ctx",
+  "g": "lvl4",
+  "k": "Департамент данных",
+  "cnt": 190
+ },
+ {
+  "section": "ctx",
+  "g": "spec",
+  "k": "Разработчик",
+  "cnt": 700
+ },
+ {
+  "section": "ctx",
+  "g": "spec",
+  "k": "Менеджер продукта",
+  "cnt": 400
+ },
+ {
+  "section": "ctx",
+  "g": "spec",
+  "k": "Аналитик",
+  "cnt": 350
+ },
+ {
+  "section": "ctx",
+  "g": "stream",
+  "k": "Технологии",
+  "cnt": 810
+ },
+ {
+  "section": "ctx",
+  "g": "stream",
+  "k": "Розничный бизнес",
+  "cnt": 600
+ },
+ {
+  "section": "ctx",
+  "g": "head",
+  "k": "1",
+  "cnt": 214
+ },
+ {
+  "section": "ctx",
+  "g": "adg",
+  "k": "proteus_fin",
+  "cnt": 300
+ },
+ {
+  "section": "ctx",
+  "g": "adg",
+  "k": "proteus_ops",
+  "cnt": 210
+ },
+ {
+  "section": "ctx",
+  "g": "adg",
+  "k": "proteus_dev",
+  "cnt": 150
+ },
+ {
+  "section": "ctx",
+  "g": "adg",
+  "k": "proteus_all",
+  "cnt": 95
+ },
+ {
+  "section": "list",
+  "login": "п.человек1",
+  "fio": "Полина Крылова",
+  "lvl3": "Розница",
+  "lvl4": "Департамент продаж",
+  "spec": "Разработчик",
+  "stream": "Розничный бизнес",
+  "exp": "",
+  "is_head": 1,
+  "days": 18,
+  "views": 54,
+  "last_dt": "2026-09-10",
+  "bin": 5
+ },
+ {
+  "section": "list",
+  "login": "п.человек2",
+  "fio": "Артём Казанцев",
+  "lvl3": "Технологии",
+  "lvl4": "Департамент разработки",
+  "spec": "Менеджер продукта",
+  "stream": "Технологии",
+  "exp": "",
+  "is_head": 0,
+  "days": 13,
+  "views": 52,
+  "last_dt": "2026-09-11",
+  "bin": 4
+ },
+ {
+  "section": "list",
+  "login": "п.человек3",
+  "fio": "Ольга Белова",
+  "lvl3": "Финансы",
+  "lvl4": "Департамент рисков",
+  "spec": "Аналитик",
+  "stream": "Розничный бизнес",
+  "exp": "",
+  "is_head": 0,
+  "days": 8,
+  "views": 40,
+  "last_dt": "2026-09-21",
+  "bin": 4
+ },
+ {
+  "section": "list",
+  "login": "п.человек4",
+  "fio": "Роман Гусев",
+  "lvl3": "Риски",
+  "lvl4": "Департамент аудита",
+  "spec": "Разработчик",
+  "stream": "Технологии",
+  "exp": "",
+  "is_head": 0,
+  "days": 3,
+  "views": 18,
+  "last_dt": "2026-09-13",
+  "bin": 2
+ },
+ {
+  "section": "list",
+  "login": "п.человек5",
+  "fio": "Полина Иванова",
+  "lvl3": "Розница",
+  "lvl4": "Департамент финансов",
+  "spec": "Менеджер продукта",
+  "stream": "Розничный бизнес",
+  "exp": "",
+  "is_head": 0,
+  "days": 15,
+  "views": 105,
+  "last_dt": "2026-09-14",
+  "bin": 4
+ },
+ {
+  "section": "list",
+  "login": "п.человек6",
+  "fio": "Ирина Новикова",
+  "lvl3": "Технологии",
+  "lvl4": "Департамент данных",
+  "spec": "Аналитик",
+  "stream": "Технологии",
+  "exp": "",
+  "is_head": 0,
+  "days": 10,
+  "views": 30,
+  "last_dt": "2026-09-15",
+  "bin": 4
+ },
+ {
+  "section": "list",
+  "login": "п.человек7",
+  "fio": "Павел Ершов",
+  "lvl3": "Финансы",
+  "lvl4": "Департамент продаж",
+  "spec": "Разработчик",
+  "stream": "Розничный бизнес",
+  "exp": "",
+  "is_head": 1,
+  "days": 5,
+  "views": 20,
+  "last_dt": "2026-09-16",
+  "bin": 3
+ },
+ {
+  "section": "list",
+  "login": "п.человек8",
+  "fio": "Мария Титова",
+  "lvl3": "Риски",
+  "lvl4": "Департамент разработки",
+  "spec": "Менеджер продукта",
+  "stream": "Технологии",
+  "exp": "",
+  "is_head": 0,
+  "days": 17,
+  "views": 85,
+  "last_dt": "2026-09-17",
+  "bin": 5
+ },
+ {
+  "section": "list",
+  "login": "п.человек9",
+  "fio": "Анна Морозова",
+  "lvl3": "Розница",
+  "lvl4": "Департамент рисков",
+  "spec": "Аналитик",
+  "stream": "Розничный бизнес",
+  "exp": "",
+  "is_head": 0,
+  "days": 12,
+  "views": 72,
+  "last_dt": "2026-09-18",
+  "bin": 4
+ },
+ {
+  "section": "list",
+  "login": "п.человек10",
+  "fio": "Кирилл Соколов",
+  "lvl3": "Технологии",
+  "lvl4": "Департамент аудита",
+  "spec": "Разработчик",
+  "stream": "Технологии",
+  "exp": "",
+  "is_head": 0,
+  "days": 7,
+  "views": 49,
+  "last_dt": "2026-09-19",
+  "bin": 3
+ },
+ {
+  "section": "list",
+  "login": "п.человек11",
+  "fio": "Елена Лебедева",
+  "lvl3": "Финансы",
+  "lvl4": "Департамент финансов",
+  "spec": "Менеджер продукта",
+  "stream": "Розничный бизнес",
+  "exp": "",
+  "is_head": 0,
+  "days": 1,
+  "views": 3,
+  "last_dt": "2026-09-21",
+  "bin": 1
+ },
+ {
+  "section": "list",
+  "login": "п.человек12",
+  "fio": "Наталья Петрова",
+  "lvl3": "Риски",
+  "lvl4": "Департамент данных",
+  "spec": "Аналитик",
+  "stream": "Технологии",
+  "exp": "",
+  "is_head": 0,
+  "days": 14,
+  "views": 56,
+  "last_dt": "2026-09-11",
+  "bin": 4
+ }
+]

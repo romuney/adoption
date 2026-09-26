@@ -1,0 +1,204 @@
+"""Регресс SQL v7 на стенде: инварианты сходимости чисел между датасетами.
+
+    python3 .stand/check_v7.py <папка поставки v7>
+
+1. Тело на pa_pair (файл 2) == запасное тело на дневном факте (файл 2b) — все
+   ячейки, все периоды и фильтры, включая корзины частоты и враждебный ввод.
+2. ИТОГО тела == total pa_people (пользователи, просмотры, постоянные).
+3. Строка отчёта каталога == KPI области pa_people при выборе этого отчёта.
+4. Людская шина: корзина / группа из pa_people → ИТОГО тела совпадает с числом
+   людей корзины / группы (клик в правой панели даёт ровно столько людей слева).
+5. Каждый датасет читает дневной факт не больше одного раза (сканы ≤ 1,05);
+   pa_people вне срезов cut:* его не читает вовсе (pa_pair + pa_dash_bkt).
+6. Шапка pa_strip (файл 4): одна строка эха условий, без выбора таблиц не
+   читает, подписи пилюль верные; KPI панели == ИТОГО каталога под опциями и областью.
+7. Старый анализатор ClickHouse (enable_analyzer = 0, как может стоять на боевом 24)
+   и prefer_column_name_to_alias = 1 (как ведёт себя боевой 24.8) дают те же строки, что новый.
+"""
+import os, sys, json
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stand
+
+D = sys.argv[1]
+f = lambda p: os.path.join(D, [x for x in os.listdir(D) if x.startswith(p)][0])
+BODY, FALL, PPL, PFALL, HDR = f('2. '), f('2b. '), f('3. '), f('3b. '), f('4. ')
+run = lambda p, c: stand.stat(stand.render(p, c))
+key = lambda r: (r['section'], r['dashboard_id'], r['group_key'], r['group_val'])
+bad = 0
+
+
+def ok(cond, msg):
+    global bad
+    print(('OK   ' if cond else 'FAIL ') + msg)
+    bad += 0 if cond else 1
+
+
+CASES = [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'},
+         {'pub_f': '0', 'act_f': '0', 'exc_f': '0'}, {'lvl3_f': ['Блок 3'], 'lvl4_f': ['Деп 5.0']},
+         {'adg_f': ['ADG7', 'ALL']}, {'login_f': ['u1', 'u2']}, {'exl_f': ['u1', 'u2', 'u5']}, {'freq_f': ['3', '4'], 'exl_f': ['u7']},
+         {'org_f': ['Блок 3 › Деп 3.3', 'Блок 5']}, {'org_f': ['Блок 1 › Деп 1.1 › Упр 1.1.1 › Отдел 1 › Команда 1'], 'freq_f': ['4']},
+         {'heads_f': '1', 'freq_f': ['4']}, {'heads_f': 'n', 'exl_f': ['u2']}, {'freq_f': ['3', '4']}, {'freq_f': ['5', 'x']},
+         {'freq_f': ['1'], 'period_param': 'w', 'spec_f': ['Спец 3']},
+         {'stream_f': ["x'); DROP TABLE t;--"]}, {'lvl3_f': ['a\\b']}]
+for c in CASES:
+    a, _, _, xa = run(BODY, c)
+    b, _, _, xb = run(FALL, c)
+    A = {key(r): r for r in a}; B = {key(r): r for r in b}
+    ok(A.keys() == B.keys() and all(A[k] == B[k] for k in A), f'тело == запасное {c}  (сканы факта: {xb})')
+for g in ['d', 'w', 'm', 'q']:
+    t = [r for r in run(BODY, {'period_param': g})[0] if r['section'] == 'total'][0]
+    p, _, _, xp = run(PPL, {'period_param': g})
+    pt = [r for r in p if r['section'] == 'total'][0]
+    ok((t['users'], t['views'], t['regular_users']) == (pt['users'], pt['views'], pt['regular']),
+       f'ИТОГО тела == total pa_people [{g}]  (pa_people сканов: {xp})')
+    ok('pa_evd_day' not in stand.render(PPL, {'period_param': g}) and xp <= 1.05,
+       f'pa_people не читает дневной факт — только pa_pair + pa_dash_bkt [{g}]')
+ok('pa_evd_day' in stand.render(PPL, {'mode_param': 'cut:spec', 'sel_f': ['Спец 3']}),
+   'pa_people в срезе панели «Аудитория» (cut:*) досчитывает просмотры по дневному факту')
+# pa_people на pa_pair + pa_dash_bkt (файл 3) == запасной на дневном факте (файл 3b) — все строки.
+pkey = lambda r: tuple(str(r[c]) for c in ('section', 'g', 'k', 'parent', 'login'))
+for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'},
+          {'mode_param': 'report', 'sel_f': ['1', '2', '5']}, {'mode_param': 'collection', 'sel_f': ['Колл 5']},
+          {'mode_param': 'owner', 'sel_f': ['own3']}, {'pub_f': '0', 'act_f': '0', 'exc_f': '0', 'period_param': 'w'},
+          {'mode_param': 'cut:spec', 'sel_f': ['Спец 3']}]:
+    # Упакованный список: порядок людей внутри строки подразделения не задан — сравниваем множеством.
+    srt = lambda rows: [dict(r, k='\n'.join(sorted(r['k'].split('\n')))) if r['section'] == 'list' else r for rows_ in [rows] for r in rows_]
+    A = {pkey(r): r for r in srt(run(PPL, c)[0])}; B = {pkey(r): r for r in srt(run(PFALL, c)[0])}
+    diff = [k for k in A.keys() | B.keys() if A.get(k) != B.get(k)]
+    ok(not diff, f'pa_people == запасной на факте {c}' + (f'  расхождений: {len(diff)}, напр. {sorted(diff)[:2]}' if diff else ''))
+# Список «Кто смотрит» — ВСЕ зрители (не топ-N): людей в упакованных строках == users; постоянные == корзины 4–5.
+for g in ['d', 'w', 'm', 'q']:
+    pr_ = run(PPL, {'period_param': g})[0]
+    tot_ = [r for r in pr_ if r['section'] == 'total'][0]
+    ppl_ = [ln.split('\t') for r in pr_ if r['section'] == 'list' for ln in r['k'].split('\n')]
+    ok(len(ppl_) == int(tot_['users']) and len({x[0] for x in ppl_}) == len(ppl_),
+       f'список «Кто смотрит» — все зрители: {len(ppl_)} == users {tot_["users"]} [{g}]')
+    ok(sum(1 for x in ppl_ if int(x[9]) >= 3) == int(tot_['regular']),
+       f'постоянные KPI == людей корзин 3–4: {tot_["regular"]} [{g}]')
+    ok({int(x[9]) for x in ppl_} <= {1, 2, 3, 4}, f'корзины 1–4 (четыре) [{g}]')
+cube = run(BODY, {})[0]
+for r in [x for x in cube if x['section'] == 'rep'][:5]:
+    pt = [x for x in run(PPL, {'mode_param': 'report', 'sel_f': [str(r['dashboard_id'])]})[0] if x['section'] == 'total'][0]
+    ok((r['users'], r['views'], r['regular_users']) == (pt['users'], pt['views'], pt['regular']), f'отчёт {r["dashboard_id"]}: строка каталога == KPI области')
+p = run(PPL, {})[0]
+# Корзины частоты — своя шкала у каждой гранулярности; клик по корзине → ИТОГО тела == людям корзины.
+for g in ['d', 'w', 'm', 'q']:
+    pg = run(PPL, {'period_param': g})[0]
+    fr = [x for x in pg if x['section'] == 'freq']
+    tt = [x for x in pg if x['section'] == 'total'][0]
+    ok(sum(int(x['users']) for x in fr) == int(tt['users']), f'корзины [{g}] делят всех людей периода без остатка ({tt["users"]})')
+    for r in fr:
+        t = [x for x in run(BODY, {'freq_f': [r['k']], 'period_param': g})[0] if x['section'] == 'total']
+        ok(str(t[0]['users'] if t else 0) == str(r['users']), f'корзина {r["k"]} [{g}]: людей {r["users"]} → ИТОГО тела')
+# Порог вселенной (≥500 просмотров за жизнь) — по всем зрителям отчёта, людской фильтр его не двигает:
+# логин / корзина не выкидывают из каталога отчёт, который эти люди смотрят (баг «Ничего не найдено»).
+univ = {x['dashboard_id'] for x in run(BODY, {})[0] if x['section'] == 'rep'}
+for lg in ['u3', 'u8', 'u40']:
+    seen = {int(v) for v in str(stand.S.query(f"SELECT DISTINCT dashboard_id FROM prod_proteus.pa_pair WHERE login = '{lg}' AND bitAnd(msk_d, 1073741823) != 0 AND ifNull(own_flg, 0) = 0", 'CSV')).split()} & univ
+    rr = {x['dashboard_id'] for x in run(BODY, {'login_f': [lg]})[0] if x['section'] == 'rep' and int(x['users']) > 0}
+    ok(seen and rr == seen, f'login_f={lg}: в каталоге все его отчёты из вселенной ({len(rr)} из {len(seen)})')
+# Корзина считается по заходам В ОТЧЁТ СТРОКИ: строка отчёта при корзине == числу на этой корзине
+# в панели при выборе этого отчёта (владелец: «как часто заходят именно в этот отчёт»).
+reps = sorted([x for x in run(BODY, {})[0] if x['section'] == 'rep'], key=lambda x: -int(x['users']))
+for g in ['d', 'm']:
+    for rp in reps[:3]:
+        did = str(rp['dashboard_id'])
+        fr = [x for x in run(PPL, {'period_param': g, 'mode_param': 'report', 'sel_f': [did]})[0] if x['section'] == 'freq']
+        for r in fr:
+            t = [x for x in run(BODY, {'period_param': g, 'freq_f': [r['k']]})[0] if x['section'] == 'rep' and str(x['dashboard_id']) == did]
+            ok(str(t[0]['users'] if t else 0) == str(r['users']), f'отчёт {did} [{g}] корзина {r["k"]}: в панели {r["users"]} → в строке каталога {t[0]["users"] if t else 0}')
+for c in [{'freq_f': ['1']}, {'freq_f': ['2']}]:
+    rr = {x['dashboard_id'] for x in run(BODY, c)[0] if x['section'] == 'rep'}
+    ok(rr <= univ and len(rr) > 0.5 * len(univ), f'{c}: отчёты каталога — внутри вселенной, порог не сужен ({len(rr)} из {len(univ)})')
+# Оргструктура: узел любой глубины (УС-3…УС-7) → ИТОГО тела == людям узла в панели.
+orgs = [x for x in p if x['section'] == 'ctx' and x['g'] == 'org' and int(x['users']) > 0]
+import re as _re
+ok(not [x for x in orgs if any(_re.fullmatch(r'[\s\W_]*', part) for part in x['k'].split(' › '))],
+   'в путях оргструктуры нет заглушек («-» на УС-5 обрывает путь, как пустой уровень)')
+for depth in range(1, 6):
+    for r in [x for x in orgs if len(x['k'].split(' › ')) == depth][:2]:
+        t = [x for x in run(BODY, {'org_f': [r['k']]})[0] if x['section'] == 'total'][0]
+        ok(str(t['users']) == str(r['users']), f'узел УС-{depth + 2} «{r["k"][-30:]}»: людей {r["users"]} → ИТОГО тела {t["users"]}')
+kids = {}
+for x in orgs: kids.setdefault(x['parent'], []).append(x)
+top = [x for x in orgs if x['parent'] == ''][0]
+ok(sum(int(x['users']) for x in kids.get(top['k'], [])) <= int(top['users']), f'дочерние узлы «{top["k"]}» не больше родителя')
+# AD-группы в pa_people выключены по умолчанию (WITH_ADG = false): запрос не читает ad_groups.
+ok('ad_groups' not in stand.render(PPL, {}) and not [x for x in p if x['g'] == 'adg'],
+   'pa_people по умолчанию не читает ad_groups (вид «AD-группа» выключен)')
+import tempfile
+PPL_ADG = os.path.join(tempfile.mkdtemp(), 'ppl_adg.sql')
+open(PPL_ADG, 'w').write(open(PPL).read().replace('{% set WITH_ADG = false %}', '{% set WITH_ADG = true %}'))
+pa = run(PPL_ADG, {})[0]
+ok(len([x for x in pa if x['g'] == 'adg']) > 0, 'WITH_ADG = true возвращает группы AD')
+for g, col in [('spec', 'spec_f'), ('adg', 'adg_f'), ('stream', 'stream_f')]:
+    for r in [x for x in (pa if g == 'adg' else p) if x['section'] == 'ctx' and x['g'] == g][:3]:
+        t = [x for x in run(BODY, {col: [r['k']]})[0] if x['section'] == 'total'][0]
+        ok(str(t['users']) == str(r['users']), f'группа {g}={r["k"]}: людей {r["users"]} → ИТОГО тела {t["users"]}')
+# Шапка pa_strip: одна строка эха; без выбора таблиц не читает; подписи пилюль.
+for c in [{}, {'period_param': 'q', 'pub_f': '0'}, {'mode_param': 'collection', 'sel_f': ['Колл 5']}]:
+    k, _, rr, _ = run(HDR, c)
+    ok(len(k) == 1 and json.loads(k[0]['state_j'])['period'] == c.get('period_param', 'd'), f'pa_strip: одна строка, state_j {k[0]["state_j"] if k else None}')
+    ok(rr <= 1, f'pa_strip без выбора отчётов/людей таблиц не читает {c} (строк прочитано: {rr})')
+rid = [x for x in cube if x['section'] == 'rep'][:2]
+k = run(HDR, {'mode_param': 'report', 'sel_f': [str(x['dashboard_id']) for x in rid], 'login_f': ['u1'], 'exl_f': ['u2'], 'heads_f': 'n'})[0][0]
+sj = json.loads(k['state_j'])
+ok(sorted(k['area_nm'].split('\n')) == sorted(x['dash_nm'] for x in rid) and sorted(l.split('\t')[0] for l in k['ppl_nm'].split('\n')) == ['u1', 'u2']
+   and sj['heads'] == 'n' and sj['exl'] == ['u2'] and sj['login'] == ['u1'], 'pa_strip: подписи отчётов и людей, эхо heads/exl/login')
+# KPI панели (total pa_people) == ИТОГО каталога по всем 4 периодам уже выше; + под опциями и областью:
+c = {'pub_f': '0', 'act_f': '0', 'exc_f': '0'}
+t = [x for x in run(BODY, c)[0] if x['section'] == 'total'][0]
+pt = [x for x in run(PPL, c)[0] if x['section'] == 'total'][0]
+ok((t['users'], t['views'], t['regular_users']) == (pt['users'], pt['views'], pt['regular']), f'KPI панели == ИТОГО каталога {c}')
+# Каталог свою область не слышит (самовлияние выкл.): клик по коллекции/владельцу → KPI панели == строке группы каталога.
+for gk in ['collection', 'owner']:
+    for r in [x for x in cube if x['section'] == 'grp' and x['group_key'] == gk][:3]:
+        pt = [x for x in run(PPL, {'mode_param': gk, 'sel_f': [r['group_val']]})[0] if x['section'] == 'total'][0]
+        ok((r['users'], r['views'], r['regular_users']) == (pt['users'], pt['views'], pt['regular']), f'{gk} «{r["group_val"]}»: строка каталога == KPI панели')
+# Исключение логинов: ИТОГО тела падает ровно на вклад исключённых (их строки list в pa_people).
+ex = [x for x in run(PPL, {})[0] if x['section'] == 'list'][:3]
+exl = [x['login'] for x in ex]
+t0 = [x for x in run(BODY, {})[0] if x['section'] == 'total'][0]
+t1 = [x for x in run(BODY, {'exl_f': exl})[0] if x['section'] == 'total'][0]
+act = [x for x in ex if int(x['views'] or 0) > 0]
+ok(int(t0['users']) - int(t1['users']) == len(act) and int(t0['views']) - int(t1['views']) == sum(int(x['views']) for x in ex),
+   f'exl_f {exl}: ИТОГО тела −{len(act)} чел., −{sum(int(x["views"]) for x in ex)} просм.')
+# Руководители и остальные делят людей без пересечения и не теряют никого с атрибутами.
+tot = lambda c: int(([x for x in run(BODY, c)[0] if x['section'] == 'total'] or [{'users': 0}])[0]['users'])
+na = int(str(stand.S.query("SELECT uniqExact(login) FROM prod_proteus.pa_pair WHERE bitAnd(msk_d, 1073741823) != 0 AND ifNull(own_flg, 0) = 0 AND dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE published = 1 AND actual_flg = 1) AND login NOT IN (SELECT login FROM prod_proteus.pa_emp_attrs)", 'CSV')).strip())
+u1, un, ut = tot({'heads_f': '1'}), tot({'heads_f': 'n'}), tot({})
+ok(u1 + un + na == ut, f'руководители {u1} + остальные {un} + без атрибутов {na} == все {ut}')
+# Сохранение датасета в Proteus: filter_values = AlwaysTrueObject (не список). Каждый SQL поставки
+# обязан отрендериться и исполниться (прецедент: «+» списков в pa_strip — unsupported operand).
+for pth in [BODY, FALL, PPL, PFALL, HDR]:
+    try:
+        sql = stand.render(pth, always_true=True); stand.S.query(sql, 'JSON'); err = ''
+    except Exception as e:
+        err = str(e).split('\n')[0][:160]
+    ok(not err, f'рендер при сохранении датасета (AlwaysTrueObject): {os.path.basename(pth)[:30]} {err}')
+# Бой без lvl5…lvl7 в pa_emp_attrs (GP-параграф «PA · атрибуты» ещё не перезапущен): с HAS_ORG = false
+# pa_people не обращается к этим колонкам, каталог — пока не выбран узел глубже УС-4.
+_src = open(PPL).read().replace('{% set HAS_ORG = true %}', '{% set HAS_ORG = false %}')
+_tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_noorg.sql'); open(_tmp, 'w').write(_src)
+_hit = [c for c in [{}, {'period_param': 'q'}] if any(x in stand.render(_tmp, c) for x in ('lvl5_', 'lvl6_', 'lvl7_'))]
+os.remove(_tmp)
+ok(not _hit, 'pa_people с HAS_ORG = false не читает lvl5…lvl7')
+ok(not any(x in stand.render(BODY, {'org_f': ['Блок 5 › Деп 5.2']}) for x in ('lvl5_', 'lvl6_', 'lvl7_')), 'каталог с узлом УС-4 не читает lvl5…lvl7')
+import json
+norm = lambda rows: sorted(json.dumps(r, sort_keys=True, ensure_ascii=False) for r in rows)
+for pth in [BODY, FALL, PPL, HDR]:
+    for c in [{}, {'period_param': 'q'}, {'mode_param': 'collection', 'sel_f': ['Колл 5', 'Колл 7']}, {'freq_f': ['2'], 'login_f': ['u3']}, {'freq_f': ['2']}, {'freq_f': ['1', '4'], 'period_param': 'm'}, {'exl_f': ['u1'], 'heads_f': '1'}]:
+        sql = stand.render(pth, c)
+        a = json.loads(stand.S.query(sql, 'JSON').bytes())['data']
+        b = json.loads(stand.S.query(sql + '\nSETTINGS enable_analyzer = 0', 'JSON').bytes())['data']
+        ok(norm(a) == norm(b), f'старый анализатор == новый: {os.path.basename(pth)[:24]} {c}')
+        # Боевой CH 24.8 ведёт себя как prefer_column_name_to_alias = 1: имя колонки бьёт одноимённый
+        # алиас (HAVING по msk при groupBitOr(msk) AS msk → Code 215 на клике по корзине).
+        for st in ['prefer_column_name_to_alias = 1', 'enable_analyzer = 0, prefer_column_name_to_alias = 1']:
+            try:
+                d = json.loads(stand.S.query(sql + '\nSETTINGS ' + st, 'JSON').bytes())['data']
+                ok(norm(a) == norm(d), f'{st}: {os.path.basename(pth)[:24]} {c}')
+            except Exception as e:
+                ok(False, f'{st}: {os.path.basename(pth)[:24]} {c} — {str(e)[:120]}')
+print('\nИТОГ:', 'всё сходится' if not bad else f'{bad} расхождений')
+sys.exit(1 if bad else 0)

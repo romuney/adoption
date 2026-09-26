@@ -82,7 +82,8 @@
 {% if have %}{% set _ = SJ.append('"mode":"' ~ pmode ~ '"') %}{% set _ = SJ.append('"sel":' ~ jal(sel)) %}{% endif %}
 {% if excv == '0' %}{% set _ = SJ.append('"exc":"0"') %}{% endif %}
 WITH
-  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
+  {# ds — начало истории событий: в первые 90 дней истории «пришли впервые» не отличить от давно не заходивших (чарт). #}
+  maxd AS (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds FROM prod_proteus.pa_pair),
   area AS (
     SELECT dashboard_id, owners_string, dashboard_nm
     FROM prod_proteus.pa_dash_meta
@@ -187,4 +188,4 @@ FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT da
 UNION ALL
 SELECT 'total', '', arrayStringConcat((SELECT groupArray(nm) FROM (SELECT toString(dashboard_nm) AS nm FROM area ORDER BY dashboard_id LIMIT 3)), '\n'), '',
   toInt64((SELECT count() FROM prod_proteus.pa_staff)), toInt64(0),
-  concat('{{ "{" ~ SJ|join(", ") }}', ', "md":"', toString(toDate((SELECT md FROM maxd))), '", "areaN":', toString((SELECT count() FROM area)), '}')
+  concat('{{ "{" ~ SJ|join(", ") }}', ', "md":"', toString(toDate((SELECT md FROM maxd))), '", "ds":"', toString(toDate((SELECT ds FROM maxd))), '", "areaN":', toString((SELECT count() FROM area)), '}')

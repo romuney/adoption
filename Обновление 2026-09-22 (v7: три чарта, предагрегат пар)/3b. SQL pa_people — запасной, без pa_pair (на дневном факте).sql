@@ -28,6 +28,7 @@
     (в 12 месяцах и 8 кварталах нет недостижимых «8–15» / «16+»). Та же таблица — в SQL каталога. -#}
 {% set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] %}
 {% set ADG_N = 100 %}
+{% set HIST_DAYS = 90 %}
 {% set WITH_ADG = false %}{#- true — вид «AD-группа» (дорого: сотни групп на человека, см. файл 3) -#}
 {% macro q(values) -%}
 {%- set out = [] -%}
@@ -47,7 +48,13 @@
 {% set have = pmode != '' and sel|length > 0 %}
 {% set repids = [] %}{% if have and pmode == 'report' %}{% for v in sel %}{% if v|int > 0 %}{% set _ = repids.append(v|int) %}{% endif %}{% endfor %}{% endif %}
 WITH
-  maxd AS (SELECT max(log_dttm) AS md FROM prod_proteus.pa_evd_day),
+  maxd AS (SELECT max(log_dttm) AS md, min(log_dttm) AS ds FROM prod_proteus.pa_evd_day),
+  {#- Начало истории и «надёжные» для новых периоды — как в основном pa_people (файл 3). -#}
+  hist AS (
+    SELECT toDate(ds) AS ds, addDays(toDate(ds), {{ HIST_DAYS }}) AS dt,
+      toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1) AS kt
+    FROM maxd
+  ),
   dash_ok AS (
     SELECT dashboard_id, owners_string
     FROM prod_proteus.pa_dash_meta
@@ -118,8 +125,8 @@ WITH
       countIf(cur) AS users, countIf(prv) AS users_prev,
       sum(if(rk.1 = 'ts', (kv).2[indexOf((kv).1, rk.5)], v_cur)) AS views,
       sum(v_prev) AS views_prev,
-      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }})) AS new_u,
-      countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }}) AS new_prev,
+      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= (SELECT kt FROM hist)) AS new_u,
+      countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }} AND fd_k <= (SELECT kt FROM hist)) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(rk.5 + 1)))) = 0) AS react_u,
       countIf(nb_cur > {{ FBIN[1] }}) AS regular, countIf(nb_prev > {{ FBIN[1] }}) AS regular_prev,
       countIf(prv AND NOT cur) AS sleeping,
@@ -215,7 +222,7 @@ FROM (
     NULL AS login,
     {% if have and pmode == 'report' and repids|length == 1 %}ifNull((SELECT any(dashboard_nm) FROM prod_proteus.pa_dash_meta WHERE dashboard_id = {{ repids[0] }}), ''){% else %}NULL{% endif %} AS fio,
     NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
-    NULL AS days, NULL AS last_dt, NULL AS bin,
+    toUInt32(greatest((SELECT kt FROM hist) + 1, 0)) AS days, (SELECT ds FROM hist) AS last_dt, NULL AS bin,
     toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
     toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
     toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,

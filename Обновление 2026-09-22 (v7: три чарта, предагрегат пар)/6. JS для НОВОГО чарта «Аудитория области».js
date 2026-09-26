@@ -131,6 +131,7 @@ var CFG = {
     ret: '#7FA3EA',            // продолжающие — светлая ступень стека
     react: '#AA77FF',          // вернувшиеся
     new: '#245FD4',            // новые — основание стека
+    nohist: '#D3D8E2',         // период в начале истории данных: новых не выделяем (одна серая ступень)
     views: '#5b6478',          // просмотры: вторая панель
     bench: '#c7c8cc',
     label: '#2b2b2b', axis: '#808080', axisLine: 'rgb(155, 164, 181)',
@@ -443,6 +444,9 @@ function buildModel() {
   var F = CFG.fields, i, r;
   var m = {
     grain: 'd', area: { mode: '', sel: [], name: '' }, kpi: null,
+    // Начало истории событий: kt — самый старый период, где новых можно отличить от давно не заходивших
+    // (до него ≥90 дней истории, SQL hist); старше — «мало истории». Нет в ответе (старый SQL) — всё надёжно.
+    hist: { kt: Infinity, ds: null },
     ts: [], total: 0, freqCtx: {}, labels: freqLabels('d'),
     // gm[разрез][ключ] — группа с полными метриками (серверные, точные по области);
     // orgKids[путь] — дочерние узлы оргструктуры (корни — под '').
@@ -460,6 +464,7 @@ function buildModel() {
       var kv = String(r[F.k] == null ? '' : r[F.k]);
       m.area.sel = kv ? kv.split('\n') : [];
       m.area.name = String(r[F.fio] || '');
+      if (r[F.days] != null && r[F.days] !== '') m.hist = { kt: (num(r[F.days]) || 0) - 1, ds: toDate(r[F.last_dt]) };
     } else if (sec === 'total') {
       m.kpi = {
         users: num(r[F.users]) || 0, users_prev: num(r[F.users_prev]) || 0,
@@ -543,6 +548,7 @@ function buildModel() {
     var p = byK[kb] || { k: kb, users: 0, new_u: 0, react_u: 0, views: 0 };
     // Продолжающих колонки нет: остаток стека, ниже нуля не бывает.
     p.ret = Math.max(0, p.users - p.new_u - p.react_u);
+    p.nohist = p.k > m.hist.kt;  // начало истории: столбик одной серой ступенью, без деления на новых
     full.push(p);                // СТАРЫЕ бакеты (большой k) слева, свежий справа
   }
   m.ts = m.kpi || m.ts.length ? full : [];
@@ -637,7 +643,7 @@ function obsList(k, G, what) {
       body: nf(k.sleeping) + ' из ' + nf(k.users_prev) + ' зрителей предыдущего периода (' + pct(shGone) + ') в текущем не заходили.',
       rule: 'доля ушедших ≥15% аудитории прошлого периода' });
   }
-  if (shNew >= 22) {
+  if (shNew >= 22 && MODEL.hist.kt >= (G.n || 0) - 1) {
     out.push({ sev: 'good',
       lead: 'Новые дают ' + pct(shNew) + ' аудитории',
       body: 'Из ' + nf(k.users) + ' пользователей ' + nf(k.new_u) + ' пришли впервые: рост идёт за счёт притока.',
@@ -977,6 +983,8 @@ function buildCSS() {
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
     P + '-sig-chip.neutral{background:#f3f4f6;color:var(--muted);}',
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;flex:0 0 auto;}',
+    P + '-nh-sw{display:inline-block;width:10px;height:10px;border-radius:2px;background:' + CFG.colors.nohist + ';margin-right:6px;vertical-align:-1px;}',
+    P + '-ct-nh td{opacity:.55;}',
 
     // ── Динамика: каптионы и легенда стека ──
     P + '-dynhead{display:flex;align-items:center;gap:12px;min-height:24px;flex-wrap:wrap;row-gap:4px;}',
@@ -1817,9 +1825,18 @@ function cohortCells(row) {
   }
   return cells;
 }
+// Когорта в начале истории (месяц раньше, чем «начало истории + 90 дней»): среди «пришедших впервые»
+// есть давно не заходившие — удержание завышено. В таблице помечена, в среднюю кривую не входит.
+function cohNoHist(cm) {
+  var ds = MODEL.hist.ds;
+  if (!ds) return false;
+  var t = new Date(Date.UTC(ds.y, ds.m, ds.d) + 90 * 86400000);
+  return Date.UTC(cm.y, cm.m, 1) < t.getTime();
+}
 function retentionPoints(rows) {
   var byAge = {};
   for (var c = 0; c < rows.length; c++) {
+    if (cohNoHist(rows[c].month)) continue;
     var cells = cohortCells(rows[c]);
     for (var a in cells) {
       if (!Object.prototype.hasOwnProperty.call(cells, a)) continue;
@@ -1934,7 +1951,8 @@ function cohortTableHtml(o) {
   for (i = 0; i < rows.length; i++) {
     var row = rows[i], cm = row.month;
     var lbl = MONTHS[cm.m] + ' ' + String(cm.y).slice(2);
-    h += '<tr><td class="txt"' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, text: o.firstTip || 'Месяц первого визита' }) + '>' + esc(lbl) + '</td>' +
+    var cnh = cohNoHist(cm);
+    h += '<tr' + (cnh ? ' class="' + CFG.ns + '-ct-nh"' : '') + '><td class="txt"' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, text: cnh ? histNote(false, true) + ' Удержание этой когорты завышено, в среднюю кривую она не входит.' : (o.firstTip || 'Месяц первого визита') }) + '>' + esc(lbl) + (cnh ? ' *' : '') + '</td>' +
       '<td' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, rows: [{ label: 'Пришли впервые', value: nf(row.size), color: CFG.colors.act }] }) + '>' +
       '<div class="' + CFG.ns + '-ct-sz"><span class="' + CFG.ns + '-ct-bar"><i style="width:' +
       (100 * row.size / maxSize).toFixed(1) + '%"></i></span><b>' + nf(row.size) + '</b></div></td>';
@@ -2105,6 +2123,26 @@ function kpiCard(o) {
     '</div>';
 }
 
+// KPI «Новых» с учётом начала истории: весь период надёжен — как было; частично — новые только
+// с первого надёжного периода (подпись «с …», без сравнения); ни одного — прочерк.
+function newKpi(k, G, dl, dPct) {
+  var kt = MODEL.hist.kt, n = G.n, ds = MODEL.hist.ds ? fmtDate(MODEL.hist.ds) : '';
+  var hint = { title: 'Новые', text: 'Первый визит в отчёты области пришёлся на этот период.' };
+  if (kt >= n - 1) {
+    return kpiCard({ label: 'Новых', value: nf(k.new_u), hint: hint,
+      delta: kt >= 2 * n - 1 ? dl(dPct(k.new_u, k.new_prev), { vs: G.vs, unit: '%' }) : delta(null, { why: 'Предыдущий период — в начале истории данных' + (ds ? ' (с ' + ds + ')' : '') + ': новых там не отличить.' }),
+      sub: 'доля аудитории: <b>' + pct(k.users ? k.new_u / k.users * 100 : 0) + '</b>' });
+  }
+  hint = { title: 'Новые', text: 'История событий начинается ' + (ds ? 'с ' + ds : 'недавно') + ': в первые 90 дней «впервые в данных» — это и давно не заходившие. ' +
+    (kt >= 0 ? 'Поэтому новые считаются только за часть периода — с ' + bucketTitle(tsDate(kt, MODEL.grain), MODEL.grain) + '.' : 'Для этого периода новых не отличить — возьмите период короче.') };
+  if (kt < 0) {
+    return kpiCard({ label: 'Новых', value: '—', hint: hint, delta: delta(null, { why: hint.text }), sub: 'история данных с <b>' + esc(ds) + '</b>' });
+  }
+  var t0 = tsDate(kt, MODEL.grain);
+  return kpiCard({ label: 'Новых', value: nf(k.new_u), hint: hint, delta: delta(null, { why: hint.text }),
+    sub: 'с <b>' + esc(MODEL.grain === 'q' ? 'Q' + (Math.floor(t0.m / 3) + 1) + ' ' + t0.y : MONTHS[t0.m] + ' ' + t0.y) + '</b>, раньше — мало истории' });
+}
+
 // Пять карточек области (pa_people, секция total). Меняются от клика в
 // каталоге слева и от периода/опций шапки. Предыдущий период сравнивается
 // только там, где он целиком помещается в 13 месяцев истории (30 дней, 20 недель).
@@ -2130,10 +2168,7 @@ function kpisHtml() {
       hint: { title: 'Просмотры', text: 'Сумма открытий отчётов области за период.' },
       delta: dl(dPct(k.views, k.views_prev), { vs: G.vs, unit: '%' }),
       sub: 'на пользователя: <b>' + nf(k.users ? k.views / k.users : 0, 1) + '</b>' }) +
-    kpiCard({ label: 'Новых', value: nf(k.new_u),
-      hint: { title: 'Новые', text: 'Первый визит в отчёты области пришёлся на этот период.' },
-      delta: dl(dPct(k.new_u, k.new_prev), { vs: G.vs, unit: '%' }),
-      sub: 'доля аудитории: <b>' + pct(k.users ? k.new_u / k.users * 100 : 0) + '</b>' }) +
+    newKpi(k, G, dl, dPct) +
     kpiCard({ label: 'Постоянных', value: pct(shReg),
       hint: { title: 'Постоянные', text: 'Заходили ' + G.reg + ' и более разных ' + G.units + ' за период — та же мера, что столбец «Пост.» каталога.' },
       delta: dl(shReg - shRegPrev, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
@@ -2281,6 +2316,7 @@ function pathTop(x, y, w, h) {
 
 // Активные пользователи периода с учётом погашенных ступеней легенды.
 function stackAct(p) {
+  if (p.nohist) return p.users;
   var off = state.legendOff, s = 0;
   if (!off.new) s += p.new_u;
   if (!off.react) s += p.react_u;
@@ -2312,7 +2348,7 @@ function usersChartSvg(ts, grain) {
     var aU = stackAct(p);
     var yTop = top + pH - (aU / topU) * pH;
     // Стек снизу вверх: новые → вернувшиеся → продолжающие.
-    var segs = [
+    var segs = p.nohist ? [{ h: (p.users / topU) * pH, c: C.nohist }] : [
       { h: state.legendOff.new ? 0 : (p.new_u / topU) * pH, c: C.new },
       { h: state.legendOff.react ? 0 : (p.react_u / topU) * pH, c: C.react },
       { h: state.legendOff.ret ? 0 : (p.ret / topU) * pH, c: C.ret }
@@ -2332,8 +2368,8 @@ function usersChartSvg(ts, grain) {
     body += '</g>';
     // Подпись значения — у КАЖДОГО столбика (макет: valueLabel без пропусков).
     body += '<text class="fade" x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
-      '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(compact(aU)) + '</text>';
-    bk.push({ k: p.k, u: p.users, nu: p.new_u, re: p.react_u, rt: p.ret, v: p.views });
+      '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(p.nohist && !p.users ? '—' : compact(aU)) + '</text>';
+    bk.push({ k: p.k, u: p.users, nu: p.new_u, re: p.react_u, rt: p.ret, v: p.views, nh: p.nohist ? 1 : 0 });
   }
   body += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
   body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent" data-dyn="users" data-n="' + n +
@@ -2392,6 +2428,15 @@ function viewsChartSvg(ts, grain) {
     '" role="img" aria-label="Просмотры по периодам">' + body + '</svg>';
 }
 
+// Подпись про начало истории событий: новых от давно не заходивших там не отличить.
+function histNote(all, short) {
+  var ds = MODEL.hist.ds ? fmtDate(MODEL.hist.ds) : '';
+  var why = 'история событий начинается ' + (ds ? 'с ' + ds : 'недавно') + ', и «впервые в данных» здесь значит и «давно не заходил»';
+  if (short) return 'Новых не выделяем: ' + why + '.';
+  return (all ? 'Весь период — в начале истории данных' : 'Серые столбики — начало истории данных') +
+    ': новых не выделяем, ' + why + '. Нужно хотя бы 90 дней истории до начала периода.';
+}
+
 // Динамика целиком: две панели, каждая со своим HTML-заголовком.
 function dynamicsHtml(ts, grain, opts) {
   var o = opts || {};
@@ -2413,7 +2458,7 @@ function dynamicsHtml(ts, grain, opts) {
     m: ['в этом месяце', 'весь предыдущий месяц', 'и в предыдущем месяце'],
     q: ['в этом квартале', 'весь предыдущий квартал', 'и в предыдущем квартале'] }[grain] || ['в этом периоде', 'весь предыдущий период', 'и в предыдущем периоде'];
   var legDef = {
-    'new': 'Впервые открыли отчёты области ' + P[0] + ': раньше (за всю историю, около года) не заходили ни разу.',
+    'new': 'Впервые открыли отчёты области ' + P[0] + ': раньше не заходили ни разу' + (MODEL.hist.ds ? ' (история событий — с ' + fmtDate(MODEL.hist.ds) + ')' : '') + '.',
     react: 'Заходили когда-то раньше, но ' + P[1] + ' не открывали — вернулись ' + P[0] + ' после паузы.',
     ret: 'Заходили ' + P[0] + ' ' + P[2] + ' — ядро, смотрят без перерыва.'
   };
@@ -2424,6 +2469,9 @@ function dynamicsHtml(ts, grain, opts) {
   }
   h += '</div></div>';
   h += usersChartSvg(ts, grain);
+  var nh = 0;
+  for (i = 0; i < ts.length; i++) if (ts[i].nohist) nh++;
+  if (nh) h += '<div class="' + CFG.ns + '-tbl-note"><i class="' + CFG.ns + '-nh-sw"></i>' + histNote(nh === ts.length) + '</div>';
   h += '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">Просмотры</span>' +
     '<div class="' + CFG.ns + '-sub-tabs tiny" role="tablist">' +
     tabsHtml('viewsMode', [
@@ -2448,6 +2496,7 @@ function dynTipHtml(el, i) {
     return tipHtml({ title: bt, rows: rowsV });
   }
   var rows = [{ label: 'Всего', value: nf(bk.u) }];
+  if (bk.nh) return tipHtml({ title: bt, rows: rows, note: [histNote(false, true)] });
   if (!off.new) rows.push({ label: 'Новые', value: nf(bk.nu) + ' · ' + pct(bk.u ? bk.nu / bk.u * 100 : 0, 0), color: C.new });
   if (!off.react) rows.push({ label: 'Вернувшиеся', value: nf(bk.re), color: C.react });
   if (!off.ret) rows.push({ label: 'Продолжающие', value: nf(bk.rt), color: C.ret });

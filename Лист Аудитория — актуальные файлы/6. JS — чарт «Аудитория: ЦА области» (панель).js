@@ -93,6 +93,7 @@ var CFG = {
   colors: {
     bg: '#f6f6f6', panel: '#fff', act: '#245FD4',
     ret: '#7FA3EA', react: '#AA77FF', new: '#245FD4',   // стек динамики: пришли впервые / не впервые
+    nohist: '#D3D8E2',                                  // период в начале истории: «впервые» не выделяем
     cov: '#245FD4', covP: '#7FA3EA',                    // охват: накоплено / за период
     views: '#5b6478', bench: '#c7c8cc',
     label: '#2b2b2b', axis: '#808080', axisLine: 'rgb(155, 164, 181)',
@@ -259,6 +260,23 @@ function tsDate(k, grain) {
   return { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate() };
 }
 
+// Начало истории событий: «пришли впервые» надёжно, только если до начала периода ≥ 90 дней истории
+// (как SQL hist в pa_people). kt — возраст самого старого такого периода; старше — «мало истории».
+// Нет даты начала (старый SQL) — всё надёжно.
+function histKt(md, ds, grain, n) {
+  if (!md || !ds) return Infinity;
+  var T = Date.UTC(ds.y, ds.m, ds.d) + 90 * 86400000, kt = -1;
+  for (var k = 0; k < 2 * n; k++) {
+    var y = md.y, mo = md.m, d = md.d, s;
+    if (grain === 'd') s = Date.UTC(y, mo, d - k);
+    else if (grain === 'w') { var wd = (new Date(Date.UTC(y, mo, d)).getUTCDay() + 6) % 7; s = Date.UTC(y, mo, d - wd - 7 * k); }
+    else if (grain === 'm') s = Date.UTC(y, mo - k, 1);
+    else s = Date.UTC(y, mo - mo % 3 - 3 * k, 1);
+    if (s >= T) kt = k; else break;
+  }
+  return kt;
+}
+
 function isoWeekOf(t) {
   var d = new Date(Date.UTC(t.y, t.m, t.d));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
@@ -353,6 +371,7 @@ function buildModel() {
       if (CFG.grains[sj.period]) m.grain = sj.period;
       m.area.mode = sj.mode || ''; m.area.sel = sj.sel || []; m.area.n = num(sj.areaN) || 0;
       m.md = toDate(sj.md);
+      m.ds = toDate(sj.ds);
       m.caMode = sj.caMode === 'cond' ? 'cond' : 'acc';
       var ca = sj.ca || {};
       m.caApplied = { org: ca.org || [], spec: ca.spec || [], stream: ca.stream || [], hq: ca.hq || [], it: ca.it || [], heads: ca.head || '', adg: ca.adg || [] };
@@ -370,6 +389,7 @@ function buildModel() {
   }
   var G = CFG.grains[m.grain], FB = CFG.fbins[m.grain];
   m.n = G.n;
+  m.kt = histKt(m.md, m.ds, m.grain, G.n);
   var mdMs = m.md ? Date.UTC(m.md.y, m.md.m, m.md.d) : Date.now() - 86400000;
   var seenPath = {};
   var addPath = function (path) {
@@ -457,7 +477,7 @@ function addP(a, p) {
       a.reach++; a.views += p.views;
       if (p.bin >= 3) a.reg++; else if (p.bin === 2) a.epi++; else a.once++;
       if (p.days >= 2) a.ret++;
-      if (p.fk != null && p.fk < MODEL.n) a.first++;
+      if (p.fk != null && p.fk < MODEL.n && p.fk <= MODEL.kt) a.first++;
     }
     if (p.prev) { a.reachPrev++; if (p.binPrev >= 3) a.regPrev++; }
   } else if (p.cur) a.out++;
@@ -867,6 +887,7 @@ function buildCSS() {
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
     P + '-sig-chip.neutral{background:#f3f4f6;color:var(--muted);}',
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;flex:0 0 auto;}',
+    P + '-nh-sw{display:inline-block;width:10px;height:10px;border-radius:2px;background:' + CFG.colors.nohist + ';margin-right:6px;vertical-align:-1px;}',
 
     // ── Динамика: каптионы и легенда стека ──
     P + '-dynhead{display:flex;align-items:center;gap:12px;min-height:24px;flex-wrap:wrap;row-gap:4px;}',
@@ -1984,7 +2005,7 @@ function stackAct(p) {
   if (!off.new) s += p.new_u;
   if (!off.react) s += p.react_u;
   if (!off.ret) s += p.ret;
-  return s;
+  return p.nohist ? p.users : s;
 }
 
 function usersChartSvg(ts, grain) {
@@ -2007,7 +2028,7 @@ function usersChartSvg(ts, grain) {
     var aU = stackAct(p);
     var yTop = top + pH - (aU / topU) * pH;
     // Стек снизу вверх: новые → вернувшиеся → продолжающие.
-    var segs = [
+    var segs = p.nohist ? [{ h: (p.users / topU) * pH, c: C.nohist }] : [
       { h: state.legendOff.new ? 0 : (p.new_u / topU) * pH, c: C.new },
       { h: state.legendOff.react ? 0 : (p.react_u / topU) * pH, c: C.react },
       { h: state.legendOff.ret ? 0 : (p.ret / topU) * pH, c: C.ret }
@@ -2027,8 +2048,8 @@ function usersChartSvg(ts, grain) {
     body += '</g>';
     // Подпись значения — у КАЖДОГО столбика (макет: valueLabel без пропусков).
     body += '<text class="fade" x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
-      '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(compact(aU)) + '</text>';
-    bk.push({ k: p.k, u: p.users, nu: p.new_u, re: p.react_u, rt: p.ret, v: p.views });
+      '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(p.nohist && !p.users ? '—' : compact(aU)) + '</text>';
+    bk.push({ k: p.k, u: p.users, nu: p.new_u, re: p.react_u, rt: p.ret, v: p.views, nh: p.nohist ? 1 : 0 });
   }
   body += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
   body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent" data-dyn="users" data-n="' + n +
@@ -2050,7 +2071,9 @@ function caSeries() {
       if (bitAt(p.cur, k)) { act++; if (p.fk === k) first++; }
       if (p.cur >= pw) cum++;            // был активен в бакете возраста ≥ k (раньше или в эту дату)
     }
-    out.push({ k: k, users: act, new_u: first, react_u: 0, ret: act - first, views: 0, cum: cum,
+    var nh = k > MODEL.kt;               // начало истории: «впервые» не отличить — столбик одной серой ступенью
+    if (nh) first = 0;
+    out.push({ k: k, users: act, new_u: first, react_u: 0, ret: act - first, views: 0, cum: cum, nohist: nh,
       covCum: t.ca ? cum / t.ca * 100 : 0, covAct: t.ca ? act / t.ca * 100 : 0 });
   }
   return out;
@@ -2093,12 +2116,20 @@ function covChartSvg(ts, grain) {
   return '<svg viewBox="0 0 ' + SVG_W + ' ' + r1(H) + '" width="100%" data-dyn-svg="1" style="height:auto;display:block" font-family="' + CFG.fonts.family +
     '" role="img" aria-label="Охват целевой аудитории по периодам">' + body + '</svg>';
 }
+// Подпись про начало истории событий: «впервые» от давно не заходивших там не отличить.
+function histNote(all, short) {
+  var ds = MODEL.ds ? fmtDate(MODEL.ds) : '';
+  var why = 'история событий начинается ' + (ds ? 'с ' + ds : 'недавно') + ', и «впервые в данных» здесь значит и «давно не заходил»';
+  if (short) return '«Пришли впервые» не выделяем: ' + why + '.';
+  return (all ? 'Весь период — в начале истории данных' : 'Серые столбики — начало истории данных') +
+    ': «пришли впервые» не выделяем, ' + why + '. Нужно хотя бы 90 дней истории до начала периода.';
+}
 function dynamicsHtml(ts, grain) {
   var t = caTotals();
   if (!ts.length || !t.ca) return '<div class="' + CFG.ns + '-tbl-note">В целевой аудитории никого нет — настройте её на вкладке «Путь ЦА».</div>';
   var C = CFG.colors, off = state.legendOff, N = CFG.ns;
   var leg = [
-    { k: 'new', l: 'Пришли впервые', c: C.new, d: 'Люди ЦА, чей первый визит в отчёты области (за всю историю, около года) пришёлся на этот период.' },
+    { k: 'new', l: 'Пришли впервые', c: C.new, d: 'Люди ЦА, чей первый визит в отчёты области пришёлся на этот период' + (MODEL.ds ? ' (история событий — с ' + fmtDate(MODEL.ds) + ')' : '') + '.' },
     { k: 'ret', l: 'Заходили не впервые', c: C.ret, d: 'Люди ЦА, заходившие в этот период и раньше.' }
   ];
   var h = '<div class="' + N + '-dynhead"><span class="' + N + '-cap">Заходили из целевой аудитории</span><div class="' + N + '-legend" role="group" aria-label="Ступени стека">';
@@ -2109,6 +2140,9 @@ function dynamicsHtml(ts, grain) {
   }
   h += '</div></div>';
   h += usersChartSvg(ts, grain);
+  var nh = 0;
+  for (i = 0; i < ts.length; i++) if (ts[i].nohist) nh++;
+  if (nh) h += '<div class="' + N + '-tbl-note"><i class="' + N + '-nh-sw"></i>' + histNote(nh === ts.length) + '</div>';
   h += '<div class="' + N + '-dynhead"><span class="' + N + '-cap">Охват ЦА, % от ' + nf(t.ca) + '</span>' +
     '<span class="' + N + '-note2">сплошная — накоплено за период к дате · пунктир — заходили в этом ' + (CFG.grains[grain] ? CFG.grains[grain].unit : 'периоде') + '</span></div>';
   h += wide()
@@ -2127,6 +2161,7 @@ function dynTipHtml(el, i) {
       { label: 'Заходили в этот период', value: pct(bk.pa) + ' · ' + nf(bk.u), color: C.covP, dash: true }] });
   }
   var rows = [{ label: 'Заходили из ЦА', value: nf(bk.u) }];
+  if (bk.nh) return tipHtml({ title: bt, rows: rows, note: [histNote(false, true)] });
   if (!state.legendOff.new) rows.push({ label: 'Пришли впервые', value: nf(bk.nu), color: C.new });
   if (!state.legendOff.ret) rows.push({ label: 'Не впервые', value: nf(bk.rt), color: C.ret });
   return tipHtml({ title: bt, rows: rows });

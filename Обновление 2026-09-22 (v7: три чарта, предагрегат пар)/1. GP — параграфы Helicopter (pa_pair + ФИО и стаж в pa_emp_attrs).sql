@@ -53,7 +53,7 @@ distributed by (dashboard_id);
 -- Параграф «PA · атрибуты зрителей» → usr_cross_data.pa_emp_attrs
 -- (1 строка на логин: последнее состояние по log_dttm + ФИО и стаж).
 -- НОВОЕ 2026-09-22: fio (Фамилия Имя из proteus_users), exp_nm (группа стажа
--- из mdm_employee_d, last_state_flg = 1) — закрывают хвост «ФИО/стаж — заглушки».
+-- из prod_v_emart.mdm_employee_structure_d, last_state_flg = 1) — закрывают хвост «ФИО/стаж — заглушки».
 -- НОВОЕ 2026-09-23: lvl5…lvl7_management_unit_nm — полная оргструктура УС-3…УС-7
 -- для группировки «Оргструктура» в «Кто смотрит» (колонки есть в proteus_views_1).
 -- ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ left join (
 ) u on u.username = t.login
 left join (
     select mdm_employee_rk, max(experience_group_nm) as experience_group_nm
-    from prod_v_sse_crossdata.mdm_employee_d
+    from prod_v_emart.mdm_employee_structure_d
     where last_state_flg = 1
     group by mdm_employee_rk
 ) m on m.mdm_employee_rk = t.mdm_employee_rk

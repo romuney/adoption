@@ -2,12 +2,12 @@
 -- (строки 4, 6–8 — по старому pa_staff) и после прогона ноды (по новому). Ответ — таблицей, пришлите целиком.
 with m13 as (
     select distinct lower(trim(ad_login)) as lg
-    from prod_v_sse_crossdata.mdm_employee_d
+    from prod_v_emart.mdm_employee_structure_d
     where nullif(trim(ad_login), '') is not null and business_dt >= current_date - interval '13 months'
 ),
 ls as (
     select lower(trim(ad_login)) as lg, max(coalesce(company_fire_flg::int, 0)) as fired, min(coalesce(company_fire_flg::int, 0)) as fired_min
-    from prod_v_sse_crossdata.mdm_employee_d
+    from prod_v_emart.mdm_employee_structure_d
     where last_state_flg = 1 and nullif(trim(ad_login), '') is not null
     group by 1
 ),

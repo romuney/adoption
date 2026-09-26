@@ -24,7 +24,7 @@ drop table if exists usr_cross_data.pa_staff;
 create table usr_cross_data.pa_staff as
 with lg as (
     select lower(trim(m.ad_login)) as login, m.mdm_employee_rk, max(m.business_dt) as dt
-    from prod_v_sse_crossdata.mdm_employee_d m
+    from prod_v_emart.mdm_employee_structure_d m
     where nullif(trim(m.ad_login), '') is not null
       and m.business_dt >= current_date - interval '13 months'
     group by 1, 2
@@ -34,7 +34,7 @@ mdm as (
         row_number() over (partition by lg.login
                            order by coalesce(l.company_fire_flg::int, 0), lg.dt desc, lg.mdm_employee_rk desc) as rn
     from lg
-    inner join prod_v_sse_crossdata.mdm_employee_d l
+    inner join prod_v_emart.mdm_employee_structure_d l
         on l.mdm_employee_rk = lg.mdm_employee_rk and l.last_state_flg = 1
 ),
 vw as (

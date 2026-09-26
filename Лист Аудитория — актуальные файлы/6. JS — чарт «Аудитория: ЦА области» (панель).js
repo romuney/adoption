@@ -1725,7 +1725,7 @@ function kpiCard(o) {
 function kpisHtml() {
   var t = caTotals(), c = caCfg(), G = CFG.grains[MODEL.grain] || CFG.grains.d, W = wide();
   var dPct = function (a, b) { return b ? (a / b - 1) * 100 : null; };
-  var why = 'В витрине нет полной истории предыдущего периода (' + G.label + ') в ней нет.';
+  var why = 'В витрине нет полной истории предыдущего периода (' + G.label + ').';
   var dl = function (v, o) { return G.prev ? delta(v, o) : delta(null, { why: why }); };
   var hidden = '<span class="' + CFG.ns + '-nocmp"' + tip({ title: 'Проценты скрыты', text: 'Доступ открыт почти всей компании: знаменатель не описывает, для кого делали отчёт. Сузьте ЦА на вкладке «Путь ЦА».' }) + '>доступ почти у всех</span>';
   var never = Math.max(0, t.ca - t.reach);

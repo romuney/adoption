@@ -4,8 +4,9 @@
 -- Каждый блок ниже — отдельный параграф gp. Выгрузка в ClickHouse — файл 2.
 --
 -- Целевая аудитория (ЦА) отчёта по правам = поимённые права ∪ члены AD-групп прав,
--- только действующий штат. Состав групп — прямое членство (как в существующем
--- параграфе «Витрина ad_login и ad_group»), вложенные группы не разворачиваются.
+-- только действующий штат. Состав групп — с вложенными группами (до 6 уровней), имена групп
+-- сравниваются без учёта регистра (2026-09-26: раньше считалось только прямое членство и точный
+-- регистр — у групп из подгрупп ЦА выходила в разы меньше).
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -87,13 +88,13 @@ distributed by (login);
 -- Параграф «PA · права отчётов» → usr_cross_data.pa_dash_acl
 -- Отчёт × принципал: kind = 'user' (поимённое право, principal = логин) |
 -- 'group' (AD-группа, principal = имя группы). Только отчёты вселенной (pa_dash_meta).
+-- Принципал — lower(trim()): и логин, и имя группы (с ним же сверяется состав групп).
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_dash_acl;
 create table usr_cross_data.pa_dash_acl as
 select distinct
     a.dashboard_id::int                                                     as dashboard_id,
-    case when a.access_type = 'user' then lower(a.user_or_group_name)
-         else a.user_or_group_name end::text                                as principal,
+    lower(trim(a.user_or_group_name))::text                                 as principal,
     case when a.access_type = 'user' then 'user' else 'group' end::text     as kind
 from prod_v_sse.proteus_dashboard_access a
 where a.access_type in ('user', 'group')
@@ -102,8 +103,10 @@ where a.access_type in ('user', 'group')
 distributed by (dashboard_id);
 
 -- ---------------------------------------------------------------------------
--- Параграф «PA · состав групп прав» → usr_cross_data.pa_adg_member
--- AD-группа × логин — только группы, которые встречаются в правах отчётов.
+-- Параграф «PA · состав групп прав» → usr_cross_data.pa_adg_member   (2026-09-26: вложенные группы)
+-- AD-группа × логин — только группы, которые встречаются в правах отчётов. Человек входит в группу,
+-- если он в ней напрямую ИЛИ в любой её подгруппе (подгруппы подгрупп — до 6 уровней вниз; циклы
+-- не страшны: уровень ограничен, повторы убирает distinct). ad_group — lower(trim()) имени, как в pa_dash_acl.
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_adg_member;
 create table usr_cross_data.pa_adg_member as
@@ -111,18 +114,33 @@ with used as (
     select distinct principal as ad_group from usr_cross_data.pa_dash_acl where kind = 'group'
 ),
 items as (
-    select guid, account_name, item_type
+    select guid, lower(trim(account_name))::text as nm, (item_type = 'Person') as is_person
     from prod_v_chrono_idm_tadam.ad_items_records_public
     where is_deleted = false
-      and item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity', 'Person')
+      and (item_type = 'Person' or item_type like 'Group%')
+),
+rel as (    -- ребро «родитель-группа → участник» (участник — человек или подгруппа)
+    select r.parent, r.item, c.is_person
+    from prod_v_chrono_idm_tadam.ad_item_parent_relations_public r
+    inner join items p on p.guid = r.parent and not p.is_person
+    inner join items c on c.guid = r.item
+),
+g0 as (select u.ad_group, i.guid from used u inner join items i on i.nm = u.ad_group and not i.is_person),
+g1 as (select distinct g.ad_group, r.item as guid from g0 g inner join rel r on r.parent = g.guid and not r.is_person),
+g2 as (select distinct g.ad_group, r.item as guid from g1 g inner join rel r on r.parent = g.guid and not r.is_person),
+g3 as (select distinct g.ad_group, r.item as guid from g2 g inner join rel r on r.parent = g.guid and not r.is_person),
+g4 as (select distinct g.ad_group, r.item as guid from g3 g inner join rel r on r.parent = g.guid and not r.is_person),
+g5 as (select distinct g.ad_group, r.item as guid from g4 g inner join rel r on r.parent = g.guid and not r.is_person),
+g6 as (select distinct g.ad_group, r.item as guid from g5 g inner join rel r on r.parent = g.guid and not r.is_person),
+gall as (
+    select ad_group, guid from g0 union select ad_group, guid from g1 union select ad_group, guid from g2
+    union select ad_group, guid from g3 union select ad_group, guid from g4 union select ad_group, guid from g5
+    union select ad_group, guid from g6
 )
-select distinct parent.account_name::text as ad_group, lower(child.account_name)::text as login
-from prod_v_chrono_idm_tadam.ad_item_parent_relations_public r
-inner join items parent on r.parent = parent.guid
-inner join items child  on r.item   = child.guid
-inner join used u on u.ad_group = parent.account_name
-where child.item_type = 'Person'
-  and parent.item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity')
+select distinct g.ad_group::text as ad_group, c.nm::text as login
+from gall g
+inner join rel r on r.parent = g.guid and r.is_person
+inner join items c on c.guid = r.item
 distributed by (ad_group);
 
 -- ---------------------------------------------------------------------------

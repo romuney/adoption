@@ -966,7 +966,8 @@ function buildCSS() {
     P + '-ptable.sub td.pn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.sub td{padding:5px 8px;border-bottom:1px solid var(--line2);color:var(--ink2);}',
     P + '-ptable.sub td.txt{font-weight:400;}',
-    P + '-ptable.sub thead th{padding:4px 8px 3px;font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;text-align:right;border-bottom:1px solid var(--line2);background:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help;}',
+    // Шапка людей группы НЕ липкая (общее правило ptable th — sticky): иначе при прокрутке ложится на шапку таблицы.
+    P + '-ptable.sub thead th{position:static;z-index:auto;padding:4px 8px 3px;font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;text-align:right;border-bottom:1px solid var(--line2);background:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help;}',
     P + '-ptable.sub thead th.txt{text-align:left;}',
     P + '-ptable.sub tr:last-child td{border-bottom:0;}',
     P + '-empty-td{text-align:center !important;padding:14px !important;color:var(--muted) !important;}',

@@ -4,6 +4,7 @@
     (bit k = активен в бакете возраста k, k < 2n <= 60); ни один GROUP BY не несёт бакет.
     Слушает полоску и людскую шину, выбор каталога НЕ читает (самовлияние тела выключено).
     Линейная цепочка maxd → dash_ok → evd → kx → agg → выход; каждый CTE — одна ссылка. -#}
+{% set NEW_DAYS = 90 %}{#- новые отчёты (созданы за столько дней до даты свежести) видны в каталоге и без порога ≥500 просмотров -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay'}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday'}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth'}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter'}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
 {% set grain = grain if grain in GRAINS else 'd' %}
@@ -150,4 +151,4 @@ SELECT
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
-WHERE kd != 1 OR {% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_evd_day u INNER JOIN dash_ok um ON um.dashboard_id = u.dashboard_id{% if excv == '1' %} WHERE NOT has(um.owners_string, u.login){% endif %} GROUP BY u.dashboard_id HAVING sum(u.views) >= 500){% else %}v_tot >= 500{% endif %}
+WHERE kd != 1 OR ({% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_evd_day u INNER JOIN dash_ok um ON um.dashboard_id = u.dashboard_id{% if excv == '1' %} WHERE NOT has(um.owners_string, u.login){% endif %} GROUP BY u.dashboard_id HAVING sum(u.views) >= 500){% else %}v_tot >= 500{% endif %} OR ifNull(toInt32OrNull(k0), 0) IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE created_dt >= addDays(toDate((SELECT md FROM maxd)), -{{ NEW_DAYS }})))

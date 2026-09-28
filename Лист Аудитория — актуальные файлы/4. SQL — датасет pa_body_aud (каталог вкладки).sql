@@ -8,6 +8,7 @@
     Линейная цепочка maxd → dash_ok → evd → kx → agg → выход; каждый CTE — одна ссылка
     (dash_ok — справочник 32 тыс. строк).
     Ответ — 17 колонок (+ ca_n, ca_wide, ca_users при WITH_CA); KPI области считает правая панель (pa_people). -#}
+{% set NEW_DAYS = 90 %}{#- новые отчёты (созданы за столько дней до даты свежести) видны в каталоге и без порога ≥500 просмотров -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay'}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday'}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth'}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter'}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
 {% set grain = grain if grain in GRAINS else 'd' %}
@@ -211,4 +212,4 @@ LEFT JOIN prod_proteus.pa_dash_ca c ON c.dashboard_id = ifNull(toInt32OrNull(k0)
 {#- ЦА по условиям без владельцев отчёта (как панель при «Без владельцев»): их визиты — свои. #}
 LEFT JOIN (SELECT dashboard_id, toInt64(count()) AS n_own FROM (SELECT dashboard_id, lower(toString(arrayJoin(owners_string))) AS ow FROM prod_proteus.pa_dash_meta)
   WHERE ow IN ({{ caset() }}) GROUP BY dashboard_id) oc ON oc.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0)){% endif %}{% endif %}
-WHERE kd != 1 OR {% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_pair u WHERE u.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(u.login){% if excv == '1' %} AND ifNull(u.own_flg, 0) = 0{% endif %} GROUP BY u.dashboard_id HAVING sum(ifNull(u.v_life, 0)) >= 500){% else %}v_tot >= 500{% endif %}
+WHERE kd != 1 OR ({% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_pair u WHERE u.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(u.login){% if excv == '1' %} AND ifNull(u.own_flg, 0) = 0{% endif %} GROUP BY u.dashboard_id HAVING sum(ifNull(u.v_life, 0)) >= 500){% else %}v_tot >= 500{% endif %} OR ifNull(toInt32OrNull(k0), 0) IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE created_dt >= addDays(toDate((SELECT md FROM maxd)), -{{ NEW_DAYS }})))

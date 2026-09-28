@@ -66,4 +66,4 @@ SELECT
   CAST(if(kd = 0, '{"period":"d"}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
-WHERE kd != 1 OR v_tot >= 500
+WHERE kd != 1 OR v_tot >= 500 OR ifNull(toInt32OrNull(k0), 0) IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE created_dt >= addDays(toDate((SELECT md FROM maxd)), -90))

@@ -151,4 +151,7 @@ SELECT
   CAST(if(kd = 0, '{{ "{" ~ SJ|join(", ") ~ "}" }}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
-WHERE kd != 1 OR ({% if pplf %}ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_evd_day u INNER JOIN dash_ok um ON um.dashboard_id = u.dashboard_id{% if excv == '1' %} WHERE NOT has(um.owners_string, u.login){% endif %} GROUP BY u.dashboard_id HAVING sum(u.views) >= 500){% else %}v_tot >= 500{% endif %} OR ifNull(toInt32OrNull(k0), 0) IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE created_dt >= addDays(toDate((SELECT md FROM maxd)), -{{ NEW_DAYS }})))
+{#- Вселенная каталога — «живые» отчёты: ≥500 просмотров за историю от ВСЕХ зрителей. Не зависит от «Без владельцев»
+    и людских фильтров (они меняют числа, но не состав каталога: иначе отчёт, который чаще всех смотрит владелец,
+    пропадал целиком, а выбранный в нём фильтр показывался голым ID). -#}
+WHERE kd != 1 OR (ifNull(toInt32OrNull(k0), 0) IN (SELECT u.dashboard_id FROM prod_proteus.pa_evd_day u WHERE u.dashboard_id IN (SELECT dashboard_id FROM dash_ok) GROUP BY u.dashboard_id HAVING sum(u.views) >= 500) OR ifNull(toInt32OrNull(k0), 0) IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE created_dt >= addDays(toDate((SELECT md FROM maxd)), -{{ NEW_DAYS }})))

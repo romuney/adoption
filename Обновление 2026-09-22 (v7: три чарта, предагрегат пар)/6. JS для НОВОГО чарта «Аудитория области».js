@@ -989,7 +989,7 @@ function buildCSS() {
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
     P + '-sig-chip.neutral{background:#f3f4f6;color:var(--muted);}',
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;flex:0 0 auto;}',
-    P + '-nh-sw{display:inline-block;width:10px;height:10px;border-radius:2px;background:' + CFG.colors.nohist + ';margin-right:6px;vertical-align:-1px;}',
+    P + '-leg-nh{cursor:help;}',
     P + '-ct-nh td{opacity:.55;}',
 
     // ── Динамика: каптионы и легенда стека ──
@@ -2493,11 +2493,13 @@ function dynamicsHtml(ts, grain, opts) {
       tip({ title: leg[i].l, text: legDef[leg[i].k], note: off[leg[i].k] ? 'Клик — вернуть ступень на график' : 'Клик — убрать ступень с графика' }) + '>' +
       '<i style="background:' + leg[i].c + '"></i>' + esc(leg[i].l) + '</button>';
   }
-  h += '</div></div>';
-  h += usersChartSvg(ts, grain);
+  // Начало истории — пунктом легенды с подсказкой (абзац под графиком добавлял высоту → скролл в динамике).
   var nh = 0;
   for (i = 0; i < ts.length; i++) if (ts[i].nohist) nh++;
-  if (nh) h += '<div class="' + CFG.ns + '-tbl-note"><i class="' + CFG.ns + '-nh-sw"></i>' + histNote(nh === ts.length) + '</div>';
+  if (nh) h += '<span class="' + CFG.ns + '-leg ' + CFG.ns + '-leg-nh"' + tip({ title: 'Мало истории', text: histNote(nh === ts.length) }) + '>' +
+    '<i style="background:' + CFG.colors.nohist + '"></i>Мало истории</span>';
+  h += '</div></div>';
+  h += usersChartSvg(ts, grain);
   h += '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">Просмотры</span>' +
     '<div class="' + CFG.ns + '-sub-tabs tiny" role="tablist">' +
     tabsHtml('viewsMode', [

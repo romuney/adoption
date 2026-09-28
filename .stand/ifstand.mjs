@@ -1,7 +1,8 @@
 // Стенд «iframe как в Proteus»: чарт в <iframe sandbox="allow-scripts"> размером с ячейку,
 // родитель кладёт dataUrl из ECHARTS_UPDATE_DATA_URL в img.echarts-plugin, CSS борда — из файла.
 // node ifstand.mjs <chart.js> <mock.json> <board.css> <chartId> <сценарий.json> <shot-prefix>
-// Сценарий: [{click: селектор ВНУТРИ iframe, i?, shot?: 'имя'}, {parentClick: [x, y]}, …]
+// Сценарий: [{click|hover: селектор ВНУТРИ iframe, i?, shot?: 'имя'}, {parentClick|parentMove: [x, y]}, …]
+// marker — в img.echarts-plugin стоит любой маркер «UEEt…» (строка ЦА, подсказки шапки).
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright');
 import fs from 'fs';
@@ -36,12 +37,15 @@ const log = [];
 for (const s of JSON.parse(fs.readFileSync(scen, 'utf8'))) {
   const m0 = await p.evaluate(() => window.__msgs.length);
   if (s.click) { const els = await fr.$$(s.click); if (!els[s.i || 0]) { log.push({ s, err: 'нет элемента' }); continue; } await els[s.i || 0].click(); }
+  if (s.hover) { const els = await fr.$$(s.hover); if (!els[s.i || 0]) { log.push({ s, err: 'нет элемента' }); continue; } await els[s.i || 0].hover(); }
   if (s.parentClick) await p.mouse.click(s.parentClick[0], s.parentClick[1]);
+  if (s.parentMove) await p.mouse.move(s.parentMove[0], s.parentMove[1], { steps: 4 });
   await p.waitForTimeout(250);
-  const st = await p.evaluate(() => { const f = document.getElementById('fr').getBoundingClientRect(); return { ifr: Math.round(f.width) + '×' + Math.round(f.height), marker: /UEEtQ0EtREQtT04x/.test(document.querySelector('img.echarts-plugin').src || ''), under: window.__clicks }; });
+  const st = await p.evaluate(() => { const f = document.getElementById('fr').getBoundingClientRect(); return { ifr: Math.round(f.width) + '×' + Math.round(f.height), marker: /UEEt/.test(document.querySelector('img.echarts-plugin').src || ''), under: window.__clicks }; });
   const msgs = await p.evaluate((n) => window.__msgs.slice(n), m0);
+  const tipv = await fr.evaluate(() => { const t = document.querySelector('body > [class$="-tip"]'); if (!t || t.style.display === 'none') return null; const r = t.getBoundingClientRect(); return Math.round(r.width) + '×' + Math.round(r.height) + ' @' + Math.round(r.top); });
   const dd = await fr.evaluate(() => { const d = document.querySelector('.paca-dd'); if (!d || d.style.display === 'none') return null; const r = d.getBoundingClientRect(); return Math.round(r.width) + '×' + Math.round(r.height) + ' @' + Math.round(r.top); });
-  log.push({ step: s.name || s.click || String(s.parentClick), ...st, dd, msgs: msgs.map(x => x.slice(0, 120)) });
+  log.push({ step: s.name || s.click || String(s.parentClick), ...st, dd, tip: tipv, msgs: msgs.map(x => x.slice(0, 120)) });
   if (s.shot) await p.screenshot({ path: shot + s.shot + '.png' });
 }
 console.log(JSON.stringify({ errs, log }, null, 1));

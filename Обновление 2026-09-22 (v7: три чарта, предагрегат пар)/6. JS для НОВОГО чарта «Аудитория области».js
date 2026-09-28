@@ -845,6 +845,10 @@ function buildCSS() {
     P + '-wo-h{font-size:11px;font-weight:500;color:var(--muted);',
     '  text-transform:uppercase;letter-spacing:.4px;}',
     P + '-wo-ex{max-height:224px;overflow:auto;}',
+    P + '-wo-note{font-size:11px;color:var(--muted);line-height:1.35;margin-top:-4px;}',
+    P + '-wo-foot{font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px;}',
+    P + '-dd-pre{flex:0 0 auto;color:var(--muted);font-weight:400;margin-right:4px;}',
+    P + '-who-opts ' + P + '-dd-trg{gap:6px;}',
     P + '-wo-login{font-style:normal;color:var(--muted);font-size:11px;}',
     P + '-wo-dot{width:7px;height:7px;border-radius:50%;background:var(--act);display:inline-block;flex:0 0 auto;}',
     P + '-swt{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink2);}',
@@ -962,6 +966,8 @@ function buildCSS() {
     P + '-ptable.sub td.pn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.sub td{padding:5px 8px;border-bottom:1px solid var(--line2);color:var(--ink2);}',
     P + '-ptable.sub td.txt{font-weight:400;}',
+    P + '-ptable.sub thead th{padding:4px 8px 3px;font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;text-align:right;border-bottom:1px solid var(--line2);background:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help;}',
+    P + '-ptable.sub thead th.txt{text-align:left;}',
     P + '-ptable.sub tr:last-child td{border-bottom:0;}',
     P + '-empty-td{text-align:center !important;padding:14px !important;color:var(--muted) !important;}',
     P + '-bar-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;}',
@@ -1194,7 +1200,7 @@ function personRowHtml(p) {
     '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td>' +
     '</tr>';
 }
-function grainCfg() { return CFG.grains[state.grain] || CFG.grains.d; }
+function grainCfg() { return CFG.grains[MODEL.grain] || CFG.grains.d; }  // грануляция — из ответа (area.parent), не из state: раньше всегда «дн»
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 function actLabel() { return 'Активных ' + grainCfg().units; }
 function sortTh(attr, col, sc, cls) {
@@ -1421,7 +1427,13 @@ function nestPeopleHtml(nd, people, span) {
   // Сетка вложенной таблицы фиксирована (table-layout:fixed + colgroup) и одна на все группы:
   // колонки людей стоят на одной вертикали независимо от длины имён; глубина — отступом имени.
   var h = '<tr class="nest"><td colspan="' + span + '">' +
-    '<table class="' + CFG.ns + '-ptable sub"><colgroup><col style="width:44%"><col style="width:12%"><col style="width:16%"><col style="width:12%"><col style="width:16%"></colgroup><tbody>';
+    '<table class="' + CFG.ns + '-ptable sub"><colgroup><col style="width:44%"><col style="width:12%"><col style="width:16%"><col style="width:12%"><col style="width:16%"></colgroup>' +
+    // Своя шапка у людей группы: колонки другие, чем у строк групп выше (фидбек: «непонятно, что за значения»).
+    '<thead><tr class="' + CFG.ns + '-sub-h"><th class="txt" style="padding-left:' + (30 + nd.depth * 18) + 'px">Сотрудник</th>' +
+    '<th' + tip({ title: actLabel(), text: 'Сколько разных ' + grainCfg().units + ' человек открывал отчёты области за период.' }) + '>Активность</th>' +
+    '<th' + tip({ title: 'Просмотров', text: 'Сколько раз открывал отчёты области за период.' }) + '>Просмотров</th>' +
+    '<th' + tip({ title: 'Последний визит', text: 'Сколько дней назад был последний заход.' }) + '>Последний визит</th>' +
+    '<th class="txt"' + tip({ title: 'Сегмент', text: 'Постоянный / эпизодический / разовый — по числу активных периодов.' }) + '>Сегмент</th></tr></thead><tbody>';
   for (var i = 0; i < sorted.length && i < lim; i++) {
     var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
     h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
@@ -1618,12 +1630,14 @@ function freqStripHtml(shown) {
 
 // Дропдаун (порт U.dropdown/ui.js): триггер — data-action="toggle"
 // для дым-проверки поповеров, опции — data-ddopt.
-function dropdownHtml(id, curKey, opts) {
+function dropdownHtml(id, curKey, opts, pre) {
   var cur = '';
   for (var i = 0; i < opts.length; i++) if (opts[i].key === curKey) cur = opts[i].trg || opts[i].label;
   var open = state.dd === id;
   var h = '<div class="' + CFG.ns + '-dd sm' + (open ? ' open' : '') + '">' +
-    '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="' + esc(id) + '" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button">' +
+    '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="' + esc(id) + '" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button"' +
+      (pre ? tip({ title: pre.title, text: pre.text }) : '') + '>' +
+      (pre ? '<span class="' + CFG.ns + '-dd-pre">' + esc(pre.label) + '</span>' : '') +
       '<span class="' + CFG.ns + '-dd-txt">' + esc(cur) + '</span><span class="' + CFG.ns + '-dd-c" aria-hidden="true">▾</span>' +
     '</button>';
   if (open) {
@@ -1644,6 +1658,9 @@ function exPoolHtml(area) {
   var pool = [];
   for (var i = 0; i < area.length && pool.length < 60; i++) {
     var p = area[i];
+    // «Только руководители» включено — остальные и так не в счёте: исключать есть смысл только руководителей
+    // (исключённые раньше остаются в списке, чтобы их можно было вернуть).
+    if (state.headsOnly && !p.is_head && state.excl.indexOf(p.login) < 0) continue;
     if (!exq || (p.fio + ' ' + p.login).toLowerCase().indexOf(exq) >= 0) pool.push(p);
   }
   if (!pool.length) return '<div class="' + CFG.ns + '-pickempty">Ничего не найдено</div>';
@@ -1663,23 +1680,29 @@ function optsDropHtml(area) {
   var active = state.headsOnly || state.excl.length;
   var h = '<div class="' + CFG.ns + '-dd sm ' + CFG.ns + '-who-opts' + (open ? ' open' : '') + '">' +
     '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="whoOpts" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button"' +
-      tip({ title: 'Настройки списка', text: 'Только руководители и исключённые логины. Действуют на список, каталог слева и KPI в шапке.' }) + '>' +
+      tip({ title: 'Фильтр людей', text: 'Кого считать: только руководителей и без выбранных людей. Действует на список, каталог слева и KPI сверху.' }) + '>' +
+      FILTER_SVG +
+      '<span class="' + CFG.ns + '-dd-txt">Фильтр людей' + (active ? ' · ' + ((state.headsOnly ? 1 : 0) + (state.excl.length ? 1 : 0)) : '') + '</span>' +
       (active ? '<i class="' + CFG.ns + '-wo-dot" aria-hidden="true"></i>' : '') +
-      '<span class="' + CFG.ns + '-dd-txt">Настройки</span><span class="' + CFG.ns + '-dd-c" aria-hidden="true">▾</span>' +
+      '<span class="' + CFG.ns + '-dd-c" aria-hidden="true">▾</span>' +
     '</button>';
   if (open) {
     h += '<div class="' + CFG.ns + '-dd-body ' + CFG.ns + '-who-opts-pop">' +
+      '<div class="' + CFG.ns + '-wo-h">Кого считать</div>' +
       '<label class="' + CFG.ns + '-swt"><input type="checkbox" data-wohead' + (state.headsOnly ? ' checked' : '') + '>' +
-        '<span>Только руководители</span></label>' +
-      '<div class="' + CFG.ns + '-wo-h">Исключить логины' + (state.excl.length ? ' · ' + state.excl.length : '') + '</div>' +
+        '<span>Только руководителей</span></label>' +
+      '<div class="' + CFG.ns + '-wo-note">' + (state.headsOnly ? 'Считаем только руководителей, остальные не учитываются.' : 'Считаем всех; включите, чтобы оставить только руководителей.') + '</div>' +
+      '<div class="' + CFG.ns + '-wo-h">Не считать этих людей' + (state.excl.length ? ' · ' + state.excl.length : '') + '</div>' +
+      '<div class="' + CFG.ns + '-wo-note">Например, свои тестовые заходы или команду отчёта' + (state.headsOnly ? ' (в списке — только руководители)' : '') + '.</div>' +
       '<div class="' + CFG.ns + '-psearch">' +
         '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
         '<input type="search" data-search="woExQ" placeholder="Логин или ФИО" value="' + esc(state.exQ) + '">' +
       '</div>' +
       '<div class="' + CFG.ns + '-pickbox ' + CFG.ns + '-wo-ex">' + exPoolHtml(area) + '</div>' +
       (state.excl.length
-        ? '<div class="' + CFG.ns + '-scope-act"><button class="' + CFG.ns + '-btn ghost xs" data-woexclear type="button">Снять всё (' + state.excl.length + ')</button></div>'
+        ? '<div class="' + CFG.ns + '-scope-act"><button class="' + CFG.ns + '-btn ghost xs" data-woexclear type="button">Вернуть всех (' + state.excl.length + ')</button></div>'
         : '') +
+      '<div class="' + CFG.ns + '-wo-foot">Действует на список, каталог слева и KPI сверху.</div>' +
       '</div>';
   }
   return h + '</div>';
@@ -1729,6 +1752,7 @@ function groupsNow() {
     return !L || !!lv[L];              // уровень УС без узлов в данных в меню не показываем
   });
 }
+var FILTER_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>';
 var COPY_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
 var EXPAND_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
 var SHRINK_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>';
@@ -1739,7 +1763,9 @@ function listZoneHtml() {
   var cut = state.whoCut, grouped = cut !== 'none', N = CFG.ns;
   return '<div class="' + N + '-who-bar">' +
     '<div class="' + N + '-bar-g">' +
-      dropdownHtml('whoCut', cut, views) +
+      dropdownHtml('whoCut', cut, views, { label: 'Группировка:', title: 'Группировка списка',
+        text: 'Как показать зрителей: поимённо или сводной таблицей по оргструктуре, специализации, стриму. Людей не отбирает — для этого «Фильтр людей».' }) +
+      '<span class="' + N + '-bar-sep" aria-hidden="true"></span>' +
       optsDropHtml(MODEL.list) +
       searchBoxHtml('whoQ', 'Имя или логин', state.q) +
     '</div>' +

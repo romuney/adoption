@@ -40,6 +40,13 @@ var CFG = {
     { id: 'm', label: '12 месяцев', n: 12, units: 'месяцев', vs: 'к пред. 12 месяцам', prev: false },
     { id: 'q', label: '8 кварталов', n: 8, units: 'кварталов', vs: 'к пред. 8 кварталам', prev: false }
   ],
+  // Подсказки переключателей не помещаются в полосу ~64 px: на время подсказки шапка шлёт в канал
+  // скриншотов PNG с маркером (как строка ЦА), CSS борда по маркеру разворачивает iframe вниз прозрачным слоем.
+  overlay: {
+    // «PA-ST-TIP-ON» в base64: 12 байт = ровно 16 символов, стоит в строке PNG как есть.
+    mark: 'UEEtU1QtVElQLU9O',
+    png: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
+  },
   // Свиток эмитит СВОЮ колонку ТОЛЬКО при отличии от дефолта (val при откл.).
   switches: [
     // short — подпись переключателя в строке шапки (без поповера: в шапке ~100 px
@@ -289,12 +296,15 @@ function buildHTML() {
   }
   h.push('</div>');
   // Опции — переключатели прямо в строке (поповер в шапке высотой ~100 px не помещался).
-  h.push('<span class="' + N + '-sep" aria-hidden="true"></span><span class="' + N + '-lbl">Считать</span>');
+  h.push('<span class="' + N + '-sep" aria-hidden="true"></span><span class="' + N + '-lbl"' +
+    tip({ title: 'Что считать', text: 'Какие отчёты и просмотры попадают во все числа борда: каталог, KPI, динамику и списки людей.' }) + '>Считать</span>');
   h.push('<div class="' + N + '-togs" role="group" aria-label="Какие отчёты и просмотры считать">');
   for (var j = 0; j < CFG.switches.length; j++) {
     var s = CFG.switches[j], on = !!state.sw[s.key];
-    // Без тултипа (фидбек владельца): в шапке ~64 px всплывашка обрезалась рамкой чарта.
-    h.push('<label class="' + N + '-tog' + (on ? ' on' : '') + (on !== s.def ? ' dev' : '') + '" aria-label="' + esc(s.label) + '">' +
+    // Подсказка выходит за рамку чарта: на время показа iframe шапки разворачивается (signal, CSS борда).
+    h.push('<label class="' + N + '-tog' + (on ? ' on' : '') + (on !== s.def ? ' dev' : '') + '" aria-label="' + esc(s.label) + '"' +
+      tip({ title: s.label, text: s.hint, rows: [{ label: 'Сейчас', value: on ? 'включено' : 'выключено — ' + s.off }],
+        note: on !== s.def ? 'Отличается от умолчания' : '' }) + '>' +
       '<input type="checkbox" data-f="' + esc(s.key) + '"' + (on ? ' checked' : '') + '><i aria-hidden="true"></i>' + esc(s.short) + '</label>');
   }
   h.push('</div>');
@@ -408,9 +418,52 @@ function buildHTML() {
       return null;
     }
 
+    // ── Разворот iframe на время подсказки (канал скриншотов → CSS борда по маркеру) ──
+    function pngUrl(open) {
+      var b = CFG.overlay.png;
+      if (open) {
+        var raw = atob(b);
+        while (raw.length % 3) raw += '\0';
+        b = btoa(raw + atob(CFG.overlay.mark));
+      }
+      return 'data:image/png;base64,' + b;
+    }
+    function signal(open) {
+      if (open && !state.sig && !state.pin) state.baseH = overlay.clientHeight || state.baseH;
+      state.sig = open;
+      var url = pngUrl(open);
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'ECHARTS_UPDATE_DATA_URL', dataUrl: url, payload: { dataUrl: url } }, '*');
+        }
+      } catch (e) { /* нет родителя (стенд) */ }
+      // Развёрнутый iframe прозрачен ниже полосы; высота полосы закреплена, пока iframe не сжался обратно
+      // (родитель сжимает с задержкой — иначе полоса на кадр центрируется по развёрнутой высоте).
+      var tr = open ? 'transparent' : '';
+      document.documentElement.style.background = tr;
+      document.body.style.background = tr;
+      host.style.background = tr;
+      overlay.style.background = open ? 'transparent' : CFG.colors.bg;
+      if (open || (state.baseH && window.innerHeight > state.baseH + 4)) {
+        overlay.style.height = state.baseH ? state.baseH + 'px' : '100%';
+        state.pin = !open && !!state.baseH;
+      } else { overlay.style.height = '100%'; state.pin = false; }
+    }
+    function unpinIfShrunk() {
+      if (state.pin && !state.sig && window.innerHeight <= state.baseH + 4) { overlay.style.height = '100%'; state.pin = false; }
+    }
+    // Закрытие — с задержкой: переход курсора между соседними переключателями не дёргает iframe.
+    function tipClose() {
+      clearTimeout(state.tipT);
+      state.tipT = setTimeout(function () { if (!state.tip && state.sig) signal(false); }, 160);
+    }
+    state.tipOff = function () { if (state.tip) { state.tip = null; hideTip(); } tipClose(); };
+
     function onOver(e) {
       var el = trigger(e.target, 'data-tip');
       if (!el) return;
+      clearTimeout(state.tipT);
+      if (!state.sig) signal(true);
       // Якорь — rect ЦЕЛИ как есть; содержимое — готовый HTML из data-tip.
       state.tip = {
         rect: el.getBoundingClientRect(),
@@ -433,6 +486,7 @@ function buildHTML() {
       }
       state.tip = null;
       hideTip();
+      tipClose();
     }
 
     function emitFilters() {
@@ -485,12 +539,18 @@ function buildHTML() {
     overlay.addEventListener('mouseover', onOver);
     overlay.addEventListener('mouseout', onOut);
     overlay.addEventListener('click', onClick);
+    // Подсказка не залипает: курсор ушёл из iframe (mouseout на быстром выходе не приходит) или окно потеряло фокус.
+    if (!state.tipGuard) {
+      state.tipGuard = true;
+      document.addEventListener('mouseout', function (ev) { if (!ev.relatedTarget && state.tipOff) state.tipOff(); });
+      window.addEventListener('blur', function () { if (state.tipOff) state.tipOff(); });
+    }
 
     // Глобальные слушатели переживают перезапуск скрипта и накапливаются.
     // Старый снимаем ЯВНО, ссылку держим в state. Escape вешай здесь же,
     // тем же способом, и никогда не внутри render().
     if (state.onWinResize) window.removeEventListener('resize', state.onWinResize);
-    state.onWinResize = function () { if (state.tip) renderTip(); };
+    state.onWinResize = function () { unpinIfShrunk(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 
     // Клик-вне и Esc закрывают поповер опций.
@@ -524,7 +584,9 @@ function buildHTML() {
     if (typeof ResizeObserver !== 'undefined') {
       if (state.ro && state.ro.disconnect) state.ro.disconnect();
       var ro = new ResizeObserver(function() {
-        overlay.style.width = '100%'; overlay.style.height = '100%';
+        // Пока iframe развёрнут под подсказку (или ещё не сжался) — высота полосы закреплена, иначе 100%.
+        overlay.style.width = '100%';
+        overlay.style.height = (state.sig || state.pin) && state.baseH ? state.baseH + 'px' : '100%';
       });
       ro.observe(host);
       state.ro = ro;

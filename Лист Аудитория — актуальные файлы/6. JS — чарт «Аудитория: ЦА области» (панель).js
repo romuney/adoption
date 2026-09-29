@@ -751,6 +751,7 @@ function buildCSS() {
 
     // ── Настройки списка (поповер) ──
     P + '-who-opts ' + P + '-dd-trg{width:auto;}',
+    P + '-dd-pre{flex:0 0 auto;color:var(--muted);font-weight:400;margin-right:4px;}',
     P + '-who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px;}',
     P + '-who-opts-pop ' + P + '-psearch input{width:100%;height:30px;}',
     P + '-wo-h{font-size:11px;font-weight:500;color:var(--muted);',
@@ -1564,12 +1565,14 @@ function segStripHtml() {
   return h + '</div>';
 }
 
-function dropdownHtml(id, curKey, opts) {
+function dropdownHtml(id, curKey, opts, pre) {
   var cur = '';
   for (var i = 0; i < opts.length; i++) if (opts[i].key === curKey) cur = opts[i].trg || opts[i].label;
   var open = state.dd === id;
   var h = '<div class="' + CFG.ns + '-dd sm' + (open ? ' open' : '') + '">' +
-    '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="' + esc(id) + '" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button">' +
+    '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="' + esc(id) + '" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button"' +
+      (pre ? tip({ title: pre.title, text: pre.text }) : '') + '>' +
+      (pre ? '<span class="' + CFG.ns + '-dd-pre">' + esc(pre.label) + '</span>' : '') +
       '<span class="' + CFG.ns + '-dd-txt">' + esc(cur) + '</span><span class="' + CFG.ns + '-dd-c" aria-hidden="true">▾</span>' +
     '</button>';
   if (open) {
@@ -1621,7 +1624,10 @@ function listZoneHtml() {
   var cut = state.whoCut, grouped = cut !== 'none', N = CFG.ns;
   return '<div class="' + N + '-who-bar">' +
     '<div class="' + N + '-bar-g">' +
-      dropdownHtml('whoCut', cut, views) +
+      // Как в «Кто смотрит» листа «Использование»: подпись «Группировка:» и подсказка. «Фильтра людей» здесь нет —
+      // руководители видны группировкой «Тим-лиды», исключений логинов у ЦА нет (правка владельца 2026-09-29).
+      dropdownHtml('whoCut', cut, views, { label: 'Группировка:', title: 'Группировка списка',
+        text: 'Как показать людей ЦА: поимённо или сводной таблицей по оргструктуре, специализации, стриму, тим-лидам. Людей не отбирает.' }) +
       searchBoxHtml('whoQ', 'Имя или логин', state.q) +
     '</div>' +
     '<div class="' + N + '-bar-g r">' +
@@ -2445,9 +2451,36 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       SVG_W = w;
       return true;
     }
+    // Прокрутка переживает пересборку и перезапуск скрипта Proteus (кросс-фильтр перезапускает чарт в том же
+    // окне): клик по человеку в таблице не должен уводить список наверх. Снимок — сама панель и внутренние
+    // скролл-зоны (таблица, списки настроек) по классу и номеру; хранится в state, обновляется на scroll.
+    var SCR_SEL = '.' + CFG.ns + '-tbl-scroll, .' + CFG.ns + '-wo-ex, .' + CFG.ns + '-pickbox';
+    function listSig() {
+      return JSON.stringify([state.page, state.whoCut, state.pSort, state.gSort, state.q, state.freqSel || null]);
+    }
+    function scrSnap() {
+      var z = overlay.querySelectorAll(SCR_SEL), m = { ov: [overlay.scrollTop, overlay.scrollLeft], sig: state.scrSig }, i, k, n = {};
+      for (i = 0; i < z.length; i++) {
+        k = z[i].className; n[k] = (n[k] || 0) + 1;
+        m[k + '#' + n[k]] = [z[i].scrollTop, z[i].scrollLeft];
+      }
+      return m;
+    }
+    function scrPut(m) {
+      if (!m) return;
+      if (m.ov) { overlay.scrollTop = m.ov[0]; overlay.scrollLeft = m.ov[1]; }
+      if (m.sig !== listSig()) return;     // другая страница / сортировка / группировка / поиск — список сверху
+      var z = overlay.querySelectorAll(SCR_SEL), i, k, n = {}, v;
+      for (i = 0; i < z.length; i++) {
+        k = z[i].className; n[k] = (n[k] || 0) + 1; v = m[k + '#' + n[k]];
+        if (v) { z[i].scrollTop = v[0]; z[i].scrollLeft = v[1]; }
+      }
+    }
+    overlay.addEventListener('scroll', function () { state.scr = scrSnap(); }, { capture: true, passive: true });
     function render() {
       // overlay — скролл-контейнер: без сохранения позиции клик внизу прыгал наверх.
-      var st = overlay.scrollTop, sl = overlay.scrollLeft, ls = {}, lb = overlay.querySelectorAll('[data-calist]'), li;
+      // Первый рендер после перезапуска (панель ещё пуста) — позиция из state.
+      var scr = overlay.firstChild ? scrSnap() : state.scr, ls = {}, lb = overlay.querySelectorAll('[data-calist]'), li;
       // Прокрутка списков выпадашек ЦА переживает пересборку (галочка внизу длинного списка).
       for (li = 0; li < lb.length; li++) ls[lb[li].getAttribute('data-calist')] = lb[li].scrollTop;
       ANIM = MODEL.sig !== state.animSig;     // новые данные → анимация только в этом рендере
@@ -2457,8 +2490,9 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       if (ch1 || ch2 || ch3) overlay.innerHTML = buildHTML();
       if (ANIM) animateIn(overlay);
       ANIM = false;
-      overlay.scrollTop = st;
-      overlay.scrollLeft = sl;
+      scrPut(scr);
+      state.scrSig = listSig();     // что сейчас на экране — с этим сравнит следующий снимок
+      state.scr = scrSnap();
       lb = overlay.querySelectorAll('[data-calist]');
       for (li = 0; li < lb.length; li++) if (ls[lb[li].getAttribute('data-calist')]) lb[li].scrollTop = ls[lb[li].getAttribute('data-calist')];
       renderTip();

@@ -36,9 +36,10 @@
 var CFG = {
   ns: 'prb',
   selDelay: 300,              // мс: быстрые клики (Shift) уходят в Proteus одним фильтром — последним
-  selGrace: 6000,             // мс: сколько ждать ответ под новый фильтр до первого автоповтора
-  selRetryWait: 10000,        // мс: ожидание после автоповтора
-  selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка «Повторить запрос»
+  selShowAfter: 400,          // мс: плашку «Пересчитываем…» показываем, только если ждём дольше (без мигания)
+  selStaleWait: 10000,        // мс: после ответа под ПРЕЖНИЙ выбор ждём правильный, потом — автоповтор
+  selGiveUp: 60000,           // мс: ответа нет совсем — через столько кнопка «Повторить запрос» (сами не повторяем)
+  selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка
   paCols: ['mode_param', 'sel_f'],  // колонки выбора каталога в кросс-фильтре (ключ сверки)                  // ПРЕФИКС всех CSS-классов и класса overlay
   // Адрес отчёта для кнопки «ссылка» в строке каталога: <origin Proteus> +
   // dashPath + dashboard_id + '/'. Origin берётся со страницы борда (iframe
@@ -1263,8 +1264,9 @@ function buildHTML() {
 // Любой чарт-источник кросс-фильтра (шапка, каталог, «Кто смотрит», строка ЦА) при изменении сразу
 // сообщает соседним iframe борда ключ своего фильтра (PA_SEL: src, sheet, cols, key) — напрямую, без
 // Proteus. Чарт-получатель сверяет ключи своих источников с эхом фильтров в СВОЁМ ответе (flt): пока не
-// совпало — приглушён; не совпало после ответа — сам просит источник переотправить (PA_RESEND, фильтр
-// с меткой pa_nonce → Proteus перезапрашивает), не больше CFG.selMaxTries раз; дальше — кнопка.
+// совпало — приглушён; пришёл ответ под прежний выбор — сам просит источник переотправить (PA_RESEND, фильтр
+// с меткой pa_nonce → Proteus перезапрашивает) — ТОЛЬКО если пришёл ответ под прежний выбор; долгий
+// запрос не повторяем (ждём). Не больше CFG.selMaxTries раз; дальше — кнопка.
 // Ключ: колонки по алфавиту, значения отсортированы, «"», «\» и переводы строк выкинуты (так же в SQL).
 function paVals(a) {
   var o = [];
@@ -1319,7 +1321,10 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
   host.appendChild(guard);
   if (!state.wants) state.wants = {};
   function hide() { guard.className = CFG.ns + '-selg'; guard.innerHTML = ''; }
-  function sync() {
+  // fromData — вызов при новом ответе датасета (перезапуск скрипта). Долгий запрос ошибкой НЕ считается:
+  // пока ответа нет — просто ждём (запрос мог идти и 20 с; повтор оборвал бы его и заставил ждать дважды).
+  // Повторяем только по факту: пришёл ответ НЕ под текущий выбор, а правильный за CFG.selStaleWait так и не пришёл.
+  function sync(fromData) {
     clearTimeout(state.selT);
     var flt = echoFn(), bad = [], now = Date.now(), src;
     if (!flt) { hide(); return; }
@@ -1327,32 +1332,38 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     for (src in state.wants) {
       if (!Object.prototype.hasOwnProperty.call(state.wants, src)) continue;
       var w = state.wants[src];
-      if (paKey(w.cols, get) === w.key) { w.t = 0; w.tries = 0; } else bad.push(w);
+      if (paKey(w.cols, get) === w.key) { w.t = 0; w.tries = 0; w.stale = 0; } else bad.push(w);
     }
     if (!bad.length) { hide(); return; }
     // Вкладка листа скрыта (iframe нулевого размера) — Proteus её не перезапрашивает: не ждём и не повторяем.
     if (!window.innerWidth || !window.innerHeight) { hide(); return; }
-    var i, next = Infinity, exhausted = true, tried = 0;
+    var i, next = Infinity, giveUp = false, tried = 0, shown = false;
     for (i = 0; i < bad.length; i++) {
       var b = bad[i];
       if (!b.t) b.t = now;
-      var lim = b.tries ? CFG.selRetryWait : CFG.selGrace;
-      if (now - b.t >= lim && b.tries < CFG.selMaxTries) {
-        b.tries++; b.t = now;
+      if (fromData) b.stale = now;              // ответ пришёл, но под прежний выбор
+      if (b.stale && now - b.stale >= CFG.selStaleWait && b.tries < CFG.selMaxTries) {
+        b.tries++; b.stale = 0; b.t = now;
         paBcast({ type: 'PA_RESEND', src: b.src, sheet: sheetFn() });
-        lim = CFG.selRetryWait;
       }
-      if (b.tries < CFG.selMaxTries || now - b.t < CFG.selRetryWait) { exhausted = false; next = Math.min(next, b.t + lim - now); }
+      if (b.stale) next = Math.min(next, b.stale + CFG.selStaleWait - now);
+      if (now - b.t >= CFG.selGiveUp || (b.tries >= CFG.selMaxTries && b.stale)) giveUp = true;
+      else next = Math.min(next, b.t + CFG.selGiveUp - now);
+      if (now - b.t >= CFG.selShowAfter || b.tries) shown = true;
+      else next = Math.min(next, b.t + CFG.selShowAfter - now);
       if (b.tries > tried) tried = b.tries;
     }
-    guard.className = CFG.ns + '-selg on' + (exhausted ? ' late' : '');
-    guard.innerHTML = exhausted
-      ? '<div class="' + CFG.ns + '-selg-box"><b>Не удалось получить данные под выбранные фильтры</b>' +
-        '<span>Два автоповтора не помогли — числа здесь пока для прежнего выбора.</span>' +
-        '<button type="button" data-selretry="1">Повторить запрос</button></div>'
-      : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>' +
-        (tried ? 'Данные не совпали с выбором — повторяю запрос (' + tried + ' из ' + CFG.selMaxTries + ')…' : 'Пересчитываем под новый выбор…') + '</div>';
-    if (!exhausted && next < Infinity) state.selT = setTimeout(sync, Math.max(200, next + 60));
+    if (!shown && !giveUp) hide();
+    else {
+      guard.className = CFG.ns + '-selg on' + (giveUp ? ' late' : '');
+      guard.innerHTML = giveUp
+        ? '<div class="' + CFG.ns + '-selg-box"><b>Не удалось получить данные под выбранные фильтры</b>' +
+          '<span>Числа здесь могут быть для прежнего выбора.</span>' +
+          '<button type="button" data-selretry="1">Повторить запрос</button></div>'
+        : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>' +
+          (tried ? 'Пришли данные под прежний выбор — повторяю запрос (' + tried + ' из ' + CFG.selMaxTries + ')…' : 'Пересчитываем под новый выбор…') + '</div>';
+    }
+    if (!giveUp && next < Infinity) state.selT = setTimeout(function () { sync(false); }, Math.max(100, next + 60));
   }
   guard.addEventListener('click', function (e) {
     if (!e.target || !e.target.getAttribute || e.target.getAttribute('data-selretry') === null) return;
@@ -1361,18 +1372,18 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       if (!Object.prototype.hasOwnProperty.call(state.wants, s)) continue;
       var w = state.wants[s];
       if (paKey(w.cols, get) === w.key) continue;   // повторяем только несовпавшие источники
-      w.tries = 0; w.t = Date.now();
+      w.tries = 0; w.stale = 0; w.t = Date.now();
       paBcast({ type: 'PA_RESEND', src: s, sheet: sheetFn() });
     }
-    sync();
+    sync(false);
   });
   if (state.onSelMsg) window.removeEventListener('message', state.onSelMsg);
   state.onSelMsg = function (e) {
     var d = e.data || {}, sh = sheetFn();
     if (d.type !== 'PA_SEL' || accept.indexOf(d.src) < 0 || !(d.sheet === '*' || d.sheet === sh)) return;
     var old = state.wants[d.src];
-    state.wants[d.src] = { src: d.src, cols: d.cols || [], key: String(d.key || ''), t: 0, tries: old && old.key === d.key ? old.tries : 0 };
-    sync();
+    state.wants[d.src] = { src: d.src, cols: d.cols || [], key: String(d.key || ''), t: old && old.key === d.key ? old.t : 0, tries: old && old.key === d.key ? old.tries : 0, stale: 0 };
+    sync(false);
   };
   window.addEventListener('message', state.onSelMsg);
   return sync;
@@ -1787,7 +1798,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     var paSync = paGuardMount(host, function () { return MODEL.stateJ && MODEL.stateJ.flt ? MODEL.stateJ.flt : null; }, sheetOf,
       MODEL.hasCa ? ['strip', 'ppl', 'ca'] : ['strip', 'ppl']);
     render();
-    paSync();
+    paSync(true);   // новый ответ датасета
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     // Старый observer отключаем: иначе он держит удалённый overlay.

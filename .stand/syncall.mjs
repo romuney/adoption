@@ -73,11 +73,11 @@ if (AUD) {
   await click('ca', '[data-caapply]');
   await p.waitForTimeout(200); await log('A2. строка ЦА «Применить» — сразу');
   await p.waitForTimeout(1500); await log('A2. после ответов');
-  plan.pan = [{ drop: true }, { delay: 600 }];
+  plan.pan = [{ delay: 7000 }];
   await click('cat', '[data-rep]', 0);
-  await p.waitForTimeout(1000); await log('A3. каталог вкладки → панель, ответ потерян');
-  await p.waitForTimeout(6000); await log('A3. автоповтор');
-  await p.waitForTimeout(1000); await log('A3. после повторного ответа');
+  await p.waitForTimeout(1000); await log('A3. каталог вкладки → панель, медленный ответ (7 с)');
+  await p.waitForTimeout(5000); await log('A3. 6 с — ждём, без повтора');
+  await p.waitForTimeout(1600); await log('A3. после ответа');
   if (shot) await p.screenshot({ path: shot + 'aud.png' });
   console.log(JSON.stringify({ errs, out }, null, 1));
   await b.close();
@@ -95,26 +95,25 @@ await click('pan', '[data-whocut="login"]', 0);
 await p.waitForTimeout(200); await log('2. клик по человеку — сразу');
 await p.waitForTimeout(1300); await log('2. после ответа каталогу');
 if (shot) await p.screenshot({ path: shot + '2.png' });
-// 3. Ответ каталогу потерян → через 6 с автоповтор, ответ приходит — чисто.
-plan.cat = [{ drop: true }, { delay: 700 }];
+// 3. Медленный ответ (8 с) — НЕ повторяем, просто ждём; ни одного «(повтор)» в отправленных.
+plan.cat = [{ delay: 8000 }];
 await click('pan', '[data-whocut="login"]', 1, 'Shift');
-await p.waitForTimeout(1000); await log('3. ответ потерян, 1 с');
-await p.waitForTimeout(5600); await log('3. 6,6 с — автоповтор');
-if (shot) await p.screenshot({ path: shot + '3.png' });
-await p.waitForTimeout(1500); await log('3. после повторного ответа');
-// 4. Каталог → панель: быстрые Shift-клики, панель отвечает не по порядку (старый ответ последним).
+await p.waitForTimeout(300); await log('3. медленный ответ каталогу — 0,3 с');
+await p.waitForTimeout(7000); await log('3. 7,3 с — всё ещё ждём, без повтора');
+await p.waitForTimeout(1500); await log('3. после ответа');
+// 4. Каталог → панель: старый ответ пришёл после свежего → через 10 с автоповтор.
 plan.pan = [{ delay: 2500 }, { delay: 300 }, { delay: 600 }];
 await click('cat', '[data-rep]', 0); await p.waitForTimeout(450);
 await click('cat', '[data-rep]', 1, 'Shift'); await p.waitForTimeout(1000); await log('4. свежий ответ панели');
 await p.waitForTimeout(1600); await log('4. следом старый ответ');
-await p.waitForTimeout(6000); await log('4. через 6 с — автоповтор');
+await p.waitForTimeout(10200); await log('4. через 10 с — автоповтор');
+if (shot) await p.screenshot({ path: shot + '4.png' });
 await p.waitForTimeout(1200); await log('4. после повторного ответа');
-// 5. Два автоповтора подряд теряются → кнопка «Повторить запрос».
-plan.pan = [{ drop: true }, { drop: true }, { drop: true }, { delay: 500 }];
+// 5. Ответ потерян — сами не повторяем; через 60 с кнопка, ручной повтор.
+plan.pan = [{ drop: true }, { delay: 500 }];
 await click('cat', '[data-rep]', 2, 'Shift');
-await p.waitForTimeout(6500); await log('5. 6,5 с — автоповтор 1');
-await p.waitForTimeout(10500); await log('5. 17 с — автоповтор 2');
-await p.waitForTimeout(10500); await log('5. 27,5 с — сдались');
+await p.waitForTimeout(8000); await log('5. потерян, 8 с — ждём, без повтора');
+await p.waitForTimeout(53000); await log('5. 61 с — кнопка');
 if (shot) await p.screenshot({ path: shot + '5.png' });
 await (await fr('pan')).click('[data-selretry]');
 await p.waitForTimeout(1200); await log('5. после ручного «Повторить»');

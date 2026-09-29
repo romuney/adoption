@@ -1094,8 +1094,9 @@ function buildCSS() {
     P + '-cal-chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}',
     P + '-cal-chip{border:1px solid var(--line2);border-radius:8px;padding:5px 10px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
     P + '-cal-chip b{display:block;color:var(--ink);font-size:var(--fs-lead);font-weight:600;font-variant-numeric:tabular-nums;}',
-    P + '-cal-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px 22px;}',
-    P + '-cal-mon{min-width:0;}',
+    // Месяцы раздвинуты по ширине панели (свободное место — в отступы между ними), ширина месяца ограничена.
+    P + '-cal-months{display:flex;flex-wrap:wrap;justify-content:space-between;gap:14px 28px;}',
+    P + '-cal-mon{flex:1 1 196px;min-width:196px;max-width:280px;}',
     P + '-cal-mt{font-size:var(--fs-body);font-weight:500;color:var(--ink2);margin-bottom:6px;}',
     P + '-cal-mt span{color:var(--muted);font-weight:400;}',
     P + '-cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}',

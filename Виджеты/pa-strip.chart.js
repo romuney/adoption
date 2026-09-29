@@ -148,6 +148,20 @@ function grainOf(id) {
   for (var i = 0; i < CFG.grains.length; i++) if (CFG.grains[i].id === id) return CFG.grains[i];
   return CFG.grains[0];
 }
+// Свежесть: «данные на ДД.ММ» по дате последнего дня витрины (md из pa_strip). Зелёная точка — это вчера
+// (витрина в срок), жёлтая — отстаёт (в подсказке — на сколько), серая — дата не пришла.
+function freshHtml(md, N) {
+  var t = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(md || ''));
+  if (!t) return '<span class="' + N + '-fresh"><i class="na"></i>данные <b>—</b></span>';
+  var now = new Date(), y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  var lag = Math.round((Date.UTC(y.getFullYear(), y.getMonth(), y.getDate()) - Date.UTC(+t[1], +t[2] - 1, +t[3])) / 86400000);
+  var ok = lag <= 0;
+  return '<span class="' + N + '-fresh"' + tip({ title: 'Свежесть данных', text: ok
+      ? 'Последний день в данных — вчера, ' + t[3] + '.' + t[2] + '.' + t[1] + '. Витрина обновлена в срок.'
+      : 'Последний день в данных — ' + t[3] + '.' + t[2] + '.' + t[1] + ', а должен быть вчерашний: витрина отстаёт на ' + lag + ' ' +
+        (lag % 10 === 1 && lag % 100 !== 11 ? 'день' : (lag % 10 >= 2 && lag % 10 <= 4 && (lag % 100 < 10 || lag % 100 >= 20) ? 'дня' : 'дней')) + '.' }) + '>' +
+    '<i class="' + (ok ? '' : 'late') + '"></i>данные на <b>' + t[3] + '.' + t[2] + '</b></span>';
+}
 function buildModel() {
   var F = CFG.fields, r = rawData[0] || null;
   var m = { grain: state.grain, sj: {}, areaNm: [], ppl: {} };
@@ -278,6 +292,8 @@ function buildCSS() {
     P + '-fresh{font-size:11.5px;color:' + C.mut + ';display:inline-flex;align-items:center;gap:7px;}',
     P + '-fresh b{color:' + C.ink2 + ';font-weight:500;}',
     P + '-fresh i{width:7px;height:7px;border-radius:50%;background:' + C.green + ';display:inline-block;}',
+    P + '-fresh i.late{background:#f0a020;}',
+    P + '-fresh i.na{background:#c4c8d0;}',
     // ── KPI ──
     // ── «Что видно в данных»: лента фиксированной высоты ──
     // ── Общие фильтры листа ──
@@ -310,7 +326,7 @@ function buildHTML() {
   }
   h.push('</div>');
   h.push('<span class="' + N + '-sp"></span>');
-  h.push('<span class="' + N + '-fresh"><i></i>данные <b>за вчера</b></span>');
+  h.push(freshHtml(MODEL.sj.md, N));
 
   h.push('</div>');
   h.push('</div>');

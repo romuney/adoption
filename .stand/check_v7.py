@@ -135,11 +135,13 @@ for g, col in [('spec', 'spec_f'), ('adg', 'adg_f'), ('stream', 'stream_f')]:
     for r in [x for x in (pa if g == 'adg' else p) if x['section'] == 'ctx' and x['g'] == g][:3]:
         t = [x for x in run(BODY, {col: [r['k']]})[0] if x['section'] == 'total'][0]
         ok(str(t['users']) == str(r['users']), f'группа {g}={r["k"]}: людей {r["users"]} → ИТОГО тела {t["users"]}')
-# Шапка pa_strip: одна строка эха; без выбора таблиц не читает; подписи пилюль.
+# Шапка pa_strip: одна строка эха; без выбора — только дата свежести; подписи пилюль.
 for c in [{}, {'period_param': 'q', 'pub_f': '0'}, {'mode_param': 'collection', 'sel_f': ['Колл 5']}]:
     k, _, rr, _ = run(HDR, c)
     ok(len(k) == 1 and json.loads(k[0]['state_j'])['period'] == c.get('period_param', 'd'), f'pa_strip: одна строка, state_j {k[0]["state_j"] if k else None}')
-    ok(rr <= 1, f'pa_strip без выбора отчётов/людей таблиц не читает {c} (строк прочитано: {rr})')
+    # единственное чтение — дата свежести: одна строка pa_pair (LIMIT 1; CH берёт пару гранул на поток), не скан таблицы
+    ok(rr <= 300000, f'pa_strip без выбора отчётов/людей читает только дату свежести {c} (строк прочитано: {rr})')
+    ok(len(json.loads(k[0]['state_j']).get('md', '')) == 10, f'pa_strip: дата свежести md в state_j {c}')
 rid = [x for x in cube if x['section'] == 'rep'][:2]
 k = run(HDR, {'mode_param': 'report', 'sel_f': [str(x['dashboard_id']) for x in rid], 'login_f': ['u1'], 'exl_f': ['u2'], 'heads_f': 'n'})[0][0]
 sj = json.loads(k['state_j'])

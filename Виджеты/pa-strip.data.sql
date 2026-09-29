@@ -61,4 +61,6 @@ SELECT
   CAST('{{ grain }}' AS String) AS grain,
   CAST({% if have and pmode == 'report' and repids %}ifNull((SELECT arrayStringConcat(groupArray(20)(toString(ifNull(dashboard_nm, ''))), '\n') FROM prod_proteus.pa_dash_meta WHERE dashboard_id IN ({{ repids|join(', ') }})), ''){% else %}''{% endif %} AS String) AS area_nm,
   CAST({% if loginf or exlf %}ifNull((SELECT arrayStringConcat(groupArray(concat(toString(login), '\t', toString(ifNull(fio, '')))), '\n') FROM prod_proteus.pa_emp_attrs WHERE login IN {{ q(pplq) }}), ''){% else %}''{% endif %} AS String) AS ppl_nm,
-  CAST('{{ "{" ~ SJ|join(", ") ~ "}" }}' AS String) AS state_j
+  {#- md — дата свежести данных (последний день витрины): шапка пишет «данные на ДД.ММ» и зелёную точку, если это вчера.
+      Одна строка pa_pair (md одинаков у всех пар), а не скан таблицы. -#}
+  CAST(concat('{{ "{" ~ SJ|join(", ") }}', ', "md":"', ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), ''), '"}') AS String) AS state_j

@@ -68,7 +68,11 @@
 {%- if cahead == '1' %} AND hd = 1{% elif cahead == 'n' %} AND hd = 0{% endif %}
 {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
 {%- endmacro %}
+{#- Эхо применённых кросс-фильтров (сверка выбора в чартах, 2026-09-29): сырые filter_values колонок,
+    которые шлют чарты борда; «"», «\» и переводы строк выкинуты — в ключе сверки чарта их тоже нет. -#}
+{% set FLT = [] %}{% for c in ['mode_param', 'sel_f', 'period_param', 'pub_f', 'act_f', 'exc_f', 'org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'] %}{% set fv = [] %}{% for v in (filter_values(c) or []) %}{% if v|string|length < 2000 %}{% set _ = fv.append('"' ~ (v|string|replace('"', '')|replace('\\', '')|replace('\n', '')|replace('\r', '')|replace("'", "''")) ~ '"') %}{% endif %}{% endfor %}{% if fv %}{% set _ = FLT.append('"' ~ c ~ '":[' ~ fv|join(',') ~ ']') %}{% endif %}{% endfor %}
 {% set SJ = ['"period":"' ~ grain ~ '"', '"n":' ~ g.n] %}
+{% set _ = SJ.append('"flt":{' ~ FLT|join(',') ~ '}') %}
 {% set CJ = [] %}
 {% if caorg %}{% set _ = CJ.append('"org":' ~ jal(caorg)) %}{% endif %}
 {% if caspec %}{% set _ = CJ.append('"spec":' ~ jal(caspec)) %}{% endif %}

@@ -37,7 +37,10 @@
 var CFG = {
   ns: 'paud',                 // ПРЕФИКС всех CSS-классов и класса overlay
   sheet: 'aud',               // лист борда: сверка выбора — только со «своим» каталогом (PA_SEL.sheet)
-  selWait: 12000,             // мс: сколько ждать ответ под новый выбор каталога, потом — «Повторить»
+  selGrace: 6000,             // мс: сколько ждать ответ под новый фильтр до первого автоповтора
+  selRetryWait: 10000,        // мс: ожидание после автоповтора
+  selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка «Повторить запрос»
+  paCols: ['heads_f', 'login_f', 'org_f', 'spec_f', 'stream_f'],  // колонки «Кто смотрит» в кросс-фильтре (ключ сверки)
   // 7 колонок датасета pa_aud_v2 (SQL — поставка 2026-09-24, файл 2); alias == имя колонки.
   // section: total / d (словарь) / acl (как роздан доступ) / v (зрители, упаковка) / h (штат без визитов).
   fields: { section: 'section', g: 'g', k: 'k', parent: 'parent', n: 'n', a: 'a', state_j: 'state_j' },
@@ -373,6 +376,7 @@ function buildModel() {
       if (CFG.grains[sj.period]) m.grain = sj.period;
       m.area.mode = sj.mode || ''; m.area.sel = sj.sel || []; m.area.n = num(sj.areaN) || 0;
       m.md = toDate(sj.md);
+      m.flt = sj.flt && typeof sj.flt === 'object' ? sj.flt : null;   // эхо применённых кросс-фильтров (сверка)
       m.ds = toDate(sj.ds);
       m.caMode = sj.caMode === 'cond' ? 'cond' : 'acc';
       var ca = sj.ca || {};
@@ -888,8 +892,8 @@ function buildCSS() {
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
     P + '-sig-chip.neutral{background:#f3f4f6;color:var(--muted);}',
-    // Плашка сверки — вне корня виджета: CSS-переменные корня до неё не доходят, цвета явные.
-    P + '-selg{position:absolute;left:0;top:0;right:0;bottom:0;z-index:30;display:none;align-items:flex-start;justify-content:center;padding-top:96px;background:rgba(246,246,246,.6);transition:opacity .15s;}',
+    // Плашка сверки фильтров — вне корня виджета: CSS-переменные корня до неё не доходят, цвета явные.
+    P + '-selg{position:absolute;left:0;top:0;right:0;bottom:0;z-index:30;display:none;align-items:flex-start;justify-content:center;padding-top:96px;background:rgba(246,246,246,.6);}',
     P + '-selg.on{display:flex;}',
     P + '-selg-box{display:flex;align-items:center;gap:10px;max-width:380px;background:#fff;border:1px solid #e7e9ee;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(24,33,50,.12);font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;}',
     P + '-selg.late ' + P + '-selg-box{flex-direction:column;align-items:flex-start;gap:6px;border-color:#f0c36d;}',
@@ -2182,16 +2186,26 @@ function dynTipHtml(el, i) {
 }
 
 // ---------- БЛОК 6: МОНТАЖ + ИНТЕРАКТИВ ----------
-// ---------- СВЕРКА ВЫБОРА КАТАЛОГА (2026-09-29) ----------
-// Чарты борда — соседние iframe; postMessage между ними работает без Proteus. Каталог при клике сразу
-// сообщает ключ выбора (PA_SEL), панель сравнивает его с эхом области в СВОЁМ ответе: не совпало —
-// данные ещё старые (или запрос потерялся). Ключ: режим + отсортированные значения; кавычки и «\» не
-// участвуют (эхо в JSON их экранирует).
-function selKey(mode, sel) {
-  var s = [];
-  for (var i = 0; i < (sel || []).length; i++) { var v = String(sel[i]).replace(/["\\]/g, ''); if (v !== '') s.push(v); }
-  s.sort();
-  return s.length ? String(mode || '') + '|' + s.join(',') : '';
+// ---------- СВЕРКА ФИЛЬТРОВ МЕЖДУ ЧАРТАМИ (2026-09-29) ----------
+// Любой чарт-источник кросс-фильтра (шапка, каталог, «Кто смотрит», строка ЦА) при изменении сразу
+// сообщает соседним iframe борда ключ своего фильтра (PA_SEL: src, sheet, cols, key) — напрямую, без
+// Proteus. Чарт-получатель сверяет ключи своих источников с эхом фильтров в СВОЁМ ответе (flt): пока не
+// совпало — приглушён; не совпало после ответа — сам просит источник переотправить (PA_RESEND, фильтр
+// с меткой pa_nonce → Proteus перезапрашивает), не больше CFG.selMaxTries раз; дальше — кнопка.
+// Ключ: колонки по алфавиту, значения отсортированы, «"», «\» и переводы строк выкинуты (так же в SQL).
+function paVals(a) {
+  var o = [];
+  for (var i = 0; i < (a || []).length; i++) { var v = String(a[i]).replace(/["\\\n\r]/g, ''); if (v !== '') o.push(v); }
+  o.sort();
+  return o;
+}
+function paKey(cols, get) {
+  var c = cols.slice().sort(), out = [];
+  for (var i = 0; i < c.length; i++) out.push(c[i] + '=' + paVals(get(c[i])).join(','));
+  return out.join(';');
+}
+function paMaskGet(fl) {
+  return function (c) { for (var i = 0; i < fl.length; i++) if (fl[i].column === c) return fl[i].value || []; return []; };
 }
 // Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
 function paBcast(msg) {
@@ -2205,6 +2219,90 @@ function paBcast(msg) {
       }
     })(window.top, 0);
   } catch (e) { /* нет window.top — стенд без родителя */ }
+}
+
+// Источник: сообщить новый ключ фильтра и отвечать на «повтори» (фильтр + метка pa_nonce: колонки нет
+// ни в одном датасете, фильтр ей игнорируется, но маска другая — Proteus перезапрашивает чарты).
+function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet: sheet, cols: cols, key: paKey(cols, paMaskGet(fl)) }); }
+function paResendOn(src, sheetFn, cols, maskFn) {
+  if (state.onResend) window.removeEventListener('message', state.onResend);
+  state.onResend = function (e) {
+    var d = e.data || {}, sh = sheetFn();
+    if (d.type !== 'PA_RESEND' || d.src !== src || !(sh === '*' || d.sheet === sh) || typeof applyCrossFilter !== 'function') return;
+    var fl = maskFn();
+    paOut(src, sh, cols, fl);
+    applyCrossFilter(fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
+  };
+  window.addEventListener('message', state.onResend);
+}
+
+// Получатель: плашка сверки поверх чарта. echoFn — эхо фильтров ответа (flt) или null (ответ пуст —
+// сверять не с чем); accept — какие источники фильтруют этот чарт (как в кросс-фильтрах Proteus).
+function paGuardMount(host, echoFn, sheetFn, accept) {
+  var oldG = host.querySelector('.' + CFG.ns + '-selg');
+  if (oldG) oldG.parentNode.removeChild(oldG);
+  var guard = document.createElement('div');
+  guard.className = CFG.ns + '-selg';
+  host.appendChild(guard);
+  if (!state.wants) state.wants = {};
+  function hide() { guard.className = CFG.ns + '-selg'; guard.innerHTML = ''; }
+  function sync() {
+    clearTimeout(state.selT);
+    var flt = echoFn(), bad = [], now = Date.now(), src;
+    if (!flt) { hide(); return; }
+    var get = function (c) { return flt[c] || []; };
+    for (src in state.wants) {
+      if (!Object.prototype.hasOwnProperty.call(state.wants, src)) continue;
+      var w = state.wants[src];
+      if (paKey(w.cols, get) === w.key) { w.t = 0; w.tries = 0; } else bad.push(w);
+    }
+    if (!bad.length) { hide(); return; }
+    // Вкладка листа скрыта (iframe нулевого размера) — Proteus её не перезапрашивает: не ждём и не повторяем.
+    if (!window.innerWidth || !window.innerHeight) { hide(); return; }
+    var i, next = Infinity, exhausted = true, tried = 0;
+    for (i = 0; i < bad.length; i++) {
+      var b = bad[i];
+      if (!b.t) b.t = now;
+      var lim = b.tries ? CFG.selRetryWait : CFG.selGrace;
+      if (now - b.t >= lim && b.tries < CFG.selMaxTries) {
+        b.tries++; b.t = now;
+        paBcast({ type: 'PA_RESEND', src: b.src, sheet: sheetFn() });
+        lim = CFG.selRetryWait;
+      }
+      if (b.tries < CFG.selMaxTries || now - b.t < CFG.selRetryWait) { exhausted = false; next = Math.min(next, b.t + lim - now); }
+      if (b.tries > tried) tried = b.tries;
+    }
+    guard.className = CFG.ns + '-selg on' + (exhausted ? ' late' : '');
+    guard.innerHTML = exhausted
+      ? '<div class="' + CFG.ns + '-selg-box"><b>Не удалось получить данные под выбранные фильтры</b>' +
+        '<span>Два автоповтора не помогли — числа здесь пока для прежнего выбора.</span>' +
+        '<button type="button" data-selretry="1">Повторить запрос</button></div>'
+      : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>' +
+        (tried ? 'Данные не совпали с выбором — повторяю запрос (' + tried + ' из ' + CFG.selMaxTries + ')…' : 'Пересчитываем под новый выбор…') + '</div>';
+    if (!exhausted && next < Infinity) state.selT = setTimeout(sync, Math.max(200, next + 60));
+  }
+  guard.addEventListener('click', function (e) {
+    if (!e.target || !e.target.getAttribute || e.target.getAttribute('data-selretry') === null) return;
+    var flt = echoFn() || {}, get = function (c) { return flt[c] || []; };
+    for (var s in state.wants) {
+      if (!Object.prototype.hasOwnProperty.call(state.wants, s)) continue;
+      var w = state.wants[s];
+      if (paKey(w.cols, get) === w.key) continue;   // повторяем только несовпавшие источники
+      w.tries = 0; w.t = Date.now();
+      paBcast({ type: 'PA_RESEND', src: s, sheet: sheetFn() });
+    }
+    sync();
+  });
+  if (state.onSelMsg) window.removeEventListener('message', state.onSelMsg);
+  state.onSelMsg = function (e) {
+    var d = e.data || {}, sh = sheetFn();
+    if (d.type !== 'PA_SEL' || accept.indexOf(d.src) < 0 || !(d.sheet === '*' || d.sheet === sh)) return;
+    var old = state.wants[d.src];
+    state.wants[d.src] = { src: d.src, cols: d.cols || [], key: String(d.key || ''), t: 0, tries: old && old.key === d.key ? old.tries : 0 };
+    sync();
+  };
+  window.addEventListener('message', state.onSelMsg);
+  return sync;
 }
 
 (function mount() {
@@ -2499,6 +2597,7 @@ function paBcast(msg) {
     }
     function emitBus() {
       if (typeof applyCrossFilter !== 'function') return;
+      paOut('ppl', CFG.sheet, CFG.paCols, maskOf());
       applyCrossFilter(maskOf());
     }
 
@@ -2792,45 +2891,11 @@ function paBcast(msg) {
     state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(); if (w || hh || ch) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 
-    // ── Сверка с выбором каталога: пока ответ не совпал с выбором — чарт приглушён; не пришёл за
-    // CFG.selWait — предупреждение и «Повторить» (каталог переотправит фильтр с меткой). ──
-    var oldG = host.querySelector('.' + CFG.ns + '-selg');
-    if (oldG) oldG.parentNode.removeChild(oldG);
-    var guard = document.createElement('div');
-    guard.className = CFG.ns + '-selg';
-    host.appendChild(guard);
-    function syncGuard() {
-      clearTimeout(state.selT);
-      var have = selKey(MODEL.area.mode, MODEL.area.sel);
-      // Последний выбор каталога помним всегда: запоздавший ответ под старый выбор тоже ловится.
-      if (!state.want || state.want.key === have) { if (state.want) state.want.t = 0; guard.className = CFG.ns + '-selg'; guard.innerHTML = ''; return; }
-      if (!state.want.t) state.want.t = Date.now();   // отсчёт ожидания — с момента расхождения
-      var late = Date.now() - state.want.t > CFG.selWait;
-      guard.className = CFG.ns + '-selg on' + (late ? ' late' : '');
-      guard.innerHTML = late
-        ? '<div class="' + CFG.ns + '-selg-box"><b>Данные не совпали с выбором в каталоге</b>' +
-          '<span>Запрос мог потеряться — числа здесь пока для прежнего выбора.</span>' +
-          '<button type="button" data-selretry="1">Повторить запрос</button></div>'
-        : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>Пересчитываем под выбор в каталоге…</div>';
-      if (!late) state.selT = setTimeout(syncGuard, CFG.selWait - (Date.now() - state.want.t) + 60);
-    }
-    guard.addEventListener('click', function (e) {
-      if (!e.target || !e.target.getAttribute || e.target.getAttribute('data-selretry') === null || !state.want) return;
-      state.want.t = Date.now();
-      paBcast({ type: 'PA_RESEND', sheet: CFG.sheet });
-      syncGuard();
-    });
-    if (state.onSelMsg) window.removeEventListener('message', state.onSelMsg);
-    state.onSelMsg = function (e) {
-      var d = e.data || {};
-      if (d.type !== 'PA_SEL' || d.sheet !== CFG.sheet) return;
-      state.want = { key: String(d.key || ''), t: Date.now() };
-      syncGuard();
-    };
-    window.addEventListener('message', state.onSelMsg);
-    syncGuard();
-
+    // Сверка фильтров: плашка «Пересчитываем…/повторяю запрос», источник людской шины отвечает на «повтори».
+    var paSync = paGuardMount(host, function () { return MODEL.flt; }, function () { return CFG.sheet; }, ['strip', 'cat', 'ca']);
+    paResendOn('ppl', function () { return CFG.sheet; }, CFG.paCols, maskOf);
     render();
+    paSync();
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     // Старый observer отключаем: иначе он держит удалённый overlay.

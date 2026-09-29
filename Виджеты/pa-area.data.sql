@@ -48,6 +48,9 @@
 {% set sel = [] %}{% for v in selr %}{% if v|string != '' %}{% set _ = sel.append(v|string) %}{% endif %}{% endfor %}
 {% set have = pmode != '' and sel|length > 0 %}
 {% set repids = [] %}{% if have and pmode == 'report' %}{% for v in sel %}{% if v|int > 0 %}{% set _ = repids.append(v|int) %}{% endif %}{% endfor %}{% endif %}
+{#- Эхо применённых кросс-фильтров (сверка выбора в чартах, 2026-09-29): сырые filter_values колонок,
+    которые шлют чарты борда; «"», «\» и переводы строк выкинуты — в ключе сверки чарта их тоже нет. -#}
+{% set FLT = [] %}{% for c in ['mode_param', 'sel_f', 'period_param', 'pub_f', 'act_f', 'exc_f', 'org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'] %}{% set fv = [] %}{% for v in (filter_values(c) or []) %}{% if v|string|length < 2000 %}{% set _ = fv.append('"' ~ (v|string|replace('"', '')|replace('\\', '')|replace('\n', '')|replace('\r', '')|replace("'", "''")) ~ '"') %}{% endif %}{% endfor %}{% if fv %}{% set _ = FLT.append('"' ~ c ~ '":[' ~ fv|join(',') ~ ']') %}{% endif %}{% endfor %}
 WITH
   {# Дата свежести — как у каталога: md пары, запасной источник — последний визит. #}
   maxd AS (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds FROM prod_proteus.pa_pair),
@@ -242,7 +245,7 @@ FROM (
     {% if have %}{{ q([sel|join('\n')]) }}{% else %}''{% endif %} AS k, '{{ grain }}' AS parent,
     NULL AS login,
     {% if have and pmode == 'report' and repids|length == 1 %}ifNull((SELECT any(dashboard_nm) FROM prod_proteus.pa_dash_meta WHERE dashboard_id = {{ repids[0] }}), ''){% else %}NULL{% endif %} AS fio,
-    NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
+    NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{{ '{' ~ FLT|join(',') ~ '}' }}' AS exp, NULL AS is_head,
     {#- days — kt + 1 (сколько свежих периодов «надёжны» для новых; 0 — ни одного), last_dt — начало истории событий -#}
     toUInt32(greatest((SELECT kt FROM hist) + 1, 0)) AS days, (SELECT ds FROM hist) AS last_dt, NULL AS bin,
     toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,

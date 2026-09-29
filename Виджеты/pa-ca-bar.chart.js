@@ -39,6 +39,7 @@ var CFG = {
   fields: { section: 'section', g: 'g', k: 'k', parent: 'parent', n: 'n' },
   text: { noData: 'Нет данных о сотрудниках (pa_staff)' },
   orgSep: ' › ',
+  paCols: ['ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'],   // ключ сверки фильтров
   overlay: {
     // «PA-CA-DD-ON1» в base64: 12 байт = ровно 16 символов, стоит в строке PNG как есть.
     mark: 'UEEtQ0EtREQtT04x',
@@ -468,6 +469,56 @@ function buildHTML() {
 }
 
 // ---------- БЛОК 6: МОНТАЖ + ИНТЕРАКТИВ ----------
+// ---------- СВЕРКА ФИЛЬТРОВ МЕЖДУ ЧАРТАМИ (2026-09-29) ----------
+// Любой чарт-источник кросс-фильтра (шапка, каталог, «Кто смотрит», строка ЦА) при изменении сразу
+// сообщает соседним iframe борда ключ своего фильтра (PA_SEL: src, sheet, cols, key) — напрямую, без
+// Proteus. Чарт-получатель сверяет ключи своих источников с эхом фильтров в СВОЁМ ответе (flt): пока не
+// совпало — приглушён; не совпало после ответа — сам просит источник переотправить (PA_RESEND, фильтр
+// с меткой pa_nonce → Proteus перезапрашивает), не больше CFG.selMaxTries раз; дальше — кнопка.
+// Ключ: колонки по алфавиту, значения отсортированы, «"», «\» и переводы строк выкинуты (так же в SQL).
+function paVals(a) {
+  var o = [];
+  for (var i = 0; i < (a || []).length; i++) { var v = String(a[i]).replace(/["\\\n\r]/g, ''); if (v !== '') o.push(v); }
+  o.sort();
+  return o;
+}
+function paKey(cols, get) {
+  var c = cols.slice().sort(), out = [];
+  for (var i = 0; i < c.length; i++) out.push(c[i] + '=' + paVals(get(c[i])).join(','));
+  return out.join(';');
+}
+function paMaskGet(fl) {
+  return function (c) { for (var i = 0; i < fl.length; i++) if (fl[i].column === c) return fl[i].value || []; return []; };
+}
+// Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
+function paBcast(msg) {
+  try {
+    (function walk(w, d) {
+      if (d > 5) return;
+      for (var i = 0; i < w.frames.length; i++) {
+        var f = w.frames[i];
+        if (f !== window) { try { f.postMessage(msg, '*'); } catch (e) { /* чужой фрейм */ } }
+        try { walk(f, d + 1); } catch (e2) { /* нет доступа к вложенным */ }
+      }
+    })(window.top, 0);
+  } catch (e) { /* нет window.top — стенд без родителя */ }
+}
+
+// Источник: сообщить новый ключ фильтра и отвечать на «повтори» (фильтр + метка pa_nonce: колонки нет
+// ни в одном датасете, фильтр ей игнорируется, но маска другая — Proteus перезапрашивает чарты).
+function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet: sheet, cols: cols, key: paKey(cols, paMaskGet(fl)) }); }
+function paResendOn(src, sheetFn, cols, maskFn) {
+  if (state.onResend) window.removeEventListener('message', state.onResend);
+  state.onResend = function (e) {
+    var d = e.data || {}, sh = sheetFn();
+    if (d.type !== 'PA_RESEND' || d.src !== src || !(sh === '*' || d.sheet === sh) || typeof applyCrossFilter !== 'function') return;
+    var fl = maskFn();
+    paOut(src, sh, cols, fl);
+    applyCrossFilter(fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
+  };
+  window.addEventListener('message', state.onResend);
+}
+
 (function mount() {
   try {
     var hosts = document.querySelectorAll('[_echarts_instance_]');
@@ -642,6 +693,7 @@ function buildHTML() {
     }
     function emit() {
       if (typeof applyCrossFilter !== 'function') return;
+      paOut('ca', 'aud', CFG.paCols, maskOf(state.applied));
       applyCrossFilter(maskOf(state.applied));
     }
 
@@ -705,6 +757,7 @@ function buildHTML() {
     overlay.addEventListener('mouseover', onOver);
     overlay.addEventListener('mouseout', onOut);
     overlay.addEventListener('click', onClick);
+    paResendOn('ca', function () { return 'aud'; }, CFG.paCols, function () { return maskOf(state.applied); });
     getDd();
 
     // Глобальные слушатели переживают перезапуск скрипта — старые снимаем явно.

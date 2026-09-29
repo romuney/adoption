@@ -35,7 +35,11 @@
 // Все цвета/шрифты/отступы из макета — только здесь, не в разметке.
 var CFG = {
   ns: 'prb',
-  selDelay: 300,              // мс: быстрые клики (Shift) уходят в Proteus одним фильтром — последним                  // ПРЕФИКС всех CSS-классов и класса overlay
+  selDelay: 300,              // мс: быстрые клики (Shift) уходят в Proteus одним фильтром — последним
+  selGrace: 6000,             // мс: сколько ждать ответ под новый фильтр до первого автоповтора
+  selRetryWait: 10000,        // мс: ожидание после автоповтора
+  selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка «Повторить запрос»
+  paCols: ['mode_param', 'sel_f'],  // колонки выбора каталога в кросс-фильтре (ключ сверки)                  // ПРЕФИКС всех CSS-классов и класса overlay
   // Адрес отчёта для кнопки «ссылка» в строке каталога: <origin Proteus> +
   // dashPath + dashboard_id + '/'. Origin берётся со страницы борда (iframe
   // песочницы знает её через document.referrer); dashHost — запасной хост.
@@ -617,6 +621,16 @@ function buildCSS() {
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
     P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
     // Значок «i» — один вид на всём борде (как -info в KPI чартов области и аудитории).
+    // Плашка сверки фильтров — вне корня виджета: CSS-переменные корня до неё не доходят, цвета явные.
+    P + '-selg{position:absolute;left:0;top:0;right:0;bottom:0;z-index:30;display:none;align-items:flex-start;justify-content:center;padding-top:96px;background:rgba(246,246,246,.6);}',
+    P + '-selg.on{display:flex;}',
+    P + '-selg-box{display:flex;align-items:center;gap:10px;max-width:380px;background:#fff;border:1px solid #e7e9ee;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(24,33,50,.12);font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;}',
+    P + '-selg.late ' + P + '-selg-box{flex-direction:column;align-items:flex-start;gap:6px;border-color:#f0c36d;}',
+    P + '-selg-box b{font-weight:600;color:#23272e;}',
+    P + '-selg-box span{color:#8a909c;line-height:1.4;}',
+    P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:500;padding:6px 12px;cursor:pointer;}',
+    P + '-selg-spin{width:14px;height:14px;border-radius:50%;border:2px solid #e7e9ee;border-top-color:#245FD4;animation:' + CFG.ns + '-spin .8s linear infinite;flex:0 0 auto;}',
+    '@keyframes ' + CFG.ns + '-spin{to{transform:rotate(360deg)}}',
     P + '-thi{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:3px;border-radius:50%;flex:0 0 auto;'
       + 'border:1px solid var(--muted2);color:var(--muted);font-family:inherit;font-size:9px;line-height:1;font-weight:600;font-style:normal;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
     P + '-thi:hover{border-color:var(--act);color:var(--act);}',
@@ -1245,16 +1259,26 @@ function buildHTML() {
 }
 
 // ---------- БЛОК 6: МОНТАЖ + ИНТЕРАКТИВ ----------
-// ---------- СВЕРКА ВЫБОРА КАТАЛОГА (2026-09-29) ----------
-// Чарты борда — соседние iframe; postMessage между ними работает без Proteus. Каталог при клике сразу
-// сообщает ключ выбора (PA_SEL), панель сравнивает его с эхом области в СВОЁМ ответе: не совпало —
-// данные ещё старые (или запрос потерялся). Ключ: режим + отсортированные значения; кавычки и «\» не
-// участвуют (эхо в JSON их экранирует).
-function selKey(mode, sel) {
-  var s = [];
-  for (var i = 0; i < (sel || []).length; i++) { var v = String(sel[i]).replace(/["\\]/g, ''); if (v !== '') s.push(v); }
-  s.sort();
-  return s.length ? String(mode || '') + '|' + s.join(',') : '';
+// ---------- СВЕРКА ФИЛЬТРОВ МЕЖДУ ЧАРТАМИ (2026-09-29) ----------
+// Любой чарт-источник кросс-фильтра (шапка, каталог, «Кто смотрит», строка ЦА) при изменении сразу
+// сообщает соседним iframe борда ключ своего фильтра (PA_SEL: src, sheet, cols, key) — напрямую, без
+// Proteus. Чарт-получатель сверяет ключи своих источников с эхом фильтров в СВОЁМ ответе (flt): пока не
+// совпало — приглушён; не совпало после ответа — сам просит источник переотправить (PA_RESEND, фильтр
+// с меткой pa_nonce → Proteus перезапрашивает), не больше CFG.selMaxTries раз; дальше — кнопка.
+// Ключ: колонки по алфавиту, значения отсортированы, «"», «\» и переводы строк выкинуты (так же в SQL).
+function paVals(a) {
+  var o = [];
+  for (var i = 0; i < (a || []).length; i++) { var v = String(a[i]).replace(/["\\\n\r]/g, ''); if (v !== '') o.push(v); }
+  o.sort();
+  return o;
+}
+function paKey(cols, get) {
+  var c = cols.slice().sort(), out = [];
+  for (var i = 0; i < c.length; i++) out.push(c[i] + '=' + paVals(get(c[i])).join(','));
+  return out.join(';');
+}
+function paMaskGet(fl) {
+  return function (c) { for (var i = 0; i < fl.length; i++) if (fl[i].column === c) return fl[i].value || []; return []; };
 }
 // Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
 function paBcast(msg) {
@@ -1269,16 +1293,91 @@ function paBcast(msg) {
     })(window.top, 0);
   } catch (e) { /* нет window.top — стенд без родителя */ }
 }
-// Ключ выбора из маски каталога (как эхо области у панели) и лист борда каталога.
-function maskKey(fl) {
-  var mode = '', sel = [];
-  for (var i = 0; i < fl.length; i++) {
-    if (fl[i].column === 'mode_param') mode = String((fl[i].value || [])[0] || '');
-    if (fl[i].column === 'sel_f') sel = fl[i].value || [];
-  }
-  return selKey(mode, sel);
+
+// Источник: сообщить новый ключ фильтра и отвечать на «повтори» (фильтр + метка pa_nonce: колонки нет
+// ни в одном датасете, фильтр ей игнорируется, но маска другая — Proteus перезапрашивает чарты).
+function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet: sheet, cols: cols, key: paKey(cols, paMaskGet(fl)) }); }
+function paResendOn(src, sheetFn, cols, maskFn) {
+  if (state.onResend) window.removeEventListener('message', state.onResend);
+  state.onResend = function (e) {
+    var d = e.data || {}, sh = sheetFn();
+    if (d.type !== 'PA_RESEND' || d.src !== src || !(sh === '*' || d.sheet === sh) || typeof applyCrossFilter !== 'function') return;
+    var fl = maskFn();
+    paOut(src, sh, cols, fl);
+    applyCrossFilter(fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
+  };
+  window.addEventListener('message', state.onResend);
 }
-function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }
+
+// Получатель: плашка сверки поверх чарта. echoFn — эхо фильтров ответа (flt) или null (ответ пуст —
+// сверять не с чем); accept — какие источники фильтруют этот чарт (как в кросс-фильтрах Proteus).
+function paGuardMount(host, echoFn, sheetFn, accept) {
+  var oldG = host.querySelector('.' + CFG.ns + '-selg');
+  if (oldG) oldG.parentNode.removeChild(oldG);
+  var guard = document.createElement('div');
+  guard.className = CFG.ns + '-selg';
+  host.appendChild(guard);
+  if (!state.wants) state.wants = {};
+  function hide() { guard.className = CFG.ns + '-selg'; guard.innerHTML = ''; }
+  function sync() {
+    clearTimeout(state.selT);
+    var flt = echoFn(), bad = [], now = Date.now(), src;
+    if (!flt) { hide(); return; }
+    var get = function (c) { return flt[c] || []; };
+    for (src in state.wants) {
+      if (!Object.prototype.hasOwnProperty.call(state.wants, src)) continue;
+      var w = state.wants[src];
+      if (paKey(w.cols, get) === w.key) { w.t = 0; w.tries = 0; } else bad.push(w);
+    }
+    if (!bad.length) { hide(); return; }
+    // Вкладка листа скрыта (iframe нулевого размера) — Proteus её не перезапрашивает: не ждём и не повторяем.
+    if (!window.innerWidth || !window.innerHeight) { hide(); return; }
+    var i, next = Infinity, exhausted = true, tried = 0;
+    for (i = 0; i < bad.length; i++) {
+      var b = bad[i];
+      if (!b.t) b.t = now;
+      var lim = b.tries ? CFG.selRetryWait : CFG.selGrace;
+      if (now - b.t >= lim && b.tries < CFG.selMaxTries) {
+        b.tries++; b.t = now;
+        paBcast({ type: 'PA_RESEND', src: b.src, sheet: sheetFn() });
+        lim = CFG.selRetryWait;
+      }
+      if (b.tries < CFG.selMaxTries || now - b.t < CFG.selRetryWait) { exhausted = false; next = Math.min(next, b.t + lim - now); }
+      if (b.tries > tried) tried = b.tries;
+    }
+    guard.className = CFG.ns + '-selg on' + (exhausted ? ' late' : '');
+    guard.innerHTML = exhausted
+      ? '<div class="' + CFG.ns + '-selg-box"><b>Не удалось получить данные под выбранные фильтры</b>' +
+        '<span>Два автоповтора не помогли — числа здесь пока для прежнего выбора.</span>' +
+        '<button type="button" data-selretry="1">Повторить запрос</button></div>'
+      : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>' +
+        (tried ? 'Данные не совпали с выбором — повторяю запрос (' + tried + ' из ' + CFG.selMaxTries + ')…' : 'Пересчитываем под новый выбор…') + '</div>';
+    if (!exhausted && next < Infinity) state.selT = setTimeout(sync, Math.max(200, next + 60));
+  }
+  guard.addEventListener('click', function (e) {
+    if (!e.target || !e.target.getAttribute || e.target.getAttribute('data-selretry') === null) return;
+    var flt = echoFn() || {}, get = function (c) { return flt[c] || []; };
+    for (var s in state.wants) {
+      if (!Object.prototype.hasOwnProperty.call(state.wants, s)) continue;
+      var w = state.wants[s];
+      if (paKey(w.cols, get) === w.key) continue;   // повторяем только несовпавшие источники
+      w.tries = 0; w.t = Date.now();
+      paBcast({ type: 'PA_RESEND', src: s, sheet: sheetFn() });
+    }
+    sync();
+  });
+  if (state.onSelMsg) window.removeEventListener('message', state.onSelMsg);
+  state.onSelMsg = function (e) {
+    var d = e.data || {}, sh = sheetFn();
+    if (d.type !== 'PA_SEL' || accept.indexOf(d.src) < 0 || !(d.sheet === '*' || d.sheet === sh)) return;
+    var old = state.wants[d.src];
+    state.wants[d.src] = { src: d.src, cols: d.cols || [], key: String(d.key || ''), t: 0, tries: old && old.key === d.key ? old.tries : 0 };
+    sync();
+  };
+  window.addEventListener('message', state.onSelMsg);
+  return sync;
+}
+function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист борда каталога
 
 (function mount() {
   try {
@@ -1492,7 +1591,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }
       state.lastEmit = key;
       // Панель узнаёт о новом выборе сразу (приглушится до своего ответа), а в Proteus фильтр уходит
       // через CFG.selDelay после ПОСЛЕДНЕГО клика: серия Shift-кликов — один запрос с полным выбором.
-      paBcast({ type: 'PA_SEL', sheet: sheetOf(), key: maskKey(fl) });
+      paOut('cat', sheetOf(), CFG.paCols, fl);
       state.pendMask = fl;
       clearTimeout(state.emitT);
       state.emitT = setTimeout(function () { applyCrossFilter(state.pendMask); }, CFG.selDelay);
@@ -1682,20 +1781,13 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }
       window.addEventListener('blur', function () { if (state.tipOff) state.tipOff(); });
     }
 
-    // Панель просит «Повторить» (ответ под выбор не пришёл): переотправляем фильтр с меткой pa_nonce —
-    // колонки нет ни в одном датасете (фильтр ей игнорируется), но маска другая, и Proteus перезапрашивает.
-    if (state.onSelMsg) window.removeEventListener('message', state.onSelMsg);
-    state.onSelMsg = function (e) {
-      var d = e.data || {};
-      if (d.type !== 'PA_RESEND' || d.sheet !== sheetOf() || typeof applyCrossFilter !== 'function') return;
-      var fl = areaMask();
-      paBcast({ type: 'PA_SEL', sheet: sheetOf(), key: maskKey(fl) });
-      state.lastEmit = null;
-      applyCrossFilter(fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
-    };
-    window.addEventListener('message', state.onSelMsg);
 
+    // Сверка фильтров: каталог — источник выбора (отвечает на «повтори») и получатель шапки, «Кто смотрит», строки ЦА.
+    paResendOn('cat', sheetOf, CFG.paCols, areaMask);
+    var paSync = paGuardMount(host, function () { return MODEL.stateJ && MODEL.stateJ.flt ? MODEL.stateJ.flt : null; }, sheetOf,
+      MODEL.hasCa ? ['strip', 'ppl', 'ca'] : ['strip', 'ppl']);
     render();
+    paSync();
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     // Старый observer отключаем: иначе он держит удалённый overlay.

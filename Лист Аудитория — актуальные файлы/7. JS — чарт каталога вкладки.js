@@ -34,7 +34,8 @@
 // Нет поля в SQL - СПРОСИ, не выдумывай и не хардкодь значения.
 // Все цвета/шрифты/отступы из макета — только здесь, не в разметке.
 var CFG = {
-  ns: 'prb',                  // ПРЕФИКС всех CSS-классов и класса overlay
+  ns: 'prb',
+  selDelay: 300,              // мс: быстрые клики (Shift) уходят в Proteus одним фильтром — последним                  // ПРЕФИКС всех CSS-классов и класса overlay
   // Адрес отчёта для кнопки «ссылка» в строке каталога: <origin Proteus> +
   // dashPath + dashboard_id + '/'. Origin берётся со страницы борда (iframe
   // песочницы знает её через document.referrer); dashHost — запасной хост.
@@ -1244,6 +1245,41 @@ function buildHTML() {
 }
 
 // ---------- БЛОК 6: МОНТАЖ + ИНТЕРАКТИВ ----------
+// ---------- СВЕРКА ВЫБОРА КАТАЛОГА (2026-09-29) ----------
+// Чарты борда — соседние iframe; postMessage между ними работает без Proteus. Каталог при клике сразу
+// сообщает ключ выбора (PA_SEL), панель сравнивает его с эхом области в СВОЁМ ответе: не совпало —
+// данные ещё старые (или запрос потерялся). Ключ: режим + отсортированные значения; кавычки и «\» не
+// участвуют (эхо в JSON их экранирует).
+function selKey(mode, sel) {
+  var s = [];
+  for (var i = 0; i < (sel || []).length; i++) { var v = String(sel[i]).replace(/["\\]/g, ''); if (v !== '') s.push(v); }
+  s.sort();
+  return s.length ? String(mode || '') + '|' + s.join(',') : '';
+}
+// Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
+function paBcast(msg) {
+  try {
+    (function walk(w, d) {
+      if (d > 5) return;
+      for (var i = 0; i < w.frames.length; i++) {
+        var f = w.frames[i];
+        if (f !== window) { try { f.postMessage(msg, '*'); } catch (e) { /* чужой фрейм */ } }
+        try { walk(f, d + 1); } catch (e2) { /* нет доступа к вложенным */ }
+      }
+    })(window.top, 0);
+  } catch (e) { /* нет window.top — стенд без родителя */ }
+}
+// Ключ выбора из маски каталога (как эхо области у панели) и лист борда каталога.
+function maskKey(fl) {
+  var mode = '', sel = [];
+  for (var i = 0; i < fl.length; i++) {
+    if (fl[i].column === 'mode_param') mode = String((fl[i].value || [])[0] || '');
+    if (fl[i].column === 'sel_f') sel = fl[i].value || [];
+  }
+  return selKey(mode, sel);
+}
+function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }
+
 (function mount() {
   try {
     var hosts = document.querySelectorAll('[_echarts_instance_]');
@@ -1454,7 +1490,12 @@ function buildHTML() {
       var fl = areaMask(), key = JSON.stringify(fl);
       if (state.lastEmit === key) return;
       state.lastEmit = key;
-      applyCrossFilter(fl);
+      // Панель узнаёт о новом выборе сразу (приглушится до своего ответа), а в Proteus фильтр уходит
+      // через CFG.selDelay после ПОСЛЕДНЕГО клика: серия Shift-кликов — один запрос с полным выбором.
+      paBcast({ type: 'PA_SEL', sheet: sheetOf(), key: maskKey(fl) });
+      state.pendMask = fl;
+      clearTimeout(state.emitT);
+      state.emitT = setTimeout(function () { applyCrossFilter(state.pendMask); }, CFG.selDelay);
     }
     // Переключение разреза выбор НЕ трогает (правка владельца 2026-09-18:
     // «если я перехожу между вкладками, фильтр сбрасывается, а не должен»).
@@ -1640,6 +1681,19 @@ function buildHTML() {
       document.addEventListener('mouseout', function (e) { if (!e.relatedTarget && state.tipOff) state.tipOff(); });
       window.addEventListener('blur', function () { if (state.tipOff) state.tipOff(); });
     }
+
+    // Панель просит «Повторить» (ответ под выбор не пришёл): переотправляем фильтр с меткой pa_nonce —
+    // колонки нет ни в одном датасете (фильтр ей игнорируется), но маска другая, и Proteus перезапрашивает.
+    if (state.onSelMsg) window.removeEventListener('message', state.onSelMsg);
+    state.onSelMsg = function (e) {
+      var d = e.data || {};
+      if (d.type !== 'PA_RESEND' || d.sheet !== sheetOf() || typeof applyCrossFilter !== 'function') return;
+      var fl = areaMask();
+      paBcast({ type: 'PA_SEL', sheet: sheetOf(), key: maskKey(fl) });
+      state.lastEmit = null;
+      applyCrossFilter(fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
+    };
+    window.addEventListener('message', state.onSelMsg);
 
     render();
 

@@ -27,7 +27,7 @@ for (const s of steps) {
     if (!el) { log.push({ step: s, err: 'нет элемента' }); continue; }
     await el.scrollIntoViewIfNeeded();
     await el.click({ modifiers: s.shift ? ['Shift'] : [] });
-    await p.waitForTimeout(60);
+    await p.waitForTimeout(400);   // каталог отправляет фильтр через 300 мс после последнего клика (CFG.selDelay)
   }
   if (s.fill) { await p.fill(s.fill, s.value || ''); await p.waitForTimeout(60); }   // ввод в поле (поиск)
   if (s.rerun) {   // перезапуск скрипта (как Proteus после ответа датасета)

@@ -38,6 +38,8 @@
 // Все цвета/шрифты/отступы из макета — только здесь, не в разметке.
 var CFG = {
   ns: 'parea',                // ПРЕФИКС всех CSS-классов и класса overlay
+  sheet: 'use',               // лист борда: сверка выбора — только со «своим» каталогом (PA_SEL.sheet)
+  selWait: 12000,             // мс: сколько ждать ответ под новый выбор каталога, потом — «Повторить»
   // 30 колонок датасета pa_people (SQL — поставка 2026-09-22, файл 3);
   // alias == имя колонки 1:1. section: area/total/freq/ctx/list/ts/coh.
   fields: {
@@ -989,6 +991,16 @@ function buildCSS() {
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
     P + '-sig-chip.neutral{background:#f3f4f6;color:var(--muted);}',
+    // Плашка сверки — вне корня виджета: CSS-переменные корня до неё не доходят, цвета явные.
+    P + '-selg{position:absolute;left:0;top:0;right:0;bottom:0;z-index:30;display:none;align-items:flex-start;justify-content:center;padding-top:96px;background:rgba(246,246,246,.6);transition:opacity .15s;}',
+    P + '-selg.on{display:flex;}',
+    P + '-selg-box{display:flex;align-items:center;gap:10px;max-width:380px;background:#fff;border:1px solid #e7e9ee;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(24,33,50,.12);font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;}',
+    P + '-selg.late ' + P + '-selg-box{flex-direction:column;align-items:flex-start;gap:6px;border-color:#f0c36d;}',
+    P + '-selg-box b{font-weight:600;color:#23272e;}',
+    P + '-selg-box span{color:#8a909c;line-height:1.4;}',
+    P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:500;padding:6px 12px;cursor:pointer;}',
+    P + '-selg-spin{width:14px;height:14px;border-radius:50%;border:2px solid #e7e9ee;border-top-color:#245FD4;animation:' + CFG.ns + '-spin .8s linear infinite;flex:0 0 auto;}',
+    '@keyframes ' + CFG.ns + '-spin{to{transform:rotate(360deg)}}',
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;flex:0 0 auto;}',
     P + '-leg-nh{cursor:help;}',
     P + '-ct-nh td{opacity:.55;}',
@@ -2533,6 +2545,31 @@ function dynTipHtml(el, i) {
 }
 
 // ---------- БЛОК 6: МОНТАЖ + ИНТЕРАКТИВ ----------
+// ---------- СВЕРКА ВЫБОРА КАТАЛОГА (2026-09-29) ----------
+// Чарты борда — соседние iframe; postMessage между ними работает без Proteus. Каталог при клике сразу
+// сообщает ключ выбора (PA_SEL), панель сравнивает его с эхом области в СВОЁМ ответе: не совпало —
+// данные ещё старые (или запрос потерялся). Ключ: режим + отсортированные значения; кавычки и «\» не
+// участвуют (эхо в JSON их экранирует).
+function selKey(mode, sel) {
+  var s = [];
+  for (var i = 0; i < (sel || []).length; i++) { var v = String(sel[i]).replace(/["\\]/g, ''); if (v !== '') s.push(v); }
+  s.sort();
+  return s.length ? String(mode || '') + '|' + s.join(',') : '';
+}
+// Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
+function paBcast(msg) {
+  try {
+    (function walk(w, d) {
+      if (d > 5) return;
+      for (var i = 0; i < w.frames.length; i++) {
+        var f = w.frames[i];
+        if (f !== window) { try { f.postMessage(msg, '*'); } catch (e) { /* чужой фрейм */ } }
+        try { walk(f, d + 1); } catch (e2) { /* нет доступа к вложенным */ }
+      }
+    })(window.top, 0);
+  } catch (e) { /* нет window.top — стенд без родителя */ }
+}
+
 (function mount() {
   try {
     var hosts = document.querySelectorAll('[_echarts_instance_]');
@@ -3120,6 +3157,44 @@ function dynTipHtml(el, i) {
     if (state.onWinResize) window.removeEventListener('resize', state.onWinResize);
     state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(); if (w || hh || ch) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
+
+    // ── Сверка с выбором каталога: пока ответ не совпал с выбором — чарт приглушён; не пришёл за
+    // CFG.selWait — предупреждение и «Повторить» (каталог переотправит фильтр с меткой). ──
+    var oldG = host.querySelector('.' + CFG.ns + '-selg');
+    if (oldG) oldG.parentNode.removeChild(oldG);
+    var guard = document.createElement('div');
+    guard.className = CFG.ns + '-selg';
+    host.appendChild(guard);
+    function syncGuard() {
+      clearTimeout(state.selT);
+      var have = selKey(MODEL.area.mode, MODEL.area.sel);
+      // Последний выбор каталога помним всегда: запоздавший ответ под старый выбор тоже ловится.
+      if (!state.want || state.want.key === have) { if (state.want) state.want.t = 0; guard.className = CFG.ns + '-selg'; guard.innerHTML = ''; return; }
+      if (!state.want.t) state.want.t = Date.now();   // отсчёт ожидания — с момента расхождения
+      var late = Date.now() - state.want.t > CFG.selWait;
+      guard.className = CFG.ns + '-selg on' + (late ? ' late' : '');
+      guard.innerHTML = late
+        ? '<div class="' + CFG.ns + '-selg-box"><b>Данные не совпали с выбором в каталоге</b>' +
+          '<span>Запрос мог потеряться — числа здесь пока для прежнего выбора.</span>' +
+          '<button type="button" data-selretry="1">Повторить запрос</button></div>'
+        : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>Пересчитываем под выбор в каталоге…</div>';
+      if (!late) state.selT = setTimeout(syncGuard, CFG.selWait - (Date.now() - state.want.t) + 60);
+    }
+    guard.addEventListener('click', function (e) {
+      if (!e.target || !e.target.getAttribute || e.target.getAttribute('data-selretry') === null || !state.want) return;
+      state.want.t = Date.now();
+      paBcast({ type: 'PA_RESEND', sheet: CFG.sheet });
+      syncGuard();
+    });
+    if (state.onSelMsg) window.removeEventListener('message', state.onSelMsg);
+    state.onSelMsg = function (e) {
+      var d = e.data || {};
+      if (d.type !== 'PA_SEL' || d.sheet !== CFG.sheet) return;
+      state.want = { key: String(d.key || ''), t: Date.now() };
+      syncGuard();
+    };
+    window.addEventListener('message', state.onSelMsg);
+    syncGuard();
 
     render();
 

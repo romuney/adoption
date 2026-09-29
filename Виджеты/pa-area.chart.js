@@ -1094,10 +1094,10 @@ function buildCSS() {
     P + '-cal-chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}',
     P + '-cal-chip{border:1px solid var(--line2);border-radius:8px;padding:5px 10px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
     P + '-cal-chip b{display:block;color:var(--ink);font-size:var(--fs-lead);font-weight:600;font-variant-numeric:tabular-nums;}',
-    // Месяцы — всегда ОДНИМ рядом (без переноса): на широкой панели раздвинуты по ширине (свободное место —
-    // в отступы между ними), на узкой сжимаются до 140 px; уже этого — горизонтальная прокрутка ряда.
-    P + '-cal-months{display:flex;flex:0 0 auto;flex-wrap:nowrap;justify-content:space-between;gap:0 20px;overflow-x:auto;overflow-y:hidden;}',
-    P + '-cal-mon{flex:1 1 0;min-width:140px;max-width:280px;}',
+    // Месяцы — всегда ОДНИМ рядом (без переноса): на широкой панели свободное место делится поровну —
+    // между месяцами и от краёв чарта (space-evenly), на узкой сжимаются до 130 px (отступ 20 px — и между, и у краёв: gap + padding); уже этого — горизонтальная прокрутка ряда.
+    P + '-cal-months{display:flex;flex:0 0 auto;flex-wrap:nowrap;justify-content:space-evenly;gap:0 20px;padding:0 20px;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;}',
+    P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:280px;}',
     P + '-cal-mt{font-size:var(--fs-body);font-weight:500;color:var(--ink2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-cal-mt span{color:var(--muted);font-weight:400;}',
     P + '-cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}',

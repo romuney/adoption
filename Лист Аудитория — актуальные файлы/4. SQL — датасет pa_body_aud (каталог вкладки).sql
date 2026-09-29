@@ -5,8 +5,10 @@
     Слушает: полоску (period_param, pub_f/act_f/exc_f) и людскую шину правой панели
     (lvl3_f/lvl4_f/stream_f/spec_f/adg_f/heads_f/org_f/login_f/exl_f/freq_f). Выбор каталога
     (mode_param/sel_f) НЕ читает — самовлияние тела выключено.
-    Линейная цепочка maxd → dash_ok → evd → kx → agg → выход; каждый CTE — одна ссылка
-    (dash_ok — справочник 32 тыс. строк).
+    Цепочка maxd → dash_ok → evd → (kx | строки отчётов) → agg → выход. evd читается дважды (скан пар дешёвый):
+    строки отчётов считаются прямо по парам (пара уникальна — свёртка по логину не нужна), а тяжёлая
+    свёртка «строка × логин» (kx) остаётся только для ИТОГО, владельцев и коллекций (2026-09-29: каталог −30 %,
+    каталог вкладки ЦА −40 %).
     Ответ — 17 колонок (+ ca_n, ca_wide, ca_users при WITH_CA); KPI области считает правая панель (pa_people). -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay'}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday'}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth'}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter'}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
@@ -116,6 +118,12 @@ SELECT lg FROM (
 {#- Ритм пользователя отчёта (не зависит от периода полоски): 4 — Daily (12+ активных дней
     из последних 30), 3 — Weekly (6+ недель из 8), 2 — Monthly (2+ из последних 3 месяцев),
     1 — Rare (заходил за 3 месяца реже), 0 — не заходил 3 месяца (в ритм не входит; все 0 — Dead). -#}
+{#- Общие метрики строки каталога (по людям строки: у kx — логин с OR масок его пар, у отчёта — пара). -#}
+{% macro mets() -%}
+countIf(bitAnd(msk, {{ CUR }}) != 0) AS users, sum(v_cur) AS views,
+      countIf(bitCount(bitAnd(msk, {{ CUR }})) >= {{ REG }}) AS regular_users,
+      dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days
+{%- endmacro %}
 {% set RC = "multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0)" %}
 WITH
   {# Дата свежести: md пары; запасной источник — последний визит (при пустом md gp_to_click). #}
@@ -126,18 +134,13 @@ WITH
     WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %}
   ),
   evd AS (
-    {#- Пары области: маска бакетов msk_<g>, просмотры окна v_<g>, за жизнь v_life, последний визит dmax.
+    {#- Пары области: маска бакетов msk_<g>, просмотры окна v_<g>, последний визит dmax.
         own_flg = 1 — зритель среди владельцев отчёта (свиток «без просмотров владельцев»). -#}
     SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,
       {#- ifNull: gp_to_click создаёт колонки Nullable; NULL в сумме доехал бы до CAST и уронил запрос (Code 349). -#}
-      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax,
+      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, e.dmax AS dmax,
       {#- маски дней/недель/месяцев — для ритма отчёта (не зависят от грануляции) -#}
       toUInt64(ifNull(e.msk_d, 0)) AS pd, toUInt64(ifNull(e.msk_w, 0)) AS pw, toUInt64(ifNull(e.msk_m, 0)) AS pm
-      {%- if WITH_CA %},
-      {#- a0 = 1 — зритель входит в ЦА отчёта: по правам — пара есть в pa_pair_acc (право на отчёт поимённо или
-          через AD-группу, действующий сотрудник); по условиям — все пары уже отобраны по ЦА выше. -#}
-      {% if custom %}toUInt8(1){% else %}toUInt8((toInt32(ifNull(e.dashboard_id, 0)), lower(toString(e.login))) IN (SELECT toInt32(ifNull(dashboard_id, 0)), toString(ifNull(login, '')) FROM prod_proteus.pa_pair_acc)){% endif %} AS a0
-      {%- endif %}
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
@@ -146,22 +149,19 @@ WITH
     {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% elif headsv == 'n' %} AND management_head_flg = 0{% endif %}{% if OC %} AND ({{ OC|join(' OR ') }}){% endif %}){% endif %}
   ),
   kx AS (
-    {#- Ключ строки размножается: 0 = ИТОГО, 1 = отчёт, 2 = владелец, 3 = коллекция.
+    {#- Ключ строки размножается: 0 = ИТОГО, 2 = владелец, 3 = коллекция (1 = отчёт — ниже, прямо по парам).
         Мета (владелец, коллекции) подтягивается ПОСЛЕ сжатия факта до пар. -#}
     SELECT kd, k0, login,
-      groupBitOr(m0) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
-      groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm{% if WITH_CA %}, max(a1) AS acc{% endif %}
+      groupBitOr(m0) AS msk, sum(v_cur) AS v_cur, max(dmax) AS dmax
     FROM (
       SELECT arrayJoin(arrayConcat(
           {# Все элементы — строго Tuple(UInt8, String): arrayConcat в CH 24 приводит массивы к типу
              первого, и Nullable-значение с NULL (owner_login меты) роняло запрос — Code 349. #}
           [(toUInt8(0), '')],
-          [(toUInt8(1), toString(p.did))],
           arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
-        p.login AS login, p.msk AS m0, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
-        p.pd AS pd, p.pw AS pw, p.pm AS pm{% if WITH_CA %}, p.a0 AS a1{% endif %}
+        p.login AS login, p.msk AS m0, p.v_cur AS v_cur, p.dmax AS dmax
       FROM evd p
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
@@ -171,18 +171,31 @@ WITH
     {%- endif %}
   ),
   agg AS (
-    SELECT kd, k0,
-      countIf(bitAnd(msk, {{ CUR }}) != 0) AS users,
-      sum(v_cur) AS views,
-      countIf(bitCount(bitAnd(msk, {{ CUR }})) >= {{ REG }}) AS regular_users,
-      dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
-      sum(v_life) AS v_tot,
+    SELECT kd, k0, {{ mets() }}, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
+    FROM kx GROUP BY kd, k0
+    UNION ALL
+    {# Строки отчётов — прямо по парам: пара «отчёт × логин» в pa_pair уникальна, свёртка по логину не нужна;
+       корзина частоты (freq_f) — фильтр по маске пары, как HAVING у kx. #}
+    SELECT toUInt8(1) AS kd, toString(did) AS k0, {{ mets() }},
       {#- Ритм отчёта: людей каждого ритма «Daily, Weekly, Monthly, Rare»; «0,0,0,0» — Dead. -#}
       arrayStringConcat([toString(countIf({{ RC }} = 4)), toString(countIf({{ RC }} = 3)), toString(countIf({{ RC }} = 2)), toString(countIf({{ RC }} = 1))], ',') AS rhythm
       {%- if WITH_CA %},
       {#- зрители за период, входящие в ЦА отчёта — числитель «Охвата ЦА» (посторонние зрители не в счёт) -#}
       countIf(bitAnd(msk, {{ CUR }}) != 0 AND acc = 1) AS ca_u{% endif %}
-    FROM kx GROUP BY kd, k0
+    FROM (
+      SELECT did, msk, v_cur, dmax, pd, pw, pm
+      {%- if WITH_CA %},
+      {#- acc = 1 — зритель входит в ЦА отчёта: по правам — пара есть в pa_pair_acc (право на отчёт поимённо или
+          через AD-группу, действующий сотрудник); по условиям — все пары уже отобраны по ЦА выше.
+          Только здесь: у ИТОГО / владельцев / коллекций «Охват ЦА» не выводится, множество строится один раз. -#}
+      {% if custom %}toUInt8(1){% else %}toUInt8((did, lower(login)) IN (SELECT toInt32(ifNull(dashboard_id, 0)), toString(ifNull(login, '')) FROM prod_proteus.pa_pair_acc)){% endif %} AS acc
+      {%- endif %}
+      FROM evd
+      {%- if FB %}
+      WHERE {{ FB|join(' OR ')|replace('nb', 'bitCount(bitAnd(msk, ' ~ CUR ~ '))') }}
+      {%- endif %}
+    )
+    GROUP BY did
   )
 SELECT
   CAST(CASE WHEN kd = 0 THEN 'total' WHEN kd = 1 THEN 'rep' ELSE 'grp' END AS String) AS section,

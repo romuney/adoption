@@ -1,6 +1,6 @@
 -- SQL Lab: тело v7 (файл 2), 30 дней, свитки по умолчанию, без людской шины. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 6
+-- 7
 WITH
   maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
   dash_ok AS (
@@ -8,35 +8,38 @@ WITH
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1 AND published = 1 AND actual_flg = 1
   ),
-  evd AS (SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,toUInt64(ifNull(e.msk_d, 0)) AS msk, ifNull(e.v_d, 0) AS v_cur, ifNull(e.v_life, 0) AS v_life, e.dmax AS dmax,toUInt64(ifNull(e.msk_d, 0)) AS pd, toUInt64(ifNull(e.msk_w, 0)) AS pw, toUInt64(ifNull(e.msk_m, 0)) AS pm
+  evd AS (SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,toUInt64(ifNull(e.msk_d, 0)) AS msk, ifNull(e.v_d, 0) AS v_cur, e.dmax AS dmax,toUInt64(ifNull(e.msk_d, 0)) AS pd, toUInt64(ifNull(e.msk_w, 0)) AS pw, toUInt64(ifNull(e.msk_m, 0)) AS pm
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
   ),
   kx AS (SELECT kd, k0, login,
-      groupBitOr(msk) AS msk, sum(v_cur) AS v_cur, sum(v_life) AS v_life, max(dmax) AS dmax,
-      groupBitOr(pd) AS pd, groupBitOr(pw) AS pw, groupBitOr(pm) AS pm
+      groupBitOr(m0) AS msk, sum(v_cur) AS v_cur, max(dmax) AS dmax
     FROM (
       SELECT arrayJoin(arrayConcat(
           [(toUInt8(0), '')],
-          [(toUInt8(1), toString(p.did))],
           arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
-        p.login AS login, p.msk AS msk, p.v_cur AS v_cur, p.v_life AS v_life, p.dmax AS dmax,
-        p.pd AS pd, p.pw AS pw, p.pm AS pm
+        p.login AS login, p.msk AS m0, p.v_cur AS v_cur, p.dmax AS dmax
       FROM evd p
       INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
     )
     GROUP BY kd, k0, login
   ),
   agg AS (
-    SELECT kd, k0,
-      countIf(bitAnd(msk, 1073741823) != 0) AS users,
-      sum(v_cur) AS views,
+    SELECT kd, k0, countIf(bitAnd(msk, 1073741823) != 0) AS users, sum(v_cur) AS views,
       countIf(bitCount(bitAnd(msk, 1073741823)) >= 6) AS regular_users,
-      dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,
-      sum(v_life) AS v_tot,arrayStringConcat([toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 4)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 3)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 2)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 1))], ',') AS rhythm
+      dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days, '' AS rhythm
     FROM kx GROUP BY kd, k0
+    UNION ALL
+    SELECT toUInt8(1) AS kd, toString(did) AS k0, countIf(bitAnd(msk, 1073741823) != 0) AS users, sum(v_cur) AS views,
+      countIf(bitCount(bitAnd(msk, 1073741823)) >= 6) AS regular_users,
+      dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd))) AS last_view_days,arrayStringConcat([toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 4)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 3)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 2)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 1))], ',') AS rhythm
+    FROM (
+      SELECT did, msk, v_cur, dmax, pd, pw, pm
+      FROM evd
+    )
+    GROUP BY did
   )
 SELECT
   CAST(CASE WHEN kd = 0 THEN 'total' WHEN kd = 1 THEN 'rep' ELSE 'grp' END AS String) AS section,
@@ -55,7 +58,7 @@ SELECT
   CAST(ifNull(regular_users, 0) AS UInt64) AS regular_users,
   CAST(ifNull(last_view_days, 0) AS Int64) AS last_view_days,
   CAST(if(kd = 1, rhythm, NULL) AS Nullable(String)) AS rhythm,
-  CAST(if(kd = 0, '{"period":"d"}', NULL) AS Nullable(String)) AS state_j
+  CAST(if(kd = 0, '{"period":"d", "flt":{}}', NULL) AS Nullable(String)) AS state_j
 FROM agg
 LEFT JOIN prod_proteus.pa_dash_meta m ON m.dashboard_id = ifNull(toInt32OrNull(k0), toInt32(0))
 -- вселенная каталога: все отчёты с зрителями (порог ≥500 просмотров убран 2026-09-28)

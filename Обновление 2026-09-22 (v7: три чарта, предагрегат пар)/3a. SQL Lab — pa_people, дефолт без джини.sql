@@ -1,8 +1,12 @@
 -- SQL Lab: pa_people (файл 3), 30 дней, без выбора в каталоге. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 8
+-- 9
 WITH
-  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
+  maxd AS (
+    SELECT tuple(md, ds, toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1)) AS h
+    FROM (SELECT md, toDate(ds0) AS ds, addDays(toDate(ds0), 90) AS dt
+          FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+  ),
   dash_ok AS (
     SELECT dashboard_id
     FROM prod_proteus.pa_dash_meta
@@ -22,7 +26,7 @@ WITH
   pr AS (SELECT p.login AS login, p.msk AS msk, bitCount(bitAnd(p.msk, 1073741823)) AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
       p.fd_k AS fd_k, p.dmax AS dmax, toUInt8(bitTest(p.mon, 1)) AS m1, toUInt8(bitTest(p.mon, 2)) AS m2,arrayMap(i -> toInt64(i), arrayFilter(i -> bitTest(p.mon, i), range(63))) AS bms,
       if(empty(bms), toInt64(0), arrayMax(bms)) AS gm,
-      addMonths(toStartOfMonth((SELECT md FROM maxd)), -toInt32(gm)) AS c0,
+      addMonths(toStartOfMonth(tupleElement((SELECT h FROM maxd), 1)), -toInt32(gm)) AS c0,
       bitAnd(p.msk, 1073741823) != 0 AS cur, bitAnd(p.msk, 1152921503533105152) != 0 AS prv,
       bitCount(bitAnd(p.msk, 1073741823)) AS nb_cur, bitCount(bitAnd(p.msk, 1152921503533105152)) AS nb_prev,
       multiIf(nb_cur <= 1, 1, nb_cur <= 5, 2, nb_cur <= 15, 3, 4) AS bin,
@@ -50,8 +54,8 @@ WITH
       countIf(cur) AS users, countIf(prv) AS users_prev,
       sum(if(rk.1 = 'ts', 0, v_cur)) AS views, any(rk.5) AS tk,
       sum(v_prev) AS views_prev,
-      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < 30)) AS new_u,
-      countIf(prv AND fd_k >= 30 AND fd_k < 60) AS new_prev,
+      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < 30) AND fd_k <= tupleElement((SELECT h FROM maxd), 3)) AS new_u,
+      countIf(prv AND fd_k >= 30 AND fd_k < 60 AND fd_k <= tupleElement((SELECT h FROM maxd), 3)) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64(127), toUInt8(rk.5 + 1)))) = 0) AS react_u,
       countIf(nb_cur > 5) AS regular, countIf(nb_prev > 5) AS regular_prev,
       countIf(prv AND NOT cur) AS sleeping,
@@ -71,8 +75,7 @@ WITH
     GROUP BY bk
   ),
   rnk AS (
-    SELECT *,
-      row_number() OVER (PARTITION BY role, g ORDER BY if(role = 'list', days, users) DESC, views DESC, k) AS rn
+    SELECT *,toUInt64(0) AS rn
     FROM agg
   )
 SELECT
@@ -107,44 +110,39 @@ SELECT
   CAST(ages AS Array(Int64)) AS ages,
   CAST(acts AS Array(UInt64)) AS acts
 FROM (
-  SELECT role AS section, g, k, parent,
-    if(role = 'list', login, NULL) AS login, if(role = 'list', fio, NULL) AS fio,
-    if(role = 'list', lvl3, NULL) AS lvl3, if(role = 'list', lvl4, NULL) AS lvl4,
-    if(role = 'list', spec, NULL) AS spec, if(role = 'list', stream, NULL) AS stream,
-    if(role = 'list', exp, NULL) AS exp, if(role = 'list', is_head, NULL) AS is_head,
-    if(role = 'list', days, NULL) AS days, if(role = 'list', last_dt, NULL) AS last_dt,
-    if(role = 'list', bin, NULL) AS bin,
-    users, users_prev, if(role = 'ts', toInt64(ifNull(b.bviews, 0)), toInt64(views)) AS views, views_prev, new_u, new_prev, react_u, regular, regular_prev,
-    sleeping, mau, mau_prev, cnt, (am).1 AS ages, (am).2 AS acts
-  FROM rnk
-  LEFT JOIN bv b ON b.bk = rnk.tk
-  WHERE role != 'list' AND (g != 'adg' OR rn <= 100)
-  UNION ALL
-  SELECT 'list' AS section, '' AS g,
-    arrayStringConcat(groupArray(concat(
-      replaceRegexpAll(ifNull(toString(lp.login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.fio), ''), '[\t\n\r]', ' '), '\t',
-      replaceRegexpAll(ifNull(toString(lp.spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.stream), ''), '[\t\n\r]', ' '), '\t',
-      replaceRegexpAll(ifNull(toString(lp.exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(lp.is_head), ''), '\t', ifNull(toString(lp.days), ''), '\t',
-      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''), '\t',
-      toString(ifNull(lp.new_u, 0)), '\t', toString(ifNull(lp.mau, 0)), '\t', toString(ifNull(lp.mau_prev, 0)), '\t',
-      toString(toUInt8(lower(toString(ifNull(lp.login, ''))) NOT IN (SELECT login FROM prod_proteus.pa_staff))))), '\n') AS k,
-    lp.parent AS parent,
+  SELECT s_role AS section, s_g AS g,
+    if(s_role = 'list', arrayStringConcat(groupArrayIf(concat(
+      replaceRegexpAll(ifNull(toString(s_login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(s_fio), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(s_spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(s_stream), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(s_exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(s_is_head), ''), '\t', ifNull(toString(s_days), ''), '\t',
+      ifNull(toString(s_views), ''), '\t', ifNull(toString(s_last_dt), ''), '\t', ifNull(toString(s_bin), ''), '\t',
+      toString(ifNull(s_new_u, 0)), '\t', toString(ifNull(s_mau, 0)), '\t', toString(ifNull(s_mau_prev, 0)), '\t',
+      toString(toUInt8(lower(toString(ifNull(s_login, ''))) NOT IN (SELECT login FROM prod_proteus.pa_staff)))), s_role = 'list'), '\n'), any(s_k)) AS k,
+    s_parent AS parent,
     NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
     NULL AS days, NULL AS last_dt, NULL AS bin,
-    toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
-    toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
-    toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,
-    count() AS cnt, CAST([], 'Array(Int64)') AS ages, CAST([], 'Array(UInt64)') AS acts
-  FROM agg lp
-  WHERE lp.role = 'list'
-  GROUP BY lp.parent
+    if(s_role = 'list', toUInt64(0), any(s_users)) AS users, if(s_role = 'list', toUInt64(0), any(s_users_prev)) AS users_prev,
+    if(s_role = 'list', toInt64(0), any(if(s_role = 'ts', toInt64(ifNull(s_bviews, 0)), toInt64(s_views)))) AS views,
+    if(s_role = 'list', toInt64(0), any(toInt64(s_views_prev))) AS views_prev,
+    if(s_role = 'list', toUInt64(0), any(s_new_u)) AS new_u, if(s_role = 'list', toUInt64(0), any(s_new_prev)) AS new_prev,
+    if(s_role = 'list', toUInt64(0), any(s_react_u)) AS react_u, if(s_role = 'list', toUInt64(0), any(s_regular)) AS regular,
+    if(s_role = 'list', toUInt64(0), any(s_regular_prev)) AS regular_prev, if(s_role = 'list', toUInt64(0), any(s_sleeping)) AS sleeping,
+    if(s_role = 'list', toUInt64(0), any(s_mau)) AS mau, if(s_role = 'list', toUInt64(0), any(s_mau_prev)) AS mau_prev,
+    if(s_role = 'list', count(), any(s_cnt)) AS cnt, any((s_am).1) AS ages, any((s_am).2) AS acts
+  FROM (SELECT role AS s_role, g AS s_g, k AS s_k, parent AS s_parent, login AS s_login, fio AS s_fio, spec AS s_spec,
+      stream AS s_stream, exp AS s_exp, is_head AS s_is_head, days AS s_days, views AS s_views, last_dt AS s_last_dt, bin AS s_bin,
+      new_u AS s_new_u, mau AS s_mau, mau_prev AS s_mau_prev, users AS s_users, users_prev AS s_users_prev, views_prev AS s_views_prev,
+      new_prev AS s_new_prev, react_u AS s_react_u, regular AS s_regular, regular_prev AS s_regular_prev, sleeping AS s_sleeping,
+      cnt AS s_cnt, am AS s_am, rn AS s_rn, b.bviews AS s_bviews
+    FROM rnk LEFT JOIN bv b ON b.bk = rnk.tk)
+  WHERE s_role = 'list' OR s_g != 'adg' OR s_rn <= 100
+  GROUP BY s_role, s_g, if(s_role = 'list', '', s_k), s_parent
   UNION ALL
   SELECT 'area' AS section, '' AS g,
     '' AS k, 'd' AS parent,
     NULL AS login,
     NULL AS fio,
-    NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
-    NULL AS days, NULL AS last_dt, NULL AS bin,
+    NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{}' AS exp, NULL AS is_head,toUInt32(greatest(tupleElement((SELECT h FROM maxd), 3) + 1, 0)) AS days, tupleElement((SELECT h FROM maxd), 2) AS last_dt, NULL AS bin,
     toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
     toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
     toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,

@@ -37,7 +37,10 @@
 {{- out|where_in -}}
 {%- endmacro %}
 {% macro qa(values) -%}[{{ q(values)[1:-1] }}]{%- endmacro %}
-{% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}((SELECT md FROM maxd)))){%- endmacro %}
+{#- Даты — ОДИН скалярный подзапрос на весь запрос: одинаковые скаляры ClickHouse считает один раз, а разные
+    ((SELECT md …), (SELECT kt …), (SELECT ds …)) — каждый своим сканом pa_pair. -#}
+{% set MD = "tupleElement((SELECT h FROM maxd), 1)" %}{% set DS = "tupleElement((SELECT h FROM maxd), 2)" %}{% set KT = "tupleElement((SELECT h FROM maxd), 3)" %}
+{% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}({{ MD }}))){%- endmacro %}
 {% set pubv = filter_values('pub_f')|first|default('1', true) %}{% set pubv = pubv if pubv in ['0', '1'] else '1' %}
 {% set actv = filter_values('act_f')|first|default('1', true) %}{% set actv = actv if actv in ['0', '1'] else '1' %}
 {% set excv = filter_values('exc_f')|first|default('1', true) %}{% set excv = excv if excv in ['0', '1'] else '1' %}
@@ -52,15 +55,14 @@
     которые шлют чарты борда; «"», «\» и переводы строк выкинуты — в ключе сверки чарта их тоже нет. -#}
 {% set FLT = [] %}{% for c in ['mode_param', 'sel_f', 'period_param', 'pub_f', 'act_f', 'exc_f', 'org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'] %}{% set fv = [] %}{% for v in (filter_values(c) or []) %}{% if v|string|length < 2000 %}{% set _ = fv.append('"' ~ (v|string|replace('"', '')|replace('\\', '')|replace('\n', '')|replace('\r', '')|replace("'", "''")) ~ '"') %}{% endif %}{% endfor %}{% if fv %}{% set _ = FLT.append('"' ~ c ~ '":[' ~ fv|join(',') ~ ']') %}{% endif %}{% endfor %}
 WITH
-  {# Дата свежести — как у каталога: md пары, запасной источник — последний визит. #}
-  maxd AS (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds FROM prod_proteus.pa_pair),
-  {#- Начало истории событий ds и «надёжные» периоды: новым человека можно назвать, только если до начала
+  {# Дата свежести md — как у каталога: md пары, запасной источник — последний визит.
+      Начало истории событий ds и «надёжные» периоды: новым человека можно назвать, только если до начала
       периода есть ≥ {{ HIST_DAYS }} дней истории — иначе «впервые в данных» = «давно не заходил». kt — самый
-      старый такой период (возраст бакета); периоды старше kt новых не выделяют (в чарте — «мало истории»). -#}
-  hist AS (
-    SELECT toDate(ds) AS ds, addDays(toDate(ds), {{ HIST_DAYS }}) AS dt,
-      toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1) AS kt
-    FROM maxd
+      старый такой период (возраст бакета); периоды старше kt новых не выделяют (в чарте — «мало истории»). #}
+  maxd AS (
+    SELECT tuple(md, ds, toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1)) AS h
+    FROM (SELECT md, toDate(ds0) AS ds, addDays(toDate(ds0), {{ HIST_DAYS }}) AS dt
+          FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
   ),
   dash_ok AS (
     SELECT dashboard_id
@@ -92,7 +94,7 @@ WITH
       {#- Месяцы активности из маски: возраст самого старого — месяц первого визита (когорта). -#}
       arrayMap(i -> toInt64(i), arrayFilter(i -> bitTest(p.mon, i), range(63))) AS bms,
       if(empty(bms), toInt64(0), arrayMax(bms)) AS gm,
-      addMonths(toStartOfMonth((SELECT md FROM maxd)), -toInt32(gm)) AS c0,
+      addMonths(toStartOfMonth({{ MD }}), -toInt32(gm)) AS c0,
       bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
       bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
       multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, 4) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
@@ -130,8 +132,8 @@ WITH
       countIf(cur) AS users, countIf(prv) AS users_prev,
       sum(if(rk.1 = 'ts', 0, v_cur)) AS views, any(rk.5) AS tk,
       sum(v_prev) AS views_prev,
-      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= (SELECT kt FROM hist)) AS new_u,
-      countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }} AND fd_k <= (SELECT kt FROM hist)) AS new_prev,
+      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= {{ KT }}) AS new_u,
+      countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }} AND fd_k <= {{ KT }}) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(rk.5 + 1)))) = 0) AS react_u,
       countIf(nb_cur > {{ FBIN[1] }}) AS regular, countIf(nb_prev > {{ FBIN[1] }}) AS regular_prev,
       countIf(prv AND NOT cur) AS sleeping,
@@ -163,7 +165,8 @@ WITH
   ),
   rnk AS (
     SELECT *,
-      row_number() OVER (PARTITION BY role, g ORDER BY if(role = 'list', days, users) DESC, views DESC, k) AS rn
+      {#- ранг нужен только топу AD-групп: без WITH_ADG окно не считаем -#}
+      {% if WITH_ADG %}row_number() OVER (PARTITION BY role, g ORDER BY if(role = 'list', days, users) DESC, views DESC, k){% else %}toUInt64(0){% endif %} AS rn
     FROM agg
   )
 SELECT
@@ -198,45 +201,42 @@ SELECT
   CAST(ages AS Array(Int64)) AS ages,
   CAST(acts AS Array(UInt64)) AS acts
 FROM (
-  SELECT role AS section, g, k, parent,
-    if(role = 'list', login, NULL) AS login, if(role = 'list', fio, NULL) AS fio,
-    if(role = 'list', lvl3, NULL) AS lvl3, if(role = 'list', lvl4, NULL) AS lvl4,
-    if(role = 'list', spec, NULL) AS spec, if(role = 'list', stream, NULL) AS stream,
-    if(role = 'list', exp, NULL) AS exp, if(role = 'list', is_head, NULL) AS is_head,
-    if(role = 'list', days, NULL) AS days, if(role = 'list', last_dt, NULL) AS last_dt,
-    if(role = 'list', bin, NULL) AS bin,
-    users, users_prev, if(role = 'ts', toInt64(ifNull(b.bviews, 0)), toInt64(views)) AS views, views_prev, new_u, new_prev, react_u, regular, regular_prev,
-    sleeping, mau, mau_prev, cnt, (am).1 AS ages, (am).2 AS acts
-  FROM rnk
-  LEFT JOIN bv b ON b.bk = rnk.tk
-  WHERE role != 'list' AND (g != 'adg' OR rn <= {{ ADG_N }})
-
-  UNION ALL
-  {# Поимённый список — ВСЕ зрители области, упакованные: одна строка на подразделение
+  {# Все строки из ОДНОГО прохода по agg (вторая ссылка на CTE в CH 24 пересчитывает его целиком — было ×2).
+     Поимённый список — ВСЕ зрители области, упакованные: одна строка на подразделение
      (parent = путь «УС-3 › … › УС-7»), в k — сотрудники через \n, поля через \t:
      логин, ФИО, специализация, стрим, стаж, рук., активных периодов, просмотров, последний визит, корзина,
      новый 1/0, MAU 1/0, MAU пред. месяца 1/0, уволен 1/0 (логина нет среди действующих сотрудников с AD-логином —
      GP «PA · штат» → pa_staff) (KPI и сводная по корзине частоты считаются в чарте).
      Путь не повторяется у каждого человека, 30 пустых колонок на человека не едут —
-     ответ в ~6 раз легче построчного (весь Proteus: 21 МБ → ~3 МБ). cnt — людей в строке. #}
-  SELECT 'list' AS section, '' AS g,
-    arrayStringConcat(groupArray(concat(
-      replaceRegexpAll(ifNull(toString(lp.login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.fio), ''), '[\t\n\r]', ' '), '\t',
-      replaceRegexpAll(ifNull(toString(lp.spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(lp.stream), ''), '[\t\n\r]', ' '), '\t',
-      replaceRegexpAll(ifNull(toString(lp.exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(lp.is_head), ''), '\t', ifNull(toString(lp.days), ''), '\t',
-      ifNull(toString(lp.views), ''), '\t', ifNull(toString(lp.last_dt), ''), '\t', ifNull(toString(lp.bin), ''), '\t',
-      toString(ifNull(lp.new_u, 0)), '\t', toString(ifNull(lp.mau, 0)), '\t', toString(ifNull(lp.mau_prev, 0)), '\t',
-      toString(toUInt8(lower(toString(ifNull(lp.login, ''))) NOT IN (SELECT login FROM prod_proteus.pa_staff))))), '\n') AS k,
-    lp.parent AS parent,
+     ответ в ~6 раз легче построчного (весь Proteus: 21 МБ → ~3 МБ). cnt — людей в строке.
+     Остальные роли — строка на группу (GROUP BY по своему уникальному ключу). #}
+  SELECT s_role AS section, s_g AS g,
+    if(s_role = 'list', arrayStringConcat(groupArrayIf(concat(
+      replaceRegexpAll(ifNull(toString(s_login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(s_fio), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(s_spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(s_stream), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(s_exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(s_is_head), ''), '\t', ifNull(toString(s_days), ''), '\t',
+      ifNull(toString(s_views), ''), '\t', ifNull(toString(s_last_dt), ''), '\t', ifNull(toString(s_bin), ''), '\t',
+      toString(ifNull(s_new_u, 0)), '\t', toString(ifNull(s_mau, 0)), '\t', toString(ifNull(s_mau_prev, 0)), '\t',
+      toString(toUInt8(lower(toString(ifNull(s_login, ''))) NOT IN (SELECT login FROM prod_proteus.pa_staff)))), s_role = 'list'), '\n'), any(s_k)) AS k,
+    s_parent AS parent,
     NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
     NULL AS days, NULL AS last_dt, NULL AS bin,
-    toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
-    toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
-    toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,
-    count() AS cnt, CAST([], 'Array(Int64)') AS ages, CAST([], 'Array(UInt64)') AS acts
-  FROM agg lp
-  WHERE lp.role = 'list'
-  GROUP BY lp.parent
+    if(s_role = 'list', toUInt64(0), any(s_users)) AS users, if(s_role = 'list', toUInt64(0), any(s_users_prev)) AS users_prev,
+    if(s_role = 'list', toInt64(0), any(if(s_role = 'ts', toInt64(ifNull(s_bviews, 0)), toInt64(s_views)))) AS views,
+    if(s_role = 'list', toInt64(0), any(toInt64(s_views_prev))) AS views_prev,
+    if(s_role = 'list', toUInt64(0), any(s_new_u)) AS new_u, if(s_role = 'list', toUInt64(0), any(s_new_prev)) AS new_prev,
+    if(s_role = 'list', toUInt64(0), any(s_react_u)) AS react_u, if(s_role = 'list', toUInt64(0), any(s_regular)) AS regular,
+    if(s_role = 'list', toUInt64(0), any(s_regular_prev)) AS regular_prev, if(s_role = 'list', toUInt64(0), any(s_sleeping)) AS sleeping,
+    if(s_role = 'list', toUInt64(0), any(s_mau)) AS mau, if(s_role = 'list', toUInt64(0), any(s_mau_prev)) AS mau_prev,
+    if(s_role = 'list', count(), any(s_cnt)) AS cnt, any((s_am).1) AS ages, any((s_am).2) AS acts
+  FROM (SELECT role AS s_role, g AS s_g, k AS s_k, parent AS s_parent, login AS s_login, fio AS s_fio, spec AS s_spec,
+      stream AS s_stream, exp AS s_exp, is_head AS s_is_head, days AS s_days, views AS s_views, last_dt AS s_last_dt, bin AS s_bin,
+      new_u AS s_new_u, mau AS s_mau, mau_prev AS s_mau_prev, users AS s_users, users_prev AS s_users_prev, views_prev AS s_views_prev,
+      new_prev AS s_new_prev, react_u AS s_react_u, regular AS s_regular, regular_prev AS s_regular_prev, sleeping AS s_sleeping,
+      cnt AS s_cnt, am AS s_am, rn AS s_rn, b.bviews AS s_bviews
+    FROM rnk LEFT JOIN bv b ON b.bk = rnk.tk)
+  WHERE s_role = 'list' OR s_g != 'adg' OR s_rn <= {{ ADG_N }}
+  GROUP BY s_role, s_g, if(s_role = 'list', '', s_k), s_parent
 
   UNION ALL
   {# Эхо области: что выбрано (g = режим, k = значения через \n, fio = имя одиночного отчёта), parent = грануляция.
@@ -247,7 +247,7 @@ FROM (
     {% if have and pmode == 'report' and repids|length == 1 %}ifNull((SELECT any(dashboard_nm) FROM prod_proteus.pa_dash_meta WHERE dashboard_id = {{ repids[0] }}), ''){% else %}NULL{% endif %} AS fio,
     NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{{ '{' ~ FLT|join(',') ~ '}' }}' AS exp, NULL AS is_head,
     {#- days — kt + 1 (сколько свежих периодов «надёжны» для новых; 0 — ни одного), last_dt — начало истории событий -#}
-    toUInt32(greatest((SELECT kt FROM hist) + 1, 0)) AS days, (SELECT ds FROM hist) AS last_dt, NULL AS bin,
+    toUInt32(greatest({{ KT }} + 1, 0)) AS days, {{ DS }} AS last_dt, NULL AS bin,
     toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
     toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
     toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,

@@ -2957,17 +2957,17 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var fl = [], pk = state.picks;
       // Узлы оргструктуры УС-3…УС-7 — путями «А › Б › …» (org_f): одноимённые
       // отделы разных департаментов не склеиваются.
-      if (pk.org.length) fl.push({ column: 'org_f', operator: 'IN', value: pk.org.slice() });
-      if (pk.spec.length) fl.push({ column: 'spec_f', operator: 'IN', value: pk.spec.slice() });
-      if (pk.stream.length) fl.push({ column: 'stream_f', operator: 'IN', value: pk.stream.slice() });
-      if (pk.adgroup.length) fl.push({ column: 'adg_f', operator: 'IN', value: pk.adgroup.slice() });
+      if (pk.org.length) fl.push({ column: 'org_f', operator: 'IN', value: pk.org.slice().sort() });
+      if (pk.spec.length) fl.push({ column: 'spec_f', operator: 'IN', value: pk.spec.slice().sort() });
+      if (pk.stream.length) fl.push({ column: 'stream_f', operator: 'IN', value: pk.stream.slice().sort() });
+      if (pk.adgroup.length) fl.push({ column: 'adg_f', operator: 'IN', value: pk.adgroup.slice().sort() });
       // heads_f: '1' — только руководители (настройка или группа «Тим-лиды»),
       // 'n' — только группа «Остальные»; обе группы сразу = без условия.
       var hv = state.headsOnly ? '1' : (pk.heads.length === 1 ? (pk.heads[0] === 'Тим-лиды' ? '1' : 'n') : '');
       if (hv) fl.push({ column: 'heads_f', operator: 'IN', value: [hv] });
-      if (pk.login.length) fl.push({ column: 'login_f', operator: 'IN', value: pk.login.slice() });
+      if (pk.login.length) fl.push({ column: 'login_f', operator: 'IN', value: pk.login.slice().sort() });
       // Исключённые логины настроек списка — выпадают и из каталога, и из шапки.
-      if (state.excl.length) fl.push({ column: 'exl_f', operator: 'IN', value: state.excl.slice() });
+      if (state.excl.length) fl.push({ column: 'exl_f', operator: 'IN', value: state.excl.slice().sort() });
       if (state.freqSel) fl.push({ column: 'freq_f', operator: 'IN', value: [state.freqSel] });
       return fl;
     }

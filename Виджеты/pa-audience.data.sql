@@ -86,8 +86,10 @@
 {% if have %}{% set _ = SJ.append('"mode":"' ~ pmode ~ '"') %}{% set _ = SJ.append('"sel":' ~ jal(sel)) %}{% endif %}
 {% if excv == '0' %}{% set _ = SJ.append('"exc":"0"') %}{% endif %}
 WITH
-  {# ds — начало истории событий: в первые 90 дней истории «пришли впервые» не отличить от давно не заходивших (чарт). #}
-  maxd AS (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds FROM prod_proteus.pa_pair),
+  {# ds — начало истории событий: в первые 90 дней истории «пришли впервые» не отличить от давно не заходивших (чарт).
+     Обе даты — одним кортежем: одинаковый скаляр (SELECT h FROM maxd) ClickHouse считает один раз, а разные
+     (SELECT md …) / (SELECT ds …) — каждый своим сканом pa_pair. #}
+  maxd AS (SELECT tuple(max(ifNull(md, dmax)), min(dmin)) AS h FROM prod_proteus.pa_pair),
   area AS (
     SELECT dashboard_id, owners_string, dashboard_nm
     FROM prod_proteus.pa_dash_meta
@@ -142,8 +144,8 @@ WITH
       if(rl = 'h', {{ hid('spec') }}, '') AS sid, if(rl = 'h', {{ hid('stream') }}, '') AS tid, if(rl = 'h', hd, 0) AS h0,
       if(rl = 'h', {{ hid('hq') }}, '') AS qid, if(rl = 'h', {{ hid('it') }}, '') AS iid,
       multiIf(rl = 'v', arrayStringConcat([lg, fio, toString(acc), toString(stf), toString(bitAnd(msk, {{ 2 ** g.n - 1 }})), toString(bitShiftRight(msk, {{ g.n }})), toString(fk),
-          toString(toUInt8(bitAnd(mon, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toMonth((SELECT md FROM maxd))))) - 1) != 0)),
-          toString(if(isNull(dmax), -1, dateDiff('day', toStartOfDay(dmax), toStartOfDay((SELECT md FROM maxd))))),
+          toString(toUInt8(bitAnd(mon, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toMonth(tupleElement((SELECT h FROM maxd), 1))))) - 1) != 0)),
+          toString(if(isNull(dmax), -1, dateDiff('day', toStartOfDay(dmax), toStartOfDay(tupleElement((SELECT h FROM maxd), 1))))),
           {{ hid('spec') }}, {{ hid('stream') }}, toString(hd), toString(vc), exn, {{ hid('hq') }}, {{ hid('it') }}, toString(inca)], '\t'),
         rl = 'n', arrayStringConcat([lg, fio, {{ hid('spec') }}, {{ hid('stream') }}, toString(hd), {{ hid('hq') }}, {{ hid('it') }}, toString(acc), exn], '\t'),
         '') AS ln,
@@ -192,4 +194,4 @@ FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT da
 UNION ALL
 SELECT 'total', '', arrayStringConcat((SELECT groupArray(nm) FROM (SELECT toString(dashboard_nm) AS nm FROM area ORDER BY dashboard_id LIMIT 3)), '\n'), '',
   toInt64((SELECT count() FROM prod_proteus.pa_staff)), toInt64(0),
-  concat('{{ "{" ~ SJ|join(", ") }}', ', "md":"', toString(toDate((SELECT md FROM maxd))), '", "ds":"', toString(toDate((SELECT ds FROM maxd))), '", "areaN":', toString((SELECT count() FROM area)), '}')
+  concat('{{ "{" ~ SJ|join(", ") }}', ', "md":"', toString(toDate(tupleElement((SELECT h FROM maxd), 1))), '", "ds":"', toString(toDate(tupleElement((SELECT h FROM maxd), 2))), '", "areaN":', toString((SELECT count() FROM area)), '}')

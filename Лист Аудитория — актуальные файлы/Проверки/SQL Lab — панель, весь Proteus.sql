@@ -1,8 +1,8 @@
--- 1
+-- 2
 -- Панель «Аудитория: ЦА области» — без выбора в каталоге (весь Proteus под опциями по умолчанию), ЦА по правам.
 -- Рендер без джини (для SQL Lab, база CROSS). Цифру в первой строке меняйте для повторного замера: SQL Lab кэширует результат.
 WITH
-  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
+  maxd AS (SELECT tuple(max(ifNull(md, dmax)), min(dmin)) AS h FROM prod_proteus.pa_pair),
   area AS (
     SELECT dashboard_id, owners_string, dashboard_nm
     FROM prod_proteus.pa_dash_meta
@@ -42,8 +42,8 @@ WITH
       if(rl = 'h', lower(hex(toUInt32(cityHash64(spec) % 4294967296))), '') AS sid, if(rl = 'h', lower(hex(toUInt32(cityHash64(stream) % 4294967296))), '') AS tid, if(rl = 'h', hd, 0) AS h0,
       if(rl = 'h', lower(hex(toUInt32(cityHash64(hq) % 4294967296))), '') AS qid, if(rl = 'h', lower(hex(toUInt32(cityHash64(it) % 4294967296))), '') AS iid,
       multiIf(rl = 'v', arrayStringConcat([lg, fio, toString(acc), toString(stf), toString(bitAnd(msk, 1073741823)), toString(bitShiftRight(msk, 30)), toString(fk),
-          toString(toUInt8(bitAnd(mon, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toMonth((SELECT md FROM maxd))))) - 1) != 0)),
-          toString(if(isNull(dmax), -1, dateDiff('day', toStartOfDay(dmax), toStartOfDay((SELECT md FROM maxd))))),
+          toString(toUInt8(bitAnd(mon, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toMonth(tupleElement((SELECT h FROM maxd), 1))))) - 1) != 0)),
+          toString(if(isNull(dmax), -1, dateDiff('day', toStartOfDay(dmax), toStartOfDay(tupleElement((SELECT h FROM maxd), 1))))),
           lower(hex(toUInt32(cityHash64(spec) % 4294967296))), lower(hex(toUInt32(cityHash64(stream) % 4294967296))), toString(hd), toString(vc), exn, lower(hex(toUInt32(cityHash64(hq) % 4294967296))), lower(hex(toUInt32(cityHash64(it) % 4294967296))), toString(inca)], '\t'),
         rl = 'n', arrayStringConcat([lg, fio, lower(hex(toUInt32(cityHash64(spec) % 4294967296))), lower(hex(toUInt32(cityHash64(stream) % 4294967296))), toString(hd), lower(hex(toUInt32(cityHash64(hq) % 4294967296))), lower(hex(toUInt32(cityHash64(it) % 4294967296))), toString(acc), exn], '\t'),
         '') AS ln,
@@ -86,4 +86,4 @@ FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT da
 UNION ALL
 SELECT 'total', '', arrayStringConcat((SELECT groupArray(nm) FROM (SELECT toString(dashboard_nm) AS nm FROM area ORDER BY dashboard_id LIMIT 3)), '\n'), '',
   toInt64((SELECT count() FROM prod_proteus.pa_staff)), toInt64(0),
-  concat('{"period":"d", "n":30, "caMode":"acc", "ca":{}', ', "md":"', toString(toDate((SELECT md FROM maxd))), '", "areaN":', toString((SELECT count() FROM area)), '}')
+  concat('{"period":"d", "n":30, "flt":{}, "caMode":"acc", "ca":{}', ', "md":"', toString(toDate(tupleElement((SELECT h FROM maxd), 1))), '", "ds":"', toString(toDate(tupleElement((SELECT h FROM maxd), 2))), '", "areaN":', toString((SELECT count() FROM area)), '}')

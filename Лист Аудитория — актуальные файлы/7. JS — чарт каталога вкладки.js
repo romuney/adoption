@@ -1586,12 +1586,15 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       if (used.length === 1) {
         var one = pickList(used[0]);
         for (i = 0; i < one.length; i++) vals.push(String(one[i]));
+        // Значения — по алфавиту: тот же выбор в другом порядке кликов = тот же текст запроса = кэш Proteus.
+        vals.sort();
         return [{ column: 'mode_param', operator: 'IN', value: [used[0]] },
                 { column: 'sel_f', operator: 'IN', value: vals }];
       }
       var ids = pickedIds() || [];
       for (i = 0; i < ids.length; i++) vals.push(String(ids[i]));
       if (!vals.length) vals = ['0'];
+      vals.sort();
       return [{ column: 'mode_param', operator: 'IN', value: ['report'] },
               { column: 'sel_f', operator: 'IN', value: vals }];
     }

@@ -224,7 +224,8 @@ FROM (
     {% if have %}{{ q([sel|join('\n')]) }}{% else %}''{% endif %} AS k, '{{ grain }}' AS parent,
     NULL AS login,
     {% if have and pmode == 'report' and repids|length == 1 %}ifNull((SELECT any(dashboard_nm) FROM prod_proteus.pa_dash_meta WHERE dashboard_id = {{ repids[0] }}), ''){% else %}NULL{% endif %} AS fio,
-    NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{{ '{' ~ FLT|join(',') ~ '}' }}' AS exp, NULL AS is_head,
+    {#- lvl3 — дата свежести данных md: от неё чарт подписывает периоды (не от сегодняшнего дня браузера) -#}
+    toString(toDate((SELECT md FROM maxd))) AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{{ '{' ~ FLT|join(',') ~ '}' }}' AS exp, NULL AS is_head,
     toUInt32(greatest((SELECT kt FROM hist) + 1, 0)) AS days, (SELECT ds FROM hist) AS last_dt, NULL AS bin,
     toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
     toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,

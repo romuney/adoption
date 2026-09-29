@@ -1,6 +1,6 @@
 -- SQL Lab: pa_people (файл 3), 30 дней, без выбора в каталоге. Только для проверки — в датасет НЕ вставлять.
 -- Замер — первый прогон уникального текста; повтор: поменяйте цифру в строке ниже.
--- 9
+-- 10
 WITH
   maxd AS (
     SELECT tuple(md, ds, toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1)) AS h
@@ -141,8 +141,7 @@ FROM (
   SELECT 'area' AS section, '' AS g,
     '' AS k, 'd' AS parent,
     NULL AS login,
-    NULL AS fio,
-    NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{}' AS exp, NULL AS is_head,toUInt32(greatest(tupleElement((SELECT h FROM maxd), 3) + 1, 0)) AS days, tupleElement((SELECT h FROM maxd), 2) AS last_dt, NULL AS bin,
+    NULL AS fio,toString(toDate(tupleElement((SELECT h FROM maxd), 1))) AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{}' AS exp, NULL AS is_head,toUInt32(greatest(tupleElement((SELECT h FROM maxd), 3) + 1, 0)) AS days, tupleElement((SELECT h FROM maxd), 2) AS last_dt, NULL AS bin,
     toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
     toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
     toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,

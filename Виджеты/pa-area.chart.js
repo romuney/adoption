@@ -328,8 +328,14 @@ function fmtDate(t) {
 
 // Дата бакета от клиента: k=0 — текущий период (та же оговорка, что в теле:
 // колонки max_ts в ответе нет, витрина за вчера ⇒ сдвиг подписей ≤1 день).
+// Дата свежести данных (md из датасета): от неё — подписи периодов, «закрытый месяц», когорты.
+// Раньше якорем был сегодняшний день браузера — при витрине «за вчера» подписи съезжали на день вперёд.
+var DATA_MD = null;
+function refDay() {
+  return DATA_MD ? new Date(Date.UTC(DATA_MD.y, DATA_MD.m, DATA_MD.d)) : new Date(Date.now() - 86400000);
+}
 function tsDate(k, grain) {
-  var now = new Date();
+  var now = refDay();
   var y = now.getUTCFullYear(), m = now.getUTCMonth(), d = now.getUTCDate();
   if (grain === 'd') { d -= k; }
   else if (grain === 'w') { d -= k * 7; }
@@ -473,6 +479,7 @@ function buildModel() {
       m.area.name = String(r[F.fio] || '');
       try { m.flt = r[F.exp] ? JSON.parse(String(r[F.exp])) : null; } catch (eF) { m.flt = null; }   // эхо фильтров (сверка)
       if (r[F.days] != null && r[F.days] !== '') m.hist = { kt: (num(r[F.days]) || 0) - 1, ds: toDate(r[F.last_dt]) };
+      if (r[F.lvl3]) DATA_MD = toDate(r[F.lvl3]);   // дата свежести (подписи периодов)
     } else if (sec === 'total') {
       m.kpi = {
         users: num(r[F.users]) || 0, users_prev: num(r[F.users_prev]) || 0,
@@ -616,7 +623,7 @@ function signed(v, dec, unit) {
 
 // Последний ЗАКРЫТЫЙ месяц от даты свежести (витрина за вчера).
 function closedMonth(back) {
-  var now = new Date(Date.now() - 86400000);
+  var now = refDay();
   var dt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
   return MONTHS_FULL[dt.getUTCMonth()] + ' ' + dt.getUTCFullYear();
 }
@@ -1862,7 +1869,7 @@ function areaInfo() {
 // значения правее на столбец. Закрытый возраст без возвратов = 0%.
 // Возраст незакрытого текущего месяца — серый курсив, в медиану не входит.
 function cohortCells(row) {
-  var now = new Date(Date.now() - 86400000);
+  var now = refDay();
   var openAge = (now.getUTCFullYear() - row.month.y) * 12 + (now.getUTCMonth() - row.month.m);
   var cells = {};
   for (var a = 1; a <= Math.min(11, openAge); a++) {

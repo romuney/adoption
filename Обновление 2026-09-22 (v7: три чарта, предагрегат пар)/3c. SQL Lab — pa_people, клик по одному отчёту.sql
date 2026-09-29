@@ -1,7 +1,7 @@
 -- SQL Lab: pa_people ровно как при КЛИКЕ ПО ОДНОМУ ОТЧЁТУ (30 дней). Только для замера — в датасет НЕ вставлять.
 -- 1) Замените 987654321 на id отчёта, по которому кликали на борде (число из адреса /superset/dashboard/<id>/).
 -- 2) Засеките время ПЕРВОГО прогона. Повтор — поменяйте цифру в строке ниже (SQL Lab кэширует ответ).
--- 5
+-- 6
 WITH
   maxd AS (
     SELECT tuple(md, ds, toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1)) AS h
@@ -142,8 +142,7 @@ FROM (
   SELECT 'area' AS section, 'report' AS g,
     ('987654321') AS k, 'd' AS parent,
     NULL AS login,
-    ifNull((SELECT any(dashboard_nm) FROM prod_proteus.pa_dash_meta WHERE dashboard_id = 987654321), '') AS fio,
-    NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{"mode_param":["report"],"sel_f":["987654321"]}' AS exp, NULL AS is_head,toUInt32(greatest(tupleElement((SELECT h FROM maxd), 3) + 1, 0)) AS days, tupleElement((SELECT h FROM maxd), 2) AS last_dt, NULL AS bin,
+    ifNull((SELECT any(dashboard_nm) FROM prod_proteus.pa_dash_meta WHERE dashboard_id = 987654321), '') AS fio,toString(toDate(tupleElement((SELECT h FROM maxd), 1))) AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{"mode_param":["report"],"sel_f":["987654321"]}' AS exp, NULL AS is_head,toUInt32(greatest(tupleElement((SELECT h FROM maxd), 3) + 1, 0)) AS days, tupleElement((SELECT h FROM maxd), 2) AS last_dt, NULL AS bin,
     toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
     toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
     toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,

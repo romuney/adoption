@@ -255,8 +255,14 @@ function fmtDate(t) {
   return t ? p2(t.d) + '.' + p2(t.m + 1) + '.' + t.y : '—';
 }
 
+// Дата свежести данных (md из датасета): от неё — подписи периодов, «закрытый месяц», когорты.
+// Раньше якорем был сегодняшний день браузера — при витрине «за вчера» подписи съезжали на день вперёд.
+var DATA_MD = null;
+function refDay() {
+  return DATA_MD ? new Date(Date.UTC(DATA_MD.y, DATA_MD.m, DATA_MD.d)) : new Date(Date.now() - 86400000);
+}
 function tsDate(k, grain) {
-  var now = new Date();
+  var now = refDay();
   var y = now.getUTCFullYear(), m = now.getUTCMonth(), d = now.getUTCDate();
   if (grain === 'd') { d -= k; }
   else if (grain === 'w') { d -= k * 7; }
@@ -397,6 +403,7 @@ function buildModel() {
   var G = CFG.grains[m.grain], FB = CFG.fbins[m.grain];
   m.n = G.n;
   m.kt = histKt(m.md, m.ds, m.grain, G.n);
+  DATA_MD = m.md || null;   // дата свежести (подписи периодов)
   var mdMs = m.md ? Date.UTC(m.md.y, m.md.m, m.md.d) : Date.now() - 86400000;
   var seenPath = {};
   var addPath = function (path) {
@@ -554,7 +561,7 @@ function signed(v, dec, unit) {
 }
 
 function closedMonth(back) {
-  var now = new Date(Date.now() - 86400000);
+  var now = refDay();
   var dt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - back, 1));
   return MONTHS_FULL[dt.getUTCMonth()] + ' ' + dt.getUTCFullYear();
 }

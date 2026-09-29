@@ -36,6 +36,8 @@
 {{- out|where_in -}}
 {%- endmacro %}
 {% macro qa(values) -%}[{{ q(values)[1:-1] }}]{%- endmacro %}
+{% set CAL_N = 60 %}{#- календарь посещений (роль cal): последние 60 дней, как маска msk_d в pa_pair -#}
+{% macro kd(col) -%}toInt64(dateDiff('day', toStartOfDay({{ col }}), toStartOfDay((SELECT md FROM maxd)))){%- endmacro %}
 {% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}((SELECT md FROM maxd)))){%- endmacro %}
 {% set pubv = filter_values('pub_f')|first|default('1', true) %}{% set pubv = pubv if pubv in ['0', '1'] else '1' %}
 {% set actv = filter_values('act_f')|first|default('1', true) %}{% set actv = actv if actv in ['0', '1'] else '1' %}
@@ -55,7 +57,8 @@ WITH
   {#- Начало истории и «надёжные» для новых периоды — как в основном pa_people (файл 3). -#}
   hist AS (
     SELECT toDate(ds) AS ds, addDays(toDate(ds), {{ HIST_DAYS }}) AS dt,
-      toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1) AS kt
+      toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1) AS kt,
+      toInt64(dateDiff('day', dt, toDate(md))) AS ktd
     FROM maxd
   ),
   dash_ok AS (
@@ -75,6 +78,10 @@ WITH
       sumIf(e.views, {{ kx('e.log_dttm') }} >= {{ g.n }} AND {{ kx('e.log_dttm') }} < {{ 2 * g.n }}) AS v_prev,
       sumMapIf([{{ kx('e.log_dttm') }}], [toInt64(e.views)], {{ kx('e.log_dttm') }} < {{ g.n }}) AS kv,
       max({{ kx('e.log_dttm') }}) AS fd_k,
+      {#- календарь: активные дни за 60 дней (bit = возраст дня), просмотры по дням за 30, первый визит в днях -#}
+      groupBitOr(if({{ kd('e.log_dttm') }} < {{ CAL_N }}, toUInt64(bitShiftLeft(toUInt64(1), toUInt8({{ kd('e.log_dttm') }}))), toUInt64(0))) AS mskd,
+      sumMapIf([{{ kd('e.log_dttm') }}], [toInt64(e.views)], {{ kd('e.log_dttm') }} < 30) AS kvd,
+      max({{ kd('e.log_dttm') }}) AS fd_d,
       max(e.log_dttm) AS dmax,
       toStartOfMonth(min(e.log_dttm)) AS c0,
       groupUniqArray(toInt64(dateDiff('month', toStartOfMonth(e.log_dttm), toStartOfMonth((SELECT md FROM maxd))))) AS bms,
@@ -89,7 +96,7 @@ WITH
   pr AS (
     {#- Зритель + атрибуты + роли, в которые он попадает. -#}
     SELECT p.login AS login, p.msk AS msk, bitCount(bitAnd(p.msk, {{ CUR }})) AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
-      p.kv AS kv, p.fd_k AS fd_k, p.dmax AS dmax, p.m1 AS m1, p.m2 AS m2,
+      p.kv AS kv, p.fd_k AS fd_k, p.kvd AS kvd, p.fd_d AS fd_d, p.dmax AS dmax, p.m1 AS m1, p.m2 AS m2,
       bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
       bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
       multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, 4) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
@@ -118,17 +125,18 @@ WITH
         {% if WITH_ADG %}if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),{% endif %}
         if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
         if(gm < 12, [('coh', '', toString(p.c0), '', toInt64(-1))], []),
-        if(cur, arrayMap(t -> ('ts', '', toString(t), '', t), (p.kv).1), [])
+        if(cur, arrayMap(t -> ('ts', '', toString(t), '', t), (p.kv).1), []),
+        arrayMap(t -> ('cal', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.mskd, t), range({{ CAL_N }})))
       )) AS rk
     FROM evd p
     LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
   ),
   agg AS (
     SELECT rk.1 AS role, rk.2 AS g, rk.3 AS k, rk.4 AS parent,
-      countIf(cur) AS users, countIf(prv) AS users_prev,
-      sum(if(rk.1 = 'ts', (kv).2[indexOf((kv).1, rk.5)], v_cur)) AS views,
+      countIf(rk.1 = 'cal' OR cur) AS users, countIf(prv) AS users_prev,
+      sum(multiIf(rk.1 = 'ts', (kv).2[indexOf((kv).1, rk.5)], rk.1 = 'cal', (kvd).2[indexOf((kvd).1, rk.5)], v_cur)) AS views,
       sum(v_prev) AS views_prev,
-      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= (SELECT kt FROM hist)) AS new_u,
+      countIf(if(rk.1 = 'cal', rk.5 = fd_d AND fd_d <= (SELECT ktd FROM hist), if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= (SELECT kt FROM hist))) AS new_u,
       countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }} AND fd_k <= (SELECT kt FROM hist)) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(rk.5 + 1)))) = 0) AS react_u,
       countIf(nb_cur > {{ FBIN[1] }}) AS regular, countIf(nb_prev > {{ FBIN[1] }}) AS regular_prev,

@@ -39,7 +39,11 @@
 {% macro qa(values) -%}[{{ q(values)[1:-1] }}]{%- endmacro %}
 {#- Даты — ОДИН скалярный подзапрос на весь запрос: одинаковые скаляры ClickHouse считает один раз, а разные
     ((SELECT md …), (SELECT kt …), (SELECT ds …)) — каждый своим сканом pa_pair. -#}
-{% set MD = "tupleElement((SELECT h FROM maxd), 1)" %}{% set DS = "tupleElement((SELECT h FROM maxd), 2)" %}{% set KT = "tupleElement((SELECT h FROM maxd), 3)" %}
+{% set MD = "tupleElement((SELECT h FROM maxd), 1)" %}{% set DS = "tupleElement((SELECT h FROM maxd), 2)" %}{% set KT = "tupleElement((SELECT h FROM maxd), 3)" %}{% set KTD = "tupleElement((SELECT h FROM maxd), 4)" %}
+{#- Календарь посещений (роль cal): дни за последние CAL_N дней по маске pa_pair.msk_d — при любой грануляции.
+    Просмотры по дням — pa_dash_bkt (грануляция d), они есть только за 30 дней. -#}
+{% set CAL_N = 60 %}
+{% macro kd(col) -%}toInt64(dateDiff('day', toStartOfDay({{ col }}), toStartOfDay({{ MD }}))){%- endmacro %}
 {% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}({{ MD }}))){%- endmacro %}
 {% set pubv = filter_values('pub_f')|first|default('1', true) %}{% set pubv = pubv if pubv in ['0', '1'] else '1' %}
 {% set actv = filter_values('act_f')|first|default('1', true) %}{% set actv = actv if actv in ['0', '1'] else '1' %}
@@ -60,7 +64,8 @@ WITH
       периода есть ≥ {{ HIST_DAYS }} дней истории — иначе «впервые в данных» = «давно не заходил». kt — самый
       старый такой период (возраст бакета); периоды старше kt новых не выделяют (в чарте — «мало истории»). #}
   maxd AS (
-    SELECT tuple(md, ds, toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1)) AS h
+    SELECT tuple(md, ds, toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1),
+      toInt64(dateDiff('day', dt, toDate(md)))) AS h
     FROM (SELECT md, toDate(ds0) AS ds, addDays(toDate(ds0), {{ HIST_DAYS }}) AS dt
           FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
   ),
@@ -81,7 +86,10 @@ WITH
       sum(ifNull(e.vp_{{ grain }}, 0)) AS v_prev,
       max(ifNull(e.kmax_{{ grain }}, 0)) AS fd_k,
       max(e.dmax) AS dmax,
-      groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
+      groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon,
+      {#- календарь: активные дни (bit k = заходил k дней назад, k < 60) и возраст первого визита в днях -#}
+      groupBitOr(toUInt64(ifNull(e.msk_d, 0))) AS mskd,
+      max(ifNull(e.kmax_d, 0)) AS fd_d
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
@@ -90,7 +98,7 @@ WITH
   pr AS (
     {#- Зритель + атрибуты + роли, в которые он попадает. -#}
     SELECT p.login AS login, p.msk AS msk, bitCount(bitAnd(p.msk, {{ CUR }})) AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
-      p.fd_k AS fd_k, p.dmax AS dmax, toUInt8(bitTest(p.mon, 1)) AS m1, toUInt8(bitTest(p.mon, 2)) AS m2,
+      p.fd_k AS fd_k, p.fd_d AS fd_d, p.dmax AS dmax, toUInt8(bitTest(p.mon, 1)) AS m1, toUInt8(bitTest(p.mon, 2)) AS m2,
       {#- Месяцы активности из маски: возраст самого старого — месяц первого визита (когорта). -#}
       arrayMap(i -> toInt64(i), arrayFilter(i -> bitTest(p.mon, i), range(63))) AS bms,
       if(empty(bms), toInt64(0), arrayMax(bms)) AS gm,
@@ -122,17 +130,19 @@ WITH
         if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
         if(gm < 12, [('coh', '', toString(c0), '', toInt64(-1))], []),
         {#- Динамика: строка на каждый активный бакет текущего окна (просмотры — из pa_dash_bkt ниже). -#}
-        if(cur, arrayMap(t -> ('ts', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.msk, t), range({{ g.n }}))), [])
+        if(cur, arrayMap(t -> ('ts', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.msk, t), range({{ g.n }}))), []),
+        {#- Календарь: строка на каждый активный день из последних {{ CAL_N }} (любая грануляция). -#}
+        arrayMap(t -> ('cal', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.mskd, t), range({{ CAL_N }})))
       )) AS rk
     FROM evd p
     LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
   ),
   agg AS (
     SELECT rk.1 AS role, rk.2 AS g, rk.3 AS k, rk.4 AS parent,
-      countIf(cur) AS users, countIf(prv) AS users_prev,
-      sum(if(rk.1 = 'ts', 0, v_cur)) AS views, any(rk.5) AS tk,
+      countIf(rk.1 = 'cal' OR cur) AS users, countIf(prv) AS users_prev,
+      sum(if(rk.1 IN ('ts', 'cal'), 0, v_cur)) AS views, any(rk.5) AS tk,
       sum(v_prev) AS views_prev,
-      countIf(if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= {{ KT }}) AS new_u,
+      countIf(if(rk.1 = 'cal', rk.5 = fd_d AND fd_d <= {{ KTD }}, if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= {{ KT }})) AS new_u,
       countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }} AND fd_k <= {{ KT }}) AS new_prev,
       countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(rk.5 + 1)))) = 0) AS react_u,
       countIf(nb_cur > {{ FBIN[1] }}) AS regular, countIf(nb_prev > {{ FBIN[1] }}) AS regular_prev,
@@ -147,24 +157,27 @@ WITH
     GROUP BY role, g, k, parent
   ),
   bv AS (
-    {#- Просмотры по бакетам окна (линия «Просмотры» динамики). Людской срез области (cut:*) —
-        только из факта: у pa_dash_bkt разбивки по людям нет. -#}
+    {#- Просмотры по бакетам: gg = 'g' — окно периода (линия «Просмотры» динамики), gg = 'd' — дни календаря (30 дней).
+        Людской срез области (cut:*) — только из факта (у pa_dash_bkt разбивки по людям нет), одним чтением на обе серии. -#}
     {%- if have and pmode in CUTS %}
-    SELECT {{ kx('e.log_dttm') }} AS bk, sum(e.views) AS bviews
+    SELECT x.1 AS gg, x.2 AS bk, sum(e.views) AS bviews
     FROM prod_proteus.pa_evd_day e
-    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND {{ kx('e.log_dttm') }} < {{ g.n }}
+    ARRAY JOIN arrayFilter(y -> y.2 < if(y.1 = 'g', {{ g.n }}, 30), [('g', {{ kx('e.log_dttm') }}), ('d', {{ kd('e.log_dttm') }})]) AS x
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND ({{ kx('e.log_dttm') }} < {{ g.n }} OR {{ kd('e.log_dttm') }} < 30)
       AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }})
       {%- if excv == '1' %} AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1){% endif %}
-    GROUP BY bk
+    GROUP BY gg, bk
     {%- else %}
-    SELECT toInt64(k) AS bk, sum({{ 'views_nown' if excv == '1' else 'views' }}) AS bviews
+    SELECT gg, toInt64(k) AS bk, sum({{ 'views_nown' if excv == '1' else 'views' }}) AS bviews
     FROM prod_proteus.pa_dash_bkt
-    WHERE grain = '{{ grain }}' AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
-    GROUP BY bk
+    ARRAY JOIN arrayFilter(y -> (y = 'g' AND grain = '{{ grain }}') OR (y = 'd' AND grain = 'd'), ['g', 'd']) AS gg
+    WHERE grain IN ('{{ grain }}', 'd') AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    GROUP BY gg, bk
     {%- endif %}
   ),
   rnk AS (
     SELECT *,
+      if(role = 'cal', 'd', 'g') AS bg,     {#- серия просмотров bv: дни календаря или бакеты периода -#}
       {#- ранг нужен только топу AD-групп: без WITH_ADG окно не считаем -#}
       {% if WITH_ADG %}row_number() OVER (PARTITION BY role, g ORDER BY if(role = 'list', days, users) DESC, views DESC, k){% else %}toUInt64(0){% endif %} AS rn
     FROM agg
@@ -222,7 +235,7 @@ FROM (
     NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
     NULL AS days, NULL AS last_dt, NULL AS bin,
     if(s_role = 'list', toUInt64(0), any(s_users)) AS users, if(s_role = 'list', toUInt64(0), any(s_users_prev)) AS users_prev,
-    if(s_role = 'list', toInt64(0), any(if(s_role = 'ts', toInt64(ifNull(s_bviews, 0)), toInt64(s_views)))) AS views,
+    if(s_role = 'list', toInt64(0), any(if(s_role IN ('ts', 'cal'), toInt64(ifNull(s_bviews, 0)), toInt64(s_views)))) AS views,
     if(s_role = 'list', toInt64(0), any(toInt64(s_views_prev))) AS views_prev,
     if(s_role = 'list', toUInt64(0), any(s_new_u)) AS new_u, if(s_role = 'list', toUInt64(0), any(s_new_prev)) AS new_prev,
     if(s_role = 'list', toUInt64(0), any(s_react_u)) AS react_u, if(s_role = 'list', toUInt64(0), any(s_regular)) AS regular,
@@ -234,7 +247,7 @@ FROM (
       new_u AS s_new_u, mau AS s_mau, mau_prev AS s_mau_prev, users AS s_users, users_prev AS s_users_prev, views_prev AS s_views_prev,
       new_prev AS s_new_prev, react_u AS s_react_u, regular AS s_regular, regular_prev AS s_regular_prev, sleeping AS s_sleeping,
       cnt AS s_cnt, am AS s_am, rn AS s_rn, b.bviews AS s_bviews
-    FROM rnk LEFT JOIN bv b ON b.bk = rnk.tk)
+    FROM rnk LEFT JOIN bv b ON b.bk = rnk.tk AND b.gg = rnk.bg)
   WHERE s_role = 'list' OR s_g != 'adg' OR s_rn <= {{ ADG_N }}
   GROUP BY s_role, s_g, if(s_role = 'list', '', s_k), s_parent
 

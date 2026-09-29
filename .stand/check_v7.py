@@ -66,6 +66,17 @@ for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'
     A = {pkey(r): r for r in srt(run(PPL, c)[0])}; B = {pkey(r): r for r in srt(run(PFALL, c)[0])}
     diff = [k for k in A.keys() | B.keys() if A.get(k) != B.get(k)]
     ok(not diff, f'pa_people == запасной на факте {c}' + (f'  расхождений: {len(diff)}, напр. {sorted(diff)[:2]}' if diff else ''))
+# Календарь (роль cal, 60 дней по pa_pair.msk_d): на 30 днях — ровно «Динамика» (люди, просмотры, новые);
+# при любой грануляции — те же 60 дней (сверка с 3b на факте — в цикле выше).
+for c in [{}, {'mode_param': 'report', 'sel_f': ['1', '2', '5']}, {'mode_param': 'cut:spec', 'sel_f': ['Спец 3']}]:
+    rows = run(PPL, c)[0]
+    ts = {r['k']: (r['users'], r['views'], r['new_u']) for r in rows if r['section'] == 'ts'}
+    cal = {r['k']: (r['users'], r['views'], r['new_u']) for r in rows if r['section'] == 'cal' and int(r['k']) < 30}
+    ok(ts == cal and ts, f'календарь на 30 днях == динамика по дням {c}')
+    ok(all(0 <= int(r['k']) < 60 for r in rows if r['section'] == 'cal'), f'календарь — только последние 60 дней {c}')
+calw = {r['k']: r['users'] for r in run(PPL, {'period_param': 'w'})[0] if r['section'] == 'cal'}
+cald = {r['k']: r['users'] for r in run(PPL, {})[0] if r['section'] == 'cal'}
+ok(calw == cald, 'календарь не зависит от периода шапки (недели == дни)')
 # Список «Кто смотрит» — ВСЕ зрители (не топ-N): людей в упакованных строках == users; постоянные == корзины 4–5.
 for g in ['d', 'w', 'm', 'q']:
     pr_ = run(PPL, {'period_param': g})[0]

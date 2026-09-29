@@ -60,7 +60,7 @@ var CFG = {
   mode: 'snapshot',
   // Порядок категорий — часть ТЗ (правило 15): и для разметки, и для автомока.
   order: {
-    section: ['area', 'total', 'freq', 'ctx', 'list', 'ts', 'coh'],
+    section: ['area', 'total', 'freq', 'ctx', 'list', 'ts', 'cal', 'coh'],
     g: ['org', 'spec', 'stream', 'head', 'adg'],
     bin: [1, 2, 3, 4, 5],
     is_head: [1, 0]
@@ -68,6 +68,7 @@ var CFG = {
   // Вкладки панели: люди → время → удержание.
   views: [
     { key: 'dyn', label: 'Динамика' },
+    { key: 'cal', label: 'Календарь' },
     { key: 'who', label: 'Кто смотрит' },
     { key: 'coh', label: 'Закрепляемость' }
   ],
@@ -192,6 +193,7 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   legendOff: { new: false, react: false, ret: false },
   viewsMode: 'total',        // просмотры: total | per
   dynEl: null, dynI: -1,     // следящий тултип динамики
+  calM: 'u',                 // календарь: u — пользователи | v — просмотры
   cohView: 'table',          // закрепляемость: table | curve
   ctBase: 'col',             // цвет когорт: медиана столбца | таблицы
   // Людская шина (→ каталог слева): выбор по разрезам, семантика как в
@@ -464,7 +466,7 @@ function buildModel() {
     // gm[разрез][ключ] — группа с полными метриками (серверные, точные по области);
     // orgKids[путь] — дочерние узлы оргструктуры (корни — под '').
     gm: { org: {}, spec: {}, stream: {}, adg: {}, head: {} }, orgKids: {},
-    list: [], rows: [], coh: []
+    list: [], rows: [], coh: [], cal: {}
   };
   var gotGrain = false;
   for (i = 0; i < rawData.length; i++) {
@@ -492,6 +494,9 @@ function buildModel() {
       m.total = m.kpi.users;
     } else if (sec === 'freq') {
       m.freqCtx[String(r[F.k])] = num(r[F.users]) || 0;
+    } else if (sec === 'cal') {
+      // Календарь: день = возраст k (дней назад от даты свежести), последние 60 дней при любом периоде.
+      m.cal[num(r[F.k]) || 0] = { users: num(r[F.users]) || 0, new_u: num(r[F.new_u]) || 0, views: num(r[F.views]) || 0 };
     } else if (sec === 'ts') {
       m.ts.push({
         k: num(r[F.k]) || 0,
@@ -1083,6 +1088,44 @@ function buildCSS() {
     P + '-panel-h ' + P + '-under{padding:0;margin-left:auto;}',
     P + '-h-area{color:var(--muted);font-weight:400;cursor:help;}',
     P + '-panel-h > ' + P + '-sub-tabs{margin-left:auto;}',
+    // Календарь посещений: месяцы — отдельными мини-календарями (Пн…Вс × недели), чтобы не слипались.
+    P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:14px;}',
+    P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
+    P + '-cal-chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}',
+    P + '-cal-chip{border:1px solid var(--line2);border-radius:8px;padding:5px 10px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
+    P + '-cal-chip b{display:block;color:var(--ink);font-size:var(--fs-lead);font-weight:600;font-variant-numeric:tabular-nums;}',
+    P + '-cal-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(196px,1fr));gap:14px 22px;}',
+    P + '-cal-mon{min-width:0;}',
+    P + '-cal-mt{font-size:var(--fs-body);font-weight:500;color:var(--ink2);margin-bottom:6px;}',
+    P + '-cal-mt span{color:var(--muted);font-weight:400;}',
+    P + '-cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}',
+    P + '-cal-wd{font-size:var(--fs-cap);color:var(--muted);text-align:center;letter-spacing:.3px;padding-bottom:2px;}',
+    P + '-cal-wd.we{color:var(--muted2);}',
+    P + '-cal-c{height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;}',
+    P + '-cal-c.hi{color:#fff;}',
+    P + '-cal-c.out{background:transparent;color:var(--muted2);cursor:default;}',
+    P + '-cal-c.nd{background:transparent;border:1px dashed #dde0e6;color:var(--muted2);}',
+    P + '-cal-c.last{box-shadow:0 0 0 2px var(--ink);}',
+    P + '-cal-c:not(.out):hover{box-shadow:0 0 0 2px var(--ink2);}',
+    P + '-cal-lg{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);color:var(--muted);flex-wrap:wrap;}',
+    P + '-cal-lg i{width:11px;height:11px;border-radius:3px;display:inline-block;}',
+    P + '-cal-lg .sp{width:12px;}',
+    P + '-cal-low{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start;}',
+    '@media (max-width:640px){' + P + '-cal-low{grid-template-columns:1fr;}}',
+    P + '-cal-h{font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:8px;}',
+    P + '-cal-wr{display:grid;grid-template-columns:24px 1fr 76px;align-items:center;gap:8px;font-size:var(--fs-body);margin-bottom:6px;}',
+    P + '-cal-wr .l{color:var(--ink2);font-weight:500;}',
+    P + '-cal-wr.we .l{color:var(--muted);}',
+    P + '-cal-tr{position:relative;height:16px;background:#f5f6f8;border-radius:4px;}',
+    P + '-cal-tr i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;}',
+    P + '-cal-tr u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.5;border-radius:1px;}',
+    P + '-cal-wr .v{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;}',
+    P + '-cal-wr .v s{text-decoration:none;color:var(--muted);font-size:var(--fs-cap);margin-left:3px;}',
+    P + '-cal-split{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:4px 0 6px;}',
+    P + '-cal-note{font-size:var(--fs-note);color:var(--muted);line-height:1.45;}',
+    P + '-cal-note b{color:var(--ink);font-weight:500;}',
+    P + '-cal-see{background:#f8f9fb;border-radius:8px;padding:10px 12px;font-size:var(--fs-body);line-height:1.5;color:var(--ink2);}',
+    P + '-cal-see b{font-weight:500;color:var(--ink);}',
     '</style>'
   ].join('\n');
 }
@@ -2274,7 +2317,7 @@ function buildHTML() {
   // каталоге), под ними карточка вкладок: заголовок с областью · поиск
   // (для «Кто смотрит») · вкладки справа. Период, опции и пилюли — в шапке листа.
   var N = CFG.ns, ai = areaInfo();
-  var view = state.view === 'who' || state.view === 'coh' ? state.view : 'dyn';
+  var view = state.view === 'who' || state.view === 'coh' || state.view === 'cal' ? state.view : 'dyn';
   var body, bodyCls, title;
   if (view === 'who') {
     body = freqStripHtml(busList()) + '<div class="' + N + '-list-zone">' + listZoneHtml() + '</div>';
@@ -2282,6 +2325,9 @@ function buildHTML() {
   } else if (view === 'dyn') {
     body = dynamicsHtml(MODEL.ts, MODEL.grain, {});
     bodyCls = 'dyn-wrap'; title = 'Динамика';
+  } else if (view === 'cal') {
+    body = calendarHtml();
+    bodyCls = 'cal-wrap'; title = 'Календарь посещений';
   } else {
     body = cohortZoneHtml(ai);
     bodyCls = 'coh-wrap'; title = 'Закрепляемость';
@@ -2299,13 +2345,133 @@ function buildHTML() {
       esc(ai.mut ? 'весь Proteus' : ai.pill) + '</span></span>' +
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
-        : (view === 'dyn' ? 'клик по строке каталога задаёт область' : 'когорты первого визита; период на них не действует')) + '</span></div>' +
+        : (view === 'dyn' ? 'клик по строке каталога задаёт область'
+          : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке' : 'когорты первого визита; период на них не действует'))) + '</span></div>' +
     '<div class="' + N + '-sub-tabs" role="tablist">' + tabsHtml('view', tabs) + '</div>' +
     '</div>');
   h.push('<div class="' + N + '-panel-b ' + bodyCls + '">' + body + '</div>');
   h.push('</div>');
   h.push('</div>');
   return buildCSS() + h.join('');
+}
+
+// --- ТАБ «КАЛЕНДАРЬ ПОСЕЩЕНИЙ» ------------------------------------------------
+// Строки cal: день k (дней назад от даты свежести) → люди, новые, просмотры. 60 дней при любом
+// периоде (маска дней пар pa_pair.msk_d); просмотры — только за 30 дней (pa_dash_bkt).
+// Месяцы — отдельными мини-календарями «Пн…Вс × недели», у каждого свой заголовок: не слипаются.
+var CAL_N = 60, CAL_V = 30;
+var CAL_C = ['#f1f3f6', '#E4ECFB', '#C4D5F6', '#8AAAEC', '#4A7BE0', '#245FD4'];
+var WD_S = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+var WD_N = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
+var WD_O = ['обычного понедельника', 'обычного вторника', 'обычной среды', 'обычного четверга', 'обычной пятницы', 'обычной субботы', 'обычного воскресенья'];
+function calDays() {
+  var md = refDay().getTime(), out = [], hk = MODEL.hist ? MODEL.hist : null;
+  // «новых» за день выделяем, только если до него ≥ 90 дней истории (как в динамике)
+  var hd = hk && hk.ds ? Date.UTC(hk.ds.y, hk.ds.m, hk.ds.d) + 90 * 86400000 : null;
+  for (var k = CAL_N - 1; k >= 0; k--) {
+    var t = md - k * 86400000, d = new Date(t), c = MODEL.cal[k] || { users: 0, new_u: 0, views: 0 };
+    out.push({ k: k, t: t, y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), w: (d.getUTCDay() + 6) % 7,
+      users: c.users, new_u: c.new_u, views: k < CAL_V ? c.views : null, newOk: hd == null || t >= hd });
+  }
+  return out;
+}
+function calVal(x) { return state.calM === 'v' ? x.views : x.users; }
+function calLvl(v, mx) {
+  if (v == null) return -1;
+  if (!v || !mx) return 0;
+  var r = v / mx;
+  return r < 0.12 ? 1 : r < 0.35 ? 2 : r < 0.6 ? 3 : r < 0.85 ? 4 : 5;
+}
+function calendarHtml() {
+  var N = CFG.ns, days = calDays(), isV = state.calM === 'v', i, mx = 0;
+  if (!MODEL.kpi) return '<div class="' + N + '-empty"><b>' + esc(CFG.text.noData) + '</b></div>';
+  for (i = 0; i < days.length; i++) { var v0 = calVal(days[i]); if (v0 != null && v0 > mx) mx = v0; }
+  var byKey = {};
+  for (i = 0; i < days.length; i++) byKey[days[i].y + '-' + days[i].m + '-' + days[i].d] = days[i];
+  // Месяцы окна: от месяца первого дня до месяца даты свежести
+  var f = days[0], l = days[days.length - 1], months = [];
+  for (var y = f.y, mm = f.m; y < l.y || (y === l.y && mm <= l.m); mm++) { if (mm > 11) { mm = 0; y++; } months.push({ y: y, m: mm }); if (y === l.y && mm === l.m) break; }
+  var mh = '';
+  for (var q = 0; q < months.length; q++) {
+    var M = months[q], first = new Date(Date.UTC(M.y, M.m, 1)), nd = new Date(Date.UTC(M.y, M.m + 1, 0)).getUTCDate();
+    var off = (first.getUTCDay() + 6) % 7, g = '', sum = 0, cnt = 0;
+    for (i = 0; i < 7; i++) g += '<span class="' + N + '-cal-wd' + (i >= 5 ? ' we' : '') + '">' + WD_S[i] + '</span>';
+    for (i = 0; i < off; i++) g += '<span></span>';
+    for (var dd = 1; dd <= nd; dd++) {
+      var x = byKey[M.y + '-' + M.m + '-' + dd];
+      if (!x) { g += '<span class="' + N + '-cal-c out">' + dd + '</span>'; continue; }
+      var val = calVal(x), L = calLvl(val, mx);
+      if (val != null) { sum += val; cnt++; }
+      var dt = WD_S[x.w].toLowerCase() + ', ' + dd + ' ' + MONTHS[M.m] + ' ' + M.y;
+      var rows = [{ label: 'Пользователей', value: nf(x.users) }];
+      if (x.newOk) rows.push({ label: 'из них впервые', value: nf(x.new_u) });
+      rows.push({ label: 'Просмотров', value: x.views == null ? '—' : nf(x.views) });
+      g += '<span class="' + N + '-cal-c' + (L < 0 ? ' nd' : '') + (L >= 4 ? ' hi' : '') + (x.k === 0 ? ' last' : '') + '"' +
+        (L >= 0 ? ' style="background:' + CAL_C[L] + '"' : '') +
+        tip({ title: dt, rows: rows, note: x.views == null ? 'Просмотры по дням есть только за последние 30 дней.' : (x.newOk ? '' : 'Начало истории данных: «впервые» не отличить от давно не заходивших.') }) + '>' + dd + '</span>';
+    }
+    mh += '<div class="' + N + '-cal-mon"><div class="' + N + '-cal-mt">' + esc(MONTHS_FULL[M.m].charAt(0).toUpperCase() + MONTHS_FULL[M.m].slice(1)) + ' ' + M.y +
+      (cnt ? ' <span>· ' + compact(Math.round(sum / cnt)) + ' в день</span>' : '') + '</div><div class="' + N + '-cal-g">' + g + '</div></div>';
+  }
+  // Дни недели: среднее за день — последние 30 дней и предыдущие 30 (черта)
+  var cur = [0, 0, 0, 0, 0, 0, 0], cn = [0, 0, 0, 0, 0, 0, 0], pr = [0, 0, 0, 0, 0, 0, 0], pn = [0, 0, 0, 0, 0, 0, 0];
+  for (i = 0; i < days.length; i++) {
+    var vv = calVal(days[i]);
+    if (vv == null) continue;
+    if (days[i].k < 30) { cur[days[i].w] += vv; cn[days[i].w]++; } else { pr[days[i].w] += vv; pn[days[i].w]++; }
+  }
+  var avg = [], pav = [], am = 0, pk = 0;
+  for (i = 0; i < 7; i++) {
+    avg[i] = cn[i] ? cur[i] / cn[i] : 0; pav[i] = pn[i] ? pr[i] / pn[i] : null;
+    am = Math.max(am, avg[i], pav[i] || 0);
+    if (avg[i] > avg[pk]) pk = i;
+  }
+  var wh = '';
+  for (i = 0; i < 7; i++) {
+    var dl = pav[i] ? (avg[i] / pav[i] - 1) * 100 : null;
+    wh += '<div class="' + N + '-cal-wr' + (i >= 5 ? ' we' : '') + '"' + tip({ title: WD_S[i] + ' · в среднем за день', rows: [
+        { label: 'Последние 30 дней', value: nf(Math.round(avg[i])) },
+        pav[i] != null ? { label: 'Предыдущие 30 дней', value: nf(Math.round(pav[i])) } : null] }) + '>' +
+      '<span class="l">' + WD_S[i] + '</span><span class="' + N + '-cal-tr"><i style="width:' + (am ? avg[i] / am * 100 : 0).toFixed(1) + '%;background:' + (i === pk ? CAL_C[5] : (i >= 5 ? CAL_C[3] : CAL_C[4])) + '"></i>' +
+      (pav[i] != null && am ? '<u style="left:' + (pav[i] / am * 100).toFixed(1) + '%"></u>' : '') + '</span>' +
+      '<span class="v">' + compact(Math.round(avg[i])) + (dl != null && isFinite(dl) ? '<s>' + (dl >= 0 ? '+' : MINUS) + nf(Math.abs(dl), 0) + '%</s>' : '') + '</span></div>';
+  }
+  var wdS = cur[0] + cur[1] + cur[2] + cur[3] + cur[4], all = wdS + cur[5] + cur[6], sh = all ? wdS / all * 100 : 0;
+  // Лучший день и провал (будний день, сильнее всего ниже среднего своего дня недели, порог −25 %) — за последние 30
+  var best = null, dip = null, dr = 1;
+  for (i = 0; i < days.length; i++) {
+    var z = days[i], zv = calVal(z);
+    if (z.k >= 30 || zv == null) continue;
+    if (!best || zv > calVal(best)) best = z;
+    if (z.w < 5 && avg[z.w]) { var rr = zv / avg[z.w]; if (rr < 0.75 && rr < dr) { dr = rr; dip = z; } }
+  }
+  var lowWd = 0;
+  for (i = 1; i < 5; i++) if (avg[i] < avg[lowWd]) lowWd = i;
+  var what = isV ? 'Просмотров' : 'Человеко-дней';
+  var h = '<div class="' + N + '-cal-bar">' +
+    '<div class="' + N + '-sub-tabs tiny" role="tablist">' + tabsHtml('calM', [
+      { key: 'u', label: 'Пользователи', on: !isV }, { key: 'v', label: 'Просмотры', on: isV }]) + '</div>' +
+    '<div class="' + N + '-cal-chips">' +
+      '<span class="' + N + '-cal-chip"' + tip({ title: 'Пик недели', text: 'День недели с наибольшим средним за день в последние 30 дней.' }) + '>Пик недели<b>' + WD_S[pk] + ' · ' + compact(Math.round(avg[pk])) + '</b></span>' +
+      '<span class="' + N + '-cal-chip"' + tip({ title: 'В будни', text: 'Доля ' + (isV ? 'просмотров' : 'человеко-дней (сумма людей по дням)') + ' с понедельника по пятницу, последние 30 дней.' }) + '>В будни<b>' + nf(sh, 0) + '%</b></span>' +
+      (best ? '<span class="' + N + '-cal-chip">Лучший день<b>' + best.d + ' ' + MONTHS[best.m] + ' · ' + compact(calVal(best)) + '</b></span>' : '') +
+    '</div></div>';
+  h += '<div class="' + N + '-cal-months">' + mh + '</div>';
+  h += '<div class="' + N + '-cal-lg">меньше' + CAL_C.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + 'больше' +
+    '<span class="sp"></span><i style="box-shadow:0 0 0 2px #23272e;background:' + CAL_C[4] + '"></i>последний день данных' +
+    (isV ? '<span class="sp"></span><i style="border:1px dashed #dde0e6"></i>просмотров по дням нет (старше 30 дней)' : '') + '</div>';
+  h += '<div class="' + N + '-cal-low"><div><div class="' + N + '-cal-h">По дням недели · в среднем за день, последние 30 дней</div>' + wh +
+    '<div class="' + N + '-cal-note">Черта — тот же день недели в предыдущие 30 дней' + (isV ? ' (просмотров за них нет — только люди)' : '') + '.</div></div>' +
+    '<div><div class="' + N + '-cal-h">Будни и выходные</div>' +
+    '<div class="' + N + '-cal-split"><span style="width:' + sh.toFixed(1) + '%;background:' + CAL_C[4] + '"></span><span style="flex:1;background:' + CAL_C[2] + '"></span></div>' +
+    '<div class="' + N + '-cal-note">' + what + ' в будни — <b>' + nf(sh, 0) + '%</b>, в выходные — ' + nf(100 - sh, 0) + '%</div>' +
+    '<div class="' + N + '-cal-see" style="margin-top:12px"><b>Что видно:</b> ' +
+      (all ? 'пик — ' + WD_N[pk] : '') +
+      (all ? ', меньше всего из будней — ' + WD_S[lowWd].toLowerCase() + ' (на ' + nf((1 - avg[lowWd] / (avg[pk] || 1)) * 100, 0) + '% ниже пика). ' : 'данных за последние 30 дней нет. ') +
+      (dip ? 'Провал ' + dip.d + ' ' + MONTHS[dip.m] + ' (' + WD_S[dip.w].toLowerCase() + ') — на ' + nf((1 - dr) * 100, 0) + '% ниже ' + WD_O[dip.w] + '. ' : '') +
+      (all ? 'В выходные — ' + compact(Math.round((avg[5] + avg[6]) / 2)) + ' в день.' : '') +
+    '</div></div></div>';
+  return h;
 }
 
 // --- ТАБ «ДИНАМИКА»: порт SVG-чартов из тела 788805 (строки 1336–1536) -----

@@ -756,6 +756,14 @@ function paResendOn(src, sheetFn, cols, maskFn) {
 
     overlay.addEventListener('mouseover', onOver);
     overlay.addEventListener('mouseout', onOut);
+    // Подсказки не залипают: курсор ушёл из чарта (быстрый выход без mouseout) или окно потеряло фокус.
+    state.tipOff = function () { if (state.tip) { state.tip = null; hideTip(); } };
+    overlay.addEventListener('mouseleave', function () { state.tipOff(); });
+    if (!state.tipGuard) {
+      state.tipGuard = true;
+      document.addEventListener('mouseout', function (ev) { if (!ev.relatedTarget && state.tipOff) state.tipOff(); });
+      window.addEventListener('blur', function () { if (state.tipOff) state.tipOff(); });
+    }
     overlay.addEventListener('click', onClick);
     paResendOn('ca', function () { return 'aud'; }, CFG.paCols, function () { return maskOf(state.applied); });
     getDd();

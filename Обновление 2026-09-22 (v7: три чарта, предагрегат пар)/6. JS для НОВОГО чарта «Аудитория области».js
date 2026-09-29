@@ -2880,6 +2880,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     function curPt(e) { return { left: e.clientX, top: e.clientY, width: 0, height: 0, pt: true }; }
     // Тултип за курсором: на mousemove — только позиция, содержимое не пересобирается.
     function onTipMove(e) {
+      // Курсор уже не над целью подсказки (mouseout потерялся) — гасим; следящую подсказку динамики ведёт onMove.
+      if (state.tip && !trigger(e.target, 'data-tip')) { state.tip = null; if (!state.dynEl) hideTip(); return; }
       if (!state.tip || !state.tip.rect || !state.tip.rect.pt) return;
       state.tip.rect = curPt(e);
       showTip(state.tip.html || state.tip.key || '', state.tip.rect);
@@ -3248,6 +3250,16 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     overlay.addEventListener('mouseout', onOut);
     overlay.addEventListener('mousemove', onTipMove);
     overlay.addEventListener('mousemove', onMove);
+    // Подсказки не залипают (как в каталоге): курсор ушёл из чарта — mouseout на быстром выходе браузер не шлёт,
+    // окно потеряло фокус, список прокрутили под курсором. Гасит и обычную, и следящую подсказку динамики.
+    state.tipOff = function () { state.tip = null; state.dynEl = null; state.dynI = -1; hideTip(); };
+    overlay.addEventListener('mouseleave', function () { state.tipOff(); });
+    overlay.addEventListener('scroll', function () { state.tipOff(); }, { passive: true });
+    if (!state.tipGuard) {
+      state.tipGuard = true;
+      document.addEventListener('mouseout', function (ev) { if (!ev.relatedTarget && state.tipOff) state.tipOff(); });
+      window.addEventListener('blur', function () { if (state.tipOff) state.tipOff(); });
+    }
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('input', onInput);
 

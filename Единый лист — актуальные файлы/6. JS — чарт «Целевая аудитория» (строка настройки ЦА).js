@@ -323,6 +323,9 @@ function buildCSS() {
     P + '-car{flex:0 0 20px;height:22px;border:0;background:transparent;cursor:pointer;color:' + C.mut + ';font-size:11px;border-radius:5px;padding:0;}',
     P + '-car:hover{background:#eef1f5;color:' + C.ink + ';}',
     P + '-car.sp{cursor:default;background:transparent;}',
+    // заглушка вместо каретки — тоже span: без этого правило «-row span {flex:1}» растягивало её на полстроки,
+    // и в поиске (там у всех строк заглушка) список съезжал вправо
+    P + '-row ' + P + '-car.sp{flex:0 0 20px;}',
     P + '-empty{font-size:11.5px;color:' + C.mut + ';padding:6px 4px;}',
     P + '-dd-f{display:flex;flex:0 0 auto;align-items:center;gap:6px;border-top:1px solid ' + C.line2 + ';padding-top:8px;}',
     P + '-dd-f em{font-style:normal;flex:1;font-size:11.5px;color:' + C.mut + ';}',

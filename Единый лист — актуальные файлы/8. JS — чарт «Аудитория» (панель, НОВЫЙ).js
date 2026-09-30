@@ -1299,7 +1299,6 @@ function buildCSS() {
     P + '-aud-sum button{margin-left:auto;}',
     P + '-who-mode{display:flex;align-items:center;gap:8px;margin:0 0 10px;}',
     P + '-who-mode-l{font-size:var(--fs-note);color:var(--muted);}',
-    P + '-cov-note{font-size:var(--fs-note);color:var(--muted);margin:-4px 0 2px;}',
     // Календарь посещений: месяцы — отдельными мини-календарями (Пн…Вс × недели), чтобы не слипались.
     P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:14px;}',
     P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
@@ -3220,7 +3219,11 @@ function dynamicsHtml(ts, grain, opts) {
     '<i style="background:' + CFG.colors.nohist + '"></i>Мало истории</span>';
   h += '</div></div>';
   h += usersChartSvg(ts, grain);
-  h += '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">' + (state.viewsMode === 'cov' ? 'Охват целевой аудитории' : 'Просмотры') + '</span>' +
+  // Охват ЦА: «% от ЦА N» — в заголовке, пояснение линий — в подсказке (отдельная строка делала вкладку выше → прокрутка)
+  var tc0 = caTotals(), gu0 = CFG.grains[grain] ? CFG.grains[grain].unit : 'периоде';
+  h += '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap"' + (state.viewsMode === 'cov' ? tip({ title: 'Охват целевой аудитории',
+      text: '% от ЦА ' + nf(tc0.ca) + (caModeNow() === 'cond' ? ' (по условиям)' : ' (по правам)') + '. Сплошная — накоплено за период к дате, пунктир — заходили в этом ' + gu0 + '.' }) : '') + '>' +
+    (state.viewsMode === 'cov' ? 'Охват ЦА · % от ' + nf(tc0.ca) : 'Просмотры') + '</span>' +
     '<div class="' + CFG.ns + '-sub-tabs tiny" role="tablist">' +
     tabsHtml('viewsMode', [
       { key: 'total', label: 'Всего', on: state.viewsMode !== 'per' && state.viewsMode !== 'cov' },
@@ -3229,9 +3232,7 @@ function dynamicsHtml(ts, grain, opts) {
     ]) + '</div></div>';
   if (state.viewsMode !== 'cov') { h += viewsChartSvg(ts, grain); return h; }
   // Охват ЦА (третий режим нижнего графика): сплошная — накоплено к дате, пунктир — заходили в этом периоде.
-  var t = caTotals(), gu = CFG.grains[grain] ? CFG.grains[grain].unit : 'периоде';
-  h += '<div class="' + CFG.ns + '-cov-note">% от ЦА ' + nf(t.ca) + (caModeNow() === 'cond' ? ' (по условиям)' : ' (по правам)') +
-    ' · сплошная — накоплено за период к дате · пунктир — заходили в этом ' + gu + '</div>';
+  var t = tc0;
   h += !t.ca ? '<div class="' + CFG.ns + '-tbl-note">В целевой аудитории никого нет — проверьте условия в строке «Целевая аудитория».</div>'
     : (wide() ? '<div class="' + CFG.ns + '-tbl-note">Доступ открыт почти всей компании — охват по такому знаменателю не показываем. Сузьте ЦА в строке «Целевая аудитория».</div>'
       : covChartSvg(caSeries(), grain));
@@ -3556,8 +3557,9 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
       for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
       avail -= CFG.spacing.stackGap * 3;
-      avail = Math.max(360, Math.floor(avail));
-      if (Math.abs(avail - DYN_H) <= 4) return false;
+      avail = Math.max(300, Math.floor(avail));   // нижний порог высоты графиков (был 360 — на низкой панели давал прокрутку)
+      // допуск 4 px — только на рост: не хватает хоть пикселя — ужимаем (иначе полоса прокрутки)
+      if (avail >= DYN_H && avail - DYN_H <= 4) return false;
       DYN_H = avail; state.dynH = avail;
       return true;
     }

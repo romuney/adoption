@@ -13,7 +13,8 @@
 5. Шапка pa_head == pa_ca_dict + строка md (дата данных == md панели), от фильтров не зависит.
 6. Вкладка «Аудитория» каталога: у группы людей заходило / сотрудников == панель с этой группой (aud_*_f) — люди и ЦА;
    сотрудники всех групп разреза == все сотрудники (штатные и ГПХ).
-7. Сегмент ЦА «Кто смотрит» (seg_f) в каталоге: у каждого отчёта заходили == из ЦА + вне ЦА (по правам и по условиям).
+7. Сегмент ЦА (seg_f) в SQL каталога: у каждого отчёта заходили == из ЦА + вне ЦА (панель seg_f больше не шлёт — запас).
+9. ЦА по условиям: список ЦА + «вне ЦА» поимённо (lo) == все зрители периода, без пересечений, число == ca_out.
 8. <папка>/Проверки: рендеры без джини == текущие шаблоны поставки (не устарели), исполняются; метка id отчёта
    не встречается в SQL сама по себе (цифры 12345 сидят в таблице перекодировки кириллицы — «заменить всё» её сломает).
 """
@@ -362,6 +363,21 @@ for extra in [{}, {'ca_spec_f': ['Спец 3']}, {'period_param': 'm', 'freq_f':
     ok(not bad_ and allr, f'сегмент ЦА в каталоге {extra}: заходили == из ЦА + вне ЦА у {len(allr)} отчётов' + (f'  расхождений {len(bad_)}: {bad_[:3]}' if bad_ else ''))
 never = cat_v2(run(CAT, {'seg_f': 'never'}, with_ca=True))
 ok(never['sj'].get('seg') == 'never' and never['rep'] == cat_v2(run(CAT, {}, with_ca=True))['rep'], 'сегмент «не заходили»: каталог не сужается, в состоянии seg = never')
+
+# ---- 9. ЦА по условиям: список ЦА + «вне ЦА» (секция lo) == все зрители периода --------------------------------
+def logins(rows, sec):
+    return [x.split('|')[0] for r in rows if r['section'] == sec for x in (r['k'] or '').split('\n') if x]
+
+
+for extra, cond in [({}, {'ca_it_f': ['IT'], 'ca_head_f': '1'}), ({'period_param': 'w', 'exc_f': '0'}, {'ca_org_f': ['Блок 3']}),
+                    ({'mode_param': 'report', 'sel_f': ['3']}, {'aud_spec_f': ['Спец 3']})]:
+    allv = set(logins(run(ONE, extra, raw=True), 'list'))
+    rows = run(ONE, dict(extra, **cond), raw=True)
+    ca, lo = logins(rows, 'list'), logins(rows, 'lo')
+    out_n = int([r for r in rows if r['section'] == 'total'][0]['k'].split('|')[15])
+    ok(set(ca) | set(lo) == allv and not set(ca) & set(lo) and len(lo) == len(set(lo)) == out_n,
+       f'ЦА по условиям {cond} {extra}: ЦА {len(ca)} + вне ЦА {len(lo)} == все зрители {len(allv)}, вне ЦА == ca_out {out_n}')
+ok(not [r for r in run(ONE, {}, raw=True) if r['section'] == 'lo'], 'по правам секции lo нет (вне ЦА — уже в списке)')
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):

@@ -48,7 +48,7 @@ var CFG = {
   selStaleWait: 10000,        // мс: после ответа под ПРЕЖНИЙ выбор ждём правильный, потом — автоповтор
   selGiveUp: 60000,           // мс: ответа нет совсем — через столько кнопка «Повторить запрос» (сами не повторяем)
   selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка
-  paCols: ['org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'seg_f'],  // колонки «Кто смотрит» в кросс-фильтре (ключ сверки)
+  paCols: ['org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f'],  // колонки «Кто смотрит» в кросс-фильтре (ключ сверки)
   // 5 колонок датасета pa_one v2 (2026-09-30): всё упаковано в k (строки через перевод строки, поля через «|»),
   // кириллица — компактно (unz). Формат секций — в шапке SQL (Виджеты/pa-one.data.sql).
   fields: { section: 'section', g: 'g', k: 'k', parent: 'parent', n: 'n' },
@@ -557,10 +557,10 @@ function buildModel() {
     list: [], rows: [], coh: [], cal: {},
     // ЦА (второй лист): словарь кодов, штат без визитов (hold), не заходившие из ЦА поимённо (never),
     // как роздан доступ (acl), режим и условия ЦА, числа из SQL (пред. период, в этом году, вне ЦА).
-    dict: { spec: {}, stream: {}, exp: {}, hq: {}, it: {} }, hold: [], never: [], acl: { groups: [], users: 0 },
+    dict: { spec: {}, stream: {}, exp: {}, hq: {}, it: {} }, hold: [], never: [], outList: [], acl: { groups: [], users: 0 },
     staff: 0, caMode: 'acc', caApplied: caEmpty(), audApplied: caEmpty(), caScal: { prev: 0, regPrev: 0, yr: 0, out: 0 }, namesOmitted: false
   };
-  var gotGrain = false, listRows = [], hRows = [], nRows = [];
+  var gotGrain = false, listRows = [], hRows = [], nRows = [], loRows = [];
   // Строки секции: k — текст через перевод строки (пустой — ни одной строки).
   var linesOf = function (r) { var t = String(r[F.k] == null ? '' : r[F.k]); return t ? t.split('\n') : []; };
   for (i = 0; i < rawData.length; i++) {
@@ -639,6 +639,8 @@ function buildModel() {
         m.gm[gg][kk] = grp;
         if (gg === 'org') (m.orgKids[grp.parent] = m.orgKids[grp.parent] || []).push(kk);
       }
+    } else if (sec === 'lo') {
+      loRows.push(r);               // «вне ЦА» поимённо (ЦА по условиям) — распаковка после цикла, как list
     } else if (sec === 'list') {
       listRows.push(r);             // распаковка — после цикла: нужны словарь, грануляция и дата свежести
     } else if (sec === 'coh') {
@@ -692,6 +694,8 @@ function buildModel() {
   for (i = 0; i < listRows.length; i++) parseListPack(String(listRows[i][F.k] || ''), unz(listRows[i][F.parent]), m.list, m);
   for (i = 0; i < hRows.length; i++) { var hp = unz(hRows[i][F.parent]); addPath(hp); parseHold(String(hRows[i][F.k] || ''), hp, m.hold, m); }
   for (i = 0; i < nRows.length; i++) parseNever(String(nRows[i][F.k] || ''), unz(nRows[i][F.parent]), m.never, m);
+  // «Вне ЦА» при ЦА по условиям: зрители не из ЦА — только для режима «по ЦА» (KPI и частота — про людей ЦА).
+  for (i = 0; i < loRows.length; i++) { var lp0 = unz(loRows[i][F.parent]); addPath(lp0); parseListPack(String(loRows[i][F.k] || ''), lp0, m.outList, m); }
   var holdCa = 0;
   for (i = 0; i < m.hold.length; i++) holdCa += m.hold[i].cn;
   m.namesOmitted = holdCa > 0 && !m.never.length;
@@ -706,7 +710,7 @@ function buildModel() {
 var MODEL = buildModel();
 // Отпечаток ответа: меняется, когда пришли новые данные (область, период, опции).
 MODEL.sig = [MODEL.grain, MODEL.total, MODEL.kpi ? MODEL.kpi.views : 0, MODEL.rows.length, MODEL.ts.length, MODEL.coh.length,
-  MODEL.hold.length, MODEL.never.length, MODEL.caMode, JSON.stringify(MODEL.caApplied)].join('|');
+  MODEL.hold.length, MODEL.never.length, MODEL.outList.length, MODEL.caMode, JSON.stringify(MODEL.caApplied)].join('|');
 
 // --- Целевая аудитория (из панели второго листа) -------------------------------------------------
 // ЦА «по правам» (acc): действующие сотрудники с правом хотя бы на один отчёт области; «по условиям» (cond):
@@ -1365,11 +1369,12 @@ function viewersKept() {
     return (!state.headsOnly || p.is_head) && state.excl.indexOf(p.login) < 0;
   });
 }
-// Список «Кто смотрит»: по частоте — зрители; по ЦА — ещё и люди ЦА без визитов (поимённо, если пришли).
+// Список «Кто смотрит»: по частоте — зрители; по ЦА — ещё люди ЦА без визитов и (при ЦА по условиям) зрители вне ЦА.
 function baseList() {
   if (!isCa()) return viewersKept();
   caSegs();
-  return viewersKept().concat(MODEL.never.filter(function (p) { return (!state.headsOnly || p.is_head) && state.excl.indexOf(p.login) < 0; }));
+  var keep = function (p) { return (!state.headsOnly || p.is_head) && state.excl.indexOf(p.login) < 0; };
+  return viewersKept().concat(MODEL.outList.filter(keep), MODEL.never.filter(keep));
 }
 // Сегмент человека в режиме ЦА: люди ЦА — по частоте, остальные зрители — «Вне ЦА», без визитов — «Ни разу».
 function caSegs() {
@@ -1379,6 +1384,7 @@ function caSegs() {
     if (p.ca) { p.segCa = p.seg; p.segClsCa = p.segCls; } else { p.segCa = 'Вне ЦА'; p.segClsCa = 'dead'; }
   }
   for (i = 0; i < MODEL.never.length; i++) { MODEL.never[i].segCa = 'Ни разу'; MODEL.never[i].segClsCa = 'dead'; }
+  for (i = 0; i < MODEL.outList.length; i++) { MODEL.outList[i].segCa = 'Вне ЦА'; MODEL.outList[i].segClsCa = 'dead'; }
   MODEL.__segCa = true;
 }
 function segHit(p) {
@@ -1686,6 +1692,10 @@ function groupAgg(cut) {
   for (i = 0; i < MODEL.list.length; i++) {
     ks = keysOf(cut, MODEL.list[i]);
     for (j = 0; j < ks.length; j++) addP(out[ks[j]] || (out[ks[j]] = emptyA()), MODEL.list[i]);
+  }
+  for (i = 0; i < MODEL.outList.length; i++) {
+    ks = keysOf(cut, MODEL.outList[i]);
+    for (j = 0; j < ks.length; j++) addP(out[ks[j]] || (out[ks[j]] = emptyA()), MODEL.outList[i]);
   }
   for (i = 0; i < MODEL.hold.length; i++) {
     if (!MODEL.hold[i].cn) continue;
@@ -2019,7 +2029,8 @@ function segStripHtml() {
   var parts = [
     { key: 'reach', label: 'ЦА заходили', n: t.reach, c: CFG.colors.seg[0], text: 'Люди ЦА, заходившие в отчёты области за период.' },
     { key: 'never', label: 'ЦА не заходили', n: never, c: CFG.colors.seg[3], text: 'Люди ЦА без визитов за период' + (MODEL.namesOmitted ? ' (имена не загружены: их больше 20 000 — сузьте ЦА).' : ': и заходившие раньше, и ни разу.') },
-    { key: 'out', label: 'Вне ЦА заходили', n: t.out, c: CFG.colors.seg[2], text: 'Заходили за период, но в ЦА не входят.' }
+    { key: 'out', label: 'Вне ЦА заходили', n: t.out, c: CFG.colors.seg[2], text: 'Заходили за период, но в ЦА не входят.' +
+      (caModeNow() === 'cond' && MODEL.outList.length < t.out ? ' В списке — ' + nf(MODEL.outList.length) + ' самых активных.' : '') }
   ];
   var tot = Math.max(1, t.reach + never + t.out);
   var h = '<div class="' + CFG.ns + '-aud-sum"><span>Заходили за период <b>' + nf(seen) + '</b>' +
@@ -2031,7 +2042,7 @@ function segStripHtml() {
     var pt = parts[i], on = state.segSel === pt.key, share = pt.n / tot * 100;
     h += '<button class="' + CFG.ns + '-seg-part ' + pt.key + (on ? ' on' : '') + (state.segSel && !on ? ' off' : '') + '"' +
       ' data-seg="' + pt.key + '" style="flex:' + Math.max(8, share).toFixed(2) + ' 1 0"' +
-      tip({ title: pt.label, text: pt.text + ' Клик оставит в списке только их и сузит каталог слева' + (pt.key === 'never' ? ' (там — сколько людей ЦА не дошло до каждого отчёта)' : '') + (on ? '; повторный клик снимет' : '') + '.',
+      tip({ title: pt.label, text: pt.text + ' Клик оставит в списке только их, каталог не меняется' + (on ? '; повторный клик снимет' : '') + '.',
         rows: [{ label: 'Человек', value: nf(pt.n), color: pt.c }] }) + '>' +
       '<span class="sp-bar" style="background:' + pt.c + '"></span>' +
       '<span class="sp-v">' + nf(pt.n) + '</span>' +
@@ -2239,7 +2250,7 @@ function tabsHtml(tabKey, tabs) {
 // Сколько условий ушло из «Кто смотрит» в каталог (как счётчик вкладок каталога):
 // выбранные группы и люди + корзина частоты + «только руководители» + исключения.
 function whoFilterCount() {
-  return pickCount() + (state.freqSel ? 1 : 0) + (isCa() && state.segSel ? 1 : 0) + (state.headsOnly ? 1 : 0) + (state.excl.length ? 1 : 0);
+  return pickCount() + (state.freqSel ? 1 : 0) + (state.headsOnly ? 1 : 0) + (state.excl.length ? 1 : 0);
 }
 function searchBoxHtml(id, placeholder, value) {
   return '<div class="' + CFG.ns + '-psearch">' +
@@ -2576,7 +2587,6 @@ function areaFilterRowHtml(ai) {
   add('heads', '', 'Тим-лиды', pk.heads);
   add('login', 'Человек', 'Люди', pk.login, function (x) { return fioOf[x] || x; });
   if (state.freqSel) own.push({ id: 'freq|', k: 'Частота', v: MODEL.labels[parseInt(state.freqSel, 10) - 1] || state.freqSel });
-  if (isCa() && state.segSel) own.push({ id: 'seg|', k: 'ЦА', v: { reach: 'заходили', never: 'не заходили', out: 'вне ЦА заходили' }[state.segSel] || state.segSel });
   if (state.headsOnly) own.push({ id: 'headsOnly|', k: '', v: 'Только руководители' });
   if (state.excl.length) own.push({ id: 'excl|', k: 'Исключено', v: String(state.excl.length), full: state.excl.map(function (x) { return fioOf[x] || x; }).slice(0, 8).join(', ') });
   // Только то, что снимается здесь же (×): выбор каталога виден в заголовке панели.
@@ -3751,8 +3761,6 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       // Исключённые логины настроек списка — выпадают и из каталога, и из шапки.
       if (state.excl.length) fl.push({ column: 'exl_f', operator: 'IN', value: state.excl.slice().sort() });
       if (state.freqSel) fl.push({ column: 'freq_f', operator: 'IN', value: [state.freqSel] });
-      // Сегмент ЦА (режим «по ЦА») — как корзина частоты: каталог показывает этих людей (не заходили — «не дошедших» по отчётам).
-      if (isCa() && state.segSel) fl.push({ column: 'seg_f', operator: 'IN', value: [state.segSel] });
       return fl;
     }
     function emitBus() {
@@ -3819,7 +3827,6 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
           for (var pk0 in state.picks) if (Object.prototype.hasOwnProperty.call(state.picks, pk0)) state.picks[pk0] = [];
           state.freqSel = null; state.segSel = null; state.headsOnly = false; state.excl = [];
         } else if (ukey === 'freq') state.freqSel = null;
-        else if (ukey === 'seg') state.segSel = null;
         else if (ukey === 'headsOnly') state.headsOnly = false;
         else if (ukey === 'excl') state.excl = [];
         else if (uval === '') state.picks[ukey] = [];
@@ -3965,15 +3972,14 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       }
       // Вкладки панели и переключалки: data-view="view:who" | "cohView:curve" |
       // "viewsMode:per" — префикс = ключ состояния.
-      // Полоса ЦА: клик по сегменту оставляет в списке только его (повторный — снимает) и сужает каталог слева
-      // (seg_f) — так же, как корзина частоты в режиме «по частоте» (правка 2026-09-30).
+      // Полоса ЦА: клик по сегменту оставляет в списке только его (повторный — снимает). Каталог НЕ сужает
+      // (владелец 2026-09-30: сегмент — чтобы увидеть людей, а не фильтр).
       var sgp = trigger(e.target, 'data-seg');
       if (sgp) {
         var sk0 = sgp.getAttribute('data-seg');
         state.segSel = state.segSel === sk0 ? null : sk0;
         state.page = 0;
         render();
-        emitBus();
         return;
       }
       var tab = trigger(e.target, 'data-view');
@@ -3981,12 +3987,12 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         // Смена разбивки: корзина частоты — фильтр каталога (freq_f), в режиме ЦА её не видно — снимаем.
         var wm = String(tab.getAttribute('data-view')).split(':')[1] === 'ca' ? 'ca' : 'freq';
         if (wm !== state.whoMode) {
-          // корзина частоты и сегмент ЦА — фильтры каталога (freq_f / seg_f): в другом режиме их не видно — снимаем
-          var hadFreq = !!state.freqSel, hadSeg = !!state.segSel;
+          // корзина частоты — фильтр каталога (freq_f): в режиме ЦА её не видно — снимаем; сегмент ЦА — только список
+          var hadFreq = !!state.freqSel;
           state.whoMode = wm; state.segSel = null; state.page = 0;
           if (wm === 'ca' && hadFreq) state.freqSel = null;
           render();
-          if ((wm === 'ca' && hadFreq) || (wm === 'freq' && hadSeg)) emitBus();
+          if (wm === 'ca' && hadFreq) emitBus();
         }
         return;
       }

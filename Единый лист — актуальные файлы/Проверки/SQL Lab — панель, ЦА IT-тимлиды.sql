@@ -78,6 +78,47 @@ WITH
     ) p
     LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
   ),
+  evo AS (SELECT toString(ifNull(e.login, '')) AS login, lower(toString(ifNull(e.login, ''))) AS lg,
+      groupBitOr(toUInt64(ifNull(e.msk_d, 0))) AS msk, sum(ifNull(e.v_d, 0)) AS v_cur,
+      max(ifNull(e.kmax_d, 0)) AS fd_k, max(e.dmax) AS dmax, groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
+    FROM prod_proteus.pa_pair e
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
+      AND lower(toString(e.login)) NOT IN (SELECT lg FROM (SELECT lower(toString(s.login)) AS lg,
+      [if(match(toString(ifNull(s.lvl3_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl4_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl5_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl6_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl7_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl7_management_unit_nm, '')))] AS slv,
+      arrayStringConcat(arraySlice(slv, 1, if(arrayFirstIndex(x -> x = '', slv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', slv) - 1))), ' › ') AS op,
+      toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
+      toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf,
+      toString(ifNull(s.fio, '')) AS sfio, toString(ifNull(s.exp_nm, '')) AS sexp FROM prod_proteus.pa_staff s) WHERE 1 AND itc IN ('IT') AND hdf = 1)
+    GROUP BY e.login
+    HAVING bitAnd(msk, 1073741823) != 0
+  ),
+  po AS (
+    SELECT opath AS o_path, pln AS o_ln FROM (
+      SELECT p.v_cur AS vv, [if(match(toString(ifNull(a.lvl3_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(a.lvl4_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(a.lvl5_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(a.lvl6_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(a.lvl7_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.lvl7_management_unit_nm, '')))] AS lv,
+      if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
+      arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
+        toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
+        toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head, toUInt8(bitTest(p.mon, 1)) AS m1, toUInt8(bitTest(p.mon, 2)) AS m2,
+        toUInt8(bitAnd(p.mon, toUInt64(bitShiftLeft(toUInt64(1), toUInt8(toMonth(tupleElement((SELECT h FROM maxd), 1))))) - 1) != 0) AS yr,
+        concat(translate(p.login, '|\t\n\r', '    '), '|', translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate(toString(ifNull(a.fio, '')), '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), '([А-Яа-яЁё][А-Яа-яЁё ]*)', '`\\1`'), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'), '|', toString(transform(spec, tupleElement((SELECT dz FROM dicts), 1), arrayEnumerate(tupleElement((SELECT dz FROM dicts), 1)), toUInt32(0))), '|', toString(transform(stream, tupleElement((SELECT dz FROM dicts), 2), arrayEnumerate(tupleElement((SELECT dz FROM dicts), 2)), toUInt32(0))), '|',
+        toString(transform(toString(ifNull(a.exp_nm, '')), tupleElement((SELECT dz FROM dicts), 3), arrayEnumerate(tupleElement((SELECT dz FROM dicts), 3)), toUInt32(0))), '|',
+        toString(bitAnd(p.msk, 1073741823)), '|', toString(bitShiftRight(p.msk, 30)), '|', toString(p.fd_k), '|', toString(p.v_cur), '|',
+        toString(if(isNull(p.dmax), toInt64(-1), toInt64(dateDiff('day', toStartOfDay(p.dmax), toStartOfDay(tupleElement((SELECT h FROM maxd), 1)))))), '|',
+        toString(is_head + 2 * m1 + 4 * m2 + 8 * yr + 16 * p.stf + 32 * p.acc + 64 * 0), '|', toString(transform(p.hq, tupleElement((SELECT dz FROM dicts), 4), arrayEnumerate(tupleElement((SELECT dz FROM dicts), 4)), toUInt32(0))), '|', toString(transform(p.it, tupleElement((SELECT dz FROM dicts), 5), arrayEnumerate(tupleElement((SELECT dz FROM dicts), 5)), toUInt32(0)))) AS pln
+      FROM (
+        SELECT e.*, toUInt8(ifNull(s.login, '') != '') AS stf, toUInt8(e.lg IN (SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+        UNION ALL
+        SELECT m.login FROM prod_proteus.pa_adg_member m
+        WHERE m.ad_group IN (SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'group' AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)))) AS acc,
+          toString(ifNull(s.hq_code, '')) AS hq, toString(ifNull(s.it_code, '')) AS it
+        FROM evo e
+        LEFT JOIN prod_proteus.pa_staff s ON s.login = e.lg
+      ) p
+      LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
+      ORDER BY vv DESC, p.login
+      LIMIT 20000
+    )
+  ),
   agg AS (
     SELECT rk.1 AS role, rk.2 AS g, rk.3 AS k, rk.4 AS parent,
       countIf(cur) AS users, countIf(prv) AS users_prev,
@@ -172,14 +213,7 @@ FROM (
           toString(views_prev), '|', toString(new_u), '|', toString(regular), '|', toString(sleeping)),
         role = 'total', concat(toString(users), '|', toString(users_prev), '|', toString(views), '|', toString(views_prev), '|', toString(new_u), '|',
           toString(new_prev), '|', '0', '|', toString(regular), '|', toString(regular_prev), '|', toString(sleeping), '|',
-          toString(mau), '|', toString(mau_prev), '|', toString(ca_prev), '|', toString(ca_regprev), '|', toString(ca_yr), '|',toString(toUInt64((SELECT uniqExact(lg0) FROM (SELECT lower(toString(login)) AS lg0 FROM prod_proteus.pa_pair
-            WHERE dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(login) AND bitAnd(toUInt64(ifNull(msk_d, 0)), 1073741823) != 0 AND ifNull(own_flg, 0) = 0)
-            WHERE lg0 NOT IN (SELECT lg FROM (SELECT lower(toString(s.login)) AS lg,
-      [if(match(toString(ifNull(s.lvl3_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl4_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl5_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl6_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl7_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.lvl7_management_unit_nm, '')))] AS slv,
-      arrayStringConcat(arraySlice(slv, 1, if(arrayFirstIndex(x -> x = '', slv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', slv) - 1))), ' › ') AS op,
-      toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
-      toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf,
-      toString(ifNull(s.fio, '')) AS sfio, toString(ifNull(s.exp_nm, '')) AS sexp FROM prod_proteus.pa_staff s) WHERE 1 AND itc IN ('IT') AND hdf = 1)))), '|',
+          toString(mau), '|', toString(mau_prev), '|', toString(ca_prev), '|', toString(ca_regprev), '|', toString(ca_yr), '|',toString((SELECT count() FROM evo)), '|',
           toString(f1), '|', toString(f2), '|', toString(f3), '|', toString(f4)),
         role = 'coh', concat(k, '|', toString(cnt), '|', arrayStringConcat(arrayMap(x -> toString(x), am.1), ','), '|', arrayStringConcat(arrayMap(x -> toString(x), am.2), ',')),
         '') AS s_line
@@ -214,6 +248,10 @@ FROM (
   SELECT sec AS section, '' AS g, pk AS k, translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate(op, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), '([А-Яа-яЁё][А-Яа-яЁё ]*)', '`\\1`'), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%') AS parent, toInt64(n) AS n
   FROM s3
   WHERE sec = 'h' OR nnever <= 20000
+  UNION ALL
+  SELECT 'lo' AS section, '' AS g, arrayStringConcat(groupArray(o_ln), '\n') AS k, translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate(o_path, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), '([А-Яа-яЁё][А-Яа-яЁё ]*)', '`\\1`'), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%') AS parent, toInt64(count()) AS n
+  FROM po
+  GROUP BY o_path
   UNION ALL
   SELECT 'd' AS section, x.1 AS g, arrayStringConcat(arrayMap(v -> translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate(v, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), '([А-Яа-яЁё][А-Яа-яЁё ]*)', '`\\1`'), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'), x.2), '\n') AS k, '' AS parent, toInt64(length(x.2)) AS n
   FROM (SELECT arrayJoin([('spec', dz.1), ('stream', dz.2), ('exp', dz.3), ('hq', dz.4), ('it', dz.5)]) AS x FROM dicts)

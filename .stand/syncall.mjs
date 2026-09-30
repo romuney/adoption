@@ -99,19 +99,14 @@ if (AUD) {
     await click('cat', '[data-aud]', 0);
     await p.waitForTimeout(500); await log('A4. группа «Аудитории» → панель — сразу');
     await p.waitForTimeout(1300); await log('A4. после ответа');
-    // A5. «Кто смотрит» по ЦА: сегмент «не заходили» → каталог (seg_f).
-    plan.cat = [{ delay: 900 }];
+    // A5. «Кто смотрит» по ЦА: клик по сегменту — только список панели, в каталог НЕ уходит (владелец 2026-09-30).
     await click('pan', '[data-view="view:who"]'); await p.waitForTimeout(250);
     await click('pan', '[data-view="whoMode:ca"]'); await p.waitForTimeout(250);
-    await click('pan', '[data-seg="never"]');
-    await p.waitForTimeout(250); await log('A5. сегмент ЦА «не заходили» → каталог — сразу');
-    await p.waitForTimeout(1300); await log('A5. после ответа');
-    const sub = await (await fr('cat')).evaluate(() => (document.querySelector('.prb-cat .prb-panel-h .sub') || {}).textContent || '');
-    out.push({ step: 'A5. подпись каталога', cat: sub, pan: '', sent: '' });
-    // A6. Переход в режим частоты снимает сегмент — каталог получает маску без seg_f.
-    plan.cat = [{ delay: 600 }];
+    await click('pan', '[data-seg="out"]');
+    await p.waitForTimeout(600); await log('A5. сегмент ЦА «вне ЦА» — каталог не трогаем (sent пусто)');
+    // A6. Переход в режим частоты — эмита нет (корзины частоты не было).
     await click('pan', '[data-view="whoMode:freq"]');
-    await p.waitForTimeout(1000); await log('A6. режим частоты — сегмент снят');
+    await p.waitForTimeout(600); await log('A6. режим частоты — без эмита');
   }
   if (shot) await p.screenshot({ path: shot + 'aud.png' });
   console.log(JSON.stringify({ errs, out }, null, 1));

@@ -1287,12 +1287,24 @@ function audCount() {
   for (var d in p) if (Object.prototype.hasOwnProperty.call(p, d)) n += p[d].length;
   return n;
 }
+// Выбор в других вкладках (отчёты / коллекции / владельцы): ключ выбора или '' — выбора нет.
+function audSelKey() { var k = state.areaKeyFn ? state.areaKeyFn() : ''; return /sel_f=[^;]/.test(k) ? k : ''; }
+// Числа по выбору от панели: объект разрезов; undefined — выбор есть, ответа панели под него ещё нет; null — выбора нет.
+function audExt() {
+  var k = audSelKey();
+  if (!k) return null;
+  var e = state.audExt;
+  return e && e.key === k ? (e.aud || {}) : undefined;
+}
 function audRows() {
-  var dim = audDim(), src = MODEL.aud[dim.d] || {}, out = [], q = (state.repQuery || '').toLowerCase();
+  var dim = audDim(), src = MODEL.aud[dim.d] || {}, out = [], q = (state.repQuery || '').toLowerCase(), ext = audExt();
+  var xs = ext ? (ext[dim.d] || {}) : null, Z = { users: 0, views: 0, regular: 0 };
   for (var k in src) {
     if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
     if (dim.lvl && String(k).split(CFG.orgSep).length !== dim.lvl - 2) continue;
+    // при выборе отчётов — только группы, где кто-то их смотрел (иначе клик даёт пустую панель)
     var a = src[k], lab = audLabel(dim.d, k);
+    if (xs) { var xv = xs[k] || Z; if (!xv.users) continue; a = { parent: a.parent, staff: a.staff, users: xv.users, views: xv.views, regular: xv.regular }; }
     if (q && lab.toLowerCase().indexOf(q) < 0 && (dim.d !== 'o' || String(a.parent).toLowerCase().indexOf(q) < 0)) continue;
     out.push({ key: k, label: lab, sub: dim.d === 'o' ? a.parent : '', users: a.users, staff: a.staff, views: a.views, regular: a.regular,
       cov: a.staff ? a.users / a.staff * 100 : null, reg: a.users ? a.regular / a.users * 100 : 0 });
@@ -1307,8 +1319,12 @@ function audRows() {
 }
 // Итог по всем сотрудникам (группы разреза «руководители» вместе = все сотрудники под условиями).
 function audTotal() {
-  var h = MODEL.aud.h || {}, t = { users: 0, staff: 0, views: 0, regular: 0 };
-  for (var k in h) if (Object.prototype.hasOwnProperty.call(h, k)) { t.users += h[k].users; t.staff += h[k].staff; t.views += h[k].views; t.regular += h[k].regular; }
+  var h = MODEL.aud.h || {}, t = { users: 0, staff: 0, views: 0, regular: 0 }, ext = audExt(), xh = ext ? (ext.h || {}) : null;
+  for (var k in h) {
+    if (!Object.prototype.hasOwnProperty.call(h, k)) continue;
+    var a = xh ? (xh[k] || { users: 0, views: 0, regular: 0 }) : h[k];
+    t.users += a.users; t.staff += h[k].staff; t.views += a.views; t.regular += a.regular;
+  }
   return t;
 }
 function audBarHtml() {
@@ -1326,14 +1342,21 @@ function audBarHtml() {
     }
     h += '</div>';
   }
-  return h + '</div></div>';
+  h += '</div>';
+  // при выборе в других вкладках — числа только по выбранному (от панели), группы без зрителей скрыты
+  if (audSelKey()) h += '<span class="' + N + '-audbar-l" style="margin-left:12px"' + tip({ title: 'Аудитория выбранного', text: 'Выбраны отчёты, коллекции или владельцы — показаны только группы, где кто-то их смотрел за период: «Польз.», «Охват» и «Пост.» — по выбранному, «Сотр.» — вся группа. Снимите выбор — вернётся весь Proteus.' }) + '>по выбору в каталоге</span>';
+  return h + '</div>';
 }
 function audTableHtml() {
   var N = CFG.ns, dim = audDim(), rows = audRows(), sc = state.aud.sort;
   if (!MODEL.aud.h) {
     return '<div class="' + N + '-empty"><b>Разрезов аудитории нет в ответе</b>Обновите датасет каталога (SQL поставки единого листа).</div>';
   }
-  if (!rows.length) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>Очистите поиск или выберите другой разрез.</div>';
+  var ext = audExt();
+  if (ext === undefined) {
+    return '<div class="' + N + '-empty"><b>Считаем аудиторию выбранных отчётов…</b>Числа придут вместе с пересчётом панели справа.</div>';
+  }
+  if (!rows.length) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Снимите выбор или выберите другой разрез.' : 'Очистите поиск или выберите другой разрез.') + '</div>';
   var PS = state.pageSize || 20, total = rows.length, pages = Math.max(1, Math.ceil(total / PS));
   if ((state.page || 0) > pages - 1) state.page = pages - 1;
   if (state.page < 0) state.page = 0;
@@ -2127,6 +2150,25 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     }
     // Сверка фильтров: каталог — источник выбора (отвечает на «повтори») и получатель шапки, «Кто смотрит», строки ЦА.
     paResendOn('cat', sheetOf, CFG.paCols, areaMask);
+    // Вкладка «Аудитория» при выбранных отчётах/коллекциях/владельцах: числа по выбору присылает панель (PA_AUD, её
+    // секция aa) — свой SQL каталога выбор не видит. Ключ — тот же выбор (mode_param + sel_f).
+    state.areaKeyFn = function () { return paKey(['mode_param', 'sel_f'], paMaskGet(repMask())); };
+    if (state.onAud) window.removeEventListener('message', state.onAud);
+    state.onAud = function (e) {
+      var d = e.data || {};
+      if (d.type !== 'PA_AUD') return;
+      var A = {};
+      for (var i = 0; i < (d.rows || []).length; i++) {
+        var L = String(d.rows[i].k || ''), D0 = A[d.rows[i].g] = {};
+        if (!L) continue;
+        L = L.split('\n');
+        for (var j = 0; j < L.length; j++) { var f = L[j].split('|'); D0[unz(f[0])] = { users: int(f[1]), views: int(f[2]), regular: int(f[3]) }; }
+      }
+      state.audExt = { key: String(d.key || ''), aud: d.rows ? A : null };
+      if (state.mode === 'aud') render();
+    };
+    window.addEventListener('message', state.onAud);
+    paBcast({ type: 'PA_AUD_ASK' });
     var paSync = paGuardMount(host, function () { return MODEL.stateJ && MODEL.stateJ.flt ? MODEL.stateJ.flt : null; }, sheetOf,
       MODEL.hasCa ? ['strip', 'ppl', 'ca'] : ['strip', 'ppl']);
     render();

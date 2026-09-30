@@ -639,6 +639,9 @@ function buildModel() {
         m.gm[gg][kk] = grp;
         if (gg === 'org') (m.orgKids[grp.parent] = m.orgKids[grp.parent] || []).push(kk);
       }
+    } else if (sec === 'aa') {
+      // разрезы вкладки «Аудитория» каталога по выбранной области — только переслать каталогу (paAudSend)
+      (m.aa = m.aa || []).push({ g: String(r[F.g] == null ? '' : r[F.g]), k: String(r[F.k] == null ? '' : r[F.k]) });
     } else if (sec === 'lo') {
       loRows.push(r);               // «вне ЦА» поимённо (ЦА по условиям) — распаковка после цикла, как list
     } else if (sec === 'list') {
@@ -3337,6 +3340,10 @@ function paKey(cols, get) {
 function paMaskGet(fl) {
   return function (c) { for (var i = 0; i < fl.length; i++) if (fl[i].column === c) return fl[i].value || []; return []; };
 }
+function paAudSend() {
+  if (!MODEL.flt) return;   // пустой ответ — ключа выбора нет
+  paBcast({ type: 'PA_AUD', key: paKey(['mode_param', 'sel_f'], function (c) { return MODEL.flt[c] || []; }), rows: MODEL.aa || null });
+}
 // Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
 function paBcast(msg) {
   try {
@@ -4101,6 +4108,12 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     paResendOn('ppl', function () { return CFG.sheet; }, CFG.paCols, maskOf);
     render();
     paSync(true);   // новый ответ датасета
+    // Вкладка «Аудитория» каталога: каталог свой выбор не видит (самовлияние выключено) — разрезы по выбранной
+    // области считает этот датасет (секция aa) и шлёт их каталогу с ключом выбора (mode_param + sel_f из эха).
+    paAudSend();
+    if (state.onAudAsk) window.removeEventListener('message', state.onAudAsk);
+    state.onAudAsk = function (e) { if ((e.data || {}).type === 'PA_AUD_ASK') paAudSend(); };
+    window.addEventListener('message', state.onAudAsk);
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     // Старый observer отключаем: иначе он держит удалённый overlay.

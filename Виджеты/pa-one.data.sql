@@ -26,6 +26,8 @@
       h     — люди ЦА БЕЗ визитов в текущем периоде, свёрнуты по подразделению (parent): «код спец|код стрима|рук|код HQ|код IT|
               людей|с доступом|в ЦА|в ЦА и с доступом» (вне ЦА штат не нужен: «людей» = «в ЦА»);
       n     — поимённо люди ЦА без визитов (только если их ≤ NAMES_MAX): «логин|ФИО|спец|стрим|рук|HQ|IT|доступ|стаж» (коды);
+      aa    — только при выбранной области: разрезы вкладки «Аудитория» каталога (g = o|s|t|q|i|h, «значение|людей|просмотров|
+              постоянных») — каталог свой выбор не видит, панель передаёт ему эти числа;
       lo    — только при ЦА по условиям: зрители периода ВНЕ ЦА поимённо (≤ OUT_MAX самых активных), поля как у list;
       d     — словарь кодов: строка на g (spec | stream | exp | hq | it), значения по строкам, код = номер строки (1…);
       acl   — как роздан доступ: k = «группа|людей штата» по строкам, n = поимённых прав. -#}
@@ -136,13 +138,18 @@ lower(toString(s.login)) AS lg,
       toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf,
       toString(ifNull(s.fio, '')) AS sfio, toString(ifNull(s.exp_nm, '')) AS sexp
 {%- endmacro %}
-{#- Условия ЦА над атрибутами штата (sattrs). -#}
+{#- Условия ЦА над атрибутами штата (sattrs): condca — строка «Целевая аудитория», cond — плюс группа из каталога. -#}
 {% macro cond() -%}
+{{ condca() }}{{ condau() }}
+{%- endmacro %}
+{% macro condca() -%}
 1{% if caorg %} AND arrayExists(pz -> op = pz OR startsWith(op, concat(pz, ' › ')), {{ qa(caorg) }}){% endif %}
 {%- if caspec %} AND sp IN {{ q(caspec) }}{% endif %}{% if castrm %} AND st IN {{ q(castrm) }}{% endif %}
 {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
 {%- if cahead == '1' %} AND hdf = 1{% elif cahead == 'n' %} AND hdf = 0{% endif %}
 {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
+{%- endmacro %}
+{% macro condau() -%}
 {%- if auorg %} AND arrayExists(pz -> op = pz OR startsWith(op, concat(pz, ' › ')), {{ qa(auorg) }}){% endif %}
 {%- if auspec %} AND sp IN {{ q(auspec) }}{% endif %}{% if austrm %} AND st IN {{ q(austrm) }}{% endif %}
 {%- if auhq %} AND hqc IN {{ q(auhq) }}{% endif %}{% if auit %} AND itc IN {{ q(auit) }}{% endif %}
@@ -286,6 +293,29 @@ WITH
     ) p
     LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
   ),
+{% if have %}
+  aav AS (
+    {#- Вкладка «Аудитория» каталога при выбранной области: зрители периода области (без условий группы из каталога,
+        с условиями строки ЦА) — каталог сам свой выбор не видит (самовлияние выключено), числа ему передаёт панель. -#}
+    SELECT lower(toString(e.login)) AS vl, groupBitOr(toUInt64(ifNull(e.msk_{{ grain }}, 0))) AS vm, sum(ifNull(e.v_{{ grain }}, 0)) AS vv
+    FROM prod_proteus.pa_pair e
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
+    {%- if pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
+    GROUP BY vl
+    HAVING bitAnd(vm, {{ CUR }}) != 0
+  ),
+  aak AS (
+    {#- те же разрезы и правила, что секция aud каталога: штат (pa_staff) × зрители, постоянный — ≥ {{ FBIN[1] + 1 }} периодов -#}
+    SELECT kk.1 AS ad, kk.2 AS ak0, count() AS users, sum(vv) AS views, countIf(bitCount(bitAnd(vm, {{ CUR }})) > {{ FBIN[1] }}) AS regular
+    FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) t
+    INNER JOIN aav x ON x.vl = t.lg
+    ARRAY JOIN arrayConcat(
+      arrayMap(i -> ('o', arrayStringConcat(arraySlice(slv, 1, i), ' › ')), range(1, if(arrayFirstIndex(z -> z = '', slv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(z -> z = '', slv) - 1)) + 1)),
+      [('s', sp), ('t', st), ('q', hqc), ('i', itc), ('h', toString(hdf))]) AS kk
+    WHERE {{ condca() }}
+    GROUP BY ad, ak0
+  ),
+  {% endif %}
 {% if custom %}
   evo AS (
     {#- ЦА по условиям: зрители текущего периода ВНЕ ЦА (те же пары, «без владельцев» и срез области, что у evd) —
@@ -487,6 +517,14 @@ FROM (
   FROM s3
   WHERE sec = 'h' OR nnever <= {{ NAMES_MAX }}
 
+  {% if have %}
+  UNION ALL
+  {# Разрезы вкладки «Аудитория» каталога по выбранной области: «значение|людей заходило|просмотров|постоянных». #}
+  SELECT 'aa' AS section, ad AS g, arrayStringConcat(groupArray(concat({{ cz('ak0') }}, '|', toString(users), '|', toString(views), '|', toString(regular))), '\n') AS k,
+    '' AS parent, toInt64(count()) AS n
+  FROM aak
+  GROUP BY ad
+  {% endif %}
   {% if custom %}
   UNION ALL
   {# «Вне ЦА» поимённо (только при ЦА по условиям): строки как у list, флаг «в ЦА» = 0; n = людей в строке. #}

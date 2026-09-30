@@ -17,6 +17,8 @@ const W = decodeURIComponent(new URL('../Виджеты/', import.meta.url).path
 // ONE=1 (с SHEET=aud) — единый лист: панель pa-one (эхо фильтров — в exp строки area, как у pa-area).
 const ONE = process.env.ONE === '1', HEAD = process.env.HEAD === '1';
 const SRC = { strip: W + (HEAD ? 'pa-head.chart.js' : 'pa-strip.chart.js'), cat: W + 'pa-reports-body.chart.js', pan: W + (ONE ? 'pa-one.chart.js' : AUD ? 'pa-audience.chart.js' : 'pa-area.chart.js'), ca: W + 'pa-ca-bar.chart.js' };
+// PANSEL=<one_rep.json> — ответ панели при выбранной области (с секцией aa — разрезы для вкладки «Аудитория» каталога).
+const PANSEL = process.env.PANSEL ? JSON.parse(fs.readFileSync(process.env.PANSEL, 'utf8')) : null;
 const MOCK = { strip: JSON.parse(fs.readFileSync(stripMock, 'utf8')), cat: JSON.parse(fs.readFileSync(catMock, 'utf8')), pan: JSON.parse(fs.readFileSync(areaMock, 'utf8')), ca: AUD && !HEAD ? JSON.parse(fs.readFileSync(barMock, 'utf8')) : [] };
 const inner = (k, rows) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%}</style></head><body>'
   + '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"></div>'
@@ -33,7 +35,7 @@ function rowsFor(k, flt) {
   }
   if (k === 'pan' && V2(MOCK.pan)) {
     const sel = flt.sel_f || [], mode = (flt.mode_param || [''])[0];
-    return MOCK.pan.map(r => r.section === 'area' ? { ...r, g: sel.length ? mode : '', k: sel.join('\n') } : r.section === 'flt' ? { ...r, k: JSON.stringify(flt) } : r);
+    return (sel.length && PANSEL ? PANSEL : MOCK.pan).map(r => r.section === 'area' ? { ...r, g: sel.length ? mode : '', k: sel.join('\n') } : r.section === 'flt' ? { ...r, k: JSON.stringify(flt) } : r);
   }
   if (k === 'cat') return MOCK.cat.map(r => r.section === 'total' ? { ...r, state_j: JSON.stringify({ ...(r.state_j ? JSON.parse(r.state_j) : {}), flt }) } : r);
   if (k === 'pan' && AUD && !ONE) return MOCK.pan.map(r => r.section === 'total' ? { ...r, state_j: JSON.stringify({ ...JSON.parse(r.state_j || '{}'), flt }) } : r);
@@ -99,6 +101,14 @@ if (AUD) {
     await click('cat', '[data-aud]', 0);
     await p.waitForTimeout(500); await log('A4. группа «Аудитории» → панель — сразу');
     await p.waitForTimeout(1300); await log('A4. после ответа');
+    // A7. Выбран отчёт (A3) → вкладка «Аудитория» показывает только группы, смотревшие его (числа от панели, PA_AUD).
+    const audTxt = async () => (await fr('cat')).evaluate(() => {
+      const e = document.querySelector('.prb-empty b'); if (e) return 'пусто: ' + e.textContent;
+      const r = [...document.querySelectorAll('.prb-ptable tbody tr')].slice(0, 3).map(t => t.textContent.replace(/\s+/g, ' ').trim());
+      const hint = [...document.querySelectorAll('.prb-audbar-l')].map(x => x.textContent).join(' / ');
+      return hint + ' :: ' + r.join(' | ');
+    });
+    out.push({ step: 'A7. вкладка «Аудитория» при выбранном отчёте', cat: await audTxt(), pan: '', sent: '' });
     // A5. «Кто смотрит» по ЦА: клик по сегменту — только список панели, в каталог НЕ уходит (владелец 2026-09-30).
     await click('pan', '[data-view="view:who"]'); await p.waitForTimeout(250);
     await click('pan', '[data-view="whoMode:ca"]'); await p.waitForTimeout(250);

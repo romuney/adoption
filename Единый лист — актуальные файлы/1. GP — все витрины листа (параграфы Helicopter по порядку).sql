@@ -120,7 +120,9 @@ select
     t.emp_stream_desc,
     t.management_head_flg,
     t.ad_groups,
-    coalesce(nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
+    -- ФИО: из MDM (по-русски, единообразно; 2026-09-30), нет в MDM — из профиля Proteus
+    coalesce(nullif(trim(coalesce(m.last_nm, '') || ' ' || coalesce(m.first_nm, '')), ''),
+             nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
     coalesce(m.experience_group_nm, '')::text as exp_nm
 from (
     select
@@ -146,7 +148,7 @@ left join (
     group by username
 ) u on u.username = t.login
 left join (
-    select mdm_employee_rk, max(experience_group_nm) as experience_group_nm
+    select mdm_employee_rk, max(experience_group_nm) as experience_group_nm, max(last_nm) as last_nm, max(first_nm) as first_nm
     from prod_v_emart.mdm_employee_structure_d
     where last_state_flg = 1
     group by mdm_employee_rk
@@ -313,7 +315,8 @@ base as (
         m.lvl3_mapped_management_unit_nm as l3, m.lvl4_mapped_management_unit_nm as l4, m.lvl5_mapped_management_unit_nm as l5,
         m.lvl6_mapped_management_unit_nm as l6, m.lvl7_mapped_management_unit_nm as l7,
         m.emp_specialization_desc as spec, m.emp_stream_desc as stream, m.management_head_flg::int as head,
-        m.experience_group_nm as exp_nm, m.emp_specialization_oper_code as hq, m.emp_specialization_it_code as it
+        m.experience_group_nm as exp_nm, m.emp_specialization_oper_code as hq, m.emp_specialization_it_code as it,
+        m.last_nm as ln, m.first_nm as fn
     from mdm m
     where m.rn = 1 and coalesce(m.company_fire_flg::int, 0) = 0
     union all
@@ -321,7 +324,8 @@ base as (
         v.lvl3_management_unit_nm, v.lvl4_management_unit_nm, v.lvl5_management_unit_nm,
         v.lvl6_management_unit_nm, v.lvl7_management_unit_nm,
         v.emp_specialization_desc, v.emp_stream_desc, v.management_head_flg::int,
-        null::text, v.emp_specialization_oper_code, v.emp_specialization_it_code
+        null::text, v.emp_specialization_oper_code, v.emp_specialization_it_code,
+        null::text, null::text
     from vw v
     where v.rn = 1 and coalesce(v.company_fire_flg::int, 0) = 0
       and not exists (select 1 from mdm m where m.rn = 1 and m.lg = v.lg)
@@ -336,7 +340,9 @@ select
     coalesce(b.spec, '')::text                               as emp_specialization_desc,
     coalesce(b.stream, '')::text                             as emp_stream_desc,
     coalesce(b.head, 0)                                      as management_head_flg,
-    coalesce(nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
+    -- ФИО: из MDM (по-русски), нет в MDM (подрядчики) — из профиля Proteus
+    coalesce(nullif(trim(coalesce(b.ln, '') || ' ' || coalesce(b.fn, '')), ''),
+             nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
     coalesce(b.exp_nm, '')::text                             as exp_nm,
     coalesce(b.hq, '')::text                                 as hq_code,   -- HQ | nonHQ | … (как фильтр «HQ|nonHQ» старого борда)
     coalesce(b.it, '')::text                                 as it_code,   -- IT | nonIT

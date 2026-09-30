@@ -38,5 +38,4 @@ SELECT 'adg', '', toString(s.ad_group), toString(x.gi), toInt64(s.n) FROM prod_p
 UNION ALL
 SELECT 'total', '', '', '', toInt64(count()) FROM prod_proteus.pa_staff
 UNION ALL
-
 SELECT 'md', '', ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), ''), '', toInt64(0)

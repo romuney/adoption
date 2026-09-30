@@ -2,21 +2,29 @@
 
     python3 .stand/check_one.py <папка единого листа>      # берёт файлы «… pa_one …», «… pa_people …» не нужен:
     python3 .stand/check_one.py                              # по умолчанию — Виджеты/*.data.sql
+    python3 .stand/check_one.py <папка> --rebuild            # сначала пересобрать <папка>/Проверки (рендеры для SQL Lab)
 
 1. Без условий ЦА — всё про зрителей == pa_people (секции total/freq/ctx/ts/cal/coh построчно; список —
-   по людям: активных периодов, просмотры, последний визит, корзина, новый, MAU, уволен).
+   по людям: активных периодов, просмотры, последний визит, корзина, новый, MAU, не в штате).
 2. ЦА == pa_aud_v2 (без владельцев выкл. — у них разное правило владельцев): размер ЦА, с доступом, дошли,
    не заходили, вне ЦА, в этом году, дошли в пред. периоде — по правам и по условиям.
 3. По условиям ЦА: итог панели == ИТОГО каталога с той же ЦА (каталог уже считает только людей ЦА).
-4. Старый анализатор CH и prefer_column_name_to_alias = 1 дают те же строки.
+4. Старый анализатор CH и prefer_column_name_to_alias = 1 дают те же строки (панель и каталог).
 5. Шапка pa_head == pa_ca_dict + строка md (дата данных == md панели), от фильтров не зависит.
+6. Вкладка «Аудитория» каталога: у группы людей заходило / в штате == панель с этой группой (aud_*_f) — люди и ЦА;
+   штат всех групп разреза == весь штат.
+7. Сегмент ЦА «Кто смотрит» (seg_f) в каталоге: у каждого отчёта заходили == из ЦА + вне ЦА (по правам и по условиям).
+8. <папка>/Проверки: рендеры без джини == текущие шаблоны поставки (не устарели), исполняются; метка id отчёта
+   не встречается в SQL сама по себе (цифры 12345 сидят в таблице перекодировки кириллицы — «заменить всё» её сломает).
 """
 import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stand
 
 W = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'Виджеты')
-D = sys.argv[1] if len(sys.argv) > 1 else None
+ARGS = [a for a in sys.argv[1:] if not a.startswith('--')]
+REBUILD = '--rebuild' in sys.argv
+D = ARGS[0] if ARGS else None
 pick = lambda key, dflt: (os.path.join(D, [x for x in os.listdir(D) if key in x and x.endswith('.sql') and 'SQL Lab' not in x][0]) if D else dflt)
 ONE = pick('pa_one', os.path.join(W, 'pa-one.data.sql'))
 CAT = pick('pa_body', os.path.join(W, 'pa-reports-body.data.sql'))
@@ -34,12 +42,111 @@ def ok(cond, msg):
 
 
 def run(p, c, **kw):
+    if p == ONE and not kw.get('raw'):
+        return v2(run(p, c, raw=True))
     if kw.get('with_ca') and '{% set WITH_CA = false %}' in open(p).read():
         tmp = os.path.join(os.path.dirname(os.path.abspath(__file__)), '__pycache__', '_cat_ca.sql')
         os.makedirs(os.path.dirname(tmp), exist_ok=True)
         open(tmp, 'w').write(open(p).read().replace('{% set WITH_CA = false %}', '{% set WITH_CA = true %}'))
         p = tmp
     return stand.stat(stand.render(p, c))[0]
+
+
+# ---- 8. Проверки для SQL Lab (папка поставки): рендеры == текущие шаблоны, исполняются ---------------------------
+LAB_NOTE = ('-- Рендер без джини (для SQL Lab, база CROSS). Цифру в первой строке меняйте для повторного замера: '
+            'SQL Lab кэширует результат.')
+LAB_ID = '777777'   # метка id отчёта: в SQL сама по себе не встречается (см. п. 8)
+LABS = [  # файл, шаблон, фильтры, строки шапки ({n} — сколько мест у метки)
+    ('SQL Lab — панель, весь Proteus.sql', 'ONE', {},
+     ['-- Панель единого листа (pa_one) — без выбора в каталоге, ЦА по правам. Засеките время первого прогона.', LAB_NOTE]),
+    ('SQL Lab — панель, один отчёт.sql', 'ONE', {'mode_param': 'report', 'sel_f': [LAB_ID]},
+     ['-- Панель — клик по одному отчёту. Замените ' + LAB_ID + ' на id отчёта из каталога (поиском, все {n} места).', LAB_NOTE]),
+    ('SQL Lab — панель, ЦА IT-тимлиды.sql', 'ONE', {'ca_it_f': ['IT'], 'ca_head_f': '1'},
+     ['-- Панель с ЦА по условиям: IT + руководители (как кейс «динамика по IT-тимлидам»).',
+      "-- Если в бою код IT называется иначе — замените 'IT' (поиском) на значение из выпадашки «IT» строки ЦА.", LAB_NOTE]),
+    ('SQL Lab — каталог.sql', 'CAT', {},
+     ["-- Каталог единого листа (pa_body_one) — дефолт, ЦА по правам; строки section = 'aud' — вкладка «Аудитория».", LAB_NOTE]),
+    ('SQL Lab — шапка.sql', 'HEAD', {},
+     ["-- Шапка единого листа (pa_head) — справочник строки ЦА + дата данных (строка section = 'md').", LAB_NOTE,
+      '-- Ждём: ~460 строк на синтетике (на бою — по числу сочетаний атрибутов штата), одна строка md с датой вчера.']),
+]
+
+
+def lab_body(src, flt):
+    return [l.rstrip() for l in stand.render({'ONE': ONE, 'CAT': CAT, 'HEAD': HEAD}[src], flt).split('\n') if l.strip()]
+
+
+LAB_DIR = os.path.join(D, 'Проверки') if D else None
+if LAB_DIR and REBUILD:
+    os.makedirs(LAB_DIR, exist_ok=True)
+    for name, src, flt, head in LABS:
+        body = lab_body(src, flt)
+        n = sum(l.count(LAB_ID) for l in body)
+        open(os.path.join(LAB_DIR, name), 'w').write('\n'.join(['-- 1'] + [h.replace('{n}', str(n)) for h in head] + body) + '\n')
+        print('пересобран Проверки/' + name)
+
+# Компактная кириллица (макрос cz в SQL, unz в чарте): `…` — отрезок кириллицы, ~ — экранирование.
+CYR = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя'
+TGT = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'
+UNZ = dict(zip(TGT, CYR))
+
+
+def unz(t):
+    out, i, run = [], 0, False
+    while i < len(t):
+        c = t[i]
+        if run:
+            if c == '`': run = False
+            else: out.append(UNZ.get(c, c))
+            i += 1
+        elif c == '`': run = True; i += 1
+        elif c == '~' and i + 1 < len(t):
+            out.append({'p': '|', 'c': '^', 'b': '`'}.get(t[i + 1], t[i + 1])); i += 2
+        else: out.append(c); i += 1
+    return ''.join(out)
+
+
+TOT = ('users', 'users_prev', 'views', 'views_prev', 'new_u', 'new_prev', 'react_u', 'regular', 'regular_prev', 'sleeping',
+       'mau', 'mau_prev', 'ca_prev', 'ca_regprev', 'ca_yr', 'ca_out')
+
+
+def v2(rows):
+    """Ответ pa_one v2 (5 колонок, упаковка) → прежние строки (section, g, k, parent, метрики) для сверки."""
+    out, md = [], {}
+    for r in rows:
+        s, lines = r['section'], [x for x in (r['k'] or '').split('\n')] if r['section'] not in ('flt', 'sj', 'nm', 'md', 'area') else []
+        if s == 'total':
+            f = list(map(int, r['k'].split('|')))
+            out.append(dict(section='total', g='', k='', parent='', **dict(zip(TOT, f))))
+            # корзины частоты — поля 17–20 total (у pa_people — отдельные строки freq, только непустые)
+            for i, u in enumerate(f[16:20]):
+                if u: out.append(dict(section='freq', g='', k=str(i + 1), parent='', users=u))
+        elif s == 'ctx':
+            for x in lines:
+                f = x.split('|')
+                out.append(dict(section='ctx', g=r['g'], k=unz(f[0]), parent=unz(f[1]), **dict(zip(
+                    ('users', 'users_prev', 'views', 'views_prev', 'new_u', 'regular', 'sleeping'), map(int, f[2:9])))))
+        elif s == 'ts':
+            for x in lines: f = x.split('|'); out.append(dict(section='ts', g='', k=f[0], parent='', users=int(f[1]), new_u=int(f[2]), react_u=int(f[3]), views=int(f[4])))
+        elif s == 'cal':
+            for x in lines: f = x.split('|'); out.append(dict(section='cal', g='', k=f[0], parent='', users=int(f[1]), new_u=int(f[2]), views=int(f[3])))
+        elif s == 'coh':
+            for x in lines:
+                f = x.split('|')
+                out.append(dict(section='coh', g='', k=f[0], parent='', cnt=int(f[1]), ages='[' + f[2] + ']', acts='[' + f[3] + ']'))
+        elif s == 'md':
+            md = dict(lvl3=r['k'], last_dt=r['parent'])
+        elif s == 'area':
+            out.append(dict(section='area', g=r['g'], k=r['k'], parent=r['parent'], days=r['n']))
+        elif s == 'd':
+            for i, x in enumerate(lines): out.append(dict(section='d', g=r['g'], k=str(i + 1), parent=unz(x)))
+        elif s in ('list', 'h', 'n'):
+            out.append(dict(section=s, g='', k=r['k'], parent=unz(r['parent']), users=r['n']))
+        else:
+            out.append(dict(section=s, g=r['g'], k=r['k'], parent=r['parent'], n=r['n']))
+    for r in out:
+        if r['section'] == 'area': r.update(md)
+    return out
 
 
 FB = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}
@@ -68,7 +175,7 @@ def one_people(rows, grain):
             days = bin(cur).count('1')
             fb = FB[grain]
             b = 1 if days <= fb[0] else 2 if days <= fb[1] else 3 if days <= fb[2] else 4
-            out[f[0]] = dict(login=f[0], fio=f[1], spec=dz['spec'][f[2]], stream=dz['stream'][f[3]], exp=dz['exp'][f[4]],
+            out[f[0]] = dict(login=f[0], fio=unz(f[1]), spec=dz['spec'][f[2]], stream=dz['stream'][f[3]], exp=dz['exp'][f[4]],
                              head=fl & 1, days=days, views=int(f[8]), last=int(f[9]), bin=b,
                              new=int(fk < NG[grain] and fk <= kt), mau=(fl >> 1) & 1, maup=(fl >> 2) & 1, yr=(fl >> 3) & 1,
                              stf=(fl >> 4) & 1, acc=(fl >> 5) & 1, ca=(fl >> 6) & 1, prev=int(f[6]), cur=cur,
@@ -103,8 +210,13 @@ for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'
           {'pub_f': '0', 'act_f': '0', 'exc_f': '0', 'period_param': 'w'}]:
     g = c.get('period_param', 'd')
     a, b = run(ONE, c), run(PPL, c)
-    A = {key(r): tuple(str(r[x]) for x in COLS) for r in a if r['section'] in SEC}
-    B = {key(r): tuple(str(r[x]) for x in COLS) for r in b if r['section'] in SEC}
+    CC = {'total': ('users', 'users_prev', 'views', 'views_prev', 'new_u', 'new_prev', 'react_u', 'regular', 'regular_prev', 'sleeping', 'mau', 'mau_prev'),
+          'freq': ('users',), 'ctx': ('users', 'users_prev', 'views', 'views_prev', 'new_u', 'regular', 'sleeping'),
+          'ts': ('users', 'new_u', 'react_u', 'views'), 'cal': ('users', 'new_u', 'views'), 'coh': ('cnt', 'ages', 'acts'),
+          'area': ('days', 'last_dt', 'lvl3')}
+    norm = lambda v: str(v).replace(' ', '').replace("'", '')
+    A = {key(r): tuple(norm(r.get(x)) for x in CC[r['section']]) for r in a if r['section'] in SEC}
+    B = {key(r): tuple(norm(r.get(x)) for x in CC[r['section']]) for r in b if r['section'] in SEC and not (r['section'] == 'ctx' and not int(r['users']))}
     diff = [k for k in A.keys() | B.keys() if A.get(k) != B.get(k)]
     ok(not diff, f'pa_one без ЦА == pa_people (секции) {c}' + (f'  расхождений {len(diff)}: {sorted(diff)[:2]}' if diff else ''))
     pa, pb = one_people(a, g), ppl_people(b)
@@ -165,20 +277,44 @@ for c in [{'exc_f': '0'}, {'exc_f': '0', 'period_param': 'm'}, {'exc_f': '0', 'm
     ok(A == B, f'ЦА pa_one == pa_aud_v2 {c}' + ('' if A == B else f'\n       one {A}\n       aud {B}'))
 
 # ---- 3. По условиям ЦА: итог панели == ИТОГО каталога с той же ЦА ---------------------------------------------
+def cat_v2(rows):
+    """Каталог v2 → {total, rep: {id: поля}, aud: {разрез: {значение: (users, views, regular, staff)}}, sj}."""
+    out = {'total': None, 'rep': {}, 'aud': {}, 'sj': {}}
+    for r in rows:
+        L = r['k'].split('\n') if r['k'] else []
+        if r['section'] == 'total': out['total'] = tuple(int(x) for x in r['k'].split('|'))
+        elif r['section'] == 'sj': out['sj'] = json.loads(r['k'])
+        elif r['section'] == 'rep':
+            for ln in L:
+                f = ln.split('|')
+                out['rep'][int(f[0])] = dict(users=int(f[1]), views=int(f[2]), regular=int(f[3]), ca_n=int(f[6]) if f[6] else None,
+                                             ca_wide=int(f[7]) if f[7] else None, ca_users=int(f[8]) if f[8] else None)
+        elif r['section'] == 'aud':
+            for ln in L:
+                f = ln.split('|')
+                out['aud'].setdefault(r['g'], {})[unz(f[0])] = tuple(int(x) for x in f[2:6])
+    return out
+
+
 for c in [{'ca_spec_f': ['Спец 3']}, {'ca_hq_f': ['HQ'], 'ca_it_f': ['IT'], 'ca_head_f': '1'}, {'ca_org_f': ['Блок 3'], 'period_param': 'w'}]:
     one = [r for r in run(ONE, c) if r['section'] == 'total'][0]
-    cat = [r for r in run(CAT, c, with_ca=True) if r['section'] == 'total'][0]
-    ok((one['users'], one['views'], one['regular']) == (cat['users'], cat['views'], cat['regular_users']),
-       f'по условиям ЦА: панель == ИТОГО каталога {c}  ({one["users"]} / {cat["users"]})')
+    cat = cat_v2(run(CAT, c, with_ca=True))['total']
+    ok((one['users'], one['views'], one['regular']) == cat[:3],
+       f'по условиям ЦА: панель == ИТОГО каталога {c}  ({one["users"]} / {cat[0]})')
 
 # ---- 4. Старый анализатор и prefer_column_name_to_alias -------------------------------------------------------
-for c in [{}, {'ca_spec_f': ['Спец 3'], 'ca_head_f': '1'}]:
-    sql = stand.render(ONE, c)
+CATCA = os.path.join(os.path.dirname(os.path.abspath(__file__)), '__pycache__', '_cat_ca.sql')
+os.makedirs(os.path.dirname(CATCA), exist_ok=True)
+open(CATCA, 'w').write(open(CAT).read().replace('{% set WITH_CA = false %}', '{% set WITH_CA = true %}'))
+for p_, c in [(ONE, {}), (ONE, {'ca_spec_f': ['Спец 3'], 'ca_head_f': '1'}), (ONE, {'aud_org_f': ['Блок 3'], 'aud_head_f': ['1']}),
+              (CATCA, {}), (CATCA, {'ca_it_f': ['IT'], 'seg_f': 'out', 'spec_f': ['Спец 3'], 'freq_f': ['2']}), (CATCA, {'seg_f': 'reach', 'org_f': ['Блок 3']})]:
+    sql = stand.render(p_, c)
     a = stand.stat(sql)[0]
     b = stand.stat(sql + '\nSETTINGS enable_analyzer = 0')[0]
     d = stand.stat(sql + '\nSETTINGS prefer_column_name_to_alias = 1')[0]
-    norm = lambda rows: sorted(json.dumps(r, sort_keys=True, default=str) for r in rows)
-    ok(norm(a) == norm(b) == norm(d), f'старый анализатор и prefer_column_name_to_alias — те же строки {c}')
+    # порядок строк ВНУТРИ упакованной ячейки (groupArray) не гарантирован — сравниваем как множество строк
+    norm = lambda rows: sorted(json.dumps(dict(r, k='\n'.join(sorted(str(r.get('k') or '').split('\n')))), sort_keys=True, default=str) for r in rows)
+    ok(norm(a) == norm(b) == norm(d), f'старый анализатор и prefer_column_name_to_alias — те же строки {os.path.basename(p_)} {c}')
 
 # ---- 5. Шапка ---------------------------------------------------------------------------------------------
 h0, h1, dd = run(HEAD, {}), run(HEAD, {'period_param': 'm', 'ca_spec_f': ['Спец 3'], 'mode_param': 'report', 'sel_f': ['5']}), run(DICT, {})
@@ -188,6 +324,67 @@ md = [r['k'] for r in h0 if r['section'] == 'md']
 area = [r for r in run(ONE, {}) if r['section'] == 'area'][0]
 ok(md == [str(area['lvl3'])], f'дата данных шапки == md панели ({md} / {area["lvl3"]})')
 ok(norm(h0) == norm(h1), 'шапка не зависит от фильтров')
+
+# ---- 6. «Аудитория» каталога == панель с этой группой -------------------------------------------------------
+def ca_size(rows, grain='d'):
+    t = one_tot(rows, grain)
+    return t['ca']
+
+
+base = cat_v2(run(CAT, {}, with_ca=True))
+staff_all = int(str(stand.S.query('SELECT count() FROM prod_proteus.pa_staff', 'CSV')).strip())
+for d in ('s', 't', 'q', 'i', 'h'):
+    ok(sum(v[3] for v in base['aud'][d].values()) == staff_all, f'«Аудитория» каталога: штат разреза {d} == весь штат ({staff_all})')
+CASES = [('s', 'Спец 3', {'aud_spec_f': ['Спец 3']}), ('t', 'Стрим 4', {'aud_stream_f': ['Стрим 4']}), ('q', 'HQ', {'aud_hq_f': ['HQ']}),
+         ('i', 'IT', {'aud_it_f': ['IT']}), ('h', '1', {'aud_head_f': ['1']}), ('o', 'Блок 3', {'aud_org_f': ['Блок 3']}),
+         ('o', 'Блок 3 › Деп 3.3', {'aud_org_f': ['Блок 3 › Деп 3.3']})]
+for extra in [{}, {'ca_it_f': ['IT']}, {'period_param': 'w', 'exc_f': '0'}]:
+    cat = cat_v2(run(CAT, extra, with_ca=True))
+    for d, v, f in CASES:
+        rows = run(ONE, dict(extra, **f))
+        one = [r for r in rows if r['section'] == 'total'][0]
+        cu, cs = cat['aud'][d].get(v, (0, 0, 0, 0))[0], cat['aud'][d].get(v, (0, 0, 0, 0))[3]
+        pc = ca_size(rows, extra.get('period_param', 'd'))
+        ok((one['users'], pc) == (cu, cs), f'«Аудитория» {d}={v} {extra}: панель (люди {one["users"]}, ЦА {pc}) == каталог (заходили {cu}, в штате {cs})')
+nof = lambda rows: norm([r for r in rows if r['section'] != 'flt'])   # эхо фильтров у запросов разное — не сравниваем
+ok(nof(run(ONE, {'aud_head_f': ['0', '1']}, raw=True)) == nof(run(ONE, {}, raw=True)), 'обе группы «руководители» из каталога == без условия')
+
+# ---- 7. Сегмент ЦА в каталоге: заходили == из ЦА + вне ЦА -------------------------------------------------------
+for extra in [{}, {'ca_spec_f': ['Спец 3']}, {'period_param': 'm', 'freq_f': ['1', '2']}]:
+    # без сегмента по условиям каталог уже только про ЦА: «все заходившие» — без условий ЦА
+    allr = cat_v2(run(CAT, {k: v for k, v in extra.items() if not k.startswith('ca_')}, with_ca=True))['rep']
+    reach = cat_v2(run(CAT, dict(extra, seg_f='reach'), with_ca=True))['rep']
+    out = cat_v2(run(CAT, dict(extra, seg_f='out'), with_ca=True))['rep']
+    bad_ = [i for i in allr if allr[i]['users'] != reach.get(i, {'users': 0})['users'] + out.get(i, {'users': 0})['users']]
+    # по правам «из ЦА» у отчёта == ca_users без сегмента (зрители из ЦА отчёта)
+    if not any(k.startswith('ca_') for k in extra):
+        bad_ += [i for i in allr if reach.get(i, {'users': 0})['users'] != (allr[i]['ca_users'] or 0)]
+    ok(not bad_ and allr, f'сегмент ЦА в каталоге {extra}: заходили == из ЦА + вне ЦА у {len(allr)} отчётов' + (f'  расхождений {len(bad_)}: {bad_[:3]}' if bad_ else ''))
+never = cat_v2(run(CAT, {'seg_f': 'never'}, with_ca=True))
+ok(never['sj'].get('seg') == 'never' and never['rep'] == cat_v2(run(CAT, {}, with_ca=True))['rep'], 'сегмент «не заходили»: каталог не сужается, в состоянии seg = never')
+
+# ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
+if LAB_DIR and os.path.isdir(LAB_DIR):
+    base_one = '\n'.join(lab_body('ONE', {}))
+    ok(LAB_ID not in base_one and LAB_ID not in '\n'.join(lab_body('CAT', {})), f'метка {LAB_ID} в шаблонах сама по себе не встречается')
+    for name, src, flt, head in LABS:
+        f = os.path.join(LAB_DIR, name)
+        if not os.path.exists(f):
+            ok(False, f'Проверки/{name}: файла нет (пересобрать: --rebuild)'); continue
+        lines = open(f).read().rstrip('\n').split('\n')
+        i = 0
+        while i < len(lines) and lines[i].startswith('--'):
+            i += 1
+        body = lab_body(src, flt)
+        ok(lines[i:] == body, f'Проверки/{name}: рендер == текущий шаблон поставки' + ('' if lines[i:] == body else '  (устарел — пересобрать: --rebuild)'))
+        m = LAB_ID in flt.get('sel_f', [])
+        if m:
+            n = sum(l.count(LAB_ID) for l in body)
+            ok(f'все {n} места' in '\n'.join(lines[:i]), f'Проверки/{name}: в шапке верное число мест метки ({n})')
+        try:
+            ok(len(stand.stat('\n'.join(lines))[0]) > 0, f'Проверки/{name}: исполняется')
+        except Exception as e:
+            ok(False, f'Проверки/{name}: ошибка {str(e)[:300]}')
 
 print('\nИТОГ: ' + ('всё сходится' if not bad else f'{bad} расхождений'))
 sys.exit(1 if bad else 0)

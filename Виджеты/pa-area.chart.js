@@ -412,7 +412,7 @@ function freqLabels(grain) {
 // Упакованный список (pa_people, секция list): строка на подразделение, parent — его путь
 // «УС-3 › … › УС-7», в k — сотрудники через \n, поля через \t: логин, ФИО, специализация,
 // стрим, стаж, рук. 1/0, активных периодов, просмотров, последний визит, корзина 1–4,
-// новый 1/0, MAU 1/0, MAU пред. месяца 1/0, уволен 1/0 (нет среди действующих сотрудников с AD-логином).
+// новый 1/0, MAU 1/0, MAU пред. месяца 1/0, не в штате 1/0 (нет среди действующих сотрудников с AD-логином).
 function parseListPack(txt, path, out) {
   var lines = txt.split('\n'), ps = path ? path.split(CFG.orgSep) : [];
   for (var i = 0; i < lines.length; i++) {
@@ -1003,7 +1003,7 @@ function buildCSS() {
     P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
-    P + '-rflag.fired{background:#fde8e8;color:#b42318;}',
+    P + '-rflag.fired{background:#f1f3f6;color:#6b7280;}',   // «не в штате» — нейтрально: ушёл сам или не сотрудник
     P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
     '  border-radius:999px;padding:2px 9px;}',
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
@@ -1260,7 +1260,7 @@ function personRowHtml(p) {
     ' data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
     '>' +
     '<td class="txt">' + esc(p.fio || p.login) +
-      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином">уволен</i>' : '') +
+      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином: ушёл из компании или логин не сотрудника (подрядчик, служебная учётка)">не в штате</i>' : '') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(p.login) + '</span></td>' +
     '<td class="txt sec">' + esc(ps.length ? ps[ps.length - 1] : '—') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(ps.length > 1 ? 'УС-' + (ps.length + 2) + ' · ' + ps[0] : (p.spec || '—')) + '</span></td>' +
@@ -1509,7 +1509,7 @@ function nestPeopleHtml(nd, people, span) {
     var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
     h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
       '>' +
-      '<td class="txt pn" style="padding-left:' + (30 + nd.depth * 18) + 'px">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином">уволен</i>' : '') +
+      '<td class="txt pn" style="padding-left:' + (30 + nd.depth * 18) + 'px">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином: ушёл из компании или логин не сотрудника (подрядчик, служебная учётка)">не в штате</i>' : '') +
         ' <span class="' + CFG.ns + '-wo-login">' + esc(p.login) + '</span></td>' +
       '<td>' + nf(p.days) + THIN + grainCfg().us + '</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
       '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td></tr>';
@@ -1588,7 +1588,7 @@ function exportRows() {
   var num2 = function (v, d) { return v == null || !isFinite(v) ? '' : (d ? v.toFixed(d).replace('.', ',') : String(Math.round(v))); };
   if (cut === 'none') {
     head = ['ФИО', 'Логин', 'Руководитель', 'УС-3', 'УС-4', 'УС-5', 'УС-6', 'УС-7', 'Специализация', 'Стрим', 'Стаж',
-      actLabel(), 'Просмотров', 'Последний визит', 'Сегмент', 'Уволен'];
+      actLabel(), 'Просмотров', 'Последний визит', 'Сегмент', 'Не в штате'];
     var ps = sortPeople(shownList());
     for (i = 0; i < ps.length; i++) {
       var p = ps[i], op = orgParts(p.org);

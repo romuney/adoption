@@ -40,7 +40,8 @@ var CFG = {
   selStaleWait: 10000,        // мс: после ответа под ПРЕЖНИЙ выбор ждём правильный, потом — автоповтор
   selGiveUp: 60000,           // мс: ответа нет совсем — через столько кнопка «Повторить запрос» (сами не повторяем)
   selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка
-  paCols: ['mode_param', 'sel_f'],  // колонки выбора каталога в кросс-фильтре (ключ сверки)                  // ПРЕФИКС всех CSS-классов и класса overlay
+  // колонки выбора каталога в кросс-фильтре (ключ сверки): область отчётов + группы вкладки «Аудитория»
+  paCols: ['mode_param', 'sel_f', 'aud_org_f', 'aud_spec_f', 'aud_stream_f', 'aud_hq_f', 'aud_it_f', 'aud_head_f'],
   // Адрес отчёта для кнопки «ссылка» в строке каталога: <origin Proteus> +
   // dashPath + dashboard_id + '/'. Origin берётся со страницы борда (iframe
   // песочницы знает её через document.referrer); dashHost — запасной хост.
@@ -58,7 +59,9 @@ var CFG = {
     last_view_days: 'last_view_days', rhythm: 'rhythm',
     state_j: 'state_j',
     // Только у каталога вкладки «Аудитория» (датасет pa_body_aud, WITH_CA = true): ЦА отчёта по правам.
-    ca_n: 'ca_n', ca_wide: 'ca_wide', ca_users: 'ca_users'
+    ca_n: 'ca_n', ca_wide: 'ca_wide', ca_users: 'ca_users',
+    // Ответ v2 (2026-09-30): 5 колонок, всё упаковано в k (формат — в шапке SQL); старый ответ тоже разбирается.
+    g: 'g', k: 'k', parent: 'parent', n: 'n'
   },
   text: { noData: 'Нет данных' },
   // Каталог — снимок за период; ось времени живёт в правой панели.
@@ -77,8 +80,25 @@ var CFG = {
   modes: [
     { key: 'report',     label: 'Отчёты',    axis: 'rep', one: 'Отчёт' },
     { key: 'collection', label: 'Коллекции', axis: 'grp', one: 'Коллекция' },
-    { key: 'owner',      label: 'Владельцы', axis: 'grp', one: 'Владелец' }
+    { key: 'owner',      label: 'Владельцы', axis: 'grp', one: 'Владелец' },
+    // Аудитория (2026-09-30): люди по разрезам штата — клик задаёт группу людей для панели (aud_*_f)
+    { key: 'aud',        label: 'Аудитория', axis: 'aud', one: 'Группа' }
   ],
+  // Разрезы вкладки «Аудитория»: d — разрез в ответе (секция aud), col — колонка кросс-фильтра панели,
+  // lvl — уровень УС (узлы этого уровня плоским списком).
+  audDims: [
+    { key: 'o3', d: 'o', lvl: 3, label: 'УС-3', col: 'aud_org_f' },
+    { key: 'o4', d: 'o', lvl: 4, label: 'УС-4', col: 'aud_org_f' },
+    { key: 'o5', d: 'o', lvl: 5, label: 'УС-5', col: 'aud_org_f' },
+    { key: 'o6', d: 'o', lvl: 6, label: 'УС-6', col: 'aud_org_f' },
+    { key: 'o7', d: 'o', lvl: 7, label: 'УС-7', col: 'aud_org_f' },
+    { key: 's', d: 's', label: 'Специализация', col: 'aud_spec_f' },
+    { key: 't', d: 't', label: 'Стрим', col: 'aud_stream_f' },
+    { key: 'q', d: 'q', label: 'HQ', col: 'aud_hq_f' },
+    { key: 'i', d: 'i', label: 'IT', col: 'aud_it_f' },
+    { key: 'h', d: 'h', label: 'Руководители', col: 'aud_head_f' }
+  ],
+  orgSep: ' › ',
   // Корзины частоты: верхние границы корзин 1–4 по гранулярности (= FBIN в SQL
   // pa_people и каталога); fopen — пятая корзина подписывается «N+», иначе диапазоном до n.
   fbins: { d: [1, 5, 15], w: [1, 5, 15], m: [1, 3, 6], q: [1, 2, 3] },
@@ -147,11 +167,16 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   picks: { report: [], collection: [], owner: [] },
   lastEmit: '',               // последняя отправленная маска области (эмит только при смене)
   repSort: { col: 'users', dir: -1 },
+  // Вкладка «Аудитория»: разрез, выбор (по разрезу d; ИЛИ внутри, И между разрезами), сортировка
+  aud: { dim: 'o3', picks: { o: [], s: [], t: [], q: [], i: [], h: [] }, sort: { col: 'users', dir: -1 } },
+  dd: null,                   // открытый дропдаун разреза
   repQuery: '',               // поиск в каталоге
   page: 0,                    // текущая страница каталога, с 0 (TABLES.md)
   pageSize: 20                // строк на страницу: панель каталога 712px
 };
 var state = __S[CFG.ns];
+// Состояние прошлой версии виджета (та же вкладка браузера): добиваем новые ключи.
+if (!state.aud || !state.aud.picks) state.aud = { dim: 'o3', picks: { o: [], s: [], t: [], q: [], i: [], h: [] }, sort: { col: 'users', dir: -1 } };
 
 // Массив из data приходит и массивом, и JSON-строкой '[1,2,3]'.
 // Массив из ответа датасета. Proteus отдаёт Array-колонку по-разному: живым
@@ -197,6 +222,30 @@ function arr(v) {
   }
   return out;
 }
+// Компактная кириллица (макрос cz в SQL): Superset пишет кириллицу в JSON как \uXXXX — 6 байт на букву. SQL берёт
+// отрезок из кириллицы и пробелов в `…` и заменяет буквы однобайтными по таблице (та же — здесь); вне отрезков
+// ~~ — тильда, ~p — «|», ~c — «^», ~b — «`». Разбор обратный.
+var CZ_T = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%';
+var CZ_C = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+var CZ_M = null;
+function unz(s) {
+  s = s == null ? '' : String(s);
+  if (s.indexOf('`') < 0 && s.indexOf('~') < 0) return s;
+  if (!CZ_M) { CZ_M = {}; for (var q = 0; q < CZ_T.length; q++) CZ_M[CZ_T.charAt(q)] = CZ_C.charAt(q); }
+  var out = '', i = 0, n = s.length, c, run = false, d;
+  while (i < n) {
+    c = s.charAt(i);
+    if (run) {
+      if (c === '`') run = false; else out += CZ_M[c] || c;
+      i++;
+    } else if (c === '`') { run = true; i++; }
+    else if (c === '~' && i + 1 < n) { d = s.charAt(i + 1); out += d === 'p' ? '|' : (d === 'c' ? '^' : (d === 'b' ? '`' : d)); i += 2; }
+    else { out += c; i++; }
+  }
+  return out;
+}
+// Целое поле упаковки.
+function int(v) { var x = +v; return isNaN(x) ? 0 : x; }
 // Идентификатор значения выбора: dashboard_id числом, группы/срезы строкой.
 function pickId(v) { var n = num(v); return (n == null || String(n) !== String(v)) ? String(v) : n; }
 
@@ -257,8 +306,13 @@ function buildModel() {
     ids: [],              // id отчётов в порядке data (стабильность сортировок)
     repMode: false,
     hasCa: false,         // каталог вкладки «Аудитория» (есть колонки ЦА)
-    stateJ: null          // JSON активных условий из total-строки (или null)
+    stateJ: null,         // JSON активных условий из total-строки (или null)
+    aud: {}               // разрез → { значение → {users, views, regular, staff, parent} } (вкладка «Аудитория»)
   };
+  // Ответ v2 (5 колонок, упаковка) — свой разбор; старый ответ (17–20 колонок) — прежний ниже.
+  if (rawData.length && Object.prototype.hasOwnProperty.call(rawData[0], F.k) && !Object.prototype.hasOwnProperty.call(rawData[0], F.dash_nm)) {
+    return buildModelV2(M);
+  }
 
   // Метрики строки каталога: пользователи, просмотры, постоянные (корзины 3–4: 6/6/4/3 активных
   // периодов), дни с последнего просмотра. Остальные KPI — в правой панели.
@@ -320,6 +374,68 @@ function buildModel() {
       M.grps[gr][gk][gv] = row;
     }
   }
+  return M;
+}
+// Разбор ответа v2 (формат секций — шапка Виджеты/pa-reports-body.data.sql).
+function buildModelV2(M) {
+  var F = CFG.fields, i, j, r, L, f, gr = 'd';
+  var kpiOf = function (u, v, rg, lst, rh, cn, cw, cu) {
+    return { users: u, views: v, regular_users: rg, last_view_days: lst, rh: rhythmOf(rh),
+      ca_n: cn, ca_wide: cw === 1, ca_users: cu };
+  };
+  var nz = function (x) { return x === '' || x == null ? null : int(x); };
+  for (i = 0; i < rawData.length; i++) {
+    r = rawData[i] || {};
+    if (String(r[F.section] || '') === 'sj') {
+      gr = String(r[F.parent] || 'd');
+      try { M.stateJ = JSON.parse(String(r[F.k] || '{}')); } catch (eJ) { M.stateJ = null; }
+      M.hasCa = !!(M.stateJ && M.stateJ.ca);
+    }
+  }
+  M.grainsAvail[gr] = true;
+  M.reps[gr] = {}; M.grps[gr] = {};
+  for (i = 0; i < rawData.length; i++) {
+    r = rawData[i] || {};
+    var sec = String(r[F.section] || ''), txt = String(r[F.k] == null ? '' : r[F.k]);
+    L = txt ? txt.split('\n') : [];
+    if (sec === 'total') {
+      f = txt.split('|');
+      M.totals[gr] = { kpi: kpiOf(int(f[0]), int(f[1]), int(f[2]), int(f[3]), '', null, 0, null) };
+    } else if (sec === 'rep') {
+      M.repMode = true;
+      // id|users|views|regular|last|ритм|ЦА|ЦА≈все|ЦА заходили|название|владелец|коллекции ^|опубл.|сертиф.|создан
+      for (j = 0; j < L.length; j++) {
+        f = L[j].split('|');
+        var id = int(f[0]);
+        if (!f[0] || !id) continue;
+        M.reps[gr][id] = { id: id, kpi: kpiOf(int(f[1]), int(f[2]), int(f[3]), int(f[4]), f[5], nz(f[6]), int(f[7]), nz(f[8])) };
+        if (!M.meta[id]) {
+          var cs = f[11] ? f[11].split('^') : [];
+          for (var c = 0; c < cs.length; c++) cs[c] = unz(cs[c]);
+          M.meta[id] = { id: id, dash_nm: unz(f[9]), owner_login: f[10] || '', colls: cs, published: nz(f[12]),
+            certified: f[13] ? unz(f[13]) : null, created_dt: toDate(f[14]) };
+          M.ids.push(id);
+        }
+      }
+    } else if (sec === 'grp') {
+      var gk = String(r[F.g] || '');
+      if (!gk) continue;
+      M.grps[gr][gk] = M.grps[gr][gk] || {};
+      for (j = 0; j < L.length; j++) {
+        f = L[j].split('|');
+        var gv = unz(f[0]);
+        if (gv) M.grps[gr][gk][gv] = { kpi: kpiOf(int(f[1]), int(f[2]), int(f[3]), int(f[4]), '', null, 0, null) };
+      }
+    } else if (sec === 'aud') {
+      // значение|родитель|людей заходило|просмотров|постоянных|людей в штате
+      var d = String(r[F.g] || ''), A = M.aud[d] = M.aud[d] || {};
+      for (j = 0; j < L.length; j++) {
+        f = L[j].split('|');
+        A[unz(f[0])] = { parent: unz(f[1]), users: int(f[2]), views: int(f[3]), regular: int(f[4]), staff: int(f[5]) };
+      }
+    }
+  }
+  M.empty = !M.repMode && !M.totals[gr];
   return M;
 }
 // Модель пересобирается из пришедшего ответа; если ответ вдруг пришёл пустым
@@ -676,6 +792,20 @@ function buildCSS() {
     P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:500;margin-left:5px;padding:0 4px;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
+    // ── Вкладка «Аудитория»: строка «Разрез» и выпадающий список ──
+    P + '-audbar{display:flex;align-items:center;gap:8px;min-width:0;}',
+    P + '-audbar-l{font-size:var(--fs-note);color:var(--muted);flex:0 0 auto;}',
+    P + '-dd{position:relative;display:inline-block;}',
+    P + '-dd-trg{display:inline-flex;align-items:center;gap:6px;height:28px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:0 10px;font:inherit;font-size:var(--fs-note);color:var(--ink);cursor:pointer;}',
+    P + '-dd-trg:hover{border-color:#d3d8e0;}',
+    P + '-dd.open ' + P + '-dd-trg{border-color:var(--act);}',
+    P + '-dd-c{color:var(--muted);font-size:10px;}',
+    P + '-dd-body{position:absolute;top:32px;left:0;z-index:40;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.16);padding:4px;display:flex;flex-direction:column;}',
+    P + '-dd-opt{border:0;background:transparent;text-align:left;font:inherit;font-size:var(--fs-note);color:var(--ink2);padding:6px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;}',
+    P + '-dd-opt:hover{background:#f4f6f9;}',
+    P + '-dd-opt.on{color:var(--act-ink);background:var(--blue-bg);font-weight:500;}',
+    P + '-dd-opt.sub{padding-left:22px;}',
+    P + '-dd-sep{height:1px;background:var(--line2);margin:4px 6px;}',
 
     // ── Таблицы ──
     P + '-rname{display:flex;align-items:flex-start;gap:6px;min-width:0;}',
@@ -787,6 +917,18 @@ function catFilterRowHtml() {
       own.push({ id: md.key + '|', k: md.label, v: String(lst.length), full: names.slice(0, 12).join(', ') + (names.length > 12 ? '…' : '') });
     }
   }
+  // Группы вкладки «Аудитория»: до двух значений разреза — по пилюле, больше — одна «Разрез: N».
+  var ap = state.aud.picks;
+  for (var ad in ap) {
+    if (!Object.prototype.hasOwnProperty.call(ap, ad) || !ap[ad].length) continue;
+    var al = ap[ad], dimo = audDimOf(ad) || { label: ad };
+    if (al.length <= 2) {
+      for (j = 0; j < al.length; j++) own.push({ id: 'aud:' + ad + '|' + al[j], k: audKind(ad, al[j]), v: audLabel(ad, al[j]), full: ad === 'o' ? al[j] : audLabel(ad, al[j]) });
+    } else {
+      own.push({ id: 'aud:' + ad + '|', k: ad === 'o' ? 'Подразделения' : dimo.label, v: String(al.length),
+        full: al.slice(0, 8).map(function (x) { return audLabel(ad, x); }).join(', ') + (al.length > 8 ? '…' : '') });
+    }
+  }
   var sj = MODEL.stateJ || {}, from = 'Задано в «Кто смотрит» справа — снимается там.';
   var lastOf = function (x) { var ps = String(x).split(' › '); return ps[ps.length - 1]; };
   var many = function (key, one, lots, arr, fmt) {
@@ -838,14 +980,14 @@ function cutBarHtml() {
   var h = '<div class="' + CFG.ns + '-cutbar">' +
     '<div class="' + CFG.ns + '-sub-tabs" role="tablist" aria-label="Разрез каталога">';
   for (var i = 0; i < CFG.modes.length; i++) {
-    var m = CFG.modes[i], n = pickList(m.key).length;
+    var m = CFG.modes[i], n = m.key === 'aud' ? audCount() : pickList(m.key).length;
     h += '<button class="' + CFG.ns + '-sub-tab' + (m.key === state.mode ? ' active' : '') + (n ? ' has' : '') +
       '" role="tab" aria-selected="' + (m.key === state.mode ? 'true' : 'false') +
       '" data-mode="' + esc(m.key) + '" type="button"' +
       (n ? tip({ text: n + ' ' + plural(n, 'условие', 'условия', 'условий') + ' в этом разрезе' }) : '') + '>' +
       esc(m.label) + (n ? '<span class="' + CFG.ns + '-sub-cnt">' + n + '</span>' : '') + '</button>';
   }
-  return h + '</div></div>';
+  return h + '</div>' + (state.mode === 'aud' ? audBarHtml() : '') + '</div>';
 }
 
 // --- Каталог: отчёты --------------------------------------------------------
@@ -974,7 +1116,7 @@ function reportTableHtml() {
     if (q && !idHit && (qid && qid.exact || (String(m.dash_nm || '').toLowerCase().indexOf(q) < 0) &&
       !collsMatch(m, q) && String(m.owner_login || '').toLowerCase().indexOf(q) < 0)) continue;
     var kp = byId[id].kpi;
-    rows.push({ id: id, m: m, k: kp, vpu: kp.users ? kp.views / kp.users : 0, rs: kp.users ? kp.regular_users / kp.users * 100 : 0, cov: covOf(kp) });
+    rows.push({ id: id, m: m, k: kp, vpu: kp.users ? kp.views / kp.users : 0, rs: kp.users ? kp.regular_users / kp.users * 100 : 0, cov: covOf(kp), nev: neverOf(kp) });
   }
   var sc = state.repSort;
   rows.sort(function (a, b) {
@@ -983,6 +1125,7 @@ function reportTableHtml() {
       if (sc.col === 'dashboard_nm') return String(x.m.dash_nm || '');
       if (sc.col === 'vpu') return x.vpu;
       if (sc.col === 'cov') return x.cov == null || x.k.ca_wide ? -1 : x.cov;
+      if (sc.col === 'never') return x.nev == null ? -1 : x.nev;
       if (sc.col === 'regular_users') return x.rs;
       if (sc.col === 'rhythm') return x.k.rh.rank + x.k.rh.share;   // чаще → выше; при равном ритме — у кого он твёрже
       return x.k[sc.col] != null ? x.k[sc.col] : 0;
@@ -1012,7 +1155,9 @@ function reportTableHtml() {
   var h = '<table class="' + CFG.ns + '-ptable dense sortable"><thead><tr>' +
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
-    th('users', 'Польз.') + (MODEL.hasCa
+    th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() } : null) + (MODEL.hasCa && segNow() === 'never'
+      ? th('never', 'Не заходили', { title: 'ЦА не заходили', text: 'Люди ЦА отчёта без визитов за период: ЦА минус заходившие из неё. Сортировка — по убыванию: где больше всего не дошедших. «—» — доступ почти у всей компании или прав нет.' })
+      : MODEL.hasCa
       ? th('cov', 'Охват ЦА', { title: 'Охват целевой аудитории', text: 'Зрители за период, входящие в ЦА отчёта, от размера ЦА (по правам: AD-группы + поимённо; или по условиям строки «Целевая аудитория»). Совпадает с «Дошли / ЦА» в панели. «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет.' })
       : th('views', 'Просм.')) +
     th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
@@ -1042,7 +1187,7 @@ function reportTableHtml() {
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
           esc(x.m.owner_login || '—') + '</span></div></div></td>' +
       '<td class="lead">' + nf(x.k.users) + '</td>' +
-      (MODEL.hasCa ? covCellHtml(x) : '<td>' + compact(x.k.views) + '</td>') +
+      (MODEL.hasCa ? (segNow() === 'never' ? neverCellHtml(x) : (segNow() === 'out' ? '<td><span class="mut">—</span></td>' : covCellHtml(x))) : '<td>' + compact(x.k.views) + '</td>') +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
       // Ритм — пилюлей; своя подсказка — только о ритме (ядро и последний заход).
       '<td class="rh"' + tip(rhythmTip(x.k)) + '><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span></td>' +
@@ -1051,13 +1196,24 @@ function reportTableHtml() {
   return { html: h + '</tbody></table>', total: total };
 }
 // Охват ЦА отчёта: зрители за период, входящие в ЦА (ca_users) / размер ЦА — та же мера, что «Дошли / ЦА»
-// в панели. Посторонние зрители (права сняты, выданы иначе, уволены) в числитель не идут.
+// в панели. Посторонние зрители (права сняты, выданы иначе, ушли из компании) в числитель не идут.
 // Старый датасет без ca_users — все пользователи (потолок 100%).
 function covOf(k) { return k.ca_n ? Math.min(100, (k.ca_users != null ? k.ca_users : k.users) / k.ca_n * 100) : null; }
 function covCellHtml(x) {
   if (x.cov == null || x.k.ca_wide) return '<td><span class="mut">—</span></td>';
   return '<td>' + pct(x.cov, x.cov < 10 ? 1 : 0) + '</td>';
 }
+// Сегмент ЦА из «Кто смотрит» панели (эхо seg_f): reach — в каталоге только зрители из ЦА, out — только вне ЦА
+// (сужает SQL), never — «не заходили из ЦА» по отчётам: ЦА отчёта минус заходившие из неё.
+function segNow() { var s0 = MODEL.stateJ && MODEL.stateJ.seg; return s0 === 'reach' || s0 === 'never' || s0 === 'out' ? s0 : ''; }
+function segText() {
+  var s0 = segNow();
+  return s0 === 'reach' ? 'Только зрители из целевой аудитории — так выбрано в «Кто смотрит» справа (снимается там).'
+    : s0 === 'out' ? 'Только зрители вне целевой аудитории — так выбрано в «Кто смотрит» справа (снимается там).'
+    : s0 === 'never' ? 'ЦА не заходили — так выбрано в «Кто смотрит» справа (снимается там): колонка «Не заходили» — люди ЦА отчёта без визитов.' : '';
+}
+function neverOf(k) { return k.ca_n && !k.ca_wide && k.ca_users != null ? Math.max(0, k.ca_n - k.ca_users) : null; }
+function neverCellHtml(x) { return x.nev == null ? '<td><span class="mut">—</span></td>' : '<td class="lead">' + nf(x.nev) + '</td>'; }
 function collsMatch(m, q) {
   for (var i = 0; i < (m.colls || []).length; i++) if (String(m.colls[i]).toLowerCase().indexOf(q) >= 0) return true;
   return false;
@@ -1103,6 +1259,116 @@ function catalogRows() {
   rows2.sort(function (x, y) { return y.k.users - x.k.users; });
   var tot2 = MODEL.totals[g] ? MODEL.totals[g].kpi : { users: 0, views: 0, regular_users: 0 };
   return { rows: rows2, total: tot2, axis: 'grp', filtered: rel != null };
+}
+
+// --- Каталог: аудитория (разрезы штата) ---------------------------------------
+// Строки — группы сотрудников (оргструктура по уровню, специализация, стрим, HQ, IT, руководители): сколько заходило
+// в отчёты за период, сколько в штате, охват (заходили / в штате), постоянные. Числа — с учётом шапки, ЦА по
+// условиям и людской шины панели (как весь каталог). Выбор группы уходит в панель (aud_*_f): она показывает эту
+// группу людей — её охват, динамику, «Кто смотрит» — по выбранным слева отчётам (или по всему Proteus).
+function audDim() {
+  for (var i = 0; i < CFG.audDims.length; i++) if (CFG.audDims[i].key === state.aud.dim) return CFG.audDims[i];
+  return CFG.audDims[0];
+}
+function audDimOf(d) { for (var i = 0; i < CFG.audDims.length; i++) if (CFG.audDims[i].d === d) return CFG.audDims[i]; return null; }
+// Подпись значения разреза: у оргструктуры — последнее звено пути, у руководителей — да/нет, пусто — «не указано».
+function audLabel(d, v) {
+  if (d === 'o') { var ps = String(v).split(CFG.orgSep); return ps[ps.length - 1]; }
+  if (d === 'h') return v === '1' ? 'Руководители' : 'Не руководители';
+  return v === '' ? '— не указано' : v;
+}
+function audKind(d, v) {
+  if (d === 'o') return 'УС-' + (String(v).split(CFG.orgSep).length + 2);
+  var o = audDimOf(d);
+  return o ? o.label : '';
+}
+function audCount() {
+  var n = 0, p = state.aud.picks;
+  for (var d in p) if (Object.prototype.hasOwnProperty.call(p, d)) n += p[d].length;
+  return n;
+}
+function audRows() {
+  var dim = audDim(), src = MODEL.aud[dim.d] || {}, out = [], q = (state.repQuery || '').toLowerCase();
+  for (var k in src) {
+    if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
+    if (dim.lvl && String(k).split(CFG.orgSep).length !== dim.lvl - 2) continue;
+    var a = src[k], lab = audLabel(dim.d, k);
+    if (q && lab.toLowerCase().indexOf(q) < 0 && (dim.d !== 'o' || String(a.parent).toLowerCase().indexOf(q) < 0)) continue;
+    out.push({ key: k, label: lab, sub: dim.d === 'o' ? a.parent : '', users: a.users, staff: a.staff, views: a.views, regular: a.regular,
+      cov: a.staff ? a.users / a.staff * 100 : null, reg: a.users ? a.regular / a.users * 100 : 0 });
+  }
+  var sc = state.aud.sort;
+  out.sort(function (x, y) {
+    var v = function (r) { return sc.col === 'name' ? r.label.toLowerCase() : (r[sc.col] == null ? -1 : r[sc.col]); };
+    var a = v(x), b = v(y), r = a > b ? 1 : (a < b ? -1 : 0);
+    return r * sc.dir || (y.users - x.users) || (y.staff - x.staff);
+  });
+  return out;
+}
+// Итог по всему штату (все группы разреза «руководители» = весь штат под условиями).
+function audTotal() {
+  var h = MODEL.aud.h || {}, t = { users: 0, staff: 0, views: 0, regular: 0 };
+  for (var k in h) if (Object.prototype.hasOwnProperty.call(h, k)) { t.users += h[k].users; t.staff += h[k].staff; t.views += h[k].views; t.regular += h[k].regular; }
+  return t;
+}
+function audBarHtml() {
+  var N = CFG.ns, dim = audDim(), open = state.dd === 'audDim', h = '';
+  h += '<div class="' + N + '-audbar"><span class="' + N + '-audbar-l">Разрез:</span><div class="' + N + '-dd' + (open ? ' open' : '') + '">' +
+    '<button type="button" class="' + N + '-dd-trg" data-ddtoggle="audDim" aria-haspopup="true" aria-expanded="' + open + '">' +
+    esc(dim.lvl ? 'Оргструктура · ' + dim.label : dim.label) + '<span class="' + N + '-dd-c" aria-hidden="true">▾</span></button>';
+  if (open) {
+    h += '<div class="' + N + '-dd-body">';
+    for (var i = 0; i < CFG.audDims.length; i++) {
+      var o = CFG.audDims[i];
+      if (o.lvl === 3) h += '<button type="button" class="' + N + '-dd-opt" disabled style="cursor:default;color:var(--muted)">Оргструктура</button>';
+      if (i && !o.lvl && CFG.audDims[i - 1].lvl) h += '<div class="' + N + '-dd-sep"></div>';
+      h += '<button type="button" class="' + N + '-dd-opt' + (o.lvl ? ' sub' : '') + (o.key === dim.key ? ' on' : '') + '" data-ddopt="audDim" data-val="' + o.key + '">' + esc(o.label) + '</button>';
+    }
+    h += '</div>';
+  }
+  return h + '</div></div>';
+}
+function audTableHtml() {
+  var N = CFG.ns, dim = audDim(), rows = audRows(), sc = state.aud.sort;
+  if (!MODEL.aud.h) {
+    return '<div class="' + N + '-empty"><b>Разрезов аудитории нет в ответе</b>Обновите датасет каталога (SQL поставки единого листа).</div>';
+  }
+  if (!rows.length) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>Очистите поиск или выберите другой разрез.</div>';
+  var PS = state.pageSize || 20, total = rows.length, pages = Math.max(1, Math.ceil(total / PS));
+  if ((state.page || 0) > pages - 1) state.page = pages - 1;
+  if (state.page < 0) state.page = 0;
+  var pageRows = rows.slice((state.page || 0) * PS, (state.page || 0) * PS + PS), picked = state.aud.picks[dim.d] || [];
+  var th = function (col, label, hint, cls) {
+    return '<th' + (cls ? ' class="' + cls + (sc.col === col ? ' on' : '') + '"' : (sc.col === col ? ' class="on"' : '')) + (hint ? tip(hint) : '') +
+      ' data-asort="' + col + '">' + esc(label) + '<span class="' + N + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>';
+  };
+  var t = audTotal();
+  var h = '<table class="' + N + '-ptable dense sortable"><thead><tr>' +
+    th('name', dim.lvl ? 'Подразделение ' + dim.label : dim.label, null, 'txt') +
+    th('users', 'Польз.', { text: 'Сотрудники группы, заходившие в отчёты за период (с учётом шапки, ЦА и выбора в «Кто смотрит»)' }) +
+    th('cov', 'Охват', { title: 'Охват группы', text: 'Доля сотрудников группы, заходивших за период: пользователи / в штате. Сотрудники — действующие, с AD-логином (pa_staff).' }) +
+    th('reg', 'Пост.', { text: 'Доля постоянных: заходили ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период' }) +
+    th('staff', 'В штате', { text: 'Сотрудников в группе (под условиями ЦА, если они заданы)' }) + '</tr></thead><tbody>' +
+    '<tr class="tot"' + tip({ title: 'Весь штат', text: 'Все сотрудники под условиями: заходившие за период и охват. Кто заходил, но не в штате (подрядчики, ушедшие из компании), в разрезы не входит.' }) + '>' +
+    '<td class="txt">ИТОГО</td><td class="lead">' + nf(t.users) + '</td><td>' + (t.staff ? pct(t.users / t.staff * 100, 0) : '—') + '</td>' +
+    '<td>' + pct(t.users ? t.regular / t.users * 100 : 0, 0) + '</td><td>' + nf(t.staff) + '</td></tr>';
+  for (var i = 0; i < pageRows.length; i++) {
+    var x = pageRows[i], sel = picked.indexOf(x.key) >= 0;
+    h += '<tr class="' + N + '-urow' + (sel ? ' sel' : '') + '" data-aud="' + esc(x.key) + '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
+      tip({ title: dim.d === 'o' ? x.key : x.label, rows: [
+        { label: 'Заходили за период', value: nf(x.users), color: CFG.colors.ret },
+        { label: 'В штате', value: nf(x.staff) },
+        { label: 'Охват', value: x.cov == null ? '—' : pct(x.cov, x.cov < 10 ? 1 : 0) },
+        { label: 'Постоянные', value: nf(x.regular) + ' · ' + pct(x.reg, 0) },
+        { label: 'Просмотров на пользователя', value: nf(x.users ? x.views / x.users : 0, 1) }],
+        note: 'Клик — показать эту группу в панели справа; Shift — несколько' }) + '>' +
+      '<td class="txt">' + esc(x.label) + (x.sub ? '<span class="' + N + '-unit-sub">' + esc(x.sub) + '</span>' : '') + '</td>' +
+      '<td class="lead">' + nf(x.users) + '</td>' +
+      '<td>' + (x.cov == null ? '<span class="mut">—</span>' : pct(x.cov, x.cov < 10 ? 1 : 0)) + '</td>' +
+      '<td>' + pct(x.reg, 0) + '</td>' +
+      '<td>' + nf(x.staff) + '</td></tr>';
+  }
+  return '<div class="' + N + '-tscroll">' + h + '</tbody></table></div>' + pagerHtml(total);
 }
 
 // Таблица с полосой (U.barTable). selected — накопительный список ИЛИ одно значение.
@@ -1178,6 +1444,7 @@ function catalogTableHtml() {
   if (!MODEL.totals[curGrain()]) {
     return '<div class="' + CFG.ns + '-tbl-note">Каталог считается по секциям отчётов.</div>';
   }
+  if (state.mode === 'aud') return audTableHtml();
   if (state.mode === 'report' && MODEL.repMode) {
     var rt = reportTableHtml();
     return '<div class="' + CFG.ns + '-tscroll">' + rt.html + '</div>' + pagerHtml(rt.total);
@@ -1250,8 +1517,9 @@ function buildHTML() {
     // v7.1: шапка листа, KPI и общие пилюли фильтров — в чарте-шапке сверху;
     // здесь только карточка каталога. Выбор снимается тут же.
     cls: 'cat', title: 'Каталог',
+    subHtml: segNow() ? '<span' + tip({ title: 'Сегмент ЦА', text: segText() }) + '>показаны: <b>' + (segNow() === 'reach' ? 'ЦА заходили' : (segNow() === 'out' ? 'вне ЦА заходили' : 'ЦА не заходили')) + '</b> · из «Кто смотрит»</span>' : '',
     sub: 'клик — выбрать область · Shift — несколько',
-    right: searchBoxHtml('repQ', state.mode === 'report' ? 'Название, ID или владелец' : 'Найти: ' + modeInfo.one.toLowerCase(), state.repQuery),
+    right: searchBoxHtml('repQ', state.mode === 'report' ? 'Название, ID или владелец' : (state.mode === 'aud' ? 'Найти группу' : 'Найти: ' + modeInfo.one.toLowerCase()), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
   }));
 
@@ -1576,10 +1844,22 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     // Пустой value=[] НЕ эмитим: пустой список ронял запрос чарта (783708).
     // Эмит только при СМЕНЕ области: смена вкладки каталога область не меняет
     // и правую панель не перезапрашивает.
-    function areaMask() {
+    // Группы вкладки «Аудитория» — своими колонками (ИЛИ внутри разреза, И между разрезами): панель сужает людей.
+    function audMask() {
+      var fl = [], ap = state.aud.picks;
+      for (var i = 0; i < CFG.audDims.length; i++) {
+        var o = CFG.audDims[i];
+        if (o.lvl && o.lvl !== 3) continue;           // уровни УС — одна колонка aud_org_f (пути любых уровней)
+        var v = (ap[o.d] || []).slice();
+        if (v.length) { v.sort(); fl.push({ column: o.col, operator: 'IN', value: v }); }
+      }
+      return fl;
+    }
+    function areaMask() { return repMask().concat(audMask()); }
+    function repMask() {
       var used = [], vals, i;
       for (i = 0; i < CFG.modes.length; i++) {
-        if (pickList(CFG.modes[i].key).length) used.push(CFG.modes[i].key);
+        if (CFG.modes[i].key !== 'aud' && pickList(CFG.modes[i].key).length) used.push(CFG.modes[i].key);
       }
       if (!used.length) return [{ column: 'mode_param', operator: 'IN', value: ['report'] }];
       vals = [];
@@ -1636,7 +1916,38 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       state.picks[key] = list;
     }
 
+    function audToggle(d, val, additive) {
+      var list = (state.aud.picks[d] || []).slice(), idx = list.indexOf(String(val));
+      if (additive) { if (idx >= 0) list.splice(idx, 1); else list.push(String(val)); }
+      else list = idx >= 0 && list.length === 1 ? [] : [String(val)];
+      state.aud.picks[d] = list;
+    }
     function onClick(e) {
+      // Дропдаун разреза аудитории: клик мимо закрывает.
+      var ddT = trigger(e.target, 'data-ddtoggle'), ddO = trigger(e.target, 'data-ddopt');
+      if (state.dd && !ddT && !ddO) { state.dd = null; render(); return; }
+      if (ddT) { state.dd = state.dd === ddT.getAttribute('data-ddtoggle') ? null : ddT.getAttribute('data-ddtoggle'); state.tip = null; hideTip(); render(); return; }
+      if (ddO) {
+        if (ddO.getAttribute('data-ddopt') === 'audDim') { state.aud.dim = ddO.getAttribute('data-val') || 'o3'; state.page = 0; }
+        state.dd = null; render(); return;
+      }
+      // Строка группы аудитории: выбор (Shift — несколько) → панель показывает эту группу людей.
+      var arow = trigger(e.target, 'data-aud');
+      if (arow) {
+        audToggle(audDim().d, arow.getAttribute('data-aud'), e.shiftKey);
+        emitSel();
+        render();
+        return;
+      }
+      var ast = trigger(e.target, 'data-asort');
+      if (ast) {
+        var acol = ast.getAttribute('data-asort'), as = state.aud.sort;
+        if (as.col === acol) as.dir *= -1; else state.aud.sort = { col: acol, dir: acol === 'name' ? 1 : -1 };
+        state.page = 0;
+        var bodyA = overlay.querySelector('.' + CFG.ns + '-cat .' + CFG.ns + '-panel-b');
+        if (bodyA) bodyA.innerHTML = catalogTableHtml();
+        return;
+      }
       // Подшапка «В разрезе»: смена разреза — чистый клиентский рендер,
       // все секции уже в ответе куба. ВЫБОР НЕ СБРАСЫВАЕТСЯ: строки новой
       // вкладки сужаются пиками остальных (pickedIds внутри catalogRows/
@@ -1669,6 +1980,11 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
         var uid = up.getAttribute('data-unpick');
         if (uid === '*') {
           state.picks = { report: [], collection: [], owner: [] };
+          state.aud.picks = { o: [], s: [], t: [], q: [], i: [], h: [] };
+        } else if (uid.indexOf('aud:') === 0) {
+          var ad0 = uid.slice(4).split('|')[0], av0 = uid.slice(5 + ad0.length);
+          if (av0 === '') state.aud.picks[ad0] = [];
+          else { var al0 = state.aud.picks[ad0] || [], ai0 = al0.indexOf(av0); if (ai0 >= 0) al0.splice(ai0, 1); }
         } else {
           var ukey = uid.split('|')[0], uval = uid.slice(ukey.length + 1);
           if (uval === '') state.picks[ukey] = [];
@@ -1735,6 +2051,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
         var a = act.getAttribute('data-action');
         if (a === 'clearPicks') {
           state.picks = { report: [], collection: [], owner: [] };
+          state.aud.picks = { o: [], s: [], t: [], q: [], i: [], h: [] };
           state.page = 0;
           emitSel();
           render();
@@ -1785,6 +2102,9 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     overlay.addEventListener('mousemove', onTipMove);
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('input', onInput);
+    if (state.onEsc) window.removeEventListener('keydown', state.onEsc);
+    state.onEsc = function (ev) { if ((ev.key || '') === 'Escape' && state.dd) { state.dd = null; render(); } };
+    window.addEventListener('keydown', state.onEsc);
     // Подсказка не должна оставаться висеть: курсор ушёл из iframe чарта (mouseout на быстром выходе
     // браузер не шлёт), окно потеряло фокус, список прокрутили под курсором.
     state.tipOff = function () { if (state.tip) { state.tip = null; hideTip(); } };
@@ -1796,6 +2116,15 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     }
 
 
+    // Сегмент ЦА «не заходили» пришёл из «Кто смотрит» — каталог сразу сортирует по не дошедшим (и возвращает
+    // прежнюю сортировку, когда сегмент сняли).
+    var sgn = segNow();
+    if (sgn !== (state.segSeen || '')) {
+      if (sgn === 'never') state.repSort = { col: 'never', dir: -1 };
+      else if (state.repSort.col === 'never') state.repSort = { col: 'users', dir: -1 };
+      state.segSeen = sgn;
+      state.page = 0;
+    }
     // Сверка фильтров: каталог — источник выбора (отвечает на «повтори») и получатель шапки, «Кто смотрит», строки ЦА.
     paResendOn('cat', sheetOf, CFG.paCols, areaMask);
     var paSync = paGuardMount(host, function () { return MODEL.stateJ && MODEL.stateJ.flt ? MODEL.stateJ.flt : null; }, sheetOf,

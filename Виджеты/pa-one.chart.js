@@ -48,19 +48,10 @@ var CFG = {
   selStaleWait: 10000,        // мс: после ответа под ПРЕЖНИЙ выбор ждём правильный, потом — автоповтор
   selGiveUp: 60000,           // мс: ответа нет совсем — через столько кнопка «Повторить запрос» (сами не повторяем)
   selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка
-  paCols: ['org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f'],  // колонки «Кто смотрит» в кросс-фильтре (ключ сверки)
-  // 30 колонок датасета pa_people (SQL — поставка 2026-09-22, файл 3);
-  // alias == имя колонки 1:1. section: area/total/freq/ctx/list/ts/coh.
-  fields: {
-    section: 'section', g: 'g', k: 'k', parent: 'parent', login: 'login',
-    fio: 'fio', lvl3: 'lvl3', lvl4: 'lvl4', spec: 'spec', stream: 'stream',
-    exp: 'exp', is_head: 'is_head', days: 'days', last_dt: 'last_dt', bin: 'bin',
-    users: 'users', users_prev: 'users_prev', views: 'views', views_prev: 'views_prev',
-    new_u: 'new_u', new_prev: 'new_prev', react_u: 'react_u',
-    regular: 'regular', regular_prev: 'regular_prev', sleeping: 'sleeping',
-    mau: 'mau', mau_prev: 'mau_prev', cnt: 'cnt', ages: 'ages', acts: 'acts',
-    ca_prev: 'ca_prev', ca_regprev: 'ca_regprev', ca_yr: 'ca_yr', ca_out: 'ca_out', state_j: 'state_j'
-  },
+  paCols: ['org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'seg_f'],  // колонки «Кто смотрит» в кросс-фильтре (ключ сверки)
+  // 5 колонок датасета pa_one v2 (2026-09-30): всё упаковано в k (строки через перевод строки, поля через «|»),
+  // кириллица — компактно (unz). Формат секций — в шапке SQL (Виджеты/pa-one.data.sql).
+  fields: { section: 'section', g: 'g', k: 'k', parent: 'parent', n: 'n' },
   // ЦА: доступ почти у всех (ЦА ≥ wideShare сотрудников) — проценты охвата скрыты (знаменатель ничего не значит).
   wideShare: 0.3,
   text: { noData: 'Нет данных' },
@@ -440,24 +431,57 @@ function freqLabels(grain) {
 // маска текущего окна | маска предыдущего | возраст первого визита | просмотров | дней с визита (−1 — нет) |
 // флаги (1 рук · 2 MAU · 4 MAU пред. · 8 в этом году · 16 сотрудник · 32 доступ · 64 в ЦА) | код HQ | код IT.
 // Коды — номера в словаре (секция d). Активных периодов, корзину и «новый» считаем из масок.
-function bits(v) { var c = 0; v = Math.floor(v) || 0; while (v > 0) { c += v % 2; v = Math.floor(v / 2); } return c; }
+// Маски окна — до 30 бит (текущее и предыдущее окна приходят раздельно): подсчёт единиц — побитово (SWAR).
+function bits(v) {
+  v = +v || 0;
+  if (v >= 0 && v < 4294967296) {
+    v = v >>> 0;
+    v = v - ((v >>> 1) & 0x55555555);
+    v = (v & 0x33333333) + ((v >>> 2) & 0x33333333);
+    return ((((v + (v >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24);
+  }
+  var c = 0; v = Math.floor(v); while (v > 0) { c += v % 2; v = Math.floor(v / 2); } return c;
+}
+// Компактная кириллица (макрос cz в SQL): Superset пишет кириллицу в JSON как \uXXXX — 6 байт на букву. SQL берёт
+// отрезок из кириллицы и пробелов в `…` и заменяет буквы однобайтными по таблице (та же — здесь); вне отрезков
+// ~~ — тильда, ~p — «|», ~c — «^», ~b — «`». Разбор обратный.
+var CZ_T = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%';
+var CZ_C = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя';
+var CZ_M = null;
+function unz(s) {
+  s = s == null ? '' : String(s);
+  if (s.indexOf('`') < 0 && s.indexOf('~') < 0) return s;
+  if (!CZ_M) { CZ_M = {}; for (var q = 0; q < CZ_T.length; q++) CZ_M[CZ_T.charAt(q)] = CZ_C.charAt(q); }
+  var out = '', i = 0, n = s.length, c, run = false, d;
+  while (i < n) {
+    c = s.charAt(i);
+    if (run) {
+      if (c === '`') run = false; else out += CZ_M[c] || c;
+      i++;
+    } else if (c === '`') { run = true; i++; }
+    else if (c === '~' && i + 1 < n) { d = s.charAt(i + 1); out += d === 'p' ? '|' : (d === 'c' ? '^' : (d === 'b' ? '`' : d)); i += 2; }
+    else { out += c; i++; }
+  }
+  return out;
+}
+// Целое поле упаковки (без разбора разрядов и запятых, как num()).
+function int(v) { var x = +v; return isNaN(x) ? 0 : x; }
 function bitAt(v, k) { return Math.floor((v || 0) / Math.pow(2, k)) % 2 === 1; }
 function binOf(days, FB) { return !days ? 0 : (days <= FB[0] ? 1 : (days <= FB[1] ? 2 : (days <= FB[2] ? 3 : 4))); }
 function parseListPack(txt, path, out, m) {
   var lines = txt.split('\n'), ps = path ? path.split(CFG.orgSep) : [], FB = CFG.fbins[m.grain] || CFG.fbins.d;
-  var n = CFG.grains[m.grain].n, kt = m.hist.kt, md = refDay().getTime();
+  var n = CFG.grains[m.grain].n, kt = m.hist.kt;
   var dv = function (g, id) { return m.dict[g] && m.dict[g][id] != null ? m.dict[g][id] : ''; };
   for (var i = 0; i < lines.length; i++) {
     var f = lines[i].split('|');
     if (f.length < 13 || !f[0]) continue;
-    var cur = num(f[5]) || 0, prev = num(f[6]) || 0, fk = num(f[7]), fl = num(f[10]) || 0, last = num(f[9]);
+    var cur = int(f[5]), prev = int(f[6]), fk = f[7] === '' ? null : int(f[7]), fl = int(f[10]), last = f[9] === '' ? null : int(f[9]);
     var days = bits(cur), bin = Math.max(1, binOf(days, FB)), seg = segOf(bin);
-    var dt = last == null || last < 0 ? null : new Date(md - last * 86400000);
     out.push({
-      login: f[0], fio: f[1], lvl3: ps[0] || '', lvl4: ps[1] || '', org: path,
+      login: f[0], fio: unz(f[1]), lvl3: ps[0] || '', lvl4: ps[1] || '', org: path,
       spec: dv('spec', f[2]), stream: dv('stream', f[3]), exp: dv('exp', f[4]), is_head: fl & 1,
-      days: days, views: num(f[8]) || 0,
-      last_dt: dt ? { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate() } : null,
+      days: days, views: int(f[8]),
+      last: last == null || last < 0 ? null : last,   // дней от последнего визита до даты свежести (дата — lastDate(p))
       bin: bin, seg: seg.key, segCls: seg.cls,
       nw: fk != null && fk < n && fk <= kt ? 1 : 0, m1: (fl >> 1) & 1, m2: (fl >> 2) & 1,
       // ЦА: yr — заходил в этом году, stf — действующий сотрудник, acc — доступ к области, ca — в ЦА
@@ -477,7 +501,7 @@ function parseHold(txt, path, out, m) {
     var x = lines[i].split('|');
     if (x.length < 9) continue;
     out.push({ org: path, spec: dv('spec', x[0]), stream: dv('stream', x[1]), is_head: x[2] === '1' ? 1 : 0,
-      hq: dv('hq', x[3]), it: dv('it', x[4]), n: num(x[5]) || 0, na: num(x[6]) || 0, cn: num(x[7]) || 0, cna: num(x[8]) || 0 });
+      hq: dv('hq', x[3]), it: dv('it', x[4]), n: int(x[5]), na: int(x[6]), cn: int(x[7]), cna: int(x[8]) });
   }
 }
 function parseNever(txt, path, out, m) {
@@ -486,10 +510,10 @@ function parseNever(txt, path, out, m) {
   for (var i = 0; i < lines.length; i++) {
     var y = lines[i].split('|');
     if (y.length < 9 || !y[0]) continue;
-    out.push({ login: y[0], fio: y[1], lvl3: ps[0] || '', lvl4: ps[1] || '', org: path, spec: dv('spec', y[2]), stream: dv('stream', y[3]),
+    out.push({ login: y[0], fio: unz(y[1]), lvl3: ps[0] || '', lvl4: ps[1] || '', org: path, spec: dv('spec', y[2]), stream: dv('stream', y[3]),
       is_head: y[4] === '1' ? 1 : 0, hq: dv('hq', y[5]), it: dv('it', y[6]), acc: y[7] === '1', exp: dv('exp', y[8]),
       stf: true, fired: false, ca: true, nv: true, yr: false,
-      cur: 0, prev: 0, fk: null, days: 0, daysPrev: 0, views: 0, bin: 0, binPrev: 0, nw: 0, m1: 0, m2: 0, last_dt: null,
+      cur: 0, prev: 0, fk: null, days: 0, daysPrev: 0, views: 0, bin: 0, binPrev: 0, nw: 0, m1: 0, m2: 0, last: null,
       seg: 'Ни разу', segCls: 'dead' });
   }
 }
@@ -534,87 +558,100 @@ function buildModel() {
     // ЦА (второй лист): словарь кодов, штат без визитов (hold), не заходившие из ЦА поимённо (never),
     // как роздан доступ (acl), режим и условия ЦА, числа из SQL (пред. период, в этом году, вне ЦА).
     dict: { spec: {}, stream: {}, exp: {}, hq: {}, it: {} }, hold: [], never: [], acl: { groups: [], users: 0 },
-    staff: 0, caMode: 'acc', caApplied: caEmpty(), caScal: { prev: 0, regPrev: 0, yr: 0, out: 0 }, namesOmitted: false
+    staff: 0, caMode: 'acc', caApplied: caEmpty(), audApplied: caEmpty(), caScal: { prev: 0, regPrev: 0, yr: 0, out: 0 }, namesOmitted: false
   };
   var gotGrain = false, listRows = [], hRows = [], nRows = [];
+  // Строки секции: k — текст через перевод строки (пустой — ни одной строки).
+  var linesOf = function (r) { var t = String(r[F.k] == null ? '' : r[F.k]); return t ? t.split('\n') : []; };
   for (i = 0; i < rawData.length; i++) {
     r = rawData[i] || {};
-    var sec = String(r[F.section] || '');
+    var sec = String(r[F.section] || ''), L, j, f;
     if (sec === 'area') {
       var gr = String(r[F.parent] || '');
       if (CFG.grains[gr]) { m.grain = gr; gotGrain = true; }
       m.area.mode = String(r[F.g] || '');
       var kv = String(r[F.k] == null ? '' : r[F.k]);
       m.area.sel = kv ? kv.split('\n') : [];
-      m.area.name = String(r[F.fio] || '');
-      try { m.flt = r[F.exp] ? JSON.parse(String(r[F.exp])) : null; } catch (eF) { m.flt = null; }   // эхо фильтров (сверка)
-      if (r[F.days] != null && r[F.days] !== '') m.hist = { kt: (num(r[F.days]) || 0) - 1, ds: toDate(r[F.last_dt]) };
-      if (r[F.lvl3]) DATA_MD = toDate(r[F.lvl3]);   // дата свежести (подписи периодов)
+      // n — kt + 1: сколько свежих периодов «надёжны» для новых (0 — ни одного)
+      if (r[F.n] != null && r[F.n] !== '') m.hist.kt = int(r[F.n]) - 1;
+    } else if (sec === 'md') {
+      if (r[F.k]) DATA_MD = toDate(r[F.k]);          // дата свежести (подписи периодов)
+      m.hist.ds = toDate(r[F.parent]);                // начало истории событий
+    } else if (sec === 'nm') {
+      m.area.name = String(r[F.k] || '');
+    } else if (sec === 'flt') {
+      try { m.flt = r[F.k] ? JSON.parse(String(r[F.k])) : null; } catch (eF) { m.flt = null; }   // эхо фильтров (сверка)
+    } else if (sec === 'sj') {
       var sj = {};
-      try { sj = JSON.parse(String(r[F.state_j] || '{}')) || {}; } catch (eS) { sj = {}; }
+      try { sj = JSON.parse(String(r[F.k] || '{}')) || {}; } catch (eS) { sj = {}; }
       m.staff = num(sj.staff) || 0;
       if (sj.wide != null) CFG.wideShare = num(sj.wide) || CFG.wideShare;
       m.caMode = sj.caMode === 'cond' ? 'cond' : 'acc';
       var ca = sj.ca || {};
       m.caApplied = { org: ca.org || [], spec: ca.spec || [], stream: ca.stream || [], hq: ca.hq || [], it: ca.it || [], heads: ca.head || '', adg: ca.adg || [] };
+      // группа людей из вкладки «Аудитория» каталога — тоже условие ЦА (И с условиями шапки)
+      var au = sj.aud || {};
+      m.audApplied = { org: au.org || [], spec: au.spec || [], stream: au.stream || [], hq: au.hq || [], it: au.it || [], heads: au.head || '', adg: [] };
     } else if (sec === 'total') {
+      // users|users_prev|views|views_prev|new_u|new_prev|react_u|regular|regular_prev|sleeping|mau|mau_prev|
+      // ca_prev|ca_regprev|ca_yr|ca_out|корзины 1…4
+      f = String(r[F.k] || '').split('|');
       m.kpi = {
-        users: num(r[F.users]) || 0, users_prev: num(r[F.users_prev]) || 0,
-        views: num(r[F.views]) || 0, views_prev: num(r[F.views_prev]) || 0,
-        new_u: num(r[F.new_u]) || 0, new_prev: num(r[F.new_prev]) || 0,
-        regular: num(r[F.regular]) || 0, regular_prev: num(r[F.regular_prev]) || 0,
-        sleeping: num(r[F.sleeping]) || 0,
-        mau: num(r[F.mau]) || 0, mau_prev: num(r[F.mau_prev]) || 0
+        users: int(f[0]), users_prev: int(f[1]), views: int(f[2]), views_prev: int(f[3]),
+        new_u: int(f[4]), new_prev: int(f[5]), regular: int(f[7]), regular_prev: int(f[8]),
+        sleeping: int(f[9]), mau: int(f[10]), mau_prev: int(f[11])
       };
       m.total = m.kpi.users;
-      m.caScal = { prev: num(r[F.ca_prev]) || 0, regPrev: num(r[F.ca_regprev]) || 0, yr: num(r[F.ca_yr]) || 0, out: num(r[F.ca_out]) || 0 };
+      m.caScal = { prev: int(f[12]), regPrev: int(f[13]), yr: int(f[14]), out: int(f[15]) };
+      for (j = 0; j < 4; j++) if (int(f[16 + j])) m.freqCtx[String(j + 1)] = int(f[16 + j]);
     } else if (sec === 'd') {
+      // словарь: значения по строкам, код — номер строки (1…)
       var dg = String(r[F.g] || '');
-      if (m.dict[dg]) m.dict[dg][String(r[F.k] || '')] = String(r[F.parent] == null ? '' : r[F.parent]);
+      if (m.dict[dg]) { L = linesOf(r); for (j = 0; j < L.length; j++) m.dict[dg][String(j + 1)] = unz(L[j]); }
     } else if (sec === 'acl') {
-      if (String(r[F.g]) === 'users') m.acl.users = num(r[F.users]) || 0;
-      else m.acl.groups.push({ name: String(r[F.k] || ''), n: num(r[F.users]) || 0 });
+      m.acl.users = int(r[F.n]);
+      L = linesOf(r);
+      for (j = 0; j < L.length; j++) { f = L[j].split('|'); m.acl.groups.push({ name: unz(f[0]), n: int(f[1]) }); }
     } else if (sec === 'h') {
       hRows.push(r);
     } else if (sec === 'n') {
       nRows.push(r);
-    } else if (sec === 'freq') {
-      m.freqCtx[String(r[F.k])] = num(r[F.users]) || 0;
     } else if (sec === 'cal') {
-      // Календарь: день = возраст k (дней назад от даты свежести), последние 60 дней при любом периоде.
-      m.cal[num(r[F.k]) || 0] = { users: num(r[F.users]) || 0, new_u: num(r[F.new_u]) || 0, views: num(r[F.views]) || 0 };
+      // календарь: «день|users|new_u|views», день = возраст k (дней назад от даты свежести), последние 60 дней
+      L = linesOf(r);
+      for (j = 0; j < L.length; j++) { f = L[j].split('|'); m.cal[int(f[0])] = { users: int(f[1]), new_u: int(f[2]), views: int(f[3]) }; }
     } else if (sec === 'ts') {
-      m.ts.push({
-        k: num(r[F.k]) || 0,
-        users: num(r[F.users]) || 0,
-        new_u: num(r[F.new_u]) || 0,
-        react_u: num(r[F.react_u]) || 0,
-        views: num(r[F.views]) || 0
-      });
+      // динамика: «возраст|users|new_u|react_u|views»
+      L = linesOf(r);
+      for (j = 0; j < L.length; j++) { f = L[j].split('|'); m.ts.push({ k: int(f[0]), users: int(f[1]), new_u: int(f[2]), react_u: int(f[3]), views: int(f[4]) }); }
     } else if (sec === 'ctx') {
-      // Группа — люди, активные в ТЕКУЩЕМ периоде (users); строки «только
-      // предыдущий период» (users = 0) в таблицу не попадают.
-      var gg = String(r[F.g] || ''), kk = String(r[F.k] || '');
-      if (!m.gm[gg] || !kk || !(num(r[F.users]) || 0)) continue;
-      var grp = {
-        k: kk, parent: String(r[F.parent] || ''),
-        users: num(r[F.users]) || 0, users_prev: num(r[F.users_prev]) || 0,
-        views: num(r[F.views]) || 0, views_prev: num(r[F.views_prev]) || 0,
-        new_u: num(r[F.new_u]) || 0, regular: num(r[F.regular]) || 0, sleeping: num(r[F.sleeping]) || 0
-      };
-      m.gm[gg][kk] = grp;
-      if (gg === 'org') (m.orgKids[grp.parent] = m.orgKids[grp.parent] || []).push(kk);
+      // группы (строка на разрез g): «ключ|родитель|users|users_prev|views|views_prev|new_u|regular|sleeping»;
+      // только группы с людьми ТЕКУЩЕГО периода
+      var gg = String(r[F.g] || '');
+      if (!m.gm[gg]) continue;
+      L = linesOf(r);
+      for (j = 0; j < L.length; j++) {
+        f = L[j].split('|');
+        var kk = unz(f[0]);
+        if (!kk || !int(f[2])) continue;
+        var grp = { k: kk, parent: unz(f[1]), users: int(f[2]), users_prev: int(f[3]), views: int(f[4]), views_prev: int(f[5]),
+          new_u: int(f[6]), regular: int(f[7]), sleeping: int(f[8]) };
+        m.gm[gg][kk] = grp;
+        if (gg === 'org') (m.orgKids[grp.parent] = m.orgKids[grp.parent] || []).push(kk);
+      }
     } else if (sec === 'list') {
       listRows.push(r);             // распаковка — после цикла: нужны словарь, грануляция и дата свежести
     } else if (sec === 'coh') {
-      var cm = toDate(r[F.k]);
-      if (!cm) continue;
-      var ages = arr(r[F.ages]), acts = arr(r[F.acts]), byAge = {};
-      for (var ai = 0; ai < ages.length; ai++) {
-        var ag = num(ages[ai]);
-        if (ag != null) byAge[ag] = num(acts[ai]) || 0;
+      // когорты: «месяц|людей|возрасты через ,|активных через ,»
+      L = linesOf(r);
+      for (j = 0; j < L.length; j++) {
+        f = L[j].split('|');
+        var cm = toDate(f[0]);
+        if (!cm) continue;
+        var ages = f[2] ? f[2].split(',') : [], acts = f[3] ? f[3].split(',') : [], byAge = {};
+        for (var ai = 0; ai < ages.length; ai++) byAge[int(ages[ai])] = int(acts[ai]);
+        m.coh.push({ month: cm, size: int(f[1]), byAge: byAge });
       }
-      m.coh.push({ month: cm, size: num(r[F.cnt]) || 0, byAge: byAge });
     }
   }
   // Грануляция без area-строки (старый ответ) — по числу бакетов.
@@ -652,9 +689,9 @@ function buildModel() {
       (m.orgKids[par] = m.orgKids[par] || []).push(node);
     }
   };
-  for (i = 0; i < listRows.length; i++) parseListPack(String(listRows[i][F.k] || ''), String(listRows[i][F.parent] || ''), m.list, m);
-  for (i = 0; i < hRows.length; i++) { addPath(String(hRows[i][F.parent] || '')); parseHold(String(hRows[i][F.k] || ''), String(hRows[i][F.parent] || ''), m.hold, m); }
-  for (i = 0; i < nRows.length; i++) parseNever(String(nRows[i][F.k] || ''), String(nRows[i][F.parent] || ''), m.never, m);
+  for (i = 0; i < listRows.length; i++) parseListPack(String(listRows[i][F.k] || ''), unz(listRows[i][F.parent]), m.list, m);
+  for (i = 0; i < hRows.length; i++) { var hp = unz(hRows[i][F.parent]); addPath(hp); parseHold(String(hRows[i][F.k] || ''), hp, m.hold, m); }
+  for (i = 0; i < nRows.length; i++) parseNever(String(nRows[i][F.k] || ''), unz(nRows[i][F.parent]), m.never, m);
   var holdCa = 0;
   for (i = 0; i < m.hold.length; i++) holdCa += m.hold[i].cn;
   m.namesOmitted = holdCa > 0 && !m.never.length;
@@ -713,15 +750,20 @@ function wide() {
   return caModeNow() === 'acc' && MODEL.staff > 0 && t.ca >= CFG.wideShare * MODEL.staff;
 }
 function caCondText() {
-  var c = caCfg(), parts = [];
+  var parts = caCondParts(caCfg()), ap = caCondParts(MODEL.audApplied || caEmpty());
+  // группа из каталога («Аудитория») — после условий шапки
+  return parts.concat(ap).join(' · ');
+}
+function caCondParts(c) {
+  var parts = [];
   if (c.org.length) parts.push(c.org.length === 1 ? c.org[0].split(CFG.orgSep).pop() : c.org.length + ' подразд.');
   if (c.spec.length) parts.push(c.spec.length === 1 ? c.spec[0] : c.spec.length + ' спец.');
   if (c.stream.length) parts.push(c.stream.length === 1 ? c.stream[0] : c.stream.length + ' стрим.');
   if (c.hq.length) parts.push(c.hq.join(', '));
   if (c.it.length) parts.push(c.it.join(', '));
-  if (c.heads === '1') parts.push('руководители'); else if (c.heads === 'n') parts.push('не руководители');
+  if (c.heads === '1') parts.push('руководители'); else if (c.heads === 'n' || c.heads === '0') parts.push('не руководители');
   if (c.adg && c.adg.length) parts.push(c.adg.length === 1 ? c.adg[0] : c.adg.length + ' AD-групп');
-  return parts.join(' · ');
+  return parts;
 }
 
 // ---------- БЛОК 4: ФОРМАТИРОВАНИЕ И ЦВЕТ ----------
@@ -1143,7 +1185,7 @@ function buildCSS() {
     P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
-    P + '-rflag.fired{background:#fde8e8;color:#b42318;}',
+    P + '-rflag.fired{background:#f1f3f6;color:#6b7280;}',   // «не в штате» — нейтрально: ушёл сам или не сотрудник
     P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
     '  border-radius:999px;padding:2px 9px;}',
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
@@ -1405,11 +1447,17 @@ function localGM(cut) {
 }
 
 // Визит «вчера / N дн»: витрина за вчера, последняя возможная дата — вчера.
+// Дата визита не хранится у человека (40+ тыс. объектов Date на весь Proteus): p.last — дней до даты свежести.
 function daysAgo(p) {
-  if (!p.last_dt) return null;
-  var now = new Date();
-  return Math.round((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    - Date.UTC(p.last_dt.y, p.last_dt.m, p.last_dt.d)) / 86400000);
+  if (p.last == null) return null;
+  var now = new Date(), md = refDay();
+  return p.last + Math.round((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    - Date.UTC(md.getUTCFullYear(), md.getUTCMonth(), md.getUTCDate())) / 86400000);
+}
+function lastDate(p) {
+  if (p.last == null) return null;
+  var dt = new Date(refDay().getTime() - p.last * 86400000);
+  return { y: dt.getUTCFullYear(), m: dt.getUTCMonth(), d: dt.getUTCDate() };
 }
 function lastVisitHtml(p) {
   var d = daysAgo(p);
@@ -1448,7 +1496,7 @@ function personRowHtml(p) {
     ' data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
     '>' +
     '<td class="txt">' + esc(p.fio || p.login) +
-      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином">уволен</i>' : '') +
+      (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином: ушёл из компании или логин не сотрудника (подрядчик, служебная учётка)">не в штате</i>' : '') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(p.login) + '</span></td>' +
     '<td class="txt sec">' + esc(ps.length ? ps[ps.length - 1] : '—') +
       '<span class="' + CFG.ns + '-unit-sub">' + esc(ps.length > 1 ? 'УС-' + (ps.length + 2) + ' · ' + ps[0] : (p.spec || '—')) + '</span></td>' +
@@ -1803,7 +1851,7 @@ function nestPeopleHtml(nd, people, span) {
     var p = sorted[i], on = state.picks.login.indexOf(p.login) >= 0;
     h += '<tr class="pk' + (on ? ' sel' : '') + '" data-who="' + esc(p.login) + '" data-whocut="login" tabindex="0" role="button" aria-pressed="' + on + '"' +
       '>' +
-      '<td class="txt pn" style="padding-left:' + (30 + nd.depth * 18) + 'px">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином">уволен</i>' : '') +
+      '<td class="txt pn" style="padding-left:' + (30 + nd.depth * 18) + 'px">' + esc(p.fio || p.login) + (p.is_head ? ' <i class="' + CFG.ns + '-rflag head">рук.</i>' : '') + (p.fired ? ' <i class="' + CFG.ns + '-rflag fired" title="Нет среди действующих сотрудников с AD-логином: ушёл из компании или логин не сотрудника (подрядчик, служебная учётка)">не в штате</i>' : '') +
         ' <span class="' + CFG.ns + '-wo-login">' + esc(p.login) + '</span></td>' +
       '<td>' + nf(p.days) + THIN + grainCfg().us + '</td><td>' + (p.views ? nf(p.views) : '0') + ' просм.</td><td>' + lastVisitHtml(p) + '</td>' +
       '<td class="txt"><span class="' + CFG.ns + '-sig-chip ' + p.segCls + '">' + esc(p.seg) + '</span></td></tr>';
@@ -1882,12 +1930,12 @@ function exportRows() {
   var num2 = function (v, d) { return v == null || !isFinite(v) ? '' : (d ? v.toFixed(d).replace('.', ',') : String(Math.round(v))); };
   if (cut === 'none') {
     head = ['ФИО', 'Логин', 'Руководитель', 'УС-3', 'УС-4', 'УС-5', 'УС-6', 'УС-7', 'Специализация', 'Стрим', 'Стаж',
-      'HQ', 'IT', 'В ЦА', 'Доступ', actLabel(), 'Просмотров', 'Последний визит', 'Сегмент', 'Уволен'];
+      'HQ', 'IT', 'В ЦА', 'Доступ', actLabel(), 'Просмотров', 'Последний визит', 'Сегмент', 'Не в штате'];
     var ps = sortPeople(shownList());
     for (i = 0; i < ps.length; i++) {
       var p = ps[i], op = orgParts(p.org);
       rows.push([p.fio, p.login, p.is_head ? 'да' : '', op[0] || '', op[1] || '', op[2] || '', op[3] || '', op[4] || '',
-        p.spec, p.stream, p.exp, p.hq || '', p.it || '', p.ca ? 'да' : '', p.acc ? 'да' : '', String(p.days), String(p.views), isoDate(p.last_dt),
+        p.spec, p.stream, p.exp, p.hq || '', p.it || '', p.ca ? 'да' : '', p.acc ? 'да' : '', String(p.days), String(p.views), isoDate(lastDate(p)),
         isCa() && p.segCa ? p.segCa : p.seg, p.fired ? 'да' : '']);
     }
     return { head: head, rows: rows };
@@ -1983,7 +2031,7 @@ function segStripHtml() {
     var pt = parts[i], on = state.segSel === pt.key, share = pt.n / tot * 100;
     h += '<button class="' + CFG.ns + '-seg-part ' + pt.key + (on ? ' on' : '') + (state.segSel && !on ? ' off' : '') + '"' +
       ' data-seg="' + pt.key + '" style="flex:' + Math.max(8, share).toFixed(2) + ' 1 0"' +
-      tip({ title: pt.label, text: pt.text + ' Клик оставит в списке только их' + (on ? '; повторный клик снимет' : '') + '.',
+      tip({ title: pt.label, text: pt.text + ' Клик оставит в списке только их и сузит каталог слева' + (pt.key === 'never' ? ' (там — сколько людей ЦА не дошло до каждого отчёта)' : '') + (on ? '; повторный клик снимет' : '') + '.',
         rows: [{ label: 'Человек', value: nf(pt.n), color: pt.c }] }) + '>' +
       '<span class="sp-bar" style="background:' + pt.c + '"></span>' +
       '<span class="sp-v">' + nf(pt.n) + '</span>' +
@@ -2191,7 +2239,7 @@ function tabsHtml(tabKey, tabs) {
 // Сколько условий ушло из «Кто смотрит» в каталог (как счётчик вкладок каталога):
 // выбранные группы и люди + корзина частоты + «только руководители» + исключения.
 function whoFilterCount() {
-  return pickCount() + (state.freqSel ? 1 : 0) + (state.headsOnly ? 1 : 0) + (state.excl.length ? 1 : 0);
+  return pickCount() + (state.freqSel ? 1 : 0) + (isCa() && state.segSel ? 1 : 0) + (state.headsOnly ? 1 : 0) + (state.excl.length ? 1 : 0);
 }
 function searchBoxHtml(id, placeholder, value) {
   return '<div class="' + CFG.ns + '-psearch">' +
@@ -2519,7 +2567,8 @@ function areaFilterRowHtml(ai) {
     }
   };
   var fioOf = {};
-  for (i = 0; i < MODEL.list.length; i++) fioOf[MODEL.list[i].login] = MODEL.list[i].fio || MODEL.list[i].login;
+  // словарь логин → ФИО — только когда он нужен (выбраны люди или исключения): на всём Proteus это 40+ тыс. людей
+  if (pk.login.length || state.excl.length) for (i = 0; i < MODEL.list.length; i++) fioOf[MODEL.list[i].login] = MODEL.list[i].fio || MODEL.list[i].login;
   add('org', function (x) { return 'УС-' + (orgParts(x).length + 2); }, 'Подразделения', pk.org, orgShort, function (x) { return x; });
   add('spec', 'Специализация', 'Специализации', pk.spec);
   add('stream', 'Стрим', 'Стримы', pk.stream);
@@ -2527,6 +2576,7 @@ function areaFilterRowHtml(ai) {
   add('heads', '', 'Тим-лиды', pk.heads);
   add('login', 'Человек', 'Люди', pk.login, function (x) { return fioOf[x] || x; });
   if (state.freqSel) own.push({ id: 'freq|', k: 'Частота', v: MODEL.labels[parseInt(state.freqSel, 10) - 1] || state.freqSel });
+  if (isCa() && state.segSel) own.push({ id: 'seg|', k: 'ЦА', v: { reach: 'заходили', never: 'не заходили', out: 'вне ЦА заходили' }[state.segSel] || state.segSel });
   if (state.headsOnly) own.push({ id: 'headsOnly|', k: '', v: 'Только руководители' });
   if (state.excl.length) own.push({ id: 'excl|', k: 'Исключено', v: String(state.excl.length), full: state.excl.map(function (x) { return fioOf[x] || x; }).slice(0, 8).join(', ') });
   // Только то, что снимается здесь же (×): выбор каталога виден в заголовке панели.
@@ -2690,7 +2740,9 @@ function buildHTML() {
   h.push('<div class="' + N + '-panel-h">' +
     '<div class="' + N + '-h-txt"><span>' + esc(title) + ' · <span class="' + N + '-h-area"' + tip({ title: 'Область', text: ai.text }) + '>' +
       esc(ai.mut ? 'весь Proteus' : ai.pill) + '</span>' +
-      (caModeNow() === 'cond' ? ' · <span class="' + N + '-h-area"' + tip({ title: 'Целевая аудитория по условиям', text: 'Все числа панели и каталога — только по людям ЦА: ' + caCondText() + '. Изменить или сбросить — в строке «Целевая аудитория».' }) + '>ЦА: ' + esc(caCondText()) + '</span>' : '') +
+      (caModeNow() === 'cond' ? ' · <span class="' + N + '-h-area"' + tip({ title: 'Целевая аудитория по условиям', text: caCondParts(MODEL.audApplied || caEmpty()).length
+        ? 'Все числа панели — только по людям ЦА: ' + caCondText() + '. Группа выбрана в каталоге (вкладка «Аудитория») — там и снимается; условия строки «Целевая аудитория» — в шапке.'
+        : 'Все числа панели и каталога — только по людям ЦА: ' + caCondText() + '. Изменить или сбросить — в строке «Целевая аудитория».' }) + '>ЦА: ' + esc(caCondText()) + '</span>' : '') +
       '</span>' +
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
@@ -2938,10 +2990,12 @@ function calendarHtml() {
 // Правила из шапки charts.js: ось значений от нуля, урезать нельзя; оси Y нет,
 // значения подписаны у марок; столкнувшиеся подписи скрываются (шаг показа);
 // зазор между панелями = STACK_GAP. Резиновость через viewBox + width:100%.
-var SVG_W = 760;
+// Размеры, измеренные после монтажа, живут в state: Proteus перезапускает скрипт на каждый новый ответ, и с
+// дефолтных 760 / 0 каждый ответ рисовался ДВАЖДЫ (сборка → замер → пересборка).
+var SVG_W = state.svgW || 760;
 // Высота динамики под ячейку чарта: меряется ПОСЛЕ монтажа (как SVG_W) и
 // делится между стеком пользователей (60%) и просмотрами (40%). 0 — дефолт.
-var DYN_H = 0;
+var DYN_H = state.dynH || 0;
 // Анимация появления (ДС 6.5) — только в рендере с НОВЫМИ данными (клик по отчёту,
 // смена периода): ресайз, наведение и клики внутри панели не анимируют.
 var ANIM = false, CLIP_N = 0;
@@ -2971,7 +3025,7 @@ function revealClip(h) {
     '</rect></clipPath></defs>' };
 }
 // Высота кривой удержания: остаток тела вкладки «Закрепляемость» (как у «Динамики»).
-var COH_H = 0;
+var COH_H = state.cohH || 0;
 function r1(v) { return Math.round(v * 10) / 10; }
 function svgHeadroom(max, n) {
   return Math.max(1, Math.ceil(max * (n > CFG.spacing.dense ? CFG.spacing.headroomDense : CFG.spacing.headroom)));
@@ -3485,7 +3539,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       avail -= CFG.spacing.stackGap * 3;
       avail = Math.max(360, Math.floor(avail));
       if (Math.abs(avail - DYN_H) <= 4) return false;
-      DYN_H = avail;
+      DYN_H = avail; state.dynH = avail;
       return true;
     }
     // Кривая удержания тянется на высоту тела вкладки (минус заголовок «Когорты…»).
@@ -3498,7 +3552,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
       avail = Math.max(240, Math.floor(avail - 8));
       if (Math.abs(avail - COH_H) <= 4) return false;
-      COH_H = avail;
+      COH_H = avail; state.cohH = avail;
       return true;
     }
     function syncSvgWidth() {
@@ -3506,7 +3560,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       if (!svgs.length) return false;
       var w = svgs[0].clientWidth || 0;
       if (!w || Math.abs(w - SVG_W) <= 2) return false;
-      SVG_W = w;
+      SVG_W = w; state.svgW = w;
       return true;
     }
     // Прокрутка переживает пересборку и перезапуск скрипта Proteus (кросс-фильтр перезапускает чарт в том же
@@ -3697,6 +3751,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       // Исключённые логины настроек списка — выпадают и из каталога, и из шапки.
       if (state.excl.length) fl.push({ column: 'exl_f', operator: 'IN', value: state.excl.slice().sort() });
       if (state.freqSel) fl.push({ column: 'freq_f', operator: 'IN', value: [state.freqSel] });
+      // Сегмент ЦА (режим «по ЦА») — как корзина частоты: каталог показывает этих людей (не заходили — «не дошедших» по отчётам).
+      if (isCa() && state.segSel) fl.push({ column: 'seg_f', operator: 'IN', value: [state.segSel] });
       return fl;
     }
     function emitBus() {
@@ -3761,8 +3817,9 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         var ukey = uid === '*' ? '*' : uid.split('|')[0], uval = uid === '*' ? '' : uid.slice(ukey.length + 1);
         if (ukey === '*') {
           for (var pk0 in state.picks) if (Object.prototype.hasOwnProperty.call(state.picks, pk0)) state.picks[pk0] = [];
-          state.freqSel = null; state.headsOnly = false; state.excl = [];
+          state.freqSel = null; state.segSel = null; state.headsOnly = false; state.excl = [];
         } else if (ukey === 'freq') state.freqSel = null;
+        else if (ukey === 'seg') state.segSel = null;
         else if (ukey === 'headsOnly') state.headsOnly = false;
         else if (ukey === 'excl') state.excl = [];
         else if (uval === '') state.picks[ukey] = [];
@@ -3908,13 +3965,15 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       }
       // Вкладки панели и переключалки: data-view="view:who" | "cohView:curve" |
       // "viewsMode:per" — префикс = ключ состояния.
-      // Полоса ЦА: клик по сегменту оставляет в списке только его (повторный — снимает). Каталог не трогает.
+      // Полоса ЦА: клик по сегменту оставляет в списке только его (повторный — снимает) и сужает каталог слева
+      // (seg_f) — так же, как корзина частоты в режиме «по частоте» (правка 2026-09-30).
       var sgp = trigger(e.target, 'data-seg');
       if (sgp) {
         var sk0 = sgp.getAttribute('data-seg');
         state.segSel = state.segSel === sk0 ? null : sk0;
         state.page = 0;
         render();
+        emitBus();
         return;
       }
       var tab = trigger(e.target, 'data-view');
@@ -3922,10 +3981,12 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         // Смена разбивки: корзина частоты — фильтр каталога (freq_f), в режиме ЦА её не видно — снимаем.
         var wm = String(tab.getAttribute('data-view')).split(':')[1] === 'ca' ? 'ca' : 'freq';
         if (wm !== state.whoMode) {
-          var hadFreq = !!state.freqSel;
+          // корзина частоты и сегмент ЦА — фильтры каталога (freq_f / seg_f): в другом режиме их не видно — снимаем
+          var hadFreq = !!state.freqSel, hadSeg = !!state.segSel;
           state.whoMode = wm; state.segSel = null; state.page = 0;
-          if (wm === 'ca' && hadFreq) { state.freqSel = null; render(); emitBus(); return; }
+          if (wm === 'ca' && hadFreq) state.freqSel = null;
           render();
+          if ((wm === 'ca' && hadFreq) || (wm === 'freq' && hadSeg)) emitBus();
         }
         return;
       }

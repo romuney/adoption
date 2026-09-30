@@ -24,7 +24,17 @@ const inner = (k, rows) => '<!DOCTYPE html><html><head><meta charset="utf-8"><st
   + 'window.applyCrossFilter=function(f){parent.postMessage({type:"ECHARTS_APPLY_CROSS_FILTER",filters:f,who:"' + k + '"},"*");};var data=' + JSON.stringify(rows) + ';var option=null;<\/script>'
   + '<script>' + fs.readFileSync(SRC[k], 'utf8') + '<\/script></body></html>';
 // Ответ получателя с эхом фильтров: каталог — state_j total-строки, панель — exp area-строки.
+// Ответ v2 (5 колонок): эхо — в k строки sj (каталог) и flt (панель).
+const V2 = (rows) => rows.length && 'k' in rows[0] && !('dash_nm' in rows[0]) && !('state_j' in rows[0]);
 function rowsFor(k, flt) {
+  if (k === 'cat' && V2(MOCK.cat)) {
+    const seg = (flt.seg_f || [])[0];
+    return MOCK.cat.map(r => r.section === 'sj' ? { ...r, k: JSON.stringify({ ...JSON.parse(r.k || '{}'), flt, ...(seg ? { seg } : {}) }) } : r);
+  }
+  if (k === 'pan' && V2(MOCK.pan)) {
+    const sel = flt.sel_f || [], mode = (flt.mode_param || [''])[0];
+    return MOCK.pan.map(r => r.section === 'area' ? { ...r, g: sel.length ? mode : '', k: sel.join('\n') } : r.section === 'flt' ? { ...r, k: JSON.stringify(flt) } : r);
+  }
   if (k === 'cat') return MOCK.cat.map(r => r.section === 'total' ? { ...r, state_j: JSON.stringify({ ...(r.state_j ? JSON.parse(r.state_j) : {}), flt }) } : r);
   if (k === 'pan' && AUD && !ONE) return MOCK.pan.map(r => r.section === 'total' ? { ...r, state_j: JSON.stringify({ ...JSON.parse(r.state_j || '{}'), flt }) } : r);
   if (k === 'pan') {
@@ -82,6 +92,27 @@ if (AUD) {
   await p.waitForTimeout(1000); await log('A3. каталог вкладки → панель, медленный ответ (7 с)');
   await p.waitForTimeout(5000); await log('A3. 6 с — ждём, без повтора');
   await p.waitForTimeout(1600); await log('A3. после ответа');
+  if (HEAD) {
+    // A4. Вкладка «Аудитория» каталога: группа → панель (aud_*_f).
+    plan.pan = [{ delay: 900 }];
+    await click('cat', '[data-mode="aud"]'); await p.waitForTimeout(150);
+    await click('cat', '[data-aud]', 0);
+    await p.waitForTimeout(500); await log('A4. группа «Аудитории» → панель — сразу');
+    await p.waitForTimeout(1300); await log('A4. после ответа');
+    // A5. «Кто смотрит» по ЦА: сегмент «не заходили» → каталог (seg_f).
+    plan.cat = [{ delay: 900 }];
+    await click('pan', '[data-view="view:who"]'); await p.waitForTimeout(250);
+    await click('pan', '[data-view="whoMode:ca"]'); await p.waitForTimeout(250);
+    await click('pan', '[data-seg="never"]');
+    await p.waitForTimeout(250); await log('A5. сегмент ЦА «не заходили» → каталог — сразу');
+    await p.waitForTimeout(1300); await log('A5. после ответа');
+    const sub = await (await fr('cat')).evaluate(() => (document.querySelector('.prb-cat .prb-panel-h .sub') || {}).textContent || '');
+    out.push({ step: 'A5. подпись каталога', cat: sub, pan: '', sent: '' });
+    // A6. Переход в режим частоты снимает сегмент — каталог получает маску без seg_f.
+    plan.cat = [{ delay: 600 }];
+    await click('pan', '[data-view="whoMode:freq"]');
+    await p.waitForTimeout(1000); await log('A6. режим частоты — сегмент снят');
+  }
   if (shot) await p.screenshot({ path: shot + 'aud.png' });
   console.log(JSON.stringify({ errs, out }, null, 1));
   await b.close();

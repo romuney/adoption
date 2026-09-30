@@ -38,7 +38,9 @@ const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
   + '</div><script>window.__emits=[];window.addEventListener("message",function(e){var d=e.data||{};'
   + 'if(d.type==="ECHARTS_UPDATE_DATA_URL")setTimeout(function(){document.querySelector("img.echarts-plugin").src=d.dataUrl;},' + (+process.env.DELAY || 0) + ');'
   + 'if(d.type==="ECHARTS_APPLY_CROSS_FILTER")window.__emits.push(JSON.stringify(d.filters));});<\/script></body></html>';
-const SRC = { strip: ['pa-strip.chart.js', 'strip.json'], bar: ['pa-ca-bar.chart.js', 'bar.json'], cat: ['pa-reports-body.chart.js', 'cat.json'], pan: ['pa-audience.chart.js', 'aud.json'] };
+// ONE=1 — единый лист: панель pa-one на моке one.json (из датасета pa_one).
+const SRC = { strip: ['pa-strip.chart.js', 'strip.json'], bar: ['pa-ca-bar.chart.js', 'bar.json'], cat: ['pa-reports-body.chart.js', 'cat.json'],
+  pan: process.env.ONE === '1' ? ['pa-one.chart.js', 'one.json'] : ['pa-audience.chart.js', 'aud.json'] };
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: W, height: HEAD + BAR + ROW + GAP * 4 + (process.env.TABS ? 60 : 0) } });
 const errs = [];

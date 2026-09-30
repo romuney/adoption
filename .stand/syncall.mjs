@@ -4,7 +4,7 @@
 // Эмит источника → каждому получателю через delay мс «новый ответ»: перезапуск скрипта В ТОМ ЖЕ окне
 // (как в Proteus) с эхом фильтров flt = маски его источников. План ответов по получателю: delay / drop.
 // NODE_PATH=$(npm root -g) node .stand/syncall.mjs <strip.json> <cat.json> <area.json> [shot-prefix]
-// SHEET=aud … <strip.json> <cat_ca.json> <aud.json> [shot] <bar.json> — лист «Охват ЦА»: каталог вкладки, панель ЦА
+// SHEET=aud [ONE=1] … <strip.json> <cat_ca.json> <aud.json | one.json> [shot] <bar.json> — лист «Охват ЦА»: каталог вкладки, панель ЦА
 //   (pa-audience, эхо — state_j.flt) и строка ЦА (pa-ca-bar): строка → каталог + панель, панель → каталог.
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright');
@@ -12,7 +12,9 @@ import fs from 'fs';
 const [,, stripMock, catMock, areaMock, shot, barMock] = process.argv;
 const AUD = process.env.SHEET === 'aud';
 const W = decodeURIComponent(new URL('../Виджеты/', import.meta.url).pathname);
-const SRC = { strip: W + 'pa-strip.chart.js', cat: W + 'pa-reports-body.chart.js', pan: W + (AUD ? 'pa-audience.chart.js' : 'pa-area.chart.js'), ca: W + 'pa-ca-bar.chart.js' };
+// ONE=1 (с SHEET=aud) — единый лист: панель pa-one (эхо фильтров — в exp строки area, как у pa-area).
+const ONE = process.env.ONE === '1';
+const SRC = { strip: W + 'pa-strip.chart.js', cat: W + 'pa-reports-body.chart.js', pan: W + (ONE ? 'pa-one.chart.js' : AUD ? 'pa-audience.chart.js' : 'pa-area.chart.js'), ca: W + 'pa-ca-bar.chart.js' };
 const MOCK = { strip: JSON.parse(fs.readFileSync(stripMock, 'utf8')), cat: JSON.parse(fs.readFileSync(catMock, 'utf8')), pan: JSON.parse(fs.readFileSync(areaMock, 'utf8')), ca: AUD ? JSON.parse(fs.readFileSync(barMock, 'utf8')) : [] };
 const inner = (k, rows) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%}</style></head><body>'
   + '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"></div>'
@@ -22,7 +24,7 @@ const inner = (k, rows) => '<!DOCTYPE html><html><head><meta charset="utf-8"><st
 // Ответ получателя с эхом фильтров: каталог — state_j total-строки, панель — exp area-строки.
 function rowsFor(k, flt) {
   if (k === 'cat') return MOCK.cat.map(r => r.section === 'total' ? { ...r, state_j: JSON.stringify({ ...(r.state_j ? JSON.parse(r.state_j) : {}), flt }) } : r);
-  if (k === 'pan' && AUD) return MOCK.pan.map(r => r.section === 'total' ? { ...r, state_j: JSON.stringify({ ...JSON.parse(r.state_j || '{}'), flt }) } : r);
+  if (k === 'pan' && AUD && !ONE) return MOCK.pan.map(r => r.section === 'total' ? { ...r, state_j: JSON.stringify({ ...JSON.parse(r.state_j || '{}'), flt }) } : r);
   if (k === 'pan') {
     const sel = flt.sel_f || [], mode = (flt.mode_param || [''])[0];
     return MOCK.pan.map(r => r.section === 'area' ? { ...r, g: sel.length ? mode : '', k: sel.join('\n'), exp: JSON.stringify(flt) } : r);

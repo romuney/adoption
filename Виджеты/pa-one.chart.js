@@ -3341,8 +3341,9 @@ function paMaskGet(fl) {
   return function (c) { for (var i = 0; i < fl.length; i++) if (fl[i].column === c) return fl[i].value || []; return []; };
 }
 function paAudSend() {
-  if (!MODEL.flt) return;   // пустой ответ — ключа выбора нет
-  paBcast({ type: 'PA_AUD', key: paKey(['mode_param', 'sel_f'], function (c) { return MODEL.flt[c] || []; }), rows: MODEL.aa || null });
+  // отвечаем всегда (и без эха фильтров) — каталог по ответу отличает «панель старая» от «нет эха»
+  var fl = MODEL.flt;
+  paBcast({ type: 'PA_AUD', v: 2, noflt: !fl, key: fl ? paKey(['mode_param', 'sel_f'], function (c) { return fl[c] || []; }) : '', rows: MODEL.aa || null });
 }
 // Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
 function paBcast(msg) {

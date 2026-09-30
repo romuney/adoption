@@ -1356,7 +1356,9 @@ function audBarHtml() {
     var ae = state.audExt;
     h += '<span class="' + N + '-audbar-l" style="margin-left:12px;color:#b45309"' + tip({ title: 'Числа по выбору не пришли', text:
       (ae ? 'Панель прислала числа для другого выбора: «' + ae.key + '», а в каталоге выбрано «' + audSelKey() + '». Пришлите этот текст.'
-        : 'Панель справа не прислала числа по выбору. Проверьте, что в чарт панели вставлен JS из файла 8, а в датасет pa_one — SQL из файла 7 (после вставки — обновить страницу).') +
+        : state.audHeard && state.audHeard.noflt ? 'Панель отвечает, но в её ответе нет эха фильтров (строка flt датасета pa_one). Пришлите этот текст.'
+        : 'Панель справа не отвечает — в её чарте старый JS. Вставьте JS из файла 8 в чарт панели (и SQL файла 7 в pa_one), сохраните чарт и обновите страницу (Cmd+Shift+R).') +
+      ' Каталог: «' + audSelKey() + '».' +
       ' Пока показан весь Proteus.' }) + '>весь Proteus: нет чисел по выбору</span>';
   } else if (audSelKey()) h += '<span class="' + N + '-audbar-l" style="margin-left:12px"' + tip({ title: 'Аудитория выбранного', text: 'Выбраны отчёты, коллекции или владельцы — показаны только группы, где кто-то их смотрел за период: «Польз.», «Охват» и «Пост.» — по выбранному, «Сотр.» — вся группа. Снимите выбор — вернётся весь Proteus.' }) + '>по выбору в каталоге</span>';
   return h + '</div>';
@@ -1368,9 +1370,15 @@ function audTableHtml() {
   }
   var ext = audExt();
   if (ext === undefined) {
-    // перерисовать по истечении ожидания (дальше — весь Proteus с пометкой)
+    // пока ждём — раз в 1,5 с переспрашиваем панель (могла ответить раньше, чем каталог начал слушать);
+    // по истечении CFG.audWait — весь Proteus с пометкой
     clearTimeout(state.audT);
-    state.audT = setTimeout(function () { if (state.mode === 'aud' && state.audRender) state.audRender(); }, CFG.audWait + 200);
+    var ask = function () {
+      if (state.mode !== 'aud' || audExt() !== undefined) { if (state.mode === 'aud' && state.audRender) state.audRender(); return; }
+      paBcast({ type: 'PA_AUD_ASK' });
+      state.audT = setTimeout(ask, 1500);
+    };
+    state.audT = setTimeout(ask, 1500);
     return '<div class="' + N + '-empty"><b>Считаем аудиторию выбранных отчётов…</b>Числа придут вместе с пересчётом панели справа.</div>';
   }
   if (!rows.length) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Снимите выбор или выберите другой разрез.' : 'Очистите поиск или выберите другой разрез.') + '</div>';
@@ -2182,6 +2190,8 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
         L = L.split('\n');
         for (var j = 0; j < L.length; j++) { var f = L[j].split('|'); D0[unz(f[0])] = { users: int(f[1]), views: int(f[2]), regular: int(f[3]) }; }
       }
+      state.audHeard = { v: d.v || 1, noflt: !!d.noflt, key: String(d.key || ''), t: Date.now() };
+      if (d.noflt) { if (state.mode === 'aud') render(); return; }
       state.audExt = { key: String(d.key || ''), aud: d.rows ? A : null };
       if (state.mode === 'aud') render();
     };

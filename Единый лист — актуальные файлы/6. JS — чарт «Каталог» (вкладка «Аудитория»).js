@@ -1295,10 +1295,12 @@ function audExt() {
   var k = audSelKey();
   if (!k) return null;
   var e = state.audExt;
-  if (e && e.key === k) return e.aud || {};
+  if (e && e.key === k) return e.noaa ? null : (e.aud || {});
   if (state.audWaitKey !== k) { state.audWaitKey = k; state.audWaitT = Date.now(); }
   return audLate() ? null : undefined;   // не дождались панели — весь Proteus с пометкой (не висим)
 }
+// Панель ответила под этот выбор, но без секции aa (старый SQL pa_one).
+function audNoAa() { var k = audSelKey(), e = state.audExt; return !!k && !!e && e.key === k && !!e.noaa; }
 // Выбор есть, а чисел по нему от панели нет дольше CFG.audWait.
 function audLate() {
   var k = audSelKey(), e = state.audExt;
@@ -1352,7 +1354,11 @@ function audBarHtml() {
   }
   h += '</div>';
   // при выборе в других вкладках — числа только по выбранному (от панели), группы без зрителей скрыты
-  if (audLate()) {
+  if (audNoAa()) {
+    h += '<span class="' + N + '-audbar-l" style="margin-left:12px;color:#b45309"' + tip({ title: 'Числа по выбору не пришли', text:
+      'Панель ответила, но в её ответе нет разрезов для этой вкладки (секции aa): в датасете pa_one старый SQL. Вставьте SQL из файла 7 в pa_one, сохраните и обновите страницу. Пока показан весь Proteus.' }) +
+      '>весь Proteus: в pa_one старый SQL</span>';
+  } else if (audLate()) {
     var ae = state.audExt;
     h += '<span class="' + N + '-audbar-l" style="margin-left:12px;color:#b45309"' + tip({ title: 'Числа по выбору не пришли', text:
       (ae ? 'Панель прислала числа для другого выбора: «' + ae.key + '», а в каталоге выбрано «' + audSelKey() + '». Пришлите этот текст.'
@@ -2192,7 +2198,8 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       }
       state.audHeard = { v: d.v || 1, noflt: !!d.noflt, key: String(d.key || ''), t: Date.now() };
       if (d.noflt) { if (state.mode === 'aud') render(); return; }
-      state.audExt = { key: String(d.key || ''), aud: d.rows ? A : null };
+      // rows нет — в ответе панели нет секции aa (в pa_one старый SQL): не «никто не смотрел», а «чисел нет»
+      state.audExt = { key: String(d.key || ''), aud: d.rows ? A : null, noaa: !d.rows };
       if (state.mode === 'aud') render();
     };
     window.addEventListener('message', state.onAud);

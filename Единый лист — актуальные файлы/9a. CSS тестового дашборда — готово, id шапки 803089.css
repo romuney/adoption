@@ -1,0 +1,73 @@
+/* ==========================================================================
+   Ячейки чартов без белых рамок и с ровным швом 16 px — ТА ЖЕ вставка, что стоит на боевом борде
+   (проверена там 2026-09-18). Без неё Proteus рисует вокруг каждого чарта белую карточку с отступом 16 px:
+   виджет серый внутри белой рамки. Если на борде эти строки уже есть — второй раз не нужно.
+   ========================================================================== */
+.dashboard-component-chart-holder {
+  background-color: transparent !important;   /* белая карточка ячейки */
+  padding: 0 !important;                       /* отступ 16 px форка — он и даёт «рамку» */
+  box-shadow: none !important;
+}
+.chart-slice { display: flex !important; flex-direction: column !important; }
+.chart-container { padding: 0 !important; }
+.react_sanbbox iframe { display: block !important; }
+.dashboard-grid .grid-content > :not(:last-child) { margin-bottom: 16px !important; }
+
+/* ==========================================================================
+   Шапка единого листа (период · «Считать» · «Целевая аудитория» — ОДИН чарт) — выпадашки и подсказки поверх листа.
+   Тот же костыль, что у иерархического фильтра борда 59922 (чарт 783469), с его проверенными
+   правилами: виджет при открытой выпадашке шлёт в канал скриншотов PNG, в base64 которого стоит
+   маркер UEEtQ0EtREQtT04x; родитель кладёт dataUrl в img.echarts-plugin РЯДОМ с iframe, и эти
+   правила разворачивают iframe слоем поверх нижних чартов. Закрыли — чистый PNG, iframe обратно.
+   id чарта шапки уже подставлен: 803089 (тестовый дашборд).
+   Красные «!» редактора у строк с :has(...) — линтер не знает :has, на работу не влияет.
+   ========================================================================== */
+
+/* ячейки не должны резать развёрнутый iframe */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .slice_container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .chart-container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .dashboard-chart {
+  overflow: visible !important;
+}
+
+/* якорь — #chart-id-803089 (обёртка iframe внутри области чарта), а не ячейка с заголовком:
+   так строка при открытии не прыгает на высоту заголовка (урок борда 59922). */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) #chart-id-803089 {
+  position: relative !important;
+}
+
+/* сам слой: во всю ширину строки, вниз до 640 px (не больше 85 % экрана), выше сетки */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: min(640px, 85vh) !important;
+  z-index: 998 !important;           /* выше сетки, ниже системных модалок */
+  background: transparent !important;
+}
+
+/* Пока выпадашка открыта, область под iframe закрыта для кликов: клик туда закрывает выпадашку
+   (виджет слушает клики и blur своего окна), Esc — тоже. */
+
+/* ==========================================================================
+   Та же шапка — подсказки переключателей «Считать»: другой маркер (UEEtU1QtVElQLU9O), разворот ниже —
+   до 260 px; подсказка ушла — iframe обратно. id — тот же, 803089 (чарт шапки).
+   ========================================================================== */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .slice_container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .chart-container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .dashboard-chart {
+  overflow: visible !important;
+}
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) #chart-id-803089 {
+  position: relative !important;
+}
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: min(260px, 60vh) !important;
+  z-index: 998 !important;
+  background: transparent !important;
+}

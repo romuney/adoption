@@ -965,9 +965,10 @@ function buildCSS() {
 
     // ── Панель ──
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column;}',
-    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:0 0 auto;}',
+    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;flex:0 0 auto;}',   // вкладки не уезжают от длины заголовка
     P + '-panel-h .sub{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-h-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}',
+    P + '-h-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 0;}',
+    P + '-h-ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-h-txt .sub b{color:var(--ink2);font-weight:500;}',
     P + '-panel-h .sub-tabs{margin:0 0 0 auto;flex:0 0 auto;}',
     P + '-panel-b{padding:14px 16px;flex:1;min-height:0;}',
@@ -1276,7 +1277,7 @@ function buildCSS() {
     P + '-ct-cell.part{background:#f1f3f6 !important;font-style:italic;color:var(--muted);}',
     P + '-panel-h ' + P + '-under{padding:0;margin-left:auto;}',
     P + '-h-area{color:var(--muted);font-weight:400;cursor:help;}',
-    P + '-panel-h > ' + P + '-sub-tabs{margin-left:auto;}',
+    P + '-panel-h > ' + P + '-sub-tabs{margin-left:auto;flex:0 0 auto;}',
     P + '-scopebar{display:grid;grid-template-columns:minmax(210px,.62fr) minmax(0,1.38fr);gap:16px;align-items:center;border:1px solid #f0dcb4;border-radius:10px;'
       + 'background:linear-gradient(100deg,#fffaf1 0,#fff 55%);padding:10px 14px;flex:0 0 auto;}',
     P + '-sb-col{min-width:0;display:flex;flex-direction:column;gap:4px;}',
@@ -2751,7 +2752,7 @@ function buildHTML() {
   if (MODEL.kpi && !(view === 'who' && state.whoFull)) h.push('<div class="' + N + '-top">' + kpisHtml() + obsHtml(ai.mut ? 'Proteus' : ai.what) + '</div>');
   h.push('<div class="' + N + '-panel">');
   h.push('<div class="' + N + '-panel-h">' +
-    '<div class="' + N + '-h-txt"><span>' + esc(title) + ' · <span class="' + N + '-h-area"' + tip({ title: 'Область', text: ai.text }) + '>' +
+    '<div class="' + N + '-h-txt"><span class="' + N + '-h-ttl" title="' + esc(title + ' · ' + (ai.mut ? 'весь Proteus' : ai.pill) + (caModeNow() === 'cond' ? ' · ЦА: ' + caCondText() : '')) + '">' + esc(title) + ' · <span class="' + N + '-h-area"' + tip({ title: 'Область', text: ai.text }) + '>' +
       esc(ai.mut ? 'весь Proteus' : ai.pill) + '</span>' +
       (caModeNow() === 'cond' ? ' · <span class="' + N + '-h-area"' + tip({ title: 'Целевая аудитория по условиям', text: caCondParts(MODEL.audApplied || caEmpty()).length
         ? 'Все числа панели — только по людям ЦА: ' + caCondText() + '. Группа выбрана в каталоге (вкладка «Аудитория») — там и снимается; условия строки «Целевая аудитория» — в шапке.'

@@ -17,6 +17,43 @@
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
+-- Параграф «PA · склейка логинов» → usr_cross_data.pa_login_map   (НОВЫЙ 2026-09-30, ПЕРВЫМ в ноде)
+-- Человек сменил AD-логин (например, после свадьбы: a.pezikova → anas.e.petrova) — в MDM это одна запись
+-- (mdm_employee_rk) с двумя логинами, а у нас выходило два человека. Словарь «старый логин → текущий»:
+-- текущий — логин из самой свежей строки MDM записи, где он заполнен; старые — все прочие логины записи
+-- из MDM за 13 мес. и из событий Proteus. Логин, который ведёт к двум разным текущим, не склеиваем.
+-- Дальше факт, атрибуты зрителей и штат берут логин через этот словарь: визиты под старым логином
+-- считаются визитами того же человека.
+-- ---------------------------------------------------------------------------
+drop table if exists usr_cross_data.pa_login_map;
+create table usr_cross_data.pa_login_map as
+with lr as (
+    select lower(trim(m.ad_login)) as login, m.mdm_employee_rk as rk, max(m.business_dt) as dt
+    from prod_v_emart.mdm_employee_structure_d m
+    where nullif(trim(m.ad_login), '') is not null
+      and m.business_dt >= current_date - interval '13 months'
+    group by 1, 2
+),
+cur as (
+    select rk, login as canon
+    from (select rk, login, row_number() over (partition by rk order by dt desc, login) as rn from lr) x
+    where rn = 1
+),
+al as (
+    select login, rk from lr
+    union
+    select distinct lower(trim(v.login)), v.mdm_employee_rk
+    from usr_cross_data.proteus_views_1 v
+    where v.mdm_employee_rk is not null and nullif(trim(v.login), '') is not null
+)
+select a.login::text as login, min(c.canon)::text as canon
+from al a
+inner join cur c on c.rk = a.rk
+group by a.login
+having count(distinct c.canon) = 1 and min(c.canon) <> a.login
+distributed by (login);
+
+-- ---------------------------------------------------------------------------
 -- Параграф «PA · факт отчёт×логин×день» → usr_cross_data.pa_evd_day
 -- Вселенная куба: без самого борда (13040) и сервисного логина.
 -- ---------------------------------------------------------------------------
@@ -24,10 +61,11 @@ drop table if exists usr_cross_data.pa_evd_day;
 create table usr_cross_data.pa_evd_day as
 select
     v.dashboard_id::int                  as dashboard_id,
-    v.login::text                        as login,
+    coalesce(mp.canon, v.login)::text    as login,   -- старый логин → текущий (pa_login_map)
     date_trunc('day', v.log_dttm)        as log_dttm,
     sum(v.action_count)::bigint          as views
 from usr_cross_data.proteus_views_1 v
+left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(v.login))
 where v.dashboard_id is not null
   and v.login is not null
   and v.dashboard_id <> 13040
@@ -86,7 +124,7 @@ select
     coalesce(m.experience_group_nm, '')::text as exp_nm
 from (
     select
-        v.login::text                                           as login,
+        coalesce(mp.canon, v.login)::text                       as login,   -- старый логин → текущий
         coalesce(v.lvl3_management_unit_nm, '')::text           as lvl3_management_unit_nm,
         coalesce(v.lvl4_management_unit_nm, '')::text           as lvl4_management_unit_nm,
         coalesce(v.lvl5_management_unit_nm, '')::text           as lvl5_management_unit_nm,
@@ -97,8 +135,9 @@ from (
         coalesce(v.management_head_flg::int, 0)                 as management_head_flg,
         coalesce(v.ad_groups, array[]::text[])                  as ad_groups,
         v.mdm_employee_rk                                       as mdm_employee_rk,
-        row_number() over (partition by v.login order by v.log_dttm desc) as rn
+        row_number() over (partition by coalesce(mp.canon, v.login) order by v.log_dttm desc) as rn
     from usr_cross_data.proteus_views_1 v
+    left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(v.login))
     where v.login is not null and v.login <> 'svc_mon_otpp'
 ) t
 left join (
@@ -246,8 +285,10 @@ distributed by (dashboard_id);
 drop table if exists usr_cross_data.pa_staff;
 create table usr_cross_data.pa_staff as
 with lg as (
-    select lower(trim(m.ad_login)) as login, m.mdm_employee_rk, max(m.business_dt) as dt
+    -- логин записи — текущий (pa_login_map): старый и новый логины одного человека — одна строка
+    select coalesce(mp.canon, lower(trim(m.ad_login))) as login, m.mdm_employee_rk, max(m.business_dt) as dt
     from prod_v_emart.mdm_employee_structure_d m
+    left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(m.ad_login))
     where nullif(trim(m.ad_login), '') is not null
       and m.business_dt >= current_date - interval '13 months'
     group by 1, 2
@@ -261,9 +302,10 @@ mdm as (
         on l.mdm_employee_rk = lg.mdm_employee_rk and l.last_state_flg = 1
 ),
 vw as (
-    select lower(trim(v.login)) as lg, v.*,
-        row_number() over (partition by lower(trim(v.login)) order by v.log_dttm desc) as rn
+    select coalesce(mp.canon, lower(trim(v.login))) as lg, v.*,
+        row_number() over (partition by coalesce(mp.canon, lower(trim(v.login))) order by v.log_dttm desc) as rn
     from usr_cross_data.proteus_views_1 v
+    left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(v.login))
     where nullif(trim(v.login), '') is not null and v.login <> 'svc_mon_otpp'
 ),
 base as (

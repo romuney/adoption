@@ -9,6 +9,7 @@
    не заходили, вне ЦА, в этом году, дошли в пред. периоде — по правам и по условиям.
 3. По условиям ЦА: итог панели == ИТОГО каталога с той же ЦА (каталог уже считает только людей ЦА).
 4. Старый анализатор CH и prefer_column_name_to_alias = 1 дают те же строки.
+5. Шапка pa_head == pa_ca_dict + строка md (дата данных == md панели), от фильтров не зависит.
 """
 import os, sys, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +22,8 @@ ONE = pick('pa_one', os.path.join(W, 'pa-one.data.sql'))
 CAT = pick('pa_body', os.path.join(W, 'pa-reports-body.data.sql'))
 PPL = os.path.join(W, 'pa-area.data.sql')
 AUD = os.path.join(W, 'pa-audience.data.sql')
+HEAD = pick('pa_head', os.path.join(W, 'pa-head.data.sql'))
+DICT = os.path.join(W, 'pa-ca-bar.data.sql')
 bad = 0
 
 
@@ -176,6 +179,15 @@ for c in [{}, {'ca_spec_f': ['Спец 3'], 'ca_head_f': '1'}]:
     d = stand.stat(sql + '\nSETTINGS prefer_column_name_to_alias = 1')[0]
     norm = lambda rows: sorted(json.dumps(r, sort_keys=True, default=str) for r in rows)
     ok(norm(a) == norm(b) == norm(d), f'старый анализатор и prefer_column_name_to_alias — те же строки {c}')
+
+# ---- 5. Шапка ---------------------------------------------------------------------------------------------
+h0, h1, dd = run(HEAD, {}), run(HEAD, {'period_param': 'm', 'ca_spec_f': ['Спец 3'], 'mode_param': 'report', 'sel_f': ['5']}), run(DICT, {})
+norm = lambda rows: sorted(json.dumps(r, sort_keys=True, default=str) for r in rows)
+ok(norm([r for r in h0 if r['section'] != 'md']) == norm(dd), f'pa_head без строки md == pa_ca_dict ({len(dd)} строк)')
+md = [r['k'] for r in h0 if r['section'] == 'md']
+area = [r for r in run(ONE, {}) if r['section'] == 'area'][0]
+ok(md == [str(area['lvl3'])], f'дата данных шапки == md панели ({md} / {area["lvl3"]})')
+ok(norm(h0) == norm(h1), 'шапка не зависит от фильтров')
 
 print('\nИТОГ: ' + ('всё сходится' if not bad else f'{bad} расхождений'))
 sys.exit(1 if bad else 0)

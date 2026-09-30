@@ -6,13 +6,14 @@
 // Моки: strip.json, bar.json, cat.json, aud.json (+ любые для шага reload).
 // Сценарий: [{frame:'bar'|'cat'|'pan'|'strip', click:sel, i?, type?:текст, reload?:{cat:'x.json',pan:'y.json'}, shot?:'имя',
 //   probe?:{sel, ms}}] — probe: после клика ms миллисекунд пишет y элемента sel на странице (ловит дёргание).
+// HEAD=1 — единый лист из трёх чартов: шапка pa-head (период + строка ЦА одним чартом, мок head.json) · каталог | панель.
 // DELAY=мс — родитель кладёт маркер в img с задержкой (как Proteus), иначе мгновенно.
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright'); // NODE_PATH=$(npm root -g)
 import fs from 'fs';
 import path from 'path';
 const [,, dir, cssFile, scen, outDir, width] = process.argv;
-const W = +(width || 1600), GAP = 16, HEAD = 64, BAR = 64, ROW = 980, CID = '000000';
+const W = +(width || 1600), GAP = 16, HEAD = 64, BAR = process.env.HEAD === '1' ? 112 : 64, ROW = 980, CID = '000000';
 const WD = decodeURIComponent(new URL('../Виджеты/', import.meta.url).pathname);
 const inner = (js, mock) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#f6f6f6}</style></head><body>'
   + '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"><canvas></canvas></div>'
@@ -23,9 +24,9 @@ const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
   + '.g{display:grid;gap:' + GAP + 'px;padding:' + GAP + 'px;grid-template-columns:' + cw + 'px ' + pw + 'px}'
   + (process.env.TABS ? '.ant-tabs-nav{display:flex;position:relative}.ant-tabs-nav::before{content:"";position:absolute;left:0;right:0;bottom:0;border-bottom:1px solid #f0f0f0}.ant-tabs-nav-wrap{display:flex;flex:auto}.ant-tabs-nav-list{display:flex;position:relative}.ant-tabs-tab{position:relative;display:inline-flex;align-items:center;cursor:pointer}.ant-tabs-ink-bar{position:absolute;bottom:0;display:none}' : '') + (process.env.TABS_OLD ? ':root{--dashboard-background:#e9ebef}.ant-tabs-nav-wrap,div[role="tabpanel"]{background:var(--dashboard-background)}.css-5smd5r .ant-tabs .ant-tabs-nav-wrap{min-height:50px}.ant-tabs-nav-wrap{height:68px;padding-top:20px;padding-bottom:16px}.dashboard-component-tabs{background:#eceef1 !important}.dashboard-component-tabs .ant-tabs-card>.ant-tabs-nav .ant-tabs-nav-list{display:flex;gap:10px}.dashboard-component-tabs .ant-tabs .ant-tabs-nav .ant-tabs-tab .ant-tabs-tab-btn{background:#e3e5e9 !important;border-radius:8px !important;padding:6px 12px !important;font:14px Inter,Arial;color:#6b7280 !important}.dashboard-component-tabs .ant-tabs .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn{background:#5f6673 !important;color:#fff !important}' : '') + '.full{grid-column:1/3}.cell{border-radius:12px;background:#fff}iframe{border:0;display:block;width:100%;height:100%;background:transparent}'
   + '.dashboard-chart,.chart-container,.slice_container,.react_sanbbox{width:100%;height:100%}img.echarts-plugin{display:none}'
-  + fs.readFileSync(cssFile, 'utf8').split('000000').join(CID) + '</style></head><body>'
+  + fs.readFileSync(cssFile, 'utf8').split('000000').join(CID).split('111111').join(CID) + '</style></head><body>'
   + '<div class="g">'
-  + '<div class="full cell" style="height:' + HEAD + 'px"><iframe sandbox="allow-scripts" data-f="strip"></iframe></div>'
+  + (process.env.HEAD === '1' ? '' : '<div class="full cell" style="height:' + HEAD + 'px"><iframe sandbox="allow-scripts" data-f="strip"></iframe></div>')
   // Нативные вкладки дашборда (разметка Superset/antd) — если задан TABS="Имя1|Имя2", активна вторая.
   + (process.env.TABS ? '<div class="full dashboard-component dashboard-component-tabs css-5smd5r"><div id="TABS-0_qu3WRrvg" class="ant-tabs ant-tabs-top ant-tabs-card css-blq4an"><div class="ant-tabs-nav" role="tablist"><div class="ant-tabs-nav-wrap"><div class="ant-tabs-nav-list">'
     + process.env.TABS.split('|').map((t, i) => '<div class="ant-tabs-tab' + (i === 1 ? ' ant-tabs-tab-active' : '') + '"><div class="ant-tabs-tab-btn" role="tab"><span class="editable-title">' + t + '</span><span class="anchor-link-container"><span role="img" class="anticon"><svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></span></span></div></div>').join('')
@@ -41,6 +42,7 @@ const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
 // ONE=1 — единый лист: панель pa-one на моке one.json (из датасета pa_one).
 const SRC = { strip: ['pa-strip.chart.js', 'strip.json'], bar: ['pa-ca-bar.chart.js', 'bar.json'], cat: ['pa-reports-body.chart.js', 'cat.json'],
   pan: process.env.ONE === '1' ? ['pa-one.chart.js', 'one.json'] : ['pa-audience.chart.js', 'aud.json'] };
+if (process.env.HEAD === '1') { delete SRC.strip; SRC.bar = ['pa-head.chart.js', 'head.json']; }
 const b = await chromium.launch();
 const p = await b.newPage({ viewport: { width: W, height: HEAD + BAR + ROW + GAP * 4 + (process.env.TABS ? 60 : 0) } });
 const errs = [];

@@ -1,10 +1,10 @@
 /* ==========================================================================
-   Строка «Целевая аудитория» (чарт «Аудитория: настройка ЦА») — выпадашки поверх листа.
+   Шапка единого листа (период · «Считать» · «Целевая аудитория» — ОДИН чарт) — выпадашки и подсказки поверх листа.
    Тот же костыль, что у иерархического фильтра борда 59922 (чарт 783469), с его проверенными
    правилами: виджет при открытой выпадашке шлёт в канал скриншотов PNG, в base64 которого стоит
    маркер UEEtQ0EtREQtT04x; родитель кладёт dataUrl в img.echarts-plugin РЯДОМ с iframe, и эти
    правила разворачивают iframe слоем поверх нижних чартов. Закрыли — чистый PNG, iframe обратно.
-   ЗАМЕНИТЕ 000000 на id чарта строки — во ВСЕХ местах (Ctrl+H «000000» → id).
+   ЗАМЕНИТЕ 000000 на id чарта шапки — во ВСЕХ местах файла, в обоих блоках (Ctrl+H «000000» → id).
    Красные «!» редактора у строк с :has(...) — линтер не знает :has, на работу не влияет.
    ========================================================================== */
 
@@ -39,17 +39,17 @@
    Шапка борда (чарт периода и «Считать») — подсказки переключателей поверх листа (2026-09-28).
    Тот же костыль, что у строки ЦА выше: пока подсказка открыта, шапка шлёт PNG с маркером
    UEEtU1QtVElQLU9O, и iframe шапки разворачивается вниз прозрачным слоем; подсказка ушла — обратно.
-   ЗАМЕНИТЕ 111111 на id чарта шапки — во ВСЕХ местах этого блока (Ctrl+H «111111» → id).
+   ЗАМЕНИТЕ 000000 на id чарта шапки — во ВСЕХ местах этого блока (Ctrl+H «000000» → id).
    ========================================================================== */
-.dashboard-chart-id-111111:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .slice_container,
-.dashboard-chart-id-111111:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .chart-container,
-.dashboard-chart-id-111111:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .dashboard-chart {
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .slice_container,
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .chart-container,
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .dashboard-chart {
   overflow: visible !important;
 }
-.dashboard-chart-id-111111:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) #chart-id-111111 {
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) #chart-id-000000 {
   position: relative !important;
 }
-.dashboard-chart-id-111111:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) iframe {
+.dashboard-chart-id-000000:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) iframe {
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
@@ -58,6 +58,8 @@
   z-index: 998 !important;
   background: transparent !important;
 }
+
+/* Блок «Вкладки листов» ниже на едином листе НЕ нужен (вкладок нет) — вставлять не обязательно. */
 
 /* ==========================================================================
    Вкладки листов (нативные вкладки дашборда) — в стиле наших чартов, v3 (2026-09-25).

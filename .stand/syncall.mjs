@@ -6,6 +6,8 @@
 // NODE_PATH=$(npm root -g) node .stand/syncall.mjs <strip.json> <cat.json> <area.json> [shot-prefix]
 // SHEET=aud [ONE=1] … <strip.json> <cat_ca.json> <aud.json | one.json> [shot] <bar.json> — лист «Охват ЦА»: каталог вкладки, панель ЦА
 //   (pa-audience, эхо — state_j.flt) и строка ЦА (pa-ca-bar): строка → каталог + панель, панель → каталог.
+// HEAD=1 (с SHEET=aud ONE=1) — единый лист из трёх чартов: шапка pa-head (период + строка ЦА одним чартом, мок —
+//   аргумент <strip.json>, <bar.json> не нужен); её одна маска несёт и period/опции, и ca_*_f.
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright');
 import fs from 'fs';
@@ -13,9 +15,9 @@ const [,, stripMock, catMock, areaMock, shot, barMock] = process.argv;
 const AUD = process.env.SHEET === 'aud';
 const W = decodeURIComponent(new URL('../Виджеты/', import.meta.url).pathname);
 // ONE=1 (с SHEET=aud) — единый лист: панель pa-one (эхо фильтров — в exp строки area, как у pa-area).
-const ONE = process.env.ONE === '1';
-const SRC = { strip: W + 'pa-strip.chart.js', cat: W + 'pa-reports-body.chart.js', pan: W + (ONE ? 'pa-one.chart.js' : AUD ? 'pa-audience.chart.js' : 'pa-area.chart.js'), ca: W + 'pa-ca-bar.chart.js' };
-const MOCK = { strip: JSON.parse(fs.readFileSync(stripMock, 'utf8')), cat: JSON.parse(fs.readFileSync(catMock, 'utf8')), pan: JSON.parse(fs.readFileSync(areaMock, 'utf8')), ca: AUD ? JSON.parse(fs.readFileSync(barMock, 'utf8')) : [] };
+const ONE = process.env.ONE === '1', HEAD = process.env.HEAD === '1';
+const SRC = { strip: W + (HEAD ? 'pa-head.chart.js' : 'pa-strip.chart.js'), cat: W + 'pa-reports-body.chart.js', pan: W + (ONE ? 'pa-one.chart.js' : AUD ? 'pa-audience.chart.js' : 'pa-area.chart.js'), ca: W + 'pa-ca-bar.chart.js' };
+const MOCK = { strip: JSON.parse(fs.readFileSync(stripMock, 'utf8')), cat: JSON.parse(fs.readFileSync(catMock, 'utf8')), pan: JSON.parse(fs.readFileSync(areaMock, 'utf8')), ca: AUD && !HEAD ? JSON.parse(fs.readFileSync(barMock, 'utf8')) : [] };
 const inner = (k, rows) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%}</style></head><body>'
   + '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"></div>'
   + '<script>window.__SRC=' + JSON.stringify(fs.readFileSync(SRC[k], 'utf8')) + ';addEventListener("message",function(e){if(e.data&&e.data.type==="__RERUN"){data=JSON.parse(e.data.data);(0,eval)(window.__SRC);}});'
@@ -31,11 +33,11 @@ function rowsFor(k, flt) {
   }
   return MOCK[k];
 }
-const page = '<!DOCTYPE html><html><body style="margin:0;background:#f6f6f6;display:grid;grid-template-columns:560px 900px;grid-template-rows:64px 820px;gap:10px">'
-  + '<iframe id="strip" sandbox="allow-scripts" style="grid-column:1/3;width:100%;height:64px;border:0"></iframe>'
+const page = '<!DOCTYPE html><html><body style="margin:0;background:#f6f6f6;display:grid;grid-template-columns:560px 900px;grid-template-rows:' + (HEAD ? 460 : 64) + 'px 820px;gap:10px">'
+  + '<iframe id="strip" sandbox="allow-scripts" style="grid-column:1/3;width:100%;height:' + (HEAD ? 460 : 64) + 'px;border:0"></iframe>'
   + '<iframe id="cat" sandbox="allow-scripts" style="width:560px;height:820px;border:0"></iframe>'
   + '<iframe id="pan" sandbox="allow-scripts" style="width:900px;height:820px;border:0"></iframe>'
-  + (AUD ? '<iframe id="ca" sandbox="allow-scripts" style="position:absolute;left:0;top:900px;width:1470px;height:460px;border:0"></iframe>' : '') + '</body></html>';
+  + (AUD && !HEAD ? '<iframe id="ca" sandbox="allow-scripts" style="position:absolute;left:0;top:900px;width:1470px;height:460px;border:0"></iframe>' : '') + '</body></html>';
 const SCOPE = { strip: ['cat', 'pan'], cat: ['pan'], pan: ['cat'], ca: ['cat', 'pan'] };   // кросс-фильтры Proteus
 const FEEDS = AUD ? { cat: ['strip', 'pan', 'ca'], pan: ['strip', 'cat', 'ca'] } : { cat: ['strip', 'pan'], pan: ['strip', 'cat'] };
 const b = await chromium.launch();
@@ -57,13 +59,13 @@ await p.exposeFunction('__emit', async (who, filters) => {
   }
 });
 await p.evaluate(() => window.addEventListener('message', (e) => { const d = e.data || {}; if (d.type === 'ECHARTS_APPLY_CROSS_FILTER') window.__emit(d.who, d.filters); }));
-for (const k of (AUD ? ['strip', 'cat', 'pan', 'ca'] : ['strip', 'cat', 'pan'])) await p.evaluate(([id, s]) => { document.getElementById(id).srcdoc = s; }, [k, inner(k, rowsFor(k, {}))]);
+for (const k of (AUD && !HEAD ? ['strip', 'cat', 'pan', 'ca'] : ['strip', 'cat', 'pan'])) await p.evaluate(([id, s]) => { document.getElementById(id).srcdoc = s; }, [k, inner(k, rowsFor(k, {}))]);
 await p.waitForTimeout(1500);
 const fr = async (id) => (await (await p.$('#' + id)).contentFrame());
 const g = async (id) => (await fr(id)).evaluate(() => { const x = document.querySelector('[class$="-selg"],[class*="-selg "]'); if (!x || !/\bon\b/.test(x.className)) return 'нет'; return (x.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 70); });
 const out = [];
 const log = async (step) => { out.push({ step, cat: await g('cat'), pan: await g('pan'), sent: sent.splice(0).join(', ') }); };
-const click = async (id, sel, i, mod) => (await fr(id)).locator(sel).nth(i || 0).click(mod ? { modifiers: [mod] } : {});
+const click = async (id, sel, i, mod) => (await fr(HEAD && id === 'ca' ? 'strip' : id)).locator(sel).nth(i || 0).click(mod ? { modifiers: [mod] } : {});
 if (AUD) {
   plan.cat = [{ delay: 900 }]; plan.pan = [{ delay: 1400 }];
   await click('strip', '[data-grain="m"]');

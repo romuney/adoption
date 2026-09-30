@@ -1,5 +1,5 @@
 // ============================================================================
-// pa-ca-bar.chart.js — строка «Целевая аудитория» листа «Аудитория», v1 (2026-09-25)
+// pa-head.chart.js — ШАПКА единого листа, v1 (2026-09-30): период · «Считать» · свежесть + «Целевая аудитория»
 // ============================================================================
 // КОНТРАКТ PROTEUS:
 //   ECharts = только холст. Вся визуализация - HTML/CSS/SVG в overlay.
@@ -14,18 +14,23 @@
 // ОБЯЗАТЕЛЬНО: все 7 блоков ниже, в таком порядке, без перенумерации.
 // ОБЯЗАТЕЛЬНО: вызов render(); в теле mount() — без него overlay пустой.
 //
-// ЧТО ЭТО. Тонкая строка над листом «Аудитория»: кнопки условий ЦА (Подразделения ·
-//   Специализация · Стрим · HQ · IT · Руководители · AD-группы) → по клику выпадашка
-//   поверх каталога и панели (поиск, галочки, числа с учётом остальных условий) →
-//   «Применить» эмитит ca_*_f в каталог вкладки и панель «Аудитория: ЦА области».
-// ДАННЫЕ. Датасет pa_ca_dict (Виджеты/pa-ca-bar.data.sql): весь штат, свёрнутый по
-//   значениям условий; фильтров не читает. Черновик и применённая ЦА — в state.
+// ЧТО ЭТО. Одна плашка настроек над листом (прежние чарты «Шапка» pa-strip и «Целевая аудитория»
+//   pa-ca-bar — одним чартом, просьба владельца 2026-09-30: борд = шапка · каталог · панель).
+//   Ряд 1: период · «Считать»: переключатели опций · «данные на ДД.ММ».
+//   Ряд 2: кнопки условий ЦА (УС · Специализация · Стрим · HQ · IT · Руководители · AD-группы) → по клику
+//   выпадашка поверх каталога и панели (поиск, галочки, числа с учётом остальных условий) → «Применить».
+// ДАННЫЕ. Датасет pa_head (Виджеты/pa-head.data.sql) = справочник pa_ca_dict + строка md (дата данных);
+//   фильтров не читает — ответ один на всех, кэшируется. Черновик и применённая ЦА — в state.
+// ШИНЫ. Одна маска: period_param / pub_f / act_f / exc_f + ca_*_f → каталог и панель (самовлияние выкл.).
+//   Сверке фильтров шапка по-прежнему представляется двумя источниками — 'strip' (период, опции) и
+//   'ca' (условия ЦА): получатели (каталог, панель) не меняются.
 // ВЫПАДАШКА ПОВЕРХ ЛИСТА (костыль до нативного resize-канала платформы, заявка
 //   2026-09-14, прецедент — фильтр борда 59922). Чарт живёт в <iframe sandbox> размером
 //   с ячейку. Единственный канал к родителю — postMessage ECHARTS_UPDATE_DATA_URL
 //   (канал скриншотов): родитель кладёт dataUrl в img.echarts-plugin рядом с iframe.
 //   Открыли выпадашку → шлём PNG 1×1 с маркером CFG.overlay.mark в base64; CSS борда
-//   (`:has(img.echarts-plugin[src*=маркер])`) разворачивает iframe вниз поверх сетки.
+//   (`:has(img.echarts-plugin[src*=маркер])`) разворачивает iframe вниз поверх сетки (640 px).
+//   Подсказка переключателя — маркер CFG.overlay.tipMark (разворот ниже, 260 px).
 //   Закрыли → чистый PNG без маркера. Панель выпадашки — в body iframe, position:fixed.
 // ============================================================================
 
@@ -34,15 +39,30 @@
 // Нет поля в SQL - СПРОСИ, не выдумывай и не хардкодь значения.
 // Все цвета/шрифты/отступы из макета — только здесь, не в разметке.
 var CFG = {
-  ns: 'paca',
-  // 5 колонок датасета pa_ca_dict.
+  ns: 'phead',
+  // 5 колонок датасета pa_head (как pa_ca_dict; строка md: k = дата данных).
   fields: { section: 'section', g: 'g', k: 'k', parent: 'parent', n: 'n' },
   text: { noData: 'Нет данных о сотрудниках (pa_staff)' },
   orgSep: ' › ',
-  paCols: ['ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'],   // ключ сверки фильтров
+  paCols: ['ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'],   // ключ сверки фильтров (src 'ca')
+  paColsStrip: ['period_param', 'pub_f', 'act_f', 'exc_f'],                                          // ключ сверки фильтров (src 'strip')
+  grains: [
+    { id: 'd', label: '30 дней' }, { id: 'w', label: '20 недель' }, { id: 'm', label: '12 месяцев' }, { id: 'q', label: '8 кварталов' }
+  ],
+  // Опция эмитит СВОЮ колонку ТОЛЬКО при отличии от умолчания (val при откл.).
+  switches: [
+    { key: 'published', label: 'Только опубликованные', short: 'Опубликованные', def: true, emit: 'pub_f', val: '0', off: 'включая неопубликованные',
+      hint: 'Считать только опубликованные отчёты. Выключите, чтобы видеть и черновики.' },
+    { key: 'actual', label: 'Только актуальные', short: 'Актуальные', def: true, emit: 'act_f', val: '0', off: 'включая неактуальные',
+      hint: 'Считать только отчёты, помеченные актуальными.' },
+    { key: 'excludeOwners', label: 'Исключить владельцев из просмотров', short: 'Без владельцев', def: true, emit: 'exc_f', val: '0', off: 'с просмотрами владельцев',
+      hint: 'Владелец открывает свой отчёт при каждой правке — его визиты завышают аудиторию.' }
+  ],
   overlay: {
-    // «PA-CA-DD-ON1» в base64: 12 байт = ровно 16 символов, стоит в строке PNG как есть.
+    // «PA-CA-DD-ON1» в base64: 12 байт = ровно 16 символов, стоит в строке PNG как есть. Выпадашка ЦА.
     mark: 'UEEtQ0EtREQtT04x',
+    // «PA-ST-TIP-ON» — подсказка переключателя (разворот ниже).
+    tipMark: 'UEEtU1QtVElQLU9O',
     png: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
   },
   // Условия: порядок кнопок; q — ключ поиска; w — ширина выпадашки.
@@ -59,7 +79,7 @@ var CFG = {
   colors: {
     bg: '#f6f6f6', card: '#fff', act: '#245FD4', actInk: '#1B4AA8', blueBg: '#EAF0FC', actLine: '#C3D4F5',
     ink: '#23272e', ink2: '#454b55', mut: '#8a909c', mut2: '#b4b9c2', line: '#e7e9ee', line2: '#eef0f3',
-    warnBg: '#fffaf1', warnLine: '#f0dcb4', warnTx: '#8a5a00'
+    warnBg: '#fffaf1', warnLine: '#f0dcb4', warnTx: '#8a5a00', bgAlt: '#eef0f3', green: '#12b048'
   },
   fonts: { family: 'Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif' }
 };
@@ -72,8 +92,11 @@ var __S = window.__pvtState;
 if (!__S[CFG.ns]) __S[CFG.ns] = { tip: null };
 var state = __S[CFG.ns];
 (function () {
-  var d0 = { draft: null, applied: null, dd: null, q: {}, openNodes: {}, baseH: 0, sig: false };
+  var d0 = { draft: null, applied: null, dd: null, q: {}, openNodes: {}, baseH: 0, sig: false, grain: 'd', sw: null };
   for (var k in d0) if (Object.prototype.hasOwnProperty.call(d0, k) && state[k] === undefined) state[k] = d0[k];
+  if (!state.sw) state.sw = {};
+  var sd = swDefaults();
+  for (var s in sd) if (state.sw[s] === undefined) state.sw[s] = sd[s];
   if (!state.draft) state.draft = caEmpty();
   if (!state.applied) state.applied = caEmpty();
 })();
@@ -116,12 +139,17 @@ function orgUnder(path, node) { return path === node || path.indexOf(node + CFG.
 function orgParts(path) { return path ? path.split(CFG.orgSep) : []; }
 function orgShort(path) { var ps = orgParts(path); return ps.length ? ps[ps.length - 1] : ''; }
 function dash(v) { return v === '' ? '— не указано' : v; }
+function swDefaults() {
+  var d = {};
+  for (var i = 0; i < CFG.switches.length; i++) d[CFG.switches[i].key] = CFG.switches[i].def;
+  return d;
+}
 
 // ---------- БЛОК 3: ТРАНСФОРМАЦИЯ ДАННЫХ ----------
 // Сотрудники — «единицы» (путь, спец., стрим, рук., HQ, IT, человек, набор AD-групп): из них в браузере
 // считаются все числа выпадашек, включая AD-группы. Словарь id → значение (как в pa_aud_v2).
 function buildModel() {
-  var F = CFG.fields, m = { units: [], orgKids: {}, staffBy: { org: {}, spec: {}, stream: {}, hq: {}, it: {} }, adg: [], staff: 0, adgExact: false };
+  var F = CFG.fields, m = { units: [], orgKids: {}, staffBy: { org: {}, spec: {}, stream: {}, hq: {}, it: {} }, adg: [], staff: 0, adgExact: false, md: '' };
   var dict = { spec: {}, stream: {}, hq: {}, it: {} }, sRows = [], gName = {}, i, j;
   for (i = 0; i < rawData.length; i++) {
     var r = rawData[i] || {}, sec = String(r[F.section] || '');
@@ -129,6 +157,7 @@ function buildModel() {
     else if (sec === 'd') { var dg = String(r[F.g] || ''); if (dict[dg]) dict[dg][String(r[F.k] || '')] = String(r[F.parent] == null ? '' : r[F.parent]); }
     else if (sec === 'adg') { m.adg.push({ name: String(r[F.k] || ''), n: num(r[F.n]) || 0 }); gName[String(r[F.parent] == null ? '' : r[F.parent])] = String(r[F.k] || ''); }
     else if (sec === 'total') m.staff = num(r[F.n]) || 0;
+    else if (sec === 'md') m.md = String(r[F.k] || '');
   }
   var dv = function (g, id) { return dict[g][id] == null ? '' : dict[g][id]; };
   for (i = 0; i < sRows.length; i++) {
@@ -206,7 +235,18 @@ function caFacet(d) {
   FACET = f;
   return f;
 }
-// Эмит применённой ЦА: ca_*_f → каталог вкладки и панель (их джини читают те же колонки).
+// Маска периода и опций (как у прежней шапки). Инвариант: ни один фильтр не несёт value=[];
+// период и опции эмитятся ТОЛЬКО при отличии от умолчания.
+function stripMask(st) {
+  var fl = [];
+  if (st.grain && st.grain !== 'd') fl.push({ column: 'period_param', operator: 'IN', value: [st.grain] });
+  for (var i = 0; i < CFG.switches.length; i++) {
+    var s = CFG.switches[i];
+    if (st.sw[s.key] !== s.def) fl.push({ column: s.emit, operator: 'IN', value: [s.val] });
+  }
+  return fl;
+}
+// Эмит применённой ЦА: ca_*_f → каталог и панель (их джини читают те же колонки).
 function maskOf(c) {
   var fl = [];
   if (c.org.length) fl.push({ column: 'ca_org_f', operator: 'IN', value: c.org.slice() });
@@ -239,9 +279,28 @@ function tipHtml(o) {
   var s = '<div class="' + CFG.ns + '-tipbox">';
   if (o.title) s += '<span class="' + CFG.ns + '-t-h">' + esc(o.title) + '</span>';
   if (o.text) s += '<span class="' + CFG.ns + '-t-x">' + esc(o.text) + '</span>';
+  var rows = o.rows || [];
+  for (var i = 0; i < rows.length; i++) {
+    s += '<span class="' + CFG.ns + '-t-r"><span class="' + CFG.ns + '-t-l">' + esc(rows[i].label) + '</span><b class="' + CFG.ns + '-t-v">' + esc(rows[i].value) + '</b></span>';
+  }
+  if (o.note) s += '<span class="' + CFG.ns + '-t-n">' + esc(o.note) + '</span>';
   return s + '</div>';
 }
 function tip(o) { return ' data-tip="' + esc(tipHtml(o)) + '"'; }
+// Свежесть: «данные на ДД.ММ» по последнему дню витрины (строка md). Зелёная точка — это вчера
+// (витрина в срок), жёлтая — отстаёт (в подсказке — на сколько), серая — дата не пришла.
+function freshHtml(md, N) {
+  var t = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(md || ''));
+  if (!t) return '<span class="' + N + '-fresh"><i class="na"></i>данные <b>—</b></span>';
+  var now = new Date(), y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+  var lag = Math.round((Date.UTC(y.getFullYear(), y.getMonth(), y.getDate()) - Date.UTC(+t[1], +t[2] - 1, +t[3])) / 86400000);
+  var ok = lag <= 0;
+  return '<span class="' + N + '-fresh"' + tip({ title: 'Свежесть данных', text: ok
+      ? 'Последний день в данных — вчера, ' + t[3] + '.' + t[2] + '.' + t[1] + '. Витрина обновлена в срок.'
+      : 'Последний день в данных — ' + t[3] + '.' + t[2] + '.' + t[1] + ', а должен быть вчерашний: витрина отстаёт на ' + lag + ' ' +
+        plural(lag, 'день', 'дня', 'дней') + '.' }) + '>' +
+    '<i class="' + (ok ? '' : 'late') + '"></i>данные на <b>' + t[3] + '.' + t[2] + '</b></span>';
+}
 // Что выбрано в условии: подпись кнопки.
 function picked(c, k) {
   if (k === 'heads') return c.heads ? [c.heads === '1' ? 'Только руководители' : 'Без руководителей'] : [];
@@ -256,15 +315,42 @@ function buildCSS() {
   var C = CFG.colors;
   return [
     '<style>',
-    P + '-root{width:100%;height:100%;box-sizing:border-box;display:flex;align-items:center;padding:8px 14px;background:' + C.card + ';border-radius:12px;'
+    P + '-root{width:100%;height:100%;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:8px;padding:10px 14px;background:' + C.card + ';border-radius:12px;'
       + 'font-family:' + CFG.fonts.family + ';color:' + C.ink2 + ';color-scheme:light;font-size:12.5px;}',
     P + '-root *, ' + P + '-dd *{box-sizing:border-box;font-family:inherit;}',
     P + '-tip{position:fixed;z-index:99999;pointer-events:none;opacity:0;display:none;font-family:' + CFG.fonts.family + ';box-sizing:border-box;}',
     P + '-tipbox{background:#fff;border:1px solid ' + C.line + ';border-radius:9px;padding:7px 10px;max-width:280px;box-shadow:0 10px 30px rgba(24,33,50,.16);display:flex;flex-direction:column;gap:3px;}',
     P + '-t-h{font-size:10px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:' + C.mut + ';}',
     P + '-t-x{font-size:11.5px;color:' + C.ink2 + ';line-height:1.45;}',
-    // ── Строка ──
-    P + '-bar{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;width:100%;min-width:0;}',
+    P + '-t-r{display:flex;align-items:center;gap:6px;min-width:130px;}',
+    P + '-t-l{font-size:11px;color:' + C.mut + ';}',
+    P + '-t-v{margin-left:auto;font-size:12px;font-weight:600;color:' + C.ink + ';}',
+    P + '-t-n{font-size:10.5px;color:' + C.mut + ';margin-top:4px;padding-top:4px;border-top:1px solid ' + C.line2 + ';}',
+    // ── Ряд 1: период · «Считать» · свежесть ──
+    P + '-strip{display:flex;align-items:center;flex-wrap:nowrap;gap:8px;width:100%;min-width:0;}',
+    P + '-strip-seg{display:inline-flex;align-items:center;gap:2px;background:' + C.bgAlt + ';border-radius:9px;padding:2px;flex:0 0 auto;}',
+    P + '-strip-seg button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 12px;font:inherit;font-size:12px;'
+      + 'font-weight:500;color:' + C.mut + ';cursor:pointer;white-space:nowrap;}',
+    P + '-strip-seg button.on{background:#fff;color:' + C.ink + ';box-shadow:0 1px 2px rgba(20,28,45,.12);}',
+    P + '-sep{width:1px;height:20px;background:' + C.line + ';margin:0 4px;flex:0 0 auto;}',
+    P + '-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:' + C.mut + ';font-weight:500;flex:0 0 auto;}',
+    P + '-togs{display:inline-flex;gap:6px;flex:0 1 auto;min-width:0;}',
+    P + '-tog{position:relative;display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px 0 8px;border:1px solid ' + C.line + ';border-radius:9px;background:#fff;font-size:12px;color:' + C.ink2 + ';cursor:pointer;user-select:none;white-space:nowrap;}',
+    P + '-tog:hover{border-color:#d3d8e0;}',
+    P + '-tog input{position:absolute;opacity:0;width:0;height:0;margin:0;}',
+    P + '-tog i{position:relative;width:26px;height:15px;border-radius:999px;background:#dfe3ea;flex:0 0 auto;transition:background .15s;}',
+    P + '-tog i:after{content:\'\';position:absolute;top:2px;left:2px;width:11px;height:11px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(20,28,45,.2);transition:transform .15s;}',
+    P + '-tog.on i{background:' + C.act + ';}',
+    P + '-tog.on i:after{transform:translateX(11px);}',
+    P + '-tog.dev{border-color:' + C.actLine + ';background:' + C.blueBg + ';}',
+    P + '-tog:focus-within{outline:2px solid ' + C.actLine + ';outline-offset:1px;}',
+    P + '-fresh{font-size:11.5px;color:' + C.mut + ';display:inline-flex;align-items:center;gap:7px;white-space:nowrap;flex:0 0 auto;}',
+    P + '-fresh b{color:' + C.ink2 + ';font-weight:500;}',
+    P + '-fresh i{width:7px;height:7px;border-radius:50%;background:' + C.green + ';display:inline-block;}',
+    P + '-fresh i.late{background:#f0a020;}',
+    P + '-fresh i.na{background:#c4c8d0;}',
+    // ── Ряд 2: «Целевая аудитория» ──
+    P + '-bar{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;width:100%;min-width:0;border-top:1px solid ' + C.line2 + ';padding-top:8px;}',
     P + '-ttl{display:flex;flex-direction:column;gap:2px;margin-right:8px;flex:0 1 310px;min-width:170px;}',
     P + '-ttl b{display:flex;align-items:center;gap:7px;font-size:13px;color:' + C.ink + ';font-weight:600;white-space:nowrap;}',
     P + '-ttl b em{font-style:normal;font-size:10.5px;font-weight:500;color:' + C.mut + ';background:' + C.line2 + ';border-radius:999px;padding:1px 7px;}',
@@ -448,7 +534,26 @@ function ddHtml() {
 function buildHTML() {
   var N = CFG.ns, d = state.draft, a = state.applied, f = caFacet(d), h = [];
   var pend = !caSame(d, a), on = caAttrsOn(d);
-  h.push('<div class="' + N + '-root"><div class="' + N + '-bar">');
+  h.push('<div class="' + N + '-root">');
+  // Ряд 1 — период и опции (как прежняя шапка).
+  h.push('<div class="' + N + '-strip"><div class="' + N + '-strip-seg" role="group" aria-label="Период">');
+  for (var gi = 0; gi < CFG.grains.length; gi++) {
+    var gr = CFG.grains[gi];
+    h.push('<button type="button" data-grain="' + esc(gr.id) + '"' + (gr.id === state.grain ? ' class="on"' : '') + '>' + esc(gr.label) + '</button>');
+  }
+  h.push('</div><span class="' + N + '-sep" aria-hidden="true"></span><span class="' + N + '-lbl"' +
+    tip({ title: 'Что считать', text: 'Какие отчёты и просмотры попадают во все числа борда: каталог, KPI, динамику и списки людей.' }) + '>Считать</span>');
+  h.push('<div class="' + N + '-togs" role="group" aria-label="Какие отчёты и просмотры считать">');
+  for (var si = 0; si < CFG.switches.length; si++) {
+    var sw = CFG.switches[si], son = !!state.sw[sw.key];
+    h.push('<label class="' + N + '-tog' + (son ? ' on' : '') + (son !== sw.def ? ' dev' : '') + '" aria-label="' + esc(sw.label) + '"' +
+      tip({ title: sw.label, text: sw.hint, rows: [{ label: 'Сейчас', value: son ? 'включено' : 'выключено — ' + sw.off }],
+        note: son !== sw.def ? 'Отличается от умолчания' : '' }) + '>' +
+      '<input type="checkbox" data-f="' + esc(sw.key) + '"' + (son ? ' checked' : '') + '><i aria-hidden="true"></i>' + esc(sw.short) + '</label>');
+  }
+  h.push('</div><span class="' + N + '-sp"></span>' + freshHtml(MODEL.md, N) + '</div>');
+  // Ряд 2 — «Целевая аудитория».
+  h.push('<div class="' + N + '-bar">');
   // Слева — что это за строка и в каком состоянии ЦА.
   var st = pend ? '<em class="pend">не применено</em>' : '<em' + (caAttrsOn(a) ? ' class="cond">по условиям' : '>по правам доступа') + '</em>';
   h.push('<div class="' + N + '-ttl"><b>Целевая аудитория' + st + '</b><span>настройка для углублённого анализа: кого из сотрудников с AD-логином считаем аудиторией отчётов</span></div>');
@@ -510,18 +615,6 @@ function paBcast(msg) {
 // Источник: сообщить новый ключ фильтра и отвечать на «повтори» (фильтр + метка pa_nonce: колонки нет
 // ни в одном датасете, фильтр ей игнорируется, но маска другая — Proteus перезапрашивает чарты).
 function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet: sheet, cols: cols, key: paKey(cols, paMaskGet(fl)) }); }
-function paResendOn(src, sheetFn, cols, maskFn) {
-  if (state.onResend) window.removeEventListener('message', state.onResend);
-  state.onResend = function (e) {
-    var d = e.data || {}, sh = sheetFn();
-    if (d.type !== 'PA_RESEND' || d.src !== src || !(sh === '*' || d.sheet === sh) || typeof applyCrossFilter !== 'function') return;
-    var fl = maskFn();
-    paOut(src, sh, cols, fl);
-    applyCrossFilter(fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
-  };
-  window.addEventListener('message', state.onResend);
-}
-
 (function mount() {
   try {
     var hosts = document.querySelectorAll('[_echarts_instance_]');
@@ -598,18 +691,21 @@ function paResendOn(src, sheetFn, cols, maskFn) {
 
     // Сигнал родителю через канал скриншотов: PNG 1×1, после IEND — маркер, выровненный
     // по 3-байтовой группе base64 (URL валиден, маркер виден в строке как есть).
-    function pngUrl(open) {
+    // kind: 'dd' — выпадашка ЦА (разворот 640 px), 'tip' — подсказка (260 px), false — свернуть.
+    function pngUrl(kind) {
       var b = CFG.overlay.png;
-      if (open) {
+      if (kind) {
         var raw = atob(b);
         while (raw.length % 3) raw += '\0';
-        b = btoa(raw + atob(CFG.overlay.mark));
+        b = btoa(raw + atob(kind === 'tip' ? CFG.overlay.tipMark : CFG.overlay.mark));
       }
       return 'data:image/png;base64,' + b;
     }
-    function signal(open) {
-      state.sig = open;
-      var url = pngUrl(open);
+    function signal(kind) {
+      var open = !!kind;
+      if (open && !state.sig && !state.pin) state.baseH = overlay.clientHeight || state.baseH;
+      state.sig = kind || false;
+      var url = pngUrl(kind);
       try {
         if (window.parent && window.parent !== window) {
           window.parent.postMessage({ type: 'ECHARTS_UPDATE_DATA_URL', dataUrl: url, payload: { dataUrl: url } }, '*');
@@ -620,6 +716,7 @@ function paResendOn(src, sheetFn, cols, maskFn) {
       document.documentElement.style.background = tr;
       document.body.style.background = tr;
       host.style.background = tr;
+      overlay.style.background = open ? 'transparent' : CFG.colors.bg;
       // Высота строки закреплена, пока iframe развёрнут. При закрытии родитель сжимает iframe не сразу
       // (новый маркер → CSS борда): если отпустить высоту сразу, строка на кадр центрируется по 640 px
       // и дёргается вниз-вверх. Отпускаем, когда окно iframe действительно вернулось к высоте строки.
@@ -629,7 +726,7 @@ function paResendOn(src, sheetFn, cols, maskFn) {
       } else { overlay.style.height = '100%'; state.pin = false; }
     }
     function unpinIfShrunk() {
-      if (state.pin && !state.dd && window.innerHeight <= state.baseH + 4) { overlay.style.height = '100%'; state.pin = false; }
+      if (state.pin && !state.sig && window.innerHeight <= state.baseH + 4) { overlay.style.height = '100%'; state.pin = false; }
     }
 
     function placeDd() {
@@ -663,12 +760,12 @@ function paResendOn(src, sheetFn, cols, maskFn) {
       renderTip();
     }
     function openDd(k) {
-      if (!state.dd && !state.sig && !state.pin) state.baseH = overlay.clientHeight || state.baseH;
+      clearTimeout(state.tipT);
       state.dd = k;
       state.tip = null;
       hideTip();
       render();
-      signal(!!k);
+      signal(k ? 'dd' : false);
       if (k) { var inp = getDd().querySelector('[data-search]'); if (inp) inp.focus(); }
     }
 
@@ -680,9 +777,17 @@ function paResendOn(src, sheetFn, cols, maskFn) {
       if (node && node.getAttribute && node.getAttribute(attr) !== null) return node;
       return null;
     }
+    // Подсказка не помещается в плашку: на время показа iframe разворачивается вниз (маркер tipMark).
+    // Закрытие — с задержкой: переход курсора между соседними переключателями не дёргает iframe.
+    function tipClose() {
+      clearTimeout(state.tipT);
+      state.tipT = setTimeout(function () { if (!state.tip && state.sig === 'tip') signal(false); }, 160);
+    }
     function onOver(e) {
       var el = trigger(e.target, 'data-tip');
-      if (!el) return;
+      if (!el || state.dd) return;
+      clearTimeout(state.tipT);
+      if (!state.sig) signal('tip');
       state.tip = { rect: el.getBoundingClientRect(), kind: el.getAttribute('data-kind') || '', key: el.getAttribute('data-tip') || '', html: el.getAttribute('data-tip') || '' };
       renderTip();
     }
@@ -693,15 +798,27 @@ function paResendOn(src, sheetFn, cols, maskFn) {
       while (to) { if (to === el) return; to = to.parentNode; }
       state.tip = null;
       hideTip();
+      tipClose();
+    }
+    // Одна маска на всё: период и опции + применённая ЦА. Сверке — двумя ключами (strip · ca).
+    function fullMask() { return stripMask(state).concat(maskOf(state.applied)); }
+    function paOutAll() {
+      paOut('strip', '*', CFG.paColsStrip, stripMask(state));
+      paOut('ca', 'aud', CFG.paCols, maskOf(state.applied));
     }
     function emit() {
       if (typeof applyCrossFilter !== 'function') return;
-      paOut('ca', 'aud', CFG.paCols, maskOf(state.applied));
-      applyCrossFilter(maskOf(state.applied));
+      paOutAll();
+      applyCrossFilter(fullMask());
     }
 
     function onClick(e) {
       var d = state.draft;
+      // Ряд 1: период — взаимоисключающий выбор; опция — браузер уже переключил input.checked до click.
+      var gb = trigger(e.target, 'data-grain');
+      if (gb) { state.grain = gb.getAttribute('data-grain'); render(); emit(); return; }
+      var sb = trigger(e.target, 'data-f');
+      if (sb && sb.tagName === 'INPUT') { state.sw[sb.getAttribute('data-f')] = sb.checked; render(); emit(); return; }
       // × на пилюле снимает условие целиком (черновик), выпадашку не открывает.
       var clr = trigger(e.target, 'data-caclr');
       if (clr) { var ck0 = clr.getAttribute('data-caclr'); if (ck0 === 'heads') d.heads = ''; else d[ck0] = []; render(); return; }
@@ -760,7 +877,7 @@ function paResendOn(src, sheetFn, cols, maskFn) {
     overlay.addEventListener('mouseover', onOver);
     overlay.addEventListener('mouseout', onOut);
     // Подсказки не залипают: курсор ушёл из чарта (быстрый выход без mouseout) или окно потеряло фокус.
-    state.tipOff = function () { if (state.tip) { state.tip = null; hideTip(); } };
+    state.tipOff = function () { if (state.tip) { state.tip = null; hideTip(); } tipClose(); };
     overlay.addEventListener('mouseleave', function () { state.tipOff(); });
     if (!state.tipGuard) {
       state.tipGuard = true;
@@ -768,7 +885,15 @@ function paResendOn(src, sheetFn, cols, maskFn) {
       window.addEventListener('blur', function () { if (state.tipOff) state.tipOff(); });
     }
     overlay.addEventListener('click', onClick);
-    paResendOn('ca', function () { return 'aud'; }, CFG.paCols, function () { return maskOf(state.applied); });
+    // «Повтори» от получателя — по любому из двух ключей: переотправляем всю маску (+ метка pa_nonce).
+    if (state.onResend) window.removeEventListener('message', state.onResend);
+    state.onResend = function (ev) {
+      var md = ev.data || {};
+      if (md.type !== 'PA_RESEND' || (md.src !== 'strip' && md.src !== 'ca') || typeof applyCrossFilter !== 'function') return;
+      paOutAll();
+      applyCrossFilter(fullMask().concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
+    };
+    window.addEventListener('message', state.onResend);
     getDd();
 
     // Глобальные слушатели переживают перезапуск скрипта — старые снимаем явно.
@@ -800,14 +925,15 @@ function paResendOn(src, sheetFn, cols, maskFn) {
     render();
     // Перезапуск скрипта (новый ответ датасета) при открытой выпадашке: настоящий
     // скриншот платформы мог затереть маркер — повторяем сигнал.
-    if (state.dd) { signal(true); setTimeout(function () { if (state.dd) signal(true); }, 400); setTimeout(function () { if (state.dd) signal(true); }, 1500); }
-    else if (state.sig) signal(false);
+    if (state.dd) { signal('dd'); setTimeout(function () { if (state.dd) signal('dd'); }, 400); setTimeout(function () { if (state.dd) signal('dd'); }, 1500); }
+    else if (state.sig) { state.tip = null; signal(false); }
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     if (typeof ResizeObserver !== 'undefined') {
       if (state.ro && state.ro.disconnect) state.ro.disconnect();
       var ro = new ResizeObserver(function () {
-        if (!state.dd) { overlay.style.width = '100%'; overlay.style.height = '100%'; }
+        overlay.style.width = '100%';
+        overlay.style.height = (state.sig || state.pin) && state.baseH ? state.baseH + 'px' : '100%';
         placeDd();
       });
       ro.observe(host);

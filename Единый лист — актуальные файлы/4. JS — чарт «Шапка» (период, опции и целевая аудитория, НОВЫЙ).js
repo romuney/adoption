@@ -184,7 +184,7 @@ function buildModel() {
       for (q = 0; q < kk.length; q++) m.staffBy[kk[q]][u[kk[q]]] = (m.staffBy[kk[q]][u[kk[q]]] || 0) + u.n;
     }
   }
-  m.adg.sort(function (a, b) { return (b.n - a.n) || (a.name < b.name ? -1 : 1); });
+  m.adg.sort(function (a, b) { return a.name < b.name ? -1 : (a.name > b.name ? 1 : 0); });
   return m;
 }
 var MODEL = buildModel();
@@ -427,8 +427,9 @@ function searchBoxHtml(k, ph) {
 }
 function rowHtml(attr, val, checked, label, n, extra) {
   var N = CFG.ns;
-  return '<label class="' + N + '-row' + (n ? '' : ' z') + (extra || '') + '"><input type="checkbox" ' + attr + '="' + esc(val) + '"' + (checked ? ' checked' : '') + '>' +
-    '<span>' + label + '</span><i>' + nf(n) + '</i></label>';
+  // n === null — без числа (AD-группы: численности групп не показываем)
+  return '<label class="' + N + '-row' + (n || n === null ? '' : ' z') + (extra || '') + '"><input type="checkbox" ' + attr + '="' + esc(val) + '"' + (checked ? ' checked' : '') + '>' +
+    '<span>' + label + '</span>' + (n === null ? '' : '<i>' + nf(n) + '</i>') + '</label>';
 }
 function orgRows() {
   var d = state.draft, f = caFacet(d), q = (state.q.org || '').toLowerCase(), out = [], N = CFG.ns;
@@ -489,13 +490,17 @@ function headRows() {
 }
 function adgRows() {
   var d = state.draft, f = caFacet(d), q = (state.q.adg || '').toLowerCase(), out = [], i;
-  // Число у группы — сотрудники группы под остальными условиями (как у прочих списков); нули скрыты.
-  var cnt = function (g) { return MODEL.adgExact ? (f.adg[g.name] || 0) : g.n; };
+  // Числа у групп нет (владелец 2026-09-30: составов групп в шапке нет — сколько людей, считает сервер после «Применить»).
+  // Старый датасет с наборами групп (adgExact) — число, как у прочих списков.
+  var cnt = function (g) { return MODEL.adgExact ? (f.adg[g.name] || 0) : null; };
   var list = MODEL.adg.filter(function (g) {
     var sel = d.adg.indexOf(g.name) >= 0;
-    return (sel || cnt(g) > 0) && (!q || sel || g.name.toLowerCase().indexOf(q) >= 0);
+    return (sel || !MODEL.adgExact || cnt(g) > 0) && (!q || sel || g.name.toLowerCase().indexOf(q) >= 0);
   });
-  list.sort(function (a, b) { var sa = d.adg.indexOf(a.name) >= 0, sb = d.adg.indexOf(b.name) >= 0; return sa !== sb ? (sa ? -1 : 1) : cnt(b) - cnt(a); });
+  list.sort(function (a, b) {
+    var sa = d.adg.indexOf(a.name) >= 0, sb = d.adg.indexOf(b.name) >= 0;
+    return sa !== sb ? (sa ? -1 : 1) : (MODEL.adgExact ? cnt(b) - cnt(a) : 0) || (a.name < b.name ? -1 : 1);
+  });
   for (i = 0; i < list.length && i < CFG.listMax; i++) out.push(rowHtml('data-cack', 'adg|' + list[i].name, d.adg.indexOf(list[i].name) >= 0, esc(list[i].name), cnt(list[i])));
   if (!out.length) return '<div class="' + CFG.ns + '-empty">' + (MODEL.adg.length ? 'Ничего не найдено' : 'Список групп пуст — нет таблицы pa_adg_size') + '</div>';
   if (list.length > CFG.listMax) out.push('<div class="' + CFG.ns + '-empty">и ещё ' + nf(list.length - CFG.listMax) + ' — уточните поиск</div>');
@@ -518,15 +523,15 @@ function ddHtml() {
   if (!o) return '';
   var pk = picked(d, o.k);
   return '<div class="' + N + '-dd-h"><b>' + esc(o.l) + '</b><span>' + (o.k === 'adg' && !MODEL.adgExact
-      ? 'число — сотрудников в группе'
+      ? 'по алфавиту · поиск по имени'
       : 'число — сколько сотрудников пройдут остальные условия') + '</span></div>' +
     (pk.length ? '<div class="' + N + '-sel">' + selChips(o.k) + '</div>' : '') +
     (o.q ? searchBoxHtml(o.k, o.ph) : '') +
     (o.k === 'adg' ? '<div class="' + N + '-note">' + (MODEL.adgExact
       ? 'Сотрудник в ЦА, если состоит хотя бы в одной из выбранных групп.'
-      : 'Пересечение групп с остальными условиями посчитает сервер после «Применить» (обновите датасет строки).') + '</div>' : '') +
+      : 'Сотрудник в ЦА, если состоит хотя бы в одной из выбранных групп. Сколько таких людей — посчитается после «Применить» (панель, «Охват ЦА»).') + '</div>' : '') +
     '<div class="' + N + '-list" data-calist="' + o.k + '">' + rowsOf(o.k) + '</div>' +
-    '<div class="' + N + '-dd-f"><em>В ЦА <b>' + ppl(f.n) + '</b>' + (d.adg.length && !MODEL.adgExact ? ' без учёта групп' : '') + '</em>' +
+    '<div class="' + N + '-dd-f"><em>' + (d.adg.length && !MODEL.adgExact ? 'В ЦА — после «Применить»' : 'В ЦА <b>' + ppl(f.n) + '</b>') + '</em>' +
       '<button type="button" class="' + N + '-btn sm" data-caun="' + o.k + '"' + (pk.length ? '' : ' disabled') + '>Сбросить</button>' +
       '<button type="button" class="' + N + '-btn primary sm" data-cadd="' + o.k + '">Готово</button></div>';
 }
@@ -569,7 +574,7 @@ function buildHTML() {
       (pk.length ? '<span class="' + N + '-cf-x" data-caclr="' + o.k + '" aria-label="Снять условие">×</span>' : '<span class="' + N + '-cf-car">▾</span>') + '</button>');
   }
   h.push('<span class="' + N + '-sp"></span>');
-  h.push('<span class="' + N + '-cnt">' + (on ? 'в ЦА <b>' + nf(f.n) + '</b>' + (d.adg.length && !MODEL.adgExact ? ' без учёта групп' : '') : 'сотрудников <b>' + nf(MODEL.staff) + '</b>') + '</span>');
+  h.push('<span class="' + N + '-cnt">' + (on ? (d.adg.length && !MODEL.adgExact ? 'в ЦА — после «Применить»' : 'в ЦА <b>' + nf(f.n) + '</b>') : 'сотрудников <b>' + nf(MODEL.staff) + '</b>') + '</span>');
   h.push('<button type="button" class="' + N + '-btn" data-careset="1"' + (on || caAttrsOn(a) ? '' : ' disabled') + ' aria-label="Сбросить условия: ЦА «как роздан доступ»">Сбросить</button>');
   h.push('<button type="button" class="' + N + '-btn primary" data-caapply="1"' + (!pend || (on && !f.n) ? ' disabled' : '') + '>Применить</button>');
   h.push('</div></div>');

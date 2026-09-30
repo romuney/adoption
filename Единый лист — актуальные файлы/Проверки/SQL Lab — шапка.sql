@@ -12,29 +12,20 @@ WITH
       toUInt8(ifNull(management_head_flg, 0) = 1) AS hd, toString(ifNull(hq_code, '')) AS hq, toString(ifNull(it_code, '')) AS it
     FROM prod_proteus.pa_staff
   ),
-  gix AS (SELECT toString(ad_group) AS agn, toUInt32(row_number() OVER (ORDER BY toString(ad_group))) AS gi
-    FROM prod_proteus.pa_adg_size WHERE ifNull(n, 0) > 0
-  ),
-  mb AS (
-    SELECT toString(m.login) AS ml, arrayStringConcat(arrayMap(y -> toString(y), arraySort(groupUniqArray(x.gi))), ',') AS gs
-    FROM prod_proteus.pa_adg_member m INNER JOIN gix x ON x.agn = toString(m.ad_group)
-    GROUP BY ml
-  ),
-  gg AS (
-    SELECT opath, lower(hex(toUInt32(cityHash64(spec) % 4294967296))) AS sid, lower(hex(toUInt32(cityHash64(stream) % 4294967296))) AS tid, hd, lower(hex(toUInt32(cityHash64(hq) % 4294967296))) AS qid, lower(hex(toUInt32(cityHash64(it) % 4294967296))) AS iid,
-      ifNull(b.gs, '') AS gset, count() AS c
-    FROM st LEFT JOIN mb b ON b.ml = st.lg
-    GROUP BY opath, sid, tid, hd, qid, iid, gset
+  gg AS (SELECT opath, lower(hex(toUInt32(cityHash64(spec) % 4294967296))) AS sid, lower(hex(toUInt32(cityHash64(stream) % 4294967296))) AS tid, hd, lower(hex(toUInt32(cityHash64(hq) % 4294967296))) AS qid, lower(hex(toUInt32(cityHash64(it) % 4294967296))) AS iid, count() AS c
+    FROM st
+    GROUP BY opath, sid, tid, hd, qid, iid
   )
 SELECT CAST('s' AS String) AS section, CAST('' AS String) AS g,
-  arrayStringConcat(arraySort(groupArray(arrayStringConcat([sid, tid, toString(hd), qid, iid, toString(c), gset], '\t'))), '\n') AS k,
+  arrayStringConcat(arraySort(groupArray(arrayStringConcat([sid, tid, toString(hd), qid, iid, toString(c)], '\t'))), '\n') AS k,
   CAST(opath AS String) AS parent, toInt64(sum(c)) AS n
 FROM gg GROUP BY opath
 UNION ALL
 SELECT 'd' AS section, dg AS g, lower(hex(toUInt32(cityHash64(dv) % 4294967296))) AS k, dv AS parent, toInt64(0) AS n
 FROM (SELECT DISTINCT arrayJoin([('spec', spec), ('stream', stream), ('hq', hq), ('it', it)]) AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
 UNION ALL
-SELECT 'adg' AS section, '' AS g, toString(s.ad_group) AS k, toString(x.gi) AS parent, toInt64(s.n) AS n FROM prod_proteus.pa_adg_size s INNER JOIN gix x ON x.agn = toString(s.ad_group)
+SELECT 'adg' AS section, '' AS g, toString(z.ad_group) AS k, '' AS parent, toInt64(0) AS n FROM prod_proteus.pa_adg_size z
+WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^[\\s\\p{P}]*$')
 UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL

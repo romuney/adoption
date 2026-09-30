@@ -11,10 +11,10 @@
     Значения условий — ровно те, с которыми сравнивают датасеты pa_aud_v2 и pa_body_aud (ca_*_f):
     путь оргструктуры тем же ou() и « › », специализация/стрим/HQ/IT — как есть.
       section = 's' — сотрудники, упаковка по пути оргструктуры (parent = путь «УС-3 › …»; k — строки через \n,
-                      поля через \t): id спец. · id стрима · рук. 1/0 · id HQ · id IT · человек · номера AD-групп
-                      через запятую (номер — parent строки 'adg'; люди с одинаковыми атрибутами и группами — одна строка);
+                      поля через \t): id спец. · id стрима · рук. 1/0 · id HQ · id IT · людей
+                      (с 2026-09-30 без номеров AD-групп: люди с одинаковыми атрибутами — одна строка);
       section = 'd' — словарь: g = spec | stream | hq | it, k = id, parent = значение;
-      section = 'adg' — AD-группы прав Proteus: k = группа, parent = номер группы, n = сотрудников в группе (pa_adg_size);
+      section = 'adg' — AD-группы прав Proteus: k = группа (только имя: численности и составов нет — пересечение считает сервер после «Применить»);
       section = 'total' — n = сотрудников. -#}
 {% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
 {% macro hid(x) %}lower(hex(toUInt32(cityHash64({{ x }}) % 4294967296))){% endmacro %}
@@ -28,31 +28,25 @@ WITH
       toUInt8(ifNull(management_head_flg, 0) = 1) AS hd, toString(ifNull(hq_code, '')) AS hq, toString(ifNull(it_code, '')) AS it
     FROM prod_proteus.pa_staff
   ),
-  gix AS (
-    {#- номер группы — порядковый по имени (тот же в строках 'adg' и в наборах групп людей) -#}
-    SELECT toString(ad_group) AS agn, toUInt32(row_number() OVER (ORDER BY toString(ad_group))) AS gi
-    FROM prod_proteus.pa_adg_size WHERE ifNull(n, 0) > 0
-  ),
-  mb AS (
-    SELECT toString(m.login) AS ml, arrayStringConcat(arrayMap(y -> toString(y), arraySort(groupUniqArray(x.gi))), ',') AS gs
-    FROM prod_proteus.pa_adg_member m INNER JOIN gix x ON x.agn = toString(m.ad_group)
-    GROUP BY ml
-  ),
   gg AS (
-    SELECT opath, {{ hid('spec') }} AS sid, {{ hid('stream') }} AS tid, hd, {{ hid('hq') }} AS qid, {{ hid('it') }} AS iid,
-      ifNull(b.gs, '') AS gset, count() AS c
-    FROM st LEFT JOIN mb b ON b.ml = st.lg
-    GROUP BY opath, sid, tid, hd, qid, iid, gset
+    {#- 2026-09-30: наборов AD-групп у людей больше нет (на бою 1,8 млн членств → ответ 7,9 МБ); пересечение групп
+        с условиями считает сервер после «Применить» -#}
+    SELECT opath, {{ hid('spec') }} AS sid, {{ hid('stream') }} AS tid, hd, {{ hid('hq') }} AS qid, {{ hid('it') }} AS iid, count() AS c
+    FROM st
+    GROUP BY opath, sid, tid, hd, qid, iid
   )
 SELECT CAST('s' AS String) AS section, CAST('' AS String) AS g,
-  arrayStringConcat(arraySort(groupArray(arrayStringConcat([sid, tid, toString(hd), qid, iid, toString(c), gset], '\t'))), '\n') AS k,
+  arrayStringConcat(arraySort(groupArray(arrayStringConcat([sid, tid, toString(hd), qid, iid, toString(c)], '\t'))), '\n') AS k,
   CAST(opath AS String) AS parent, toInt64(sum(c)) AS n
 FROM gg GROUP BY opath
 UNION ALL
 SELECT 'd' AS section, dg AS g, {{ hid('dv') }} AS k, dv AS parent, toInt64(0) AS n
 FROM (SELECT DISTINCT arrayJoin([('spec', spec), ('stream', stream), ('hq', hq), ('it', it)]) AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
 UNION ALL
-SELECT 'adg' AS section, '' AS g, toString(s.ad_group) AS k, toString(x.gi) AS parent, toInt64(s.n) AS n FROM prod_proteus.pa_adg_size s INNER JOIN gix x ON x.agn = toString(s.ad_group)
+{# AD-группы — только имена для выбора (без численности: владелец 2026-09-30); пустые/«-» — выкинуты #}
+{# алиас таблицы обязателен: «AS n» ниже иначе подменяет колонку n в WHERE (все группы отсеивались) #}
+SELECT 'adg' AS section, '' AS g, toString(z.ad_group) AS k, '' AS parent, toInt64(0) AS n FROM prod_proteus.pa_adg_size z
+WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^[\\s\\p{P}]*$')
 UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL

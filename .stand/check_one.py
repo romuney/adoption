@@ -10,7 +10,7 @@
    не заходили, вне ЦА, в этом году, дошли в пред. периоде — по правам и по условиям.
 3. По условиям ЦА: итог панели == ИТОГО каталога с той же ЦА (каталог уже считает только людей ЦА).
 4. Старый анализатор CH и prefer_column_name_to_alias = 1 дают те же строки (панель и каталог).
-5. Шапка pa_head == pa_ca_dict + строка md (дата данных == md панели), от фильтров не зависит.
+5. Шапка pa_head: сотрудники/словарь/итог == pa_ca_dict, AD-группы только именами (без составов и численности), md == панели, от фильтров не зависит.
 6. Вкладка «Аудитория» каталога: у группы людей заходило / сотрудников == панель с этой группой (aud_*_f) — люди и ЦА;
    сотрудники всех групп разреза == все сотрудники (штатные и ГПХ).
 7. Сегмент ЦА (seg_f) в SQL каталога: у каждого отчёта заходили == из ЦА + вне ЦА (панель seg_f больше не шлёт — запас).
@@ -349,7 +349,23 @@ for p_, c in [(ONE, {}), (ONE, {'ca_spec_f': ['Спец 3'], 'ca_head_f': '1'}),
 # ---- 5. Шапка ---------------------------------------------------------------------------------------------
 h0, h1, dd = run(HEAD, {}), run(HEAD, {'period_param': 'm', 'ca_spec_f': ['Спец 3'], 'mode_param': 'report', 'sel_f': ['5']}), run(DICT, {})
 norm = lambda rows: sorted(json.dumps(r, sort_keys=True, default=str) for r in rows)
-ok(norm([r for r in h0 if r['section'] != 'md']) == norm(dd), f'pa_head без строки md == pa_ca_dict ({len(dd)} строк)')
+# С 2026-09-30 в шапке нет наборов AD-групп и численности групп: сверяем с pa_ca_dict то, что осталось —
+# сотрудники по пути × атрибутам (сумма людей), словарь, итог, имена групп (без пустых/«-»).
+def head_units(rows):
+    u = {}
+    for r in rows:
+        if r['section'] != 's': continue
+        for x in (r['k'] or '').split('\n'):
+            f = x.split('\t')
+            if len(f) >= 6: u[(r['parent'],) + tuple(f[:5])] = u.get((r['parent'],) + tuple(f[:5]), 0) + int(f[5])
+    return u
+same = lambda sec: norm([r for r in h0 if r['section'] == sec]) == norm([r for r in dd if r['section'] == sec])
+ok(head_units(h0) == head_units(dd) and same('d') and same('total'), 'pa_head: сотрудники по пути и атрибутам, словарь, итог == pa_ca_dict')
+import re as _re
+gn = lambda rows: sorted(r['k'] for r in rows if r['section'] == 'adg' and not _re.match(r'^[\s\W_]*$', r['k'] or '') )
+ok(gn(h0) == gn(dd) and all(r['n'] == 0 and r['parent'] == '' for r in h0 if r['section'] == 'adg'),
+   f'pa_head: AD-группы — только имена ({len(gn(h0))}), без численности и составов')
+ok(not any(len(x.split('\t')) > 6 for r in h0 if r['section'] == 's' for x in (r['k'] or '').split('\n')), 'pa_head: у людей нет наборов AD-групп')
 md = [r['k'] for r in h0 if r['section'] == 'md']
 area = [r for r in run(ONE, {}) if r['section'] == 'area'][0]
 ok(md == [str(area['lvl3'])], f'дата данных шапки == md панели ({md} / {area["lvl3"]})')

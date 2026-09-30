@@ -36,6 +36,7 @@
 var CFG = {
   ns: 'prb',
   selDelay: 300,              // мс: быстрые клики (Shift) уходят в Proteus одним фильтром — последним
+  audWait: 8000,              // мс: сколько вкладка «Аудитория» ждёт от панели числа по выбору, дальше — весь Proteus с пометкой
   selShowAfter: 400,          // мс: плашку «Пересчитываем…» показываем, только если ждём дольше (без мигания)
   selStaleWait: 10000,        // мс: после ответа под ПРЕЖНИЙ выбор ждём правильный, потом — автоповтор
   selGiveUp: 60000,           // мс: ответа нет совсем — через столько кнопка «Повторить запрос» (сами не повторяем)
@@ -1294,7 +1295,14 @@ function audExt() {
   var k = audSelKey();
   if (!k) return null;
   var e = state.audExt;
-  return e && e.key === k ? (e.aud || {}) : undefined;
+  if (e && e.key === k) return e.aud || {};
+  if (state.audWaitKey !== k) { state.audWaitKey = k; state.audWaitT = Date.now(); }
+  return audLate() ? null : undefined;   // не дождались панели — весь Proteus с пометкой (не висим)
+}
+// Выбор есть, а чисел по нему от панели нет дольше CFG.audWait.
+function audLate() {
+  var k = audSelKey(), e = state.audExt;
+  return !!k && !(e && e.key === k) && state.audWaitKey === k && Date.now() - (state.audWaitT || 0) > CFG.audWait;
 }
 function audRows() {
   var dim = audDim(), src = MODEL.aud[dim.d] || {}, out = [], q = (state.repQuery || '').toLowerCase(), ext = audExt();
@@ -1344,7 +1352,13 @@ function audBarHtml() {
   }
   h += '</div>';
   // при выборе в других вкладках — числа только по выбранному (от панели), группы без зрителей скрыты
-  if (audSelKey()) h += '<span class="' + N + '-audbar-l" style="margin-left:12px"' + tip({ title: 'Аудитория выбранного', text: 'Выбраны отчёты, коллекции или владельцы — показаны только группы, где кто-то их смотрел за период: «Польз.», «Охват» и «Пост.» — по выбранному, «Сотр.» — вся группа. Снимите выбор — вернётся весь Proteus.' }) + '>по выбору в каталоге</span>';
+  if (audLate()) {
+    var ae = state.audExt;
+    h += '<span class="' + N + '-audbar-l" style="margin-left:12px;color:#b45309"' + tip({ title: 'Числа по выбору не пришли', text:
+      (ae ? 'Панель прислала числа для другого выбора: «' + ae.key + '», а в каталоге выбрано «' + audSelKey() + '». Пришлите этот текст.'
+        : 'Панель справа не прислала числа по выбору. Проверьте, что в чарт панели вставлен JS из файла 8, а в датасет pa_one — SQL из файла 7 (после вставки — обновить страницу).') +
+      ' Пока показан весь Proteus.' }) + '>весь Proteus: нет чисел по выбору</span>';
+  } else if (audSelKey()) h += '<span class="' + N + '-audbar-l" style="margin-left:12px"' + tip({ title: 'Аудитория выбранного', text: 'Выбраны отчёты, коллекции или владельцы — показаны только группы, где кто-то их смотрел за период: «Польз.», «Охват» и «Пост.» — по выбранному, «Сотр.» — вся группа. Снимите выбор — вернётся весь Proteus.' }) + '>по выбору в каталоге</span>';
   return h + '</div>';
 }
 function audTableHtml() {
@@ -1354,6 +1368,9 @@ function audTableHtml() {
   }
   var ext = audExt();
   if (ext === undefined) {
+    // перерисовать по истечении ожидания (дальше — весь Proteus с пометкой)
+    clearTimeout(state.audT);
+    state.audT = setTimeout(function () { if (state.mode === 'aud' && state.audRender) state.audRender(); }, CFG.audWait + 200);
     return '<div class="' + N + '-empty"><b>Считаем аудиторию выбранных отчётов…</b>Числа придут вместе с пересчётом панели справа.</div>';
   }
   if (!rows.length) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Снимите выбор или выберите другой разрез.' : 'Очистите поиск или выберите другой разрез.') + '</div>';
@@ -2152,6 +2169,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     paResendOn('cat', sheetOf, CFG.paCols, areaMask);
     // Вкладка «Аудитория» при выбранных отчётах/коллекциях/владельцах: числа по выбору присылает панель (PA_AUD, её
     // секция aa) — свой SQL каталога выбор не видит. Ключ — тот же выбор (mode_param + sel_f).
+    state.audRender = render;
     state.areaKeyFn = function () { return paKey(['mode_param', 'sel_f'], paMaskGet(repMask())); };
     if (state.onAud) window.removeEventListener('message', state.onAud);
     state.onAud = function (e) {

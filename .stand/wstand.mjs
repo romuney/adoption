@@ -34,6 +34,7 @@ for (const s of steps) {
     await p.evaluate((src) => { data = window.__nextData || data; (0, eval)(src); }, fs.readFileSync(chart, 'utf8'));
     await p.waitForTimeout(60);
   }
+  if (s.wait) await p.waitForTimeout(s.wait);   // пауза, мс (таймеры виджета)
   if (s.setData) await p.evaluate((d) => { window.__nextData = d; }, JSON.parse(fs.readFileSync(s.setData, 'utf8')));
   const calls = await p.evaluate((n) => window.__calls.slice(n), n0);
   const txt = s.text ? await p.evaluate((sel) => Array.prototype.map.call(document.querySelectorAll(sel), e => e.textContent.replace(/\s+/g, ' ').trim()).slice(0, 12), s.text) : undefined;

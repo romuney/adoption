@@ -84,7 +84,7 @@ var CFG = {
     { key: 'org5', label: 'УС-5', trg: 'Оргструктура · УС-5', sub: true },
     { key: 'org6', label: 'УС-6', trg: 'Оргструктура · УС-6', sub: true },
     { key: 'org7', label: 'УС-7', trg: 'Оргструктура · УС-7', sub: true },
-    { key: 'spec', label: 'Специализация' }, { key: 'stream', label: 'Стрим' },
+    { key: 'stream', label: 'Стрим' }, { key: 'spec', label: 'Специализация' },
     { key: 'adgroup', label: 'AD-группа' }, { key: 'heads', label: 'Тим-лиды' }
   ],
   // Разделитель звеньев пути оргструктуры — тот же, что в SQL (pa_people, org_f).
@@ -1051,6 +1051,7 @@ function buildCSS() {
     // ── Настройки списка (поповер) ──
     P + '-who-opts ' + P + '-dd-trg{width:auto;}',
     P + '-who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px;}',
+    P + '-who-opts-pop>*{flex-shrink:0;}',          // тело с прокруткой (fitDd) не сминает строки
     P + '-who-opts-pop ' + P + '-psearch input{width:100%;height:30px;}',
     P + '-wo-h{font-size:11px;font-weight:500;color:var(--muted);',
     '  text-transform:uppercase;letter-spacing:.4px;}',
@@ -2128,14 +2129,16 @@ function exPoolHtml(area) {
   return h;
 }
 
-// Поповер настроек списка (порт app.js 1103–1139): условия уходят в людскую
-// шину (heads_f, exl_f) — сужают каталог и KPI шапки; динамику панели не трогают.
+// Поповер настроек списка (порт app.js 1103–1139): исключённые люди уходят в людскую
+// шину (exl_f) — сужают каталог и KPI шапки; динамику панели не трогают.
+// Переключателя «Только руководителей» больше нет (2026-09-30): руководителей отбирает
+// условие «Руководители» в шапке (ЦА); state.headsOnly остаётся false.
 function optsDropHtml(area) {
   var open = state.dd === 'whoOpts';
   var active = state.headsOnly || state.excl.length;
   var h = '<div class="' + CFG.ns + '-dd sm ' + CFG.ns + '-who-opts' + (open ? ' open' : '') + '">' +
     '<button class="' + CFG.ns + '-dd-trg" data-ddtoggle="whoOpts" data-action="toggle" aria-haspopup="true" aria-expanded="' + open + '" type="button"' +
-      tip({ title: 'Фильтр людей', text: 'Кого считать: только руководителей и без выбранных людей. Действует на список, каталог слева и KPI сверху.' }) + '>' +
+      tip({ title: 'Фильтр людей', text: 'Кого не считать: выбранные люди выпадают из списка, каталога слева и KPI сверху. Руководителей оставляет условие «Руководители» в шапке.' }) + '>' +
       FILTER_SVG +
       '<span class="' + CFG.ns + '-dd-txt">Фильтр людей' + (active ? ' · ' + ((state.headsOnly ? 1 : 0) + (state.excl.length ? 1 : 0)) : '') + '</span>' +
       (active ? '<i class="' + CFG.ns + '-wo-dot" aria-hidden="true"></i>' : '') +
@@ -2143,10 +2146,6 @@ function optsDropHtml(area) {
     '</button>';
   if (open) {
     h += '<div class="' + CFG.ns + '-dd-body ' + CFG.ns + '-who-opts-pop">' +
-      '<div class="' + CFG.ns + '-wo-h">Кого считать</div>' +
-      '<label class="' + CFG.ns + '-swt"><input type="checkbox" data-wohead' + (state.headsOnly ? ' checked' : '') + '>' +
-        '<span>Только руководителей</span></label>' +
-      '<div class="' + CFG.ns + '-wo-note">' + (state.headsOnly ? 'Считаем только руководителей, остальные не учитываются.' : 'Считаем всех; включите, чтобы оставить только руководителей.') + '</div>' +
       '<div class="' + CFG.ns + '-wo-h">Не считать этих людей' + (state.excl.length ? ' · ' + state.excl.length : '') + '</div>' +
       '<div class="' + CFG.ns + '-wo-note">Например, свои тестовые заходы или команду отчёта' + (state.headsOnly ? ' (в списке — только руководители)' : '') + '.</div>' +
       '<div class="' + CFG.ns + '-psearch">' +
@@ -3584,6 +3583,28 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       SVG_W = w; state.svgW = w;
       return true;
     }
+    // Открытая выпадашка не должна обрезаться (скрин владельца 2026-09-30, «Фильтр людей»): absolute-тело
+    // режет прокручиваемое тело панели. Поэтому тело выпадашки — fixed от кнопки в окне чарта: вниз, а если
+    // снизу места меньше, чем сверху, — вверх; не влезает и так — сначала ужимается список людей, потом
+    // тело получает прокрутку. Идемпотентна: зовётся после render() и при прокрутке панели.
+    function fitDd() {
+      var b = overlay.querySelector('.' + CFG.ns + '-dd.open > .' + CFG.ns + '-dd-body');
+      if (!b) return;
+      var ex = b.querySelector('.' + CFG.ns + '-wo-ex');
+      b.style.cssText = ''; if (ex) ex.style.maxHeight = '';
+      var H = window.innerHeight, W = window.innerWidth;
+      if (!H || !W) return;
+      var t = b.parentNode.getBoundingClientRect(), r = b.getBoundingClientRect();
+      var need = r.height, below = H - t.bottom - 10, above = t.top - 10;
+      var up = need > below && above > below, room = up ? above : below;
+      b.style.position = 'fixed'; b.style.right = 'auto'; b.style.minWidth = r.width + 'px';
+      b.style.left = Math.round(Math.max(6, Math.min(r.left, W - r.width - 6))) + 'px';
+      if (up) { b.style.top = 'auto'; b.style.bottom = Math.round(H - t.top + 4) + 'px'; }
+      else b.style.top = Math.round(t.bottom + 4) + 'px';
+      if (need <= room) return;
+      if (ex) { ex.style.maxHeight = Math.max(72, ex.offsetHeight - (need - room)) + 'px'; need = b.offsetHeight; }
+      if (need > room) { b.style.maxHeight = Math.max(80, Math.floor(room)) + 'px'; b.style.overflowY = 'auto'; }
+    }
     // Прокрутка переживает пересборку и перезапуск скрипта Proteus (кросс-фильтр перезапускает чарт в том же
     // окне): клик по человеку в таблице не должен уводить список наверх. Снимок — сама панель и внутренние
     // скролл-зоны (таблица, списки настроек) по классу и номеру; хранится в state, обновляется на scroll.
@@ -3609,7 +3630,13 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         if (v) { z[i].scrollTop = v[0]; z[i].scrollLeft = v[1]; }
       }
     }
-    overlay.addEventListener('scroll', function () { state.scr = scrSnap(); }, { capture: true, passive: true });
+    overlay.addEventListener('scroll', function (e) {
+      state.scr = scrSnap();
+      // выпадашка fixed: прокрутили панель — догоняет кнопку (прокрутка внутри самой выпадашки — не повод)
+      var n = e.target;
+      while (n && n !== overlay && !(n.classList && n.classList.contains(CFG.ns + '-dd-body'))) n = n.parentNode;
+      if (state.dd && (!n || n === overlay)) fitDd();
+    }, { capture: true, passive: true });
     function render() {
       // overlay — скролл-контейнер: без сохранения позиции клик внизу прыгал наверх.
       // Первый рендер после перезапуска (панель ещё пуста) — позиция из state.
@@ -3621,6 +3648,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       if (ch1 || ch2 || ch3) overlay.innerHTML = buildHTML();
       if (ANIM) animateIn(overlay);
       ANIM = false;
+      fitDd();
       scrPut(scr);
       state.scrSig = listSig();     // что сейчас на экране — с этим сравнит следующий снимок
       state.scr = scrSnap();

@@ -93,8 +93,8 @@ var CFG = {
     { key: 'o5', d: 'o', lvl: 5, label: 'УС-5', col: 'aud_org_f' },
     { key: 'o6', d: 'o', lvl: 6, label: 'УС-6', col: 'aud_org_f' },
     { key: 'o7', d: 'o', lvl: 7, label: 'УС-7', col: 'aud_org_f' },
-    { key: 's', d: 's', label: 'Специализация', col: 'aud_spec_f' },
     { key: 't', d: 't', label: 'Стрим', col: 'aud_stream_f' },
+    { key: 's', d: 's', label: 'Специализация', col: 'aud_spec_f' },
     { key: 'q', d: 'q', label: 'HQ', col: 'aud_hq_f' },
     { key: 'i', d: 'i', label: 'IT', col: 'aud_it_f' },
     { key: 'h', d: 'h', label: 'Руководители', col: 'aud_head_f' }

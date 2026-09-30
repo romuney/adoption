@@ -17,7 +17,7 @@
 // ЧТО ЭТО. Одна плашка настроек над листом (прежние чарты «Шапка» pa-strip и «Целевая аудитория»
 //   pa-ca-bar — одним чартом, просьба владельца 2026-09-30: борд = шапка · каталог · панель).
 //   Ряд 1: период · «Считать»: переключатели опций · «данные на ДД.ММ».
-//   Ряд 2: кнопки условий ЦА (УС · Специализация · Стрим · HQ · IT · Руководители · AD-группы) → по клику
+//   Ряд 2: кнопки условий ЦА (УС · Стрим · Специализация · HQ · IT · Руководители · AD-группы) → по клику
 //   выпадашка поверх каталога и панели (поиск, галочки, числа с учётом остальных условий) → «Применить».
 // ДАННЫЕ. Датасет pa_head (Виджеты/pa-head.data.sql) = справочник pa_ca_dict + строка md (дата данных);
 //   фильтров не читает — ответ один на всех, кэшируется. Черновик и применённая ЦА — в state.
@@ -68,8 +68,8 @@ var CFG = {
   // Условия: порядок кнопок; q — ключ поиска; w — ширина выпадашки.
   kinds: [
     { k: 'org', l: 'Управленческая структура', q: true, ph: 'Поиск по всем уровням УС', w: 460 },
-    { k: 'spec', l: 'Специализация', q: true, ph: 'Найти специализацию', w: 360 },
     { k: 'stream', l: 'Стрим', q: true, ph: 'Найти стрим', w: 340 },
+    { k: 'spec', l: 'Специализация', q: true, ph: 'Найти специализацию', w: 360 },
     { k: 'hq', l: 'HQ', w: 280 },
     { k: 'it', l: 'IT', w: 260 },
     { k: 'heads', l: 'Руководители', w: 280 },
@@ -385,7 +385,8 @@ function buildCSS() {
     P + '-btn.sm{height:28px;padding:0 10px;font-size:12px;}',
     P + '-btn[disabled]{opacity:.45;cursor:default;}',
     // ── Выпадашка (в body iframe, position:fixed) ──
-    P + '-dd{position:fixed;z-index:9000;background:#fff;border:1px solid ' + C.line + ';border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.18);'
+    // border-box: maxHeight из placeDd — вся высота с отступами (иначе +22 px и низ резался краем iframe, 2026-09-30)
+    P + '-dd{position:fixed;z-index:9000;box-sizing:border-box;background:#fff;border:1px solid ' + C.line + ';border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.18);'
       + 'padding:10px;display:flex;flex-direction:column;gap:8px;font-family:' + CFG.fonts.family + ';font-size:12.5px;color:' + C.ink2 + ';}',
     P + '-dd-h{display:flex;align-items:baseline;gap:8px;flex:0 0 auto;}',
     P + '-dd-h b{font-size:12.5px;font-weight:600;color:' + C.ink + ';}',

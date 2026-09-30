@@ -5,15 +5,16 @@
 // node audboard.mjs <папка моков> <board.css> <сценарий.json> <папка скринов> [ширина]
 // Моки: strip.json, bar.json, cat.json, aud.json (+ любые для шага reload).
 // Сценарий: [{frame:'bar'|'cat'|'pan'|'strip', click:sel, i?, type?:текст, reload?:{cat:'x.json',pan:'y.json'}, shot?:'имя',
-//   probe?:{sel, ms}}] — probe: после клика ms миллисекунд пишет y элемента sel на странице (ловит дёргание).
+//   probe?:{sel, ms}, eval?:'выражение JS в кадре frame — результат в лог'}] — probe: после клика ms миллисекунд пишет y элемента sel на странице (ловит дёргание).
 // HEAD=1 — единый лист из трёх чартов: шапка pa-head (период + строка ЦА одним чартом, мок head.json) · каталог | панель.
+// ROW=px — высота строки каталог|панель (по умолчанию 980; ноутбук — ~620).
 // DELAY=мс — родитель кладёт маркер в img с задержкой (как Proteus), иначе мгновенно.
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright'); // NODE_PATH=$(npm root -g)
 import fs from 'fs';
 import path from 'path';
 const [,, dir, cssFile, scen, outDir, width] = process.argv;
-const W = +(width || 1600), GAP = 16, HEAD = 64, BAR = process.env.HEAD === '1' ? 112 : 64, ROW = 980, CID = '000000';
+const W = +(width || 1600), GAP = 16, HEAD = 64, BAR = process.env.HEAD === '1' ? 112 : 64, ROW = +(process.env.ROW || 980), CID = '000000';
 const WD = decodeURIComponent(new URL('../Виджеты/', import.meta.url).pathname);
 const inner = (js, mock) => '<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#f6f6f6}</style></head><body>'
   + '<div _echarts_instance_="ec" style="width:100%;height:100%;position:relative"><canvas></canvas></div>'
@@ -69,8 +70,9 @@ for (const s of JSON.parse(fs.readFileSync(scen, 'utf8'))) {
   if (s.shot) await p.screenshot({ path: path.join(outDir, s.shot + '.png') });
   const txt = s.text ? await (await frameOf(s.frame || 'bar')).evaluate((q) => Array.prototype.map.call(document.querySelectorAll(q), (e) => e.textContent.replace(/\s+/g, ' ').trim()).slice(0, 14), s.text) : undefined;
   const ifr = await p.evaluate(() => { const r = document.querySelector('iframe[data-f="bar"]').getBoundingClientRect(); return Math.round(r.height); });
+  const ev = s.eval ? await (await frameOf(s.frame || 'bar')).evaluate(s.eval) : undefined;
   const ys = s.probe ? [...new Set(await (await frameOf(s.frame || 'bar')).evaluate(() => window.__ys))] : undefined;
-  log.push({ step: s.shot || s.click || 'reload', ys, barIframe: ifr, emits: await p.evaluate(() => window.__emits.splice(0)), txt });
+  log.push({ step: s.shot || s.click || 'reload', ys, ev, barIframe: ifr, emits: await p.evaluate(() => window.__emits.splice(0)), txt });
 }
 console.log(JSON.stringify({ errs, log }, null, 1));
 await b.close();

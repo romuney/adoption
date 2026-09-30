@@ -109,3 +109,15 @@
   z-index: 998 !important;
   background: transparent !important;
 }
+
+/* ==========================================================================
+   Стандартный значок загрузки Proteus — ПРЯЧЕМ в ячейках наших чартов (2026-09-30): при пересчёте чарт сам
+   показывает плашку «Пересчитываем…», значок поверх был лишним. Только там, где наш чарт уже отрисован
+   (:has(.react_sanbbox)): при самой первой загрузке листа, пока чарта ещё нет, значок остаётся.
+   Если значок всё равно виден — ПКМ по нему → «Просмотреть код» и пришлите класс элемента.
+   ========================================================================== */
+.dashboard-component-chart-holder:has(.react_sanbbox) img.loading,
+.dashboard-component-chart-holder:has(.react_sanbbox) [data-test="loading-indicator"],
+.dashboard-component-chart-holder:has(.react_sanbbox) [aria-label="Loading"] {
+  display: none !important;
+}

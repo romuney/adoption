@@ -11,9 +11,44 @@
   padding: 0 !important;                       /* отступ 16 px форка — он и даёт «рамку» */
   box-shadow: none !important;
 }
-.chart-slice { display: flex !important; flex-direction: column !important; }
-.chart-container { padding: 0 !important; }
-.react_sanbbox iframe { display: block !important; }
+/* Наши чарты тянутся на ВСЮ ячейку. Proteus при загрузке пишет iframe высоту атрибутом
+   (ячейка − отступы 16+16 − шапка чарта) и потом её не пересчитывает: без этих строк внизу
+   ячейки остаётся полоса, «чарт не растягивается». Цепочка: холдер → chart-slice → dashboard-chart →
+   chart-container → slice_container → div → react_sanbbox → iframe — вся во флекс/100 %. */
+.dashboard-component-chart-holder:has(.react_sanbbox) {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-slice,
+.dashboard-component-chart-holder:has(.react_sanbbox) .dashboard-chart,
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-container,
+.dashboard-component-chart-holder:has(.react_sanbbox) .slice_container,
+.dashboard-component-chart-holder:has(.react_sanbbox) .slice_container > div,
+.dashboard-component-chart-holder:has(.react_sanbbox) .react_sanbbox {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+/* Шапка чарта (пустой заголовок + меню «…» в режиме правки) места не занимает: меню остаётся поверх. */
+.dashboard-component-chart-holder:has(.react_sanbbox) .header-title { display: none !important; }
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-slice { position: relative !important; }
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-header {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 11 !important;
+  margin: 0 !important;
+}
+.react_sanbbox iframe {
+  display: block !important;                   /* строчная щель под iframe */
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;                     /* перекрывает атрибут height платформы */
+  min-height: 0 !important;
+}
 .dashboard-grid .grid-content > :not(:last-child) { margin-bottom: 16px !important; }
 
 /* ==========================================================================

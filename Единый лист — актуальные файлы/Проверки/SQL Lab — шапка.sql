@@ -31,11 +31,11 @@ SELECT CAST('s' AS String) AS section, CAST('' AS String) AS g,
   CAST(opath AS String) AS parent, toInt64(sum(c)) AS n
 FROM gg GROUP BY opath
 UNION ALL
-SELECT 'd', dg, lower(hex(toUInt32(cityHash64(dv) % 4294967296))), dv, toInt64(0)
+SELECT 'd' AS section, dg AS g, lower(hex(toUInt32(cityHash64(dv) % 4294967296))) AS k, dv AS parent, toInt64(0) AS n
 FROM (SELECT DISTINCT arrayJoin([('spec', spec), ('stream', stream), ('hq', hq), ('it', it)]) AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
 UNION ALL
-SELECT 'adg', '', toString(s.ad_group), toString(x.gi), toInt64(s.n) FROM prod_proteus.pa_adg_size s INNER JOIN gix x ON x.agn = toString(s.ad_group)
+SELECT 'adg' AS section, '' AS g, toString(s.ad_group) AS k, toString(x.gi) AS parent, toInt64(s.n) AS n FROM prod_proteus.pa_adg_size s INNER JOIN gix x ON x.agn = toString(s.ad_group)
 UNION ALL
-SELECT 'total', '', '', '', toInt64(count()) FROM prod_proteus.pa_staff
+SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL
-SELECT 'md', '', ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), ''), '', toInt64(0)
+SELECT 'md' AS section, '' AS g, ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), '') AS k, '' AS parent, toInt64(0) AS n

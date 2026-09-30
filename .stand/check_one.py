@@ -78,8 +78,36 @@ def lab_body(src, flt):
     return [l.rstrip() for l in stand.render({'ONE': ONE, 'CAT': CAT, 'HEAD': HEAD}[src], flt).split('\n') if l.strip()]
 
 
+# ОДИН запрос на всё (в SQL Lab можно запускать только один SELECT, system.* запрещены): главные сценарии —
+# подзапросами (строк ответа, КБ упаковки), + размеры витрин; общее время показывает SQL Lab.
+ALL_NAME = '0. ЗАМЕР БОЯ — один запрос (запустить только его).sql'
+ALL_HEAD = ['-- ЗАМЕР БОЯ ОДНИМ ЗАПРОСОМ: SQL Lab (база CROSS) → «Выполнить» → прислать таблицу и ВРЕМЯ выполнения (зелёная плашка).',
+            '-- Внутри — те же запросы, что шлют чарты единого листа: шапка, каталог (без ЦА и с ЦА «IT + руководители»),',
+            '-- панель (весь Proteus, самый популярный отчёт — подставляется сам, ЦА «IT + руководители»), и размеры витрин pa_*.',
+            '-- rows_or_n — строк ответа датасета (у витрин — строк в таблице), answer_kb — КБ ответа (как уйдёт в браузер, без JSON).',
+            "-- Если в бою код IT называется иначе — замените 'IT' (поиском) на значение из выпадашки «IT» строки ЦА.",
+            '-- Цифру в первой строке меняйте для повторного замера: SQL Lab кэширует результат.']
+TOP_REP = ('SELECT p.dashboard_id FROM prod_proteus.pa_pair p WHERE p.dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta '
+           'WHERE published = 1 AND actual_flg = 1) GROUP BY p.dashboard_id ORDER BY count() DESC LIMIT 1')
+ALL_SCEN = [('1 шапка', 'HEAD', {}), ('2 каталог', 'CAT', {}), ('3 каталог · ЦА IT-руководители', 'CAT', {'ca_it_f': ['IT'], 'ca_head_f': '1'}),
+            ('4 панель · весь Proteus', 'ONE', {}), ('5 панель · самый популярный отчёт', 'ONE', {'mode_param': 'report', 'sel_f': [LAB_ID]}),
+            ('6 панель · ЦА IT-руководители', 'ONE', {'ca_it_f': ['IT'], 'ca_head_f': '1'})]
+
+
+def lab_all():
+    parts = []
+    for name, src, flt in ALL_SCEN:
+        body = '\n'.join(lab_body(src, flt)).replace('dashboard_id IN (' + LAB_ID + ')', 'dashboard_id IN (' + TOP_REP + ')')
+        parts.append("SELECT '" + name + "' AS item, toFloat64(count()) AS rows_or_n, round(sum(length(k)) / 1024) AS answer_kb FROM (\n" + body + '\n)')
+    for t in ['pa_pair', 'pa_evd_day', 'pa_staff', 'pa_emp_attrs', 'pa_dash_meta', 'pa_dash_acl', 'pa_adg_member']:
+        parts.append("SELECT '7 витрина " + t + "' AS item, toFloat64(count()) AS rows_or_n, toFloat64(0) AS answer_kb FROM prod_proteus." + t)
+    return ['SELECT item, rows_or_n, answer_kb FROM ('] + '\nUNION ALL\n'.join(parts).split('\n') + [')', 'ORDER BY item']
+
+
 LAB_DIR = os.path.join(D, 'Проверки') if D else None
 if LAB_DIR and REBUILD:
+    open(os.path.join(LAB_DIR, ALL_NAME), 'w').write('\n'.join(['-- 1'] + ALL_HEAD + lab_all()) + '\n')
+    print('пересобран Проверки/' + ALL_NAME)
     os.makedirs(LAB_DIR, exist_ok=True)
     for name, src, flt, head in LABS:
         body = lab_body(src, flt)
@@ -397,6 +425,13 @@ ok(not [r for r in run(ONE, {}, raw=True) if r['section'] == 'aa'], 'без вы
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):
+    fa = os.path.join(LAB_DIR, ALL_NAME)
+    la = open(fa).read().rstrip('\n').split('\n') if os.path.exists(fa) else []
+    ok(la[1 + len(ALL_HEAD):] == lab_all(), f'Проверки/{ALL_NAME}: == текущие шаблоны' + ('' if la[1 + len(ALL_HEAD):] == lab_all() else ' (пересобрать: --rebuild)'))
+    ok('system.' not in '\n'.join(la), f'Проверки/{ALL_NAME}: без system.* (в SQL Lab запрещено)')
+    ra = stand.stat('\n'.join(la))[0]
+    ok(len(ra) == len(ALL_SCEN) + 7 and all(r['rows_or_n'] > 0 for r in ra), f'Проверки/{ALL_NAME}: исполняется, {len(ra)} строк, все сценарии непустые')
+    for r in ra: print('     ', r['item'], int(r['rows_or_n']), int(r['answer_kb']), 'КБ')
     base_one = '\n'.join(lab_body('ONE', {}))
     ok(LAB_ID not in base_one and LAB_ID not in '\n'.join(lab_body('CAT', {})), f'метка {LAB_ID} в шаблонах сама по себе не встречается')
     for name, src, flt, head in LABS:

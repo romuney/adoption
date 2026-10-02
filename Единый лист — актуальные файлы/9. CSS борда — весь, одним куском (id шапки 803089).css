@@ -1,0 +1,123 @@
+/* CSS единого листа — ВЕСЬ, одним куском: ячейки без белых рамок + шапка 803089 (выпадашки ЦА и подсказки).
+   Вставить в Edit dashboard → CSS (в конец или вместо прежних блоков строки ЦА / шапки / вкладок). */
+
+/* ==========================================================================
+   Ячейки чартов без белых рамок и с ровным швом 16 px — ТА ЖЕ вставка, что стоит на боевом борде
+   (проверена там 2026-09-18). Без неё Proteus рисует вокруг каждого чарта белую карточку с отступом 16 px:
+   виджет серый внутри белой рамки. Если на борде эти строки уже есть — второй раз не нужно.
+   ========================================================================== */
+.dashboard-component-chart-holder {
+  background-color: transparent !important;   /* белая карточка ячейки */
+  padding: 0 !important;                       /* отступ 16 px форка — он и даёт «рамку» */
+  box-shadow: none !important;
+}
+/* Наши чарты тянутся на ВСЮ ячейку. Proteus при загрузке пишет iframe высоту атрибутом
+   (ячейка − отступы 16+16 − шапка чарта) и потом её не пересчитывает: без этих строк внизу
+   ячейки остаётся полоса, «чарт не растягивается». Цепочка: холдер → chart-slice → dashboard-chart →
+   chart-container → slice_container → div → react_sanbbox → iframe — вся во флекс/100 %. */
+.dashboard-component-chart-holder:has(.react_sanbbox) {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-slice,
+.dashboard-component-chart-holder:has(.react_sanbbox) .dashboard-chart,
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-container,
+.dashboard-component-chart-holder:has(.react_sanbbox) .slice_container,
+.dashboard-component-chart-holder:has(.react_sanbbox) .slice_container > div,
+.dashboard-component-chart-holder:has(.react_sanbbox) .react_sanbbox {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+/* Шапка чарта (пустой заголовок + меню «…» в режиме правки) места не занимает: меню остаётся поверх. */
+.dashboard-component-chart-holder:has(.react_sanbbox) .header-title { display: none !important; }
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-slice { position: relative !important; }
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-header {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 11 !important;
+  margin: 0 !important;
+}
+.react_sanbbox iframe {
+  display: block !important;                   /* строчная щель под iframe */
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;                     /* перекрывает атрибут height платформы */
+  min-height: 0 !important;
+}
+.dashboard-grid .grid-content > :not(:last-child) { margin-bottom: 16px !important; }
+
+/* ==========================================================================
+   Шапка единого листа (период · «Считать» · «Целевая аудитория» — ОДИН чарт) — выпадашки и подсказки поверх листа.
+   Тот же костыль, что у иерархического фильтра борда 59922 (чарт 783469), с его проверенными
+   правилами: виджет при открытой выпадашке шлёт в канал скриншотов PNG, в base64 которого стоит
+   маркер UEEtQ0EtREQtT04x; родитель кладёт dataUrl в img.echarts-plugin РЯДОМ с iframe, и эти
+   правила разворачивают iframe слоем поверх нижних чартов. Закрыли — чистый PNG, iframe обратно.
+   id чарта шапки подставлен: 803089. Шапка на борде другая (при переносе на боевой) — Ctrl+H «803089» → её id.
+   Красные «!» редактора у строк с :has(...) — линтер не знает :has, на работу не влияет.
+   ========================================================================== */
+
+/* ячейки не должны резать развёрнутый iframe */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .slice_container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .chart-container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) .dashboard-chart {
+  overflow: visible !important;
+}
+
+/* якорь — #chart-id-803089 (обёртка iframe внутри области чарта), а не ячейка с заголовком:
+   так строка при открытии не прыгает на высоту заголовка (урок борда 59922). */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) #chart-id-803089 {
+  position: relative !important;
+}
+
+/* сам слой: во всю ширину строки, вниз до 640 px (не больше 85 % экрана), выше сетки */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtQ0EtREQtT04x"]) iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: min(640px, 85vh) !important;
+  z-index: 998 !important;           /* выше сетки, ниже системных модалок */
+  background: transparent !important;
+}
+
+/* Пока выпадашка открыта, область под iframe закрыта для кликов: клик туда закрывает выпадашку
+   (виджет слушает клики и blur своего окна), Esc — тоже. */
+
+/* ==========================================================================
+   Та же шапка — подсказки переключателей «Считать»: другой маркер (UEEtU1QtVElQLU9O), разворот ниже —
+   до 260 px; подсказка ушла — iframe обратно. id — тот же, 803089 (чарт шапки).
+   ========================================================================== */
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .slice_container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .chart-container,
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) .dashboard-chart {
+  overflow: visible !important;
+}
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) #chart-id-803089 {
+  position: relative !important;
+}
+.dashboard-chart-id-803089:has(img.echarts-plugin[src*="UEEtU1QtVElQLU9O"]) iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: min(260px, 60vh) !important;
+  z-index: 998 !important;
+  background: transparent !important;
+}
+
+/* ==========================================================================
+   Стандартный значок загрузки Proteus — ПРЯЧЕМ в ячейках наших чартов (2026-09-30): при пересчёте чарт сам
+   показывает плашку «Пересчитываем…», значок поверх был лишним. Только там, где наш чарт уже отрисован
+   (:has(.react_sanbbox)): при самой первой загрузке листа, пока чарта ещё нет, значок остаётся.
+   Если значок всё равно виден — ПКМ по нему → «Просмотреть код» и пришлите класс элемента.
+   ========================================================================== */
+.dashboard-component-chart-holder:has(.react_sanbbox) img.loading,
+.dashboard-component-chart-holder:has(.react_sanbbox) [data-test="loading-indicator"],
+.dashboard-component-chart-holder:has(.react_sanbbox) [aria-label="Loading"] {
+  display: none !important;
+}

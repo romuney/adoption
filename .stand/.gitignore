@@ -1,0 +1,4 @@
+.db/
+__pycache__/
+node_modules
+e2e_*.json

@@ -1,0 +1,269 @@
+{#- pa_people v1 — правая панель «Аудитория области» (Кто смотрит · Динамика · Закрепляемость)
+    и панель «Аудитория» второго листа. Заменяет pa_who + pa_coh_v4 + pa_aud_v1.
+    Слушает: полоску (period_param, pub_f/act_f/exc_f) и выбор каталога
+    (mode_param + sel_f; report/owner/collection — мультивыбор = объединение,
+    cut:lvl3/lvl4/spec/stream/head — эмит панели Аудитории). Людскую шину НЕ читает:
+    панель — её источник (BI-паттерн: источник себя не фильтрует).
+    v2 (2026-09-23): дневной факт НЕ читается — evd сворачивает предагрегат пар pa_pair
+    (как каталог) до ОДНОЙ строки на логин: OR масок бакетов окна 2n, суммы просмотров,
+    первый визит (kmax), маска месяцев (msk_mon — когорты и MAU). Линия «Просмотры»
+    динамики — из pa_dash_bkt (отчёт × бакет). «Дней» у человека = АКТИВНЫХ ПЕРИОДОВ
+    грануляции (на 30 днях — активные дни, как раньше). Дальше строка логина
+    размножается по РОЛЯМ (total/freq/ctx/list/ts/coh; ctx g='org' — узлы оргструктуры
+    УС-3…УС-7, k = путь «А › Б › В», parent = путь родителя; у list parent = путь человека) одним arrayJoin и сворачивается
+    одним GROUP BY. UNION-плеч поверх общего CTE нет. -#}
+{% set HAS_FIO = true %}{#- false — если в pa_emp_attrs ещё нет колонок fio / exp_nm (GP-параграф «PA · атрибуты зрителей» из поставки 2026-09-22) -#}
+{% set HAS_ORG = true %}{#- false — если в pa_emp_attrs ещё нет lvl5…lvl7 (тот же параграф): оргструктура будет до УС-4 -#}
+{#- Уровень УС: заглушки оргструктуры («-», «—», «…», пробелы — только знаки препинания) = пусто;
+    путь «УС-3 › …» обрывается на них, как на пустом уровне (иначе «-» становится отдельным подразделением). -#}
+{% macro ou(col) %}if(match(toString(ifNull(a.{{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.{{ col }}, ''))){% endmacro %}
+{% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay', 'gap': 7}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday', 'gap': 1}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth', 'gap': 1}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter', 'gap': 1}} %}
+{% set grain = filter_values('period_param')|first|default('d', true) %}
+{% set grain = grain if grain in GRAINS else 'd' %}
+{% set g = GRAINS[grain] %}
+{% set CUR = 2 ** g.n - 1 %}
+{% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
+{% set GAPM = 2 ** g.gap - 1 %}
+{#- Корзины частоты — верхние границы корзин 1–3 (четвёртая — открытая «N+») по АКТИВНЫМ периодам, своя шкала у каждой гранулярности
+    (в 12 месяцах и 8 кварталах нет недостижимых «8–15» / «16+»). Та же таблица — в SQL каталога. -#}
+{% set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] %}
+{% set ADG_N = 100 %}
+{% set HIST_DAYS = 90 %}{#- сколько истории нужно до начала периода, чтобы отличить нового от давно не заходившего -#}
+{% set WITH_ADG = false %}{#- true — вид «AD-группа» в «Кто смотрит». На бою у человека сотни AD-групп: их разворот
+    давал ~2 с на КАЖДЫЙ клик (стенд: 1 отчёт 0,16 → 1,2 с, весь Proteus 0,5 → 2,7 с). -#}
+{% macro q(values) -%}
+{%- set out = [] -%}
+{%- for v in values -%}{%- set _ = out.append(v|string|replace('\\', '\\\\')) -%}{%- endfor -%}
+{{- out|where_in -}}
+{%- endmacro %}
+{% macro qa(values) -%}[{{ q(values)[1:-1] }}]{%- endmacro %}
+{#- Даты — ОДИН скалярный подзапрос на весь запрос: одинаковые скаляры ClickHouse считает один раз, а разные
+    ((SELECT md …), (SELECT kt …), (SELECT ds …)) — каждый своим сканом pa_pair. -#}
+{% set MD = "tupleElement((SELECT h FROM maxd), 1)" %}{% set DS = "tupleElement((SELECT h FROM maxd), 2)" %}{% set KT = "tupleElement((SELECT h FROM maxd), 3)" %}{% set KTD = "tupleElement((SELECT h FROM maxd), 4)" %}
+{#- Календарь посещений (роль cal): дни за последние CAL_N дней по маске pa_pair.msk_d — при любой грануляции.
+    Просмотры по дням — pa_dash_bkt (грануляция d), они есть только за 30 дней. -#}
+{% set CAL_N = 60 %}
+{% macro kd(col) -%}toInt64(dateDiff('day', toStartOfDay({{ col }}), toStartOfDay({{ MD }}))){%- endmacro %}
+{% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}({{ MD }}))){%- endmacro %}
+{% set pubv = filter_values('pub_f')|first|default('1', true) %}{% set pubv = pubv if pubv in ['0', '1'] else '1' %}
+{% set actv = filter_values('act_f')|first|default('1', true) %}{% set actv = actv if actv in ['0', '1'] else '1' %}
+{% set excv = filter_values('exc_f')|first|default('1', true) %}{% set excv = excv if excv in ['0', '1'] else '1' %}
+{% set CUTS = {'cut:lvl3': 'lvl3_management_unit_nm', 'cut:lvl4': 'lvl4_management_unit_nm', 'cut:spec': 'emp_specialization_desc', 'cut:stream': 'emp_stream_desc', 'cut:head': 'toString(management_head_flg)'} %}
+{% set pmode = filter_values('mode_param')|first|default('', true) %}
+{% set pmode = pmode if pmode in ['report', 'owner', 'collection'] or pmode in CUTS else '' %}
+{% set selr = filter_values('sel_f') or [] %}
+{% set sel = [] %}{% for v in selr %}{% if v|string != '' %}{% set _ = sel.append(v|string) %}{% endif %}{% endfor %}
+{% set have = pmode != '' and sel|length > 0 %}
+{% set repids = [] %}{% if have and pmode == 'report' %}{% for v in sel %}{% if v|int > 0 %}{% set _ = repids.append(v|int) %}{% endif %}{% endfor %}{% endif %}
+{#- Эхо применённых кросс-фильтров (сверка выбора в чартах, 2026-09-29): сырые filter_values колонок,
+    которые шлют чарты борда; «"», «\» и переводы строк выкинуты — в ключе сверки чарта их тоже нет. -#}
+{% set FLT = [] %}{% for c in ['mode_param', 'sel_f', 'period_param', 'pub_f', 'act_f', 'exc_f', 'org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'] %}{% set fv = [] %}{% for v in (filter_values(c) or []) %}{% if v|string|length < 2000 %}{% set _ = fv.append('"' ~ (v|string|replace('"', '')|replace('\\', '')|replace('\n', '')|replace('\r', '')|replace("'", "''")) ~ '"') %}{% endif %}{% endfor %}{% if fv %}{% set _ = FLT.append('"' ~ c ~ '":[' ~ fv|join(',') ~ ']') %}{% endif %}{% endfor %}
+WITH
+  {# Дата свежести md — как у каталога: md пары, запасной источник — последний визит.
+      Начало истории событий ds и «надёжные» периоды: новым человека можно назвать, только если до начала
+      периода есть ≥ {{ HIST_DAYS }} дней истории — иначе «впервые в данных» = «давно не заходил». kt — самый
+      старый такой период (возраст бакета); периоды старше kt новых не выделяют (в чарте — «мало истории»). #}
+  maxd AS (
+    SELECT tuple(md, ds, toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1),
+      toInt64(dateDiff('day', dt, toDate(md)))) AS h
+    FROM (SELECT md, toDate(ds0) AS ds, addDays(toDate(ds0), {{ HIST_DAYS }}) AS dt
+          FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+  ),
+  dash_ok AS (
+    SELECT dashboard_id
+    FROM prod_proteus.pa_dash_meta
+    WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %}
+    {%- if have and pmode == 'report' %} AND dashboard_id IN ({{ repids|join(', ') if repids else '0' }}){#- мусор / пустое пересечение каталога → пустая область -#}{% endif %}
+    {%- if have and pmode == 'owner' %} AND owner_login IN {{ q(sel) }}{% endif %}
+    {%- if have and pmode == 'collection' %} AND hasAny(collection_names, {{ qa(sel) }}){% endif %}
+  ),
+  evd AS (
+    {#- Одна строка на зрителя области из пар: msk — bit k = активен в бакете возраста k (k < 2n),
+        fd_k — возраст бакета первого визита, mon — bit = возраст месяца активности. -#}
+    SELECT toString(ifNull(e.login, '')) AS login,
+      groupBitOr(toUInt64(ifNull(e.msk_{{ grain }}, 0))) AS msk,
+      sum(ifNull(e.v_{{ grain }}, 0)) AS v_cur,
+      sum(ifNull(e.vp_{{ grain }}, 0)) AS v_prev,
+      max(ifNull(e.kmax_{{ grain }}, 0)) AS fd_k,
+      max(e.dmax) AS dmax,
+      groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon,
+      {#- календарь: активные дни (bit k = заходил k дней назад, k < 60) и возраст первого визита в днях -#}
+      groupBitOr(toUInt64(ifNull(e.msk_d, 0))) AS mskd,
+      max(ifNull(e.kmax_d, 0)) AS fd_d
+    FROM prod_proteus.pa_pair e
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
+    {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
+    GROUP BY e.login
+  ),
+  pr AS (
+    {#- Зритель + атрибуты + роли, в которые он попадает. -#}
+    SELECT p.login AS login, p.msk AS msk, bitCount(bitAnd(p.msk, {{ CUR }})) AS days, p.v_cur AS v_cur, p.v_prev AS v_prev,
+      p.fd_k AS fd_k, p.fd_d AS fd_d, p.dmax AS dmax, toUInt8(bitTest(p.mon, 1)) AS m1, toUInt8(bitTest(p.mon, 2)) AS m2,
+      {#- Месяцы активности из маски: возраст самого старого — месяц первого визита (когорта). -#}
+      arrayMap(i -> toInt64(i), arrayFilter(i -> bitTest(p.mon, i), range(63))) AS bms,
+      if(empty(bms), toInt64(0), arrayMax(bms)) AS gm,
+      addMonths(toStartOfMonth({{ MD }}), -toInt32(gm)) AS c0,
+      bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
+      bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
+      multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, 4) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции (как «постоянные» 8+ в кубе) -#}
+      {# Атрибуты — строго не-Nullable: при join_use_nulls = 1 LEFT JOIN даёт NULL у логинов без атрибутов,
+         а arrayConcat ролей в CH 24 приводит массивы к типу первого — NULL ронял запрос (Code 349). #}
+      {{ ou('lvl3_management_unit_nm') }} AS lvl3, {{ ou('lvl4_management_unit_nm') }} AS lvl4,
+      {#- Оргструктура УС-3…УС-7: путь «УС-3 › УС-4 › …» до первого пустого уровня. Узел дерева = префикс пути,
+          поэтому одноимённые отделы разных департаментов не склеиваются. -#}
+      [lvl3, lvl4{% if HAS_ORG %}, {{ ou('lvl5_management_unit_nm') }}, {{ ou('lvl6_management_unit_nm') }}, {{ ou('lvl7_management_unit_nm') }}{% endif %}] AS lv,
+      {#- Обе ветки if — одного типа (UInt32): в CH 24 if(UInt64, Int64) падает «no supertype». -#}
+      if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
+      arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
+      toString(ifNull(a.emp_specialization_desc, '')) AS spec, toString(ifNull(a.emp_stream_desc, '')) AS stream,
+      toUInt8(ifNull(a.management_head_flg, 0) = 1) AS is_head,
+      {% if HAS_FIO %}toString(ifNull(a.fio, '')) AS fio, toString(ifNull(a.exp_nm, '')) AS exp{% else %}'' AS fio, '' AS exp{% endif %},
+      arrayFilter(x -> x >= 1 AND x <= 11, arrayMap(y -> gm - y, bms)) AS ags,
+      arrayJoin(arrayConcat(
+        [('total', '', '', '', toInt64(-1))],
+        if(cur, [('freq', '', toString(bin), '', toInt64(-1))], []),
+        if(cur OR prv, arrayMap(i -> ('ctx', 'org', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › '), toInt64(-1)), range(1, ol + 1)), []),
+        if((cur OR prv) AND spec != '', [('ctx', 'spec', spec, '', toInt64(-1))], []),
+        if((cur OR prv) AND stream != '', [('ctx', 'stream', stream, '', toInt64(-1))], []),
+        if((cur OR prv) AND is_head = 1, [('ctx', 'head', '1', '', toInt64(-1))], []),
+        {% if WITH_ADG %}if(cur OR prv, arrayMap(x -> ('ctx', 'adg', toString(ifNull(x, '')), '', toInt64(-1)), arrayFilter(x -> isNotNull(x) AND x != '', a.ad_groups)), []),{% endif %}
+        if(cur, [('list', '', toString(p.login), opath, toInt64(-1))], []),
+        if(gm < 12, [('coh', '', toString(c0), '', toInt64(-1))], []),
+        {#- Динамика: строка на каждый активный бакет текущего окна (просмотры — из pa_dash_bkt ниже). -#}
+        if(cur, arrayMap(t -> ('ts', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.msk, t), range({{ g.n }}))), []),
+        {#- Календарь: строка на каждый активный день из последних {{ CAL_N }} (любая грануляция). -#}
+        arrayMap(t -> ('cal', '', toString(t), '', toInt64(t)), arrayFilter(t -> bitTest(p.mskd, t), range({{ CAL_N }})))
+      )) AS rk
+    FROM evd p
+    LEFT JOIN prod_proteus.pa_emp_attrs a ON a.login = p.login
+  ),
+  agg AS (
+    SELECT rk.1 AS role, rk.2 AS g, rk.3 AS k, rk.4 AS parent,
+      countIf(rk.1 = 'cal' OR cur) AS users, countIf(prv) AS users_prev,
+      sum(if(rk.1 IN ('ts', 'cal'), 0, v_cur)) AS views, any(rk.5) AS tk,
+      sum(v_prev) AS views_prev,
+      countIf(if(rk.1 = 'cal', rk.5 = fd_d AND fd_d <= {{ KTD }}, if(rk.1 = 'ts', rk.5 = fd_k, cur AND fd_k < {{ g.n }}) AND fd_k <= {{ KT }})) AS new_u,
+      countIf(prv AND fd_k >= {{ g.n }} AND fd_k < {{ 2 * g.n }} AND fd_k <= {{ KT }}) AS new_prev,
+      countIf(rk.1 = 'ts' AND rk.5 != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(rk.5 + 1)))) = 0) AS react_u,
+      countIf(nb_cur > {{ FBIN[1] }}) AS regular, countIf(nb_prev > {{ FBIN[1] }}) AS regular_prev,
+      countIf(prv AND NOT cur) AS sleeping,
+      countIf(m1 = 1) AS mau, countIf(m2 = 1) AS mau_prev,
+      count() AS cnt,
+      sumMap(if(rk.1 = 'coh', ags, CAST([], 'Array(Int64)')), if(rk.1 = 'coh', arrayMap(x -> toUInt64(1), ags), CAST([], 'Array(UInt64)'))) AS am,
+      any(login) AS login, any(fio) AS fio, any(lvl3) AS lvl3, any(lvl4) AS lvl4, any(spec) AS spec,
+      any(stream) AS stream, any(exp) AS exp, any(is_head) AS is_head, any(days) AS days,
+      any(toDate(dmax)) AS last_dt, any(bin) AS bin
+    FROM pr
+    GROUP BY role, g, k, parent
+  ),
+  bv AS (
+    {#- Просмотры по бакетам: gg = 'g' — окно периода (линия «Просмотры» динамики), gg = 'd' — дни календаря (30 дней).
+        Людской срез области (cut:*) — только из факта (у pa_dash_bkt разбивки по людям нет), одним чтением на обе серии. -#}
+    {%- if have and pmode in CUTS %}
+    SELECT x.1 AS gg, x.2 AS bk, sum(e.views) AS bviews
+    FROM prod_proteus.pa_evd_day e
+    ARRAY JOIN arrayFilter(y -> y.2 < if(y.1 = 'g', {{ g.n }}, 30), [('g', {{ kx('e.log_dttm') }}), ('d', {{ kd('e.log_dttm') }})]) AS x
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND ({{ kx('e.log_dttm') }} < {{ g.n }} OR {{ kd('e.log_dttm') }} < 30)
+      AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }})
+      {%- if excv == '1' %} AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1){% endif %}
+    GROUP BY gg, bk
+    {%- else %}
+    SELECT gg, toInt64(k) AS bk, sum({{ 'views_nown' if excv == '1' else 'views' }}) AS bviews
+    FROM prod_proteus.pa_dash_bkt
+    ARRAY JOIN arrayFilter(y -> (y = 'g' AND grain = '{{ grain }}') OR (y = 'd' AND grain = 'd'), ['g', 'd']) AS gg
+    WHERE grain IN ('{{ grain }}', 'd') AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    GROUP BY gg, bk
+    {%- endif %}
+  ),
+  rnk AS (
+    SELECT *,
+      if(role = 'cal', 'd', 'g') AS bg,     {#- серия просмотров bv: дни календаря или бакеты периода -#}
+      {#- ранг нужен только топу AD-групп: без WITH_ADG окно не считаем -#}
+      {% if WITH_ADG %}row_number() OVER (PARTITION BY role, g ORDER BY if(role = 'list', days, users) DESC, views DESC, k){% else %}toUInt64(0){% endif %} AS rn
+    FROM agg
+  )
+SELECT
+  CAST(section AS String) AS section,
+  CAST(g AS Nullable(String)) AS g,
+  CAST(k AS Nullable(String)) AS k,
+  CAST(parent AS Nullable(String)) AS parent,
+  CAST(login AS Nullable(String)) AS login,
+  CAST(fio AS Nullable(String)) AS fio,
+  CAST(lvl3 AS Nullable(String)) AS lvl3,
+  CAST(lvl4 AS Nullable(String)) AS lvl4,
+  CAST(spec AS Nullable(String)) AS spec,
+  CAST(stream AS Nullable(String)) AS stream,
+  CAST(exp AS Nullable(String)) AS exp,
+  CAST(is_head AS Nullable(UInt8)) AS is_head,
+  CAST(days AS Nullable(UInt32)) AS days,
+  CAST(last_dt AS Nullable(Date)) AS last_dt,
+  CAST(bin AS Nullable(UInt8)) AS bin,
+  CAST(ifNull(users, 0) AS UInt64) AS users,
+  CAST(ifNull(users_prev, 0) AS UInt64) AS users_prev,
+  CAST(ifNull(views, 0) AS Int64) AS views,
+  CAST(ifNull(views_prev, 0) AS Int64) AS views_prev,
+  CAST(ifNull(new_u, 0) AS UInt64) AS new_u,
+  CAST(ifNull(new_prev, 0) AS UInt64) AS new_prev,
+  CAST(ifNull(react_u, 0) AS UInt64) AS react_u,
+  CAST(ifNull(regular, 0) AS UInt64) AS regular,
+  CAST(ifNull(regular_prev, 0) AS UInt64) AS regular_prev,
+  CAST(ifNull(sleeping, 0) AS UInt64) AS sleeping,
+  CAST(ifNull(mau, 0) AS UInt64) AS mau,
+  CAST(ifNull(mau_prev, 0) AS UInt64) AS mau_prev,
+  CAST(ifNull(cnt, 0) AS UInt64) AS cnt,
+  CAST(ages AS Array(Int64)) AS ages,
+  CAST(acts AS Array(UInt64)) AS acts
+FROM (
+  {# Все строки из ОДНОГО прохода по agg (вторая ссылка на CTE в CH 24 пересчитывает его целиком — было ×2).
+     Поимённый список — ВСЕ зрители области, упакованные: одна строка на подразделение
+     (parent = путь «УС-3 › … › УС-7»), в k — сотрудники через \n, поля через \t:
+     логин, ФИО, специализация, стрим, стаж, рук., активных периодов, просмотров, последний визит, корзина,
+     новый 1/0, MAU 1/0, MAU пред. месяца 1/0, уволен 1/0 (логина нет среди действующих сотрудников с AD-логином —
+     GP «PA · штат» → pa_staff) (KPI и сводная по корзине частоты считаются в чарте).
+     Путь не повторяется у каждого человека, 30 пустых колонок на человека не едут —
+     ответ в ~6 раз легче построчного (весь Proteus: 21 МБ → ~3 МБ). cnt — людей в строке.
+     Остальные роли — строка на группу (GROUP BY по своему уникальному ключу). #}
+  SELECT s_role AS section, s_g AS g,
+    if(s_role = 'list', arrayStringConcat(groupArrayIf(concat(
+      replaceRegexpAll(ifNull(toString(s_login), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(s_fio), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(s_spec), ''), '[\t\n\r]', ' '), '\t', replaceRegexpAll(ifNull(toString(s_stream), ''), '[\t\n\r]', ' '), '\t',
+      replaceRegexpAll(ifNull(toString(s_exp), ''), '[\t\n\r]', ' '), '\t', ifNull(toString(s_is_head), ''), '\t', ifNull(toString(s_days), ''), '\t',
+      ifNull(toString(s_views), ''), '\t', ifNull(toString(s_last_dt), ''), '\t', ifNull(toString(s_bin), ''), '\t',
+      toString(ifNull(s_new_u, 0)), '\t', toString(ifNull(s_mau, 0)), '\t', toString(ifNull(s_mau_prev, 0)), '\t',
+      toString(toUInt8(lower(toString(ifNull(s_login, ''))) NOT IN (SELECT login FROM prod_proteus.pa_staff)))), s_role = 'list'), '\n'), any(s_k)) AS k,
+    s_parent AS parent,
+    NULL AS login, NULL AS fio, NULL AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, NULL AS exp, NULL AS is_head,
+    NULL AS days, NULL AS last_dt, NULL AS bin,
+    if(s_role = 'list', toUInt64(0), any(s_users)) AS users, if(s_role = 'list', toUInt64(0), any(s_users_prev)) AS users_prev,
+    if(s_role = 'list', toInt64(0), any(if(s_role IN ('ts', 'cal'), toInt64(ifNull(s_bviews, 0)), toInt64(s_views)))) AS views,
+    if(s_role = 'list', toInt64(0), any(toInt64(s_views_prev))) AS views_prev,
+    if(s_role = 'list', toUInt64(0), any(s_new_u)) AS new_u, if(s_role = 'list', toUInt64(0), any(s_new_prev)) AS new_prev,
+    if(s_role = 'list', toUInt64(0), any(s_react_u)) AS react_u, if(s_role = 'list', toUInt64(0), any(s_regular)) AS regular,
+    if(s_role = 'list', toUInt64(0), any(s_regular_prev)) AS regular_prev, if(s_role = 'list', toUInt64(0), any(s_sleeping)) AS sleeping,
+    if(s_role = 'list', toUInt64(0), any(s_mau)) AS mau, if(s_role = 'list', toUInt64(0), any(s_mau_prev)) AS mau_prev,
+    if(s_role = 'list', count(), any(s_cnt)) AS cnt, any((s_am).1) AS ages, any((s_am).2) AS acts
+  FROM (SELECT role AS s_role, g AS s_g, k AS s_k, parent AS s_parent, login AS s_login, fio AS s_fio, spec AS s_spec,
+      stream AS s_stream, exp AS s_exp, is_head AS s_is_head, days AS s_days, views AS s_views, last_dt AS s_last_dt, bin AS s_bin,
+      new_u AS s_new_u, mau AS s_mau, mau_prev AS s_mau_prev, users AS s_users, users_prev AS s_users_prev, views_prev AS s_views_prev,
+      new_prev AS s_new_prev, react_u AS s_react_u, regular AS s_regular, regular_prev AS s_regular_prev, sleeping AS s_sleeping,
+      cnt AS s_cnt, am AS s_am, rn AS s_rn, b.bviews AS s_bviews
+    FROM rnk LEFT JOIN bv b ON b.bk = rnk.tk AND b.gg = rnk.bg)
+  WHERE s_role = 'list' OR s_g != 'adg' OR s_rn <= {{ ADG_N }}
+  GROUP BY s_role, s_g, if(s_role = 'list', '', s_k), s_parent
+
+  UNION ALL
+  {# Эхо области: что выбрано (g = режим, k = значения через \n, fio = имя одиночного отчёта), parent = грануляция.
+      Плечо не читает факт — только мету по id. #}
+  SELECT 'area' AS section, '{{ pmode if have else '' }}' AS g,
+    {% if have %}{{ q([sel|join('\n')]) }}{% else %}''{% endif %} AS k, '{{ grain }}' AS parent,
+    NULL AS login,
+    {% if have and pmode == 'report' and repids|length == 1 %}ifNull((SELECT any(dashboard_nm) FROM prod_proteus.pa_dash_meta WHERE dashboard_id = {{ repids[0] }}), ''){% else %}NULL{% endif %} AS fio,
+    {#- lvl3 — дата свежести данных md: от неё чарт подписывает периоды (не от сегодняшнего дня браузера) -#}
+    toString(toDate({{ MD }})) AS lvl3, NULL AS lvl4, NULL AS spec, NULL AS stream, '{{ '{' ~ FLT|join(',') ~ '}' }}' AS exp, NULL AS is_head,
+    {#- days — kt + 1 (сколько свежих периодов «надёжны» для новых; 0 — ни одного), last_dt — начало истории событий -#}
+    toUInt32(greatest({{ KT }} + 1, 0)) AS days, {{ DS }} AS last_dt, NULL AS bin,
+    toUInt64(0) AS users, toUInt64(0) AS users_prev, toInt64(0) AS views, toInt64(0) AS views_prev,
+    toUInt64(0) AS new_u, toUInt64(0) AS new_prev, toUInt64(0) AS react_u, toUInt64(0) AS regular,
+    toUInt64(0) AS regular_prev, toUInt64(0) AS sleeping, toUInt64(0) AS mau, toUInt64(0) AS mau_prev,
+    toUInt64(0) AS cnt, CAST([], 'Array(Int64)') AS ages, CAST([], 'Array(UInt64)') AS acts
+)

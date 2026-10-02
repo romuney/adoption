@@ -459,6 +459,9 @@ REPOWN = {int(x.split('|')[0]): x.split('|')[10].split('^') for r in cr if r['se
 multi = [i for i, o in REPOWN.items() if len(o) > 1]
 ok(len(multi) > 0 and all(len(o) == len(set(o)) and '' not in o for o in REPOWN.values()),
    f'каталог: у отчёта все владельцы без повторов ({len(multi)} отчётов с несколькими владельцами)')
+AUTH = {int(x.split('|')[0]): x.split('|')[15] for r in cr if r['section'] == 'rep' for x in r['k'].split('\n') if x}
+ok(all(AUTH[i] for i in AUTH) and sum(AUTH[i] != REPOWN[i][0] for i in AUTH) >= 0 and all(len(x.split('|')) == 16 for r in cr if r['section'] == 'rep' for x in r['k'].split('\n') if x),
+   f'каталог: у отчёта есть автор (поле 15, первым в подписи); автор не первый среди владельцев у {sum(AUTH[i] != REPOWN[i][0] for i in AUTH)} отчётов')
 nofs = lambda rows: norm([r for r in rows if r['section'] not in ('flt', 'sj', 'area')])  # area — подпись области (владелец / список отчётов)
 for ow in ['own3', 'u131', 'own7']:
     reps = sorted(i for i, o in REPOWN.items() if ow in o)

@@ -283,7 +283,9 @@ FROM (
           toString({% if custom %}toUInt8(0){% else %}ifNull(c.ca_wide, 0){% endif %}), '|', toString(ca_u){% else %}'||'{% endif %}, '|',
           {{ cz("toString(ifNull(m.dashboard_nm, ''))") }}, '|', arrayStringConcat(arrayMap(o -> {{ fx('o') }}, {{ owns('m.') }}), '^'), '|',
           arrayStringConcat(arrayMap(cc -> {{ cz('cc') }}, arrayFilter(cc -> cc != '', arrayMap(cc -> toString(ifNull(cc, '')), m.collection_names))), '^'), '|',
-          toString(ifNull(m.published, 0)), '|', {{ cz("toString(ifNull(m.certified_by, ''))") }}, '|', if(isNull(m.created_dt), '', toString(toDate(m.created_dt)))),
+          toString(ifNull(m.published, 0)), '|', {{ cz("toString(ifNull(m.certified_by, ''))") }}, '|', if(isNull(m.created_dt), '', toString(toDate(m.created_dt))), '|',
+          {#- автор (owner_login) — для показа первым под названием; метрики «Владельцев» — по owners (поле 10) -#}
+          {{ fx("lower(trim(toString(ifNull(m.owner_login, ''))))") }}),
         kd = 0, concat(toString(users), '|', toString(views), '|', toString(regular_users), '|', toString(last_view_days)),
         concat({{ cz('k0') }}, '|', toString(users), '|', toString(views), '|', toString(regular_users), '|', toString(last_view_days))) AS s_line
     FROM agg

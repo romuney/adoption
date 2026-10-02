@@ -414,9 +414,11 @@ function buildModelV2(M) {
         if (!M.meta[id]) {
           var cs = f[11] ? f[11].split('^') : [];
           for (var c = 0; c < cs.length; c++) cs[c] = unz(cs[c]);
-          // владельцы отчёта — все (через «^»), owner_login — они же строкой для показа и поиска
-          var ow = f[10] ? f[10].split('^') : [];
-          M.meta[id] = { id: id, dash_nm: unz(f[9]), owners: ow, owner_login: ow.join(', '), colls: cs, published: nz(f[12]),
+          // владельцы отчёта — все (через «^»: по ним вкладка «Владельцы» и выбор); автор (f[15]) — первым в подписи;
+          // owner_login — автор + владельцы строкой для показа и поиска
+          var ow = f[10] ? f[10].split('^') : [], au = f[15] || '', ppl = au ? [au] : [];
+          for (var oi = 0; oi < ow.length; oi++) if (ow[oi] !== au) ppl.push(ow[oi]);
+          M.meta[id] = { id: id, dash_nm: unz(f[9]), owners: ow, author: au, people: ppl, owner_login: ppl.join(', '), colls: cs, published: nz(f[12]),
             certified: f[13] ? unz(f[13]) : null, created_dt: toDate(f[14]) };
           M.ids.push(id);
         }
@@ -532,7 +534,7 @@ function selection() {
     if (row) {
       var m1 = MODEL.meta[row.id] || {};
       return { kind: 'rep', id: row.id, ids: [row.id], title: m1.dash_nm || 'Отчёт',
-        sub: ((m1.owners || []).length > 1 ? 'владельцы ' : 'владелец ') + (m1.owner_login || '—') };
+        sub: (m1.author ? 'автор и владельцы ' : ((m1.owners || []).length > 1 ? 'владельцы ' : 'владелец ')) + (m1.owner_login || '—') };
     }
   }
   if (pickCount() === 1 && (pickList('collection').length === 1 || pickList('owner').length === 1)) {
@@ -1238,11 +1240,16 @@ function segText() {
 }
 function neverOf(k) { return k.ca_n && !k.ca_wide && k.ca_users != null ? Math.max(0, k.ca_n - k.ca_users) : null; }
 function neverCellHtml(x) { return x.nev == null ? '<td><span class="mut">—</span></td>' : '<td class="lead">' + nf(x.nev) + '</td>'; }
-// Владельцы под названием отчёта: первый и «+N» (все — в подсказке).
+// Под названием отчёта: автор первым, за ним владельцы — «автор +N» (все — в подсказке). Старый SQL без автора —
+// первый владелец.
 function ownersHtml(m) {
-  var o = m.owners || [];
+  var o = m.people || m.owners || [];
   if (o.length < 2) return esc(o[0] || '—');
-  return esc(o[0]) + ' <i class="' + CFG.ns + '-own-more"' + tip({ title: 'Владельцы', text: o.join(', ') }) + '>+' + (o.length - 1) + '</i>';
+  var rest = [];
+  for (var i = 0; i < (m.owners || []).length; i++) if (m.owners[i] !== m.author) rest.push(m.owners[i]);
+  return esc(o[0]) + ' <i class="' + CFG.ns + '-own-more"' + tip({ title: m.author ? 'Автор и владельцы' : 'Владельцы',
+    text: (m.author ? 'Автор: ' + m.author + '. ' : '') + 'Владельцы: ' + ((m.author ? rest : m.owners).join(', ') || '—') + '.' }) +
+    '>+' + (o.length - 1) + '</i>';
 }
 function collsMatch(m, q) {
   for (var i = 0; i < (m.colls || []).length; i++) if (String(m.colls[i]).toLowerCase().indexOf(q) >= 0) return true;

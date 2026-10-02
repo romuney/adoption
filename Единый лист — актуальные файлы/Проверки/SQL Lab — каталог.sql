@@ -98,4 +98,8 @@ FROM (
     '' AS parent, toInt64(count()) AS n
   FROM ak
   GROUP BY ad
+  UNION ALL
+  SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',
+    toString(countIf(bitCount(bitAnd(vm, 1073741823)) >= 6)), '|0') AS k, '' AS parent, toInt64(count()) AS n
+  FROM vz
 )

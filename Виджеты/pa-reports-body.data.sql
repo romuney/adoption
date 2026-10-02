@@ -301,4 +301,11 @@ FROM (
     '' AS parent, toInt64(count()) AS n
   FROM ak
   GROUP BY ad
+
+  UNION ALL
+  {# Все зрители периода (и не сотрудники: увол., служебные) — ИТОГО вкладки «Аудитория» = «Польз.» ИТОГО каталога.
+     Строка разреза «*||людей|просмотров|постоянных|0». #}
+  SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',
+    toString(countIf(bitCount(bitAnd(vm, {{ CUR }})) >= {{ REG }})), '|0') AS k, '' AS parent, toInt64(count()) AS n
+  FROM vz
 )

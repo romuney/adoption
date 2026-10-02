@@ -524,6 +524,14 @@ FROM (
     '' AS parent, toInt64(count()) AS n
   FROM aak
   GROUP BY ad
+  UNION ALL
+  {# Все зрители выбранной области (и не сотрудники: увол., служебные) — ИТОГО вкладки «Аудитория», сходится с «Польз.»
+     каталога и панелью. Формат строки разреза: «*|людей|просмотров|постоянных». С условиями строки ЦА — только люди ЦА. #}
+  SELECT 'aa' AS section, 'all' AS g, concat('*|', toString(count()), '|', toString(sum(x.vv)), '|',
+    toString(countIf(bitCount(bitAnd(x.vm, {{ CUR }})) > {{ FBIN[1] }}))) AS k, '' AS parent, toInt64(count()) AS n
+  FROM aav x
+  {%- if caorg or caspec or castrm or cahq or cait or cahead != '' or caadg %}
+  WHERE x.vl IN (SELECT lg FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) WHERE {{ condca() }}){% endif %}
   {% endif %}
   {% if custom %}
   UNION ALL

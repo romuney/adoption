@@ -437,7 +437,20 @@ for base in [{'mode_param': 'report', 'sel_f': ['2']}, {'mode_param': 'report', 
         t = [r for r in run(ONE, dict(base, **{COLS[key[0]]: [key[1]]}), raw=True) if r['section'] == 'total'][0]['k'].split('|')
         pn = (int(t[0]), int(t[2]), int(t[7]))
         ok(A.get(key, (0, 0, 0)) == pn, f'aa {key} {base}: {A.get(key)} == панель с группой {pn}')
+    # «все зрители» области (строка all, с не сотрудниками) == итог панели == «Польз.» отчёта в каталоге (2026-10-02)
+    t0 = [r for r in run(ONE, base, raw=True) if r['section'] == 'total'][0]['k'].split('|')
+    p0 = (int(t0[0]), int(t0[2]), int(t0[7]))
+    staff_u = sum(v[0] for k, v in A.items() if k[0] == 'h')
+    ok(A.get(('all', '*')) == p0 and staff_u <= p0[0], f'aa all {base}: {A.get(("all", "*"))} == итог панели {p0}; сотрудников-зрителей {staff_u}')
+    if len(base['sel_f']) == 1:
+        cr = cat_v2(run(CAT, {k: v for k, v in base.items() if k not in ('mode_param', 'sel_f')}, with_ca=True))['rep'][int(base['sel_f'][0])]
+        ok((cr['users'], cr['views'], cr['regular']) == p0, f'aa all {base}: == «Польз./Просм./Пост.» отчёта в каталоге {(cr["users"], cr["views"], cr["regular"])}')
 ok(not [r for r in run(ONE, {}, raw=True) if r['section'] == 'aa'], 'без выбора области секции aa нет (каталог считает сам)')
+for c in [{}, {'ca_spec_f': ['Спец 3']}, {'period_param': 'w', 'exc_f': '0'}, {'spec_f': ['Спец 3'], 'freq_f': ['2']}]:
+    cv = cat_v2(run(CAT, c, with_ca=True))
+    al = cv['aud'].get('all', {}).get('*')
+    stf = sum(v[0] for v in cv['aud'].get('h', {}).values())
+    ok(al is not None and al[:3] == cv['total'][:3] and stf <= al[0], f'каталог aud all {c}: {al and al[:3]} == ИТОГО каталога {cv["total"][:3]}; сотрудников-зрителей {stf}')
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):

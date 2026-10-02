@@ -775,6 +775,8 @@ function buildCSS() {
     P + '-ptable tbody tr[role=button]:hover td{background:#fafbfc;}',
     P + '-ptable tbody tr.sel td{background:var(--blue-bg);}',
     P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    P + '-ptable tr.' + CFG.ns + '-aud-oth td{color:var(--muted);height:34px;border-bottom:2px solid var(--line);}',
+    P + '-ptable tr.' + CFG.ns + '-aud-oth td.txt{font-weight:400;color:var(--muted);}',
     P + '-ptable tr.tot td{font-weight:500;color:var(--ink);border-bottom:2px solid var(--line);}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
@@ -1348,6 +1350,11 @@ function audTotal() {
     var a = xh ? (xh[k] || { users: 0, views: 0, regular: 0 }) : h[k];
     t.users += a.users; t.staff += h[k].staff; t.views += a.views; t.regular += a.regular;
   }
+  // Все зрители (и не сотрудники: увол., служебные учётки) — строка «all» датасета (свой aud или aa панели).
+  // Нет её (старый SQL) — ИТОГО по сотрудникам, как раньше. other — не сотрудники = все минус сотрудники.
+  var al = ext ? ext.all : MODEL.aud.all, a0 = al && al['*'];
+  t.all = a0 ? { users: Math.max(a0.users, t.users), views: Math.max(a0.views, t.views), regular: Math.max(a0.regular, t.regular) } : null;
+  t.other = t.all ? t.all.users - t.users : 0;
   return t;
 }
 function audBarHtml() {
@@ -1400,7 +1407,8 @@ function audTableHtml() {
     state.audT = setTimeout(ask, 1500);
     return '<div class="' + N + '-empty"><b>Считаем аудиторию выбранных отчётов…</b>Числа придут вместе с пересчётом панели справа.</div>';
   }
-  if (!rows.length) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Снимите выбор или выберите другой разрез.' : 'Очистите поиск или выберите другой разрез.') + '</div>';
+  var t = audTotal(), qOn = !!(state.repQuery || '').trim();
+  if (!rows.length && (qOn || !t.other)) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (qOn ? 'В поиске «' + esc(state.repQuery) + '» — очистите его.' : (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Снимите выбор или выберите другой разрез.' : 'Выберите другой разрез.')) + '</div>';
   var PS = state.pageSize || 20, total = rows.length, pages = Math.max(1, Math.ceil(total / PS));
   if ((state.page || 0) > pages - 1) state.page = pages - 1;
   if (state.page < 0) state.page = 0;
@@ -1409,16 +1417,25 @@ function audTableHtml() {
     return '<th' + (cls ? ' class="' + cls + (sc.col === col ? ' on' : '') + '"' : (sc.col === col ? ' class="on"' : '')) + (hint ? tip(hint) : '') +
       ' data-asort="' + col + '">' + esc(label) + '<span class="' + N + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>';
   };
-  var t = audTotal();
+  var tu = t.all || t;    // ИТОГО — все зрители: сходится с «Польз.» каталога и панелью; охват — по сотрудникам
   var h = '<table class="' + N + '-ptable dense sortable"><thead><tr>' +
     th('name', dim.lvl ? 'Подразделение ' + dim.label : dim.label, null, 'txt') +
     th('users', 'Польз.', { text: 'Сотрудники группы, заходившие в отчёты за период (с учётом шапки, ЦА и выбора в «Кто смотрит»)' }) +
     th('cov', 'Охват', { title: 'Охват группы', text: 'Доля сотрудников группы, заходивших за период: пользователи / сотрудники. Сотрудники — действующие с AD-логином, штатные и ГПХ.' }) +
     th('reg', 'Пост.', { text: 'Доля постоянных: заходили ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период' }) +
     th('staff', 'Сотр.', { text: 'Сотрудников в группе — действующие с AD-логином, штатные и ГПХ (под условиями ЦА, если они заданы)' }) + '</tr></thead><tbody>' +
-    '<tr class="tot"' + tip({ title: 'Все сотрудники', text: 'Все сотрудники под условиями: заходившие за период и охват. Кого нет среди действующих сотрудников (увол., служебные учётки), в разрезы не входит.' }) + '>' +
-    '<td class="txt">ИТОГО</td><td class="lead">' + nf(t.users) + '</td><td>' + (t.staff ? pct(t.users / t.staff * 100, 0) : '—') + '</td>' +
-    '<td>' + pct(t.users ? t.regular / t.users * 100 : 0, 0) + '</td><td>' + nf(t.staff) + '</td></tr>';
+    '<tr class="tot"' + tip({ title: 'ИТОГО', rows: [
+        { label: 'Заходили за период', value: nf(tu.users), color: CFG.colors.ret },
+        { label: 'из них сотрудники', value: nf(t.users) },
+        t.other ? { label: 'не сотрудники', value: nf(t.other) } : null,
+        { label: 'Сотрудников всего', value: nf(t.staff) }],
+      text: 'Заходившие — все зрители, как «Польз.» во вкладке «Отчёты» и в панели. Охват — сотрудники-зрители от всех сотрудников. В разрезы входят только действующие сотрудники (штатные и ГПХ с AD-логином).' }) + '>' +
+    '<td class="txt">ИТОГО</td><td class="lead">' + nf(tu.users) + '</td><td>' + (t.staff ? pct(t.users / t.staff * 100, 0) : '—') + '</td>' +
+    '<td>' + pct(tu.users ? tu.regular / tu.users * 100 : 0, 0) + '</td><td>' + nf(t.staff) + '</td></tr>' +
+    (t.other ? '<tr class="' + N + '-aud-oth"' + tip({ title: 'Не сотрудники', text: 'Заходили, но их нет среди действующих сотрудников: увол. или служебные учётки. В разрезы (подразделения, стримы…) не попадают — поэтому сумма групп меньше ИТОГО.' }) + '>' +
+      '<td class="txt">в т. ч. не сотрудники</td><td>' + nf(t.other) + '</td><td><span class="mut">—</span></td>' +
+      '<td>' + pct(t.other ? (tu.regular - t.regular) / t.other * 100 : 0, 0) + '</td><td><span class="mut">—</span></td></tr>' : '') +
+    (rows.length ? '' : '<tr><td class="txt" colspan="5"><span class="mut">Среди сотрудников выбранные отчёты никто не смотрел — только не сотрудники.</span></td></tr>');
   for (var i = 0; i < pageRows.length; i++) {
     var x = pageRows[i], sel = picked.indexOf(x.key) >= 0;
     h += '<tr class="' + N + '-urow' + (sel ? ' sel' : '') + '" data-aud="' + esc(x.key) + '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
@@ -2022,6 +2039,11 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       var modeBtn = trigger(e.target, 'data-mode');
       if (modeBtn) {
         var key = modeBtn.getAttribute('data-mode');
+        // Поиск — свой у каждой вкладки: название отчёта из «Отчётов» не фильтрует группы «Аудитории»
+        // (было «Ничего не найдено» после поиска отчёта, 2026-10-02).
+        state.qByMode = state.qByMode || {};
+        state.qByMode[state.mode] = state.repQuery || '';
+        state.repQuery = state.qByMode[key] || '';
         state.mode = key;
         state.page = 0;              // другой разрез — другой набор строк
         render();

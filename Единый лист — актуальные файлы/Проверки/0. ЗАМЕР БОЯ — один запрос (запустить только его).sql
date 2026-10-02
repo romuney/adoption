@@ -135,6 +135,10 @@ FROM (
     '' AS parent, toInt64(count()) AS n
   FROM ak
   GROUP BY ad
+  UNION ALL
+  SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',
+    toString(countIf(bitCount(bitAnd(vm, 1073741823)) >= 6)), '|0') AS k, '' AS parent, toInt64(count()) AS n
+  FROM vz
 )
 )
 UNION ALL
@@ -256,6 +260,10 @@ FROM (
     '' AS parent, toInt64(count()) AS n
   FROM ak
   GROUP BY ad
+  UNION ALL
+  SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',
+    toString(countIf(bitCount(bitAnd(vm, 1073741823)) >= 6)), '|0') AS k, '' AS parent, toInt64(count()) AS n
+  FROM vz
 )
 )
 UNION ALL
@@ -688,6 +696,10 @@ FROM (
     '' AS parent, toInt64(count()) AS n
   FROM aak
   GROUP BY ad
+  UNION ALL
+  SELECT 'aa' AS section, 'all' AS g, concat('*|', toString(count()), '|', toString(sum(x.vv)), '|',
+    toString(countIf(bitCount(bitAnd(x.vm, 1073741823)) > 5))) AS k, '' AS parent, toInt64(count()) AS n
+  FROM aav x
   UNION ALL
   SELECT 'd' AS section, x.1 AS g, arrayStringConcat(arrayMap(v -> translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate(v, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), '([А-Яа-яЁё][А-Яа-яЁё ]*)', '`\\1`'), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'), x.2), '\n') AS k, '' AS parent, toInt64(length(x.2)) AS n
   FROM (SELECT arrayJoin([('spec', dz.1), ('stream', dz.2), ('exp', dz.3), ('hq', dz.4), ('it', dz.5)]) AS x FROM dicts)

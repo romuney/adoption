@@ -1616,7 +1616,7 @@ function buildHTML() {
     // здесь только карточка каталога. Выбор снимается тут же.
     cls: 'cat', title: 'Каталог',
     subHtml: segNow() ? '<span' + tip({ title: 'Сегмент ЦА', text: segText() }) + '>показаны: <b>' + (segNow() === 'reach' ? 'ЦА заходили' : (segNow() === 'out' ? 'вне ЦА заходили' : 'ЦА не заходили')) + '</b> · из «Кто смотрит»</span>' : '',
-    sub: 'клик — выбрать область · Shift — несколько',
+    sub: 'клик — выбрать для панели справа · Shift — несколько',
     right: searchBoxHtml('repQ', state.mode === 'report' ? 'Название, ID или владелец' : (state.mode === 'aud' ? 'Найти группу' : 'Найти: ' + modeInfo.one.toLowerCase()), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
   }));

@@ -92,18 +92,18 @@ var CFG = {
   // Колонки сводной таблицы групп: capability-метаданные (TABLES.md §3).
   // prevOnly — показывается, только если у периода есть полный предыдущий.
   gcols: [
-    { key: 'users', label: 'Людей', hint: 'Уникальные люди группы в области за период' },
-    { key: 'share', label: 'Доля', hint: 'Доля группы от всех людей области' },
+    { key: 'users', label: 'Людей', hint: 'Сколько разных людей группы открывали отчёты за период' },
+    { key: 'share', label: 'Доля', hint: 'Доля группы от всех пользователей отчётов' },
     { key: 'dUsers', label: 'Δ к пред.', hint: 'Изменение числа людей к предыдущему периоду той же длины', prevOnly: true },
-    { key: 'views', label: 'Просмотров', short: 'Просм.', hint: 'Открытия отчётов области за период' },
+    { key: 'views', label: 'Просмотров', short: 'Просм.', hint: 'Сколько раз люди группы открывали отчёты за период' },
     { key: 'vpu', label: 'На чел.', hint: 'Просмотров на одного человека группы' },
     { key: 'regShare', label: 'Постоянных', short: 'Пост.', hint: 'Доля постоянных — корзины частоты 3 и 4: 6+ дней или недель, 4+ месяца, 3+ квартала (число — во всплывашке)' },
-    { key: 'new_u', label: 'Новых', hint: 'Первый визит в отчёты области пришёлся на этот период' }
+    { key: 'new_u', label: 'Новых', hint: 'Впервые открыли отчёты в этом периоде' }
   ],
   // Колонки групп в режиме «по ЦА» (как «Кто из ЦА» второго листа).
   gcolsCa: [
     { key: 'ca', label: 'В ЦА', hint: 'Людей группы в целевой аудитории' },
-    { key: 'cov', label: 'Охват', hint: 'Доля ЦА группы, заходившая в отчёты области за период' },
+    { key: 'cov', label: 'Охват', hint: 'Доля ЦА группы, открывавшая отчёты за период' },
     { key: 'reach', label: 'Дошли', hint: 'Люди ЦА группы, заходившие за период' },
     // «Δ к пред.» по группам нет: в ответе только зрители текущего периода (прошлый — общим числом у KPI).
     { key: 'regShare', label: 'Закрепились', short: 'Закреп.', hint: 'Доля постоянных среди дошедших: 6+ дней или недель, 4+ месяца, 3+ квартала' },
@@ -1857,8 +1857,8 @@ function nestPeopleHtml(nd, people, span) {
     '<table class="' + CFG.ns + '-ptable sub"><colgroup><col style="width:44%"><col style="width:12%"><col style="width:16%"><col style="width:12%"><col style="width:16%"></colgroup>' +
     // Своя шапка у людей группы: колонки другие, чем у строк групп выше (фидбек: «непонятно, что за значения»).
     '<thead><tr class="' + CFG.ns + '-sub-h"><th class="txt" style="padding-left:' + (30 + nd.depth * 18) + 'px">Сотрудник</th>' +
-    '<th' + tip({ title: actLabel(), text: 'Сколько разных ' + grainCfg().units + ' человек открывал отчёты области за период.' }) + '>Активность</th>' +
-    '<th' + tip({ title: 'Просмотров', text: 'Сколько раз открывал отчёты области за период.' }) + '>Просмотров</th>' +
+    '<th' + tip({ title: actLabel(), text: 'Сколько разных ' + grainCfg().units + ' человек открывал отчёты за период.' }) + '>Активность</th>' +
+    '<th' + tip({ title: 'Просмотров', text: 'Сколько раз открывал отчёты за период.' }) + '>Просмотров</th>' +
     '<th' + tip({ title: 'Последний визит', text: 'Сколько дней назад был последний заход.' }) + '>Последний визит</th>' +
     '<th class="txt"' + tip({ title: 'Сегмент', text: 'Постоянный / эпизодический / разовый — по числу активных периодов.' }) + '>Сегмент</th></tr></thead><tbody>';
   for (var i = 0; i < sorted.length && i < lim; i++) {
@@ -1907,7 +1907,7 @@ function groupTableHtml(plist, cut) {
   var tot = isCa() ? gMetricsCa(caTotals()) : gMetrics(effKpi() || ZERO_M), th = sortTh('data-gsort', { key: 'name', label: cut === 'org' || orgLevelOf(cut) ? 'Подразделение' : 'Группа', txt: true }, state.gSort);
   // В шапке — короткие подписи (колонки равной ширины), в выгрузке — полные.
   for (var c = 0; c < cols.length; c++) th += sortTh('data-gsort', cols[c].short ? { key: cols[c].key, label: cols[c].short, hint: cols[c].label + '. ' + cols[c].hint } : cols[c], state.gSort);
-  if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всей области.' }) + '>В выборке</th>';
+  if (local) th += '<th' + tip({ title: 'В выборке', text: 'Люди текущего списка в группе: корзина частоты, поиск и настройки. Итоги слева — по всем пользователям отчётов.' }) + '>В выборке</th>';
   // Общая каретка (ДС 4.6c) — в строке итога, на вертикали строчных кареток:
   // ничего не раскрыто — ▸ раскрывает группы на уровень вглубь; что-то раскрыто — ▾ сворачивает всё.
   var pre = cut + ':', anyOpen = false, canOpen = false;
@@ -1918,7 +1918,7 @@ function groupTableHtml(plist, cut) {
     : (canOpen
       ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-wofold="level" aria-expanded="false" aria-label="Раскрыть уровень"' + tip({ text: 'Раскрыть все группы на уровень вглубь; дальше — каретками строк' }) + '>▸</button>'
       : '<span class="' + CFG.ns + '-gh-sp"></span>');
-  var totRow = '<tr class="g-tot tot"><td class="txt gname" style="padding-left:6px">' + totCaret + (isCa() ? 'Итого по ЦА' : 'Итого по области') + '</td>';
+  var totRow = '<tr class="g-tot tot"><td class="txt gname" style="padding-left:6px">' + totCaret + (isCa() ? 'Итого по ЦА' : 'Итого') + '</td>';
   for (c = 0; c < cols.length; c++) totRow += cols[c].key === 'share' ? shareCell(100, null) : gCellHtml(cols[c].key, tot);
   // (строка итога строится ДО полос групп — MAX_SHARE к ней не применяется)
   if (local) totRow += '<td class="loc">' + nf(plist.length) + '</td>';
@@ -1933,7 +1933,7 @@ function groupTableHtml(plist, cut) {
   if (local) cg += '<col style="width:' + restW.toFixed(2) + '%">';
   cg += '</colgroup>';
   return '<div class="' + CFG.ns + '-tbl-scroll"><table class="' + CFG.ns + '-ptable dense gt">' + cg + '<thead><tr>' + th + '</tr></thead><tbody>' + totRow +
-    (out.length ? out.join('') : '<tr><td colspan="' + span + '" class="' + CFG.ns + '-empty-td">' + (isCa() ? 'В целевой аудитории нет групп по этому разрезу.' : 'В области нет групп по этому разрезу.') + '</td></tr>') +
+    (out.length ? out.join('') : '<tr><td colspan="' + span + '" class="' + CFG.ns + '-empty-td">' + (isCa() ? 'В целевой аудитории нет групп по этому разрезу.' : 'Нет групп по этому разрезу.') + '</td></tr>') +
     '</tbody></table></div>';
 }
 var VISIBLE_NODES = [], MAX_SHARE = 100;
@@ -2031,7 +2031,7 @@ function downloadCsv(text, name) {
 function segStripHtml() {
   var t = caTotals(), W = wide(), never = Math.max(0, t.ca - t.reach), seen = t.reach + t.out;
   var parts = [
-    { key: 'reach', label: 'ЦА заходили', n: t.reach, c: CFG.colors.seg[0], text: 'Люди ЦА, заходившие в отчёты области за период.' },
+    { key: 'reach', label: 'ЦА заходили', n: t.reach, c: CFG.colors.seg[0], text: 'Люди ЦА, открывавшие отчёты за период.' },
     { key: 'never', label: 'ЦА не заходили', n: never, c: CFG.colors.seg[3], text: 'Люди ЦА без визитов за период' + (MODEL.namesOmitted ? ' (имена не загружены: их больше 20 000 — сузьте ЦА).' : ': и заходившие раньше, и ни разу.') },
     { key: 'out', label: 'Вне ЦА заходили', n: t.out, c: CFG.colors.seg[2], text: 'Заходили за период, но в ЦА не входят.' +
       (caModeNow() === 'cond' && MODEL.outList.length < t.out ? ' В списке — ' + nf(MODEL.outList.length) + ' самых активных.' : '') }
@@ -2074,7 +2074,7 @@ function freqStripHtml(shown) {
           (on ? '; повторный клик снимет фильтр' : '') + '; каталог слева сузит сервер',
         rows: [{ label: 'В списке', value: nf(cnt), color: CFG.colors.freq[i] },
           { label: 'Доля списка', value: pct(cnt / tot * 100) },
-          { label: 'Во всей области', value: nf(areaCnt) }]
+          { label: 'Всего пользователей', value: nf(areaCnt) }]
       }) + '>' +
       '<span class="sp-bar" style="background:' + CFG.colors.freq[i] + '"></span>' +
       '<span class="sp-v">' + nf(cnt) + '<i class="sp-p">· ' + pct(cnt / tot * 100, cnt / tot < 0.1 ? 1 : 0) + '</i></span>' +
@@ -2280,11 +2280,11 @@ function areaInfo() {
   var repish = a.mode === 'report' || a.mode === 'owner' || a.mode === 'collection';
   return {
     pill: pill, mut: false,
-    text: 'Область задана каталогом слева' + (one ? '' : ' (' + a.sel.length + ' значений, объединение)') +
-      '. Пользователи — уникальные люди области, не сумма строк каталога.',
+    text: 'Отчёты выбраны в каталоге слева' + (one ? '' : ' (' + a.sel.length + ' значений, объединение)') +
+      '. Пользователи — разные люди, открывавшие эти отчёты: человек считается один раз, а не по разу на каждую строку каталога.',
     what: one ? '«' + name + '»' : L[1] + ' (' + a.sel.length + ')',
-    first: repish ? 'Месяц, в который человек впервые открыл отчёт области' : 'Месяц первого визита в Proteus',
-    size: repish ? 'Столько человек впервые открыли отчёт области в этом месяце' : 'Столько людей среза впервые зашли в Proteus в этом месяце'
+    first: repish ? 'Месяц, в который человек впервые открыл один из этих отчётов' : 'Месяц первого визита в Proteus',
+    size: repish ? 'Столько человек впервые открыли эти отчёты в этом месяце' : 'Столько людей среза впервые зашли в Proteus в этом месяце'
   };
 }
 
@@ -2517,7 +2517,7 @@ function retCurveSvg(points, opts) {
 
 function cohortZoneHtml(ai) {
   if (!MODEL.coh.length) {
-    return '<div class="' + CFG.ns + '-tbl-note">Когорт за последние 12 месяцев в области нет.</div>';
+    return '<div class="' + CFG.ns + '-tbl-note">Когорт за последние 12 месяцев нет.</div>';
   }
   var h = '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">Когорты первого визита</span>' +
     '<div class="' + CFG.ns + '-sub-tabs tiny" role="tablist" style="margin-left:auto">' +
@@ -2608,7 +2608,7 @@ function kpiCard(o) {
 // с первого надёжного периода (подпись «с …», без сравнения); ни одного — прочерк.
 function newKpi(k, G, dl, dPct) {
   var kt = MODEL.hist.kt, n = G.n, ds = MODEL.hist.ds ? fmtDate(MODEL.hist.ds) : '';
-  var hint = { title: 'Новые', text: 'Первый визит в отчёты области пришёлся на этот период.' };
+  var hint = { title: 'Новые', text: 'Впервые открыли отчёты в этом периоде: раньше не открывали ни разу.' };
   if (kt >= n - 1) {
     return kpiCard({ label: 'Новых', value: nf(k.new_u), hint: hint,
       delta: kt >= 2 * n - 1 ? dl(dPct(k.new_u, k.new_prev), { vs: G.vs, unit: '%' }) : delta(null, { why: 'Предыдущий период — в начале истории данных' + (ds ? ' (с ' + ds + ')' : '') + ': новых там не отличить.' }),
@@ -2642,11 +2642,11 @@ function kpisHtml() {
   var mM = closedMonth(1), mP = closedMonth(2);
   return '<div class="' + CFG.ns + '-kpis">' +
     kpiCard({ label: 'Пользователей', value: nf(k.users),
-      hint: { title: 'Пользователи ' + G.label, text: 'Уникальные люди области каталога. Один человек — один раз, даже если открыл несколько отчётов.' },
+      hint: { title: 'Пользователи ' + G.label, text: 'Сколько разных людей открыли отчёты за период (при выборе в каталоге — выбранные отчёты). Пользователь — тот, кто хотя бы раз открыл отчёт; человек считается один раз, даже если открыл несколько отчётов.' },
       delta: dl(dPct(k.users, k.users_prev), { vs: G.vs, unit: '%' }),
-      sub: loc ? 'из <b>' + nf(all.users) + '</b> в области' : (G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>') }) +
+      sub: loc ? 'из <b>' + nf(all.users) + '</b> всего' : (G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>') }) +
     kpiCard({ label: 'Просмотров', value: compact(k.views),
-      hint: { title: 'Просмотры', text: 'Сумма открытий отчётов области за период.' },
+      hint: { title: 'Просмотры', text: 'Сколько раз за период открывали отчёты: каждое открытие отчёта — один просмотр.' },
       delta: dl(dPct(k.views, k.views_prev), { vs: G.vs, unit: '%' }),
       sub: 'на пользователя: <b>' + nf(k.users ? k.views / k.users : 0, 1) + '</b>' }) +
     newKpi(k, G, dl, dPct) +
@@ -2655,7 +2655,7 @@ function kpisHtml() {
       delta: dl(shReg - shRegPrev, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
       sub: '<b>' + nf(k.regular) + '</b> ' + plural(k.regular, 'человек', 'человека', 'человек') }) +
     kpiCard({ label: 'MAU · ' + mM, value: nf(k.mau),
-      hint: { title: 'Месячная аудитория', text: 'Уникальные люди области за последний закрытый календарный месяц. От периода шапки не зависит.',
+      hint: { title: 'Месячная аудитория', text: 'Сколько разных людей открывали отчёты в последнем закрытом календарном месяце. От периода в шапке не зависит.',
         rows: [{ label: mM, value: nf(k.mau), color: CFG.colors.ret }, { label: mP, value: nf(k.mau_prev), color: CFG.colors.bench }] },
       delta: loc ? delta(null, { why: whyLoc }) : delta(dPct(k.mau, k.mau_prev), { vs: 'к ' + mP.split(' ')[0], unit: '%' }),
       sub: loc ? 'среди отобранных людей' : mP + ': <b>' + nf(k.mau_prev) + '</b>' }) +
@@ -2672,7 +2672,7 @@ function caKpi(G, dl) {
     { label: 'Не заходили', value: nf(Math.max(0, t.ca - t.reach)) }, { label: 'Заходили вне ЦА', value: nf(t.out) }];
   if (cond) rows.splice(1, 0, { label: 'Из них с доступом', value: nf(t.acc) });
   return kpiCard({ label: 'Охват ЦА', value: W || cov == null ? '—' : pct(cov),
-    hint: { title: 'Охват целевой аудитории', text: 'Доля ЦА, заходившая в отчёты области за период. ЦА ' + base +
+    hint: { title: 'Охват целевой аудитории', text: 'Доля ЦА, открывавшая отчёты за период. ЦА ' + base +
       '. Меняется в строке «Целевая аудитория» над листом. База — действующие сотрудники с AD-логином.' +
       (W ? ' Сейчас доступ открыт почти всей компании — процент не показываем: сузьте ЦА условиями.' : ''), rows: rows },
     delta: W ? '<span class="' + CFG.ns + '-nocmp">доступ почти у всех</span>' : dl(cov - covP, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
@@ -2681,18 +2681,20 @@ function caKpi(G, dl) {
 
 // Карусель наблюдений фиксированной высоты: один факт, листание ‹ ›,
 // текст целиком — в подсказке. Высота не меняется — вкладки не прыгают.
+// Откуда факты: правила в коде чарта по числам карточек выше, без ИИ (вопрос пользователей 2026-10-02).
+var OBS_TIP = tip({ title: 'Как собраны эти факты', text: 'Без ИИ: правила в коде отчёта. Каждый факт посчитан из тех же чисел, что на карточках выше (текущий период против прошлого, доли постоянных и новых); в список попадает, только если изменение больше порога — порог указан в подсказке факта.' });
 function obsHtml(what) {
   var list = obsList(MODEL.kpi, CFG.grains[MODEL.grain] || CFG.grains.d, what);
   var N = CFG.ns;
   if (!list.length) {
     return '<div class="' + N + '-obs"><div class="' + N + '-obs-h"><span class="' + N + '-obs-ico" aria-hidden="true">✓</span>' +
-      '<span class="' + N + '-obs-t">Что видно в данных</span>' +
+      '<span class="' + N + '-obs-t"' + OBS_TIP + '>Что видно в данных</span>' +
       '<span class="' + N + '-obs-lead">Отклонений выше порогов нет: показатели в пределах обычного разброса.</span></div></div>';
   }
   var o = list[0], open = !!state.obsOpen && list.length > 1;
   var h = '<div class="' + N + '-obs sev-' + o.sev + '"><div class="' + N + '-obs-h">' +
     '<span class="' + N + '-obs-ico" aria-hidden="true">!</span>' +
-    '<span class="' + N + '-obs-t">Что видно в данных</span>' +
+    '<span class="' + N + '-obs-t"' + OBS_TIP + '>Что видно в данных</span>' +
     (open ? '' : '<span class="' + N + '-obs-lead"' + tip({ title: o.lead, text: o.body, note: 'Отбор по порогу: ' + o.rule }) + '>' + esc(o.lead) + '</span>') +
     (list.length > 1
       ? '<button type="button" class="' + N + '-obs-tog" data-obs="toggle" aria-expanded="' + open + '">' +
@@ -2714,7 +2716,7 @@ function obsHtml(what) {
 function buildHTML() {
   if (!MODEL.rows.length && !MODEL.ts.length && !MODEL.coh.length) {
     return buildCSS() + '<div class="' + CFG.ns + '-root"><div class="' + CFG.ns + '-empty"><b>' + esc(CFG.text.noData) + '</b>' +
-      'В области нет зрителей за период — снимите часть условий в каталоге или в полоске.</div></div>';
+      'Эти отчёты за период никто не открывал — снимите часть условий в каталоге или в шапке.</div></div>';
   }
   // v7.2: сверху — KPI области и «Что видно в данных» (меняются от клика в
   // каталоге), под ними карточка вкладок: заголовок с областью · поиск
@@ -2758,9 +2760,9 @@ function buildHTML() {
       '</span>' +
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
-        : (view === 'dyn' ? 'клик по строке каталога задаёт область'
+        : (view === 'dyn' ? 'клик по строке каталога выбирает отчёты'
           : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке'
-            : (view === 'path' ? 'кого считаем аудиторией и как она доходит до области' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
+            : (view === 'path' ? 'кого считаем аудиторией и как она доходит до отчётов' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
     '<div class="' + N + '-sub-tabs" role="tablist">' + tabsHtml('view', tabs) + '</div>' +
     '</div>');
   h.push('<div class="' + N + '-panel-b ' + bodyCls + '">' + body + '</div>');
@@ -2780,7 +2782,7 @@ function caCardHtml() {
   if (cond) {
     title = 'Собрана по условиям';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
-    text = 'Все сотрудники с AD-логином, где ' + caCondText(c) + '. Доступ к области есть у <b>' + ppl(t.acc) + '</b> — ступень «Есть доступ». ' +
+    text = 'Все сотрудники с AD-логином, где ' + caCondText(c) + '. Доступ к отчётам есть у <b>' + ppl(t.acc) + '</b> — ступень «Есть доступ». ' +
       'Эта же ЦА — фильтр каталога слева.'
   } else if (W) {
     title = 'Доступ роздан почти всей компании';
@@ -2792,7 +2794,7 @@ function caCardHtml() {
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
     text = 'Права выданы поимённо (' + nf(MODEL.acl.users) + '). Самый точный вид ЦА: охват и «не заходили» считаются без допущений.';
   } else if (!gs.length) {
-    title = 'Прав на отчёты области в данных нет';
+    title = 'Прав на эти отчёты в данных нет';
     chip = '<span class="' + N + '-sig-chip warn">ЦА пуста</span>';
     text = 'Настройте ЦА условиями — она соберётся по структуре.';
   } else {
@@ -2822,7 +2824,7 @@ var FN_ROW = 74, FN_MIN_H = 300, FN_MAX_BAR = 460;
 function funnelSteps() {
   var t = caTotals(), G = CFG.grains[MODEL.grain] || CFG.grains.d, cond = caModeNow() === 'cond';
   var st = [{ name: 'Целевая аудитория', value: t.ca, note: cond ? 'По условиям' : 'Как роздан доступ' }];
-  if (cond) st.push({ name: 'Есть доступ к области', value: t.acc, note: 'Права выданы AD-группой или поимённо' });
+  if (cond) st.push({ name: 'Есть доступ к отчётам', value: t.acc, note: 'Права выданы AD-группой или поимённо' });
   st.push({ name: 'Открыли хотя бы раз', value: t.reach, note: G.label });
   st.push({ name: 'Вернулись ещё раз', value: t.ret, note: 'Заходили в двух и более разных ' + G.units });
   st.push({ name: 'Заходят регулярно', value: t.reg, note: G.reg + '+ разных ' + G.units + ' за период' });
@@ -3202,7 +3204,7 @@ function dynamicsHtml(ts, grain, opts) {
     m: ['в этом месяце', 'весь предыдущий месяц', 'и в предыдущем месяце'],
     q: ['в этом квартале', 'весь предыдущий квартал', 'и в предыдущем квартале'] }[grain] || ['в этом периоде', 'весь предыдущий период', 'и в предыдущем периоде'];
   var legDef = {
-    'new': 'Впервые открыли отчёты области ' + P[0] + ': раньше не заходили ни разу' + (MODEL.hist.ds ? ' (история событий — с ' + fmtDate(MODEL.hist.ds) + ')' : '') + '.',
+    'new': 'Впервые открыли отчёты ' + P[0] + ': раньше не заходили ни разу' + (MODEL.hist.ds ? ' (история событий — с ' + fmtDate(MODEL.hist.ds) + ')' : '') + '.',
     react: 'Заходили когда-то раньше, но ' + P[1] + ' не открывали — вернулись ' + P[0] + ' после паузы.',
     ret: 'Заходили ' + P[0] + ' ' + P[2] + ' — ядро, смотрят без перерыва.'
   };

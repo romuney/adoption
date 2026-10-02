@@ -156,6 +156,12 @@ lower(toString(s.login)) AS lg,
 {%- if auhead|length == 1 %} AND hdf = {{ auhead[0] }}{% endif %}
 {%- endmacro %}
 {#- Логины ЦА по условиям (штат под условиями). -#}
+{#- Владельцы отчёта (все, а не автор, 2026-10-02): owners_string без пустых, в нижнем регистре, без повторов;
+    пустой список — запасной owner_login. Одно выражение на датасет — для вкладки «Владельцы» и для выбора владельца. -#}
+{% macro owns(p) -%}
+arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '') != '', {{ p }}owners_string)),
+  arrayMap(x -> lower(trim(toString(ifNull(x, '')))), {{ p }}owners_string), [lower(trim(toString(ifNull({{ p }}owner_login, ''))))])))
+{%- endmacro %}
 {% macro caset() -%}SELECT lg FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) WHERE {{ cond() }}{%- endmacro %}
 {#- Логины с правом хотя бы на один отчёт области: поимённо или через AD-группу. -#}
 {% macro accset() -%}
@@ -220,7 +226,7 @@ WITH
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %}
     {%- if have and pmode == 'report' %} AND dashboard_id IN ({{ repids|join(', ') if repids else '0' }}){#- мусор / пустое пересечение каталога → пустая область -#}{% endif %}
-    {%- if have and pmode == 'owner' %} AND owner_login IN {{ q(sel) }}{% endif %}
+    {%- if have and pmode == 'owner' %} AND hasAny({{ owns('') }}, {{ qa(sel) }}){% endif %}
     {%- if have and pmode == 'collection' %} AND hasAny(collection_names, {{ qa(sel) }}){% endif %}
   ),
   evd AS (

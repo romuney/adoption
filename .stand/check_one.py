@@ -236,7 +236,7 @@ COLS = ('users', 'users_prev', 'views', 'views_prev', 'new_u', 'new_prev', 'reac
         'sleeping', 'mau', 'mau_prev', 'cnt', 'ages', 'acts', 'days', 'last_dt', 'lvl3')
 key = lambda r: (r['section'], r['g'], r['k'], r['parent'])
 for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'},
-          {'mode_param': 'report', 'sel_f': ['1', '2', '5']}, {'mode_param': 'owner', 'sel_f': ['own3']},
+          {'mode_param': 'report', 'sel_f': ['1', '2', '5']},  # владелец — в п. 11 (теперь все владельцы, у pa_people — автор)
           {'pub_f': '0', 'act_f': '0', 'exc_f': '0', 'period_param': 'w'}]:
     g = c.get('period_param', 'd')
     a, b = run(ONE, c), run(PPL, c)
@@ -451,6 +451,23 @@ for c in [{}, {'ca_spec_f': ['Спец 3']}, {'period_param': 'w', 'exc_f': '0'}
     al = cv['aud'].get('all', {}).get('*')
     stf = sum(v[0] for v in cv['aud'].get('h', {}).values())
     ok(al is not None and al[:3] == cv['total'][:3] and stf <= al[0], f'каталог aud all {c}: {al and al[:3]} == ИТОГО каталога {cv["total"][:3]}; сотрудников-зрителей {stf}')
+
+# ---- 11. Владельцы — все из owners_string, а не автор (2026-10-02) ----------------------------------------------
+cr = run(CAT, {}, with_ca=True)
+G = {unz(x.split('|')[0]): int(x.split('|')[1]) for r in cr if r['section'] == 'grp' and r['g'] == 'owner' for x in r['k'].split('\n') if x}
+REPOWN = {int(x.split('|')[0]): x.split('|')[10].split('^') for r in cr if r['section'] == 'rep' for x in r['k'].split('\n') if x}
+multi = [i for i, o in REPOWN.items() if len(o) > 1]
+ok(len(multi) > 0 and all(len(o) == len(set(o)) and '' not in o for o in REPOWN.values()),
+   f'каталог: у отчёта все владельцы без повторов ({len(multi)} отчётов с несколькими владельцами)')
+nofs = lambda rows: norm([r for r in rows if r['section'] not in ('flt', 'sj', 'area')])  # area — подпись области (владелец / список отчётов)
+for ow in ['own3', 'u131', 'own7']:
+    reps = sorted(i for i, o in REPOWN.items() if ow in o)
+    ro = run(ONE, {'mode_param': 'owner', 'sel_f': [ow]}, raw=True)
+    t = [r for r in ro if r['section'] == 'total'][0]['k'].split('|')
+    ok(G.get(ow) == int(t[0]) and G.get(ow, 0) > 0, f'владелец {ow}: «Польз.» во вкладке «Владельцы» {G.get(ow)} == панель по выбору владельца {t[0]}')
+    ok(any(REPOWN[i][0] != ow for i in reps), f'владелец {ow}: учтён и как не первый владелец ({len(reps)} отчётов)')
+    rr = run(ONE, {'mode_param': 'report', 'sel_f': [str(i) for i in reps]}, raw=True)
+    ok(nofs(ro) == nofs(rr), f'владелец {ow}: панель == панель по выбору всех его {len(reps)} отчётов')
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):

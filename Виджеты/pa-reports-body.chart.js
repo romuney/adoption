@@ -351,6 +351,7 @@ function buildModel() {
           id: id,
           dash_nm: String(r[F.dash_nm] == null ? '' : r[F.dash_nm]),
           owner_login: String(r[F.owner_login] == null ? '' : r[F.owner_login]),
+          owners: r[F.owner_login] ? [String(r[F.owner_login])] : [],
           colls: arr(r[F.colls]),
           published: num(r[F.published]),
           certified: r[F.certified] == null || r[F.certified] === '' ? null : String(r[F.certified]),
@@ -413,7 +414,9 @@ function buildModelV2(M) {
         if (!M.meta[id]) {
           var cs = f[11] ? f[11].split('^') : [];
           for (var c = 0; c < cs.length; c++) cs[c] = unz(cs[c]);
-          M.meta[id] = { id: id, dash_nm: unz(f[9]), owner_login: f[10] || '', colls: cs, published: nz(f[12]),
+          // владельцы отчёта — все (через «^»), owner_login — они же строкой для показа и поиска
+          var ow = f[10] ? f[10].split('^') : [];
+          M.meta[id] = { id: id, dash_nm: unz(f[9]), owners: ow, owner_login: ow.join(', '), colls: cs, published: nz(f[12]),
             certified: f[13] ? unz(f[13]) : null, created_dt: toDate(f[14]) };
           M.ids.push(id);
         }
@@ -498,7 +501,11 @@ function pickedIds(excludeMode) {
       for (var c = 0; c < (m.colls || []).length; c++) if (indexOfId(cols, m.colls[c]) >= 0) hitC = true;
       if (!hitC) ok = false;
     }
-    if (ok && own.length && indexOfId(own, m.owner_login || '') < 0) ok = false;
+    if (ok && own.length) {
+      var hitO = false;     // отчёт подходит, если среди его владельцев есть выбранный
+      for (var o = 0; o < (m.owners || []).length; o++) if (indexOfId(own, m.owners[o]) >= 0) hitO = true;
+      if (!hitO) ok = false;
+    }
     if (ok) out.push(r.id);
   }
   return out;
@@ -525,7 +532,7 @@ function selection() {
     if (row) {
       var m1 = MODEL.meta[row.id] || {};
       return { kind: 'rep', id: row.id, ids: [row.id], title: m1.dash_nm || 'Отчёт',
-        sub: 'владелец ' + (m1.owner_login || '—') };
+        sub: ((m1.owners || []).length > 1 ? 'владельцы ' : 'владелец ') + (m1.owner_login || '—') };
     }
   }
   if (pickCount() === 1 && (pickList('collection').length === 1 || pickList('owner').length === 1)) {
@@ -550,7 +557,7 @@ function groupIds(gk, gv) {
     var m = MODEL.meta[rows[i].id] || {};
     if (gk === 'collection') {
       for (var c = 0; c < (m.colls || []).length; c++) if (String(m.colls[c]) === String(gv)) out.push(rows[i].id);
-    } else if (String(m.owner_login) === String(gv)) out.push(rows[i].id);
+    } else if (indexOfId(m.owners || [], gv) >= 0) out.push(rows[i].id);
   }
   return out;
 }
@@ -815,6 +822,7 @@ function buildCSS() {
     P + '-dd-sep{height:1px;background:var(--line2);margin:4px 6px;}',
 
     // ── Таблицы ──
+    P + '-own-more{font-style:normal;color:var(--muted);cursor:help;}',
     P + '-rname{display:flex;align-items:flex-start;gap:6px;min-width:0;}',
     P + '-rname-t{flex:1 1 auto;min-width:0;}',
     P + '-rname ' + P + '-lnkbtn{flex:0 0 auto;}',
@@ -1200,7 +1208,7 @@ function reportTableHtml() {
         '<div class="' + CFG.ns + '-rname-t">' + esc(x.m.dash_nm) +
         '<span class="' + CFG.ns + '-unit-sub">' +
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
-          esc(x.m.owner_login || '—') + '</span></div></div></td>' +
+          ownersHtml(x.m) + '</span></div></div></td>' +
       '<td class="lead">' + nf(x.k.users) + '</td>' +
       '<td>' + compact(x.k.views) + '</td>' +
       (MODEL.hasCa ? (segNow() === 'never' ? neverCellHtml(x) : (segNow() === 'out' ? '<td><span class="mut">—</span></td>' : covCellHtml(x))) : '') +
@@ -1230,6 +1238,12 @@ function segText() {
 }
 function neverOf(k) { return k.ca_n && !k.ca_wide && k.ca_users != null ? Math.max(0, k.ca_n - k.ca_users) : null; }
 function neverCellHtml(x) { return x.nev == null ? '<td><span class="mut">—</span></td>' : '<td class="lead">' + nf(x.nev) + '</td>'; }
+// Владельцы под названием отчёта: первый и «+N» (все — в подсказке).
+function ownersHtml(m) {
+  var o = m.owners || [];
+  if (o.length < 2) return esc(o[0] || '—');
+  return esc(o[0]) + ' <i class="' + CFG.ns + '-own-more"' + tip({ title: 'Владельцы', text: o.join(', ') }) + '>+' + (o.length - 1) + '</i>';
+}
 function collsMatch(m, q) {
   for (var i = 0; i < (m.colls || []).length; i++) if (String(m.colls[i]).toLowerCase().indexOf(q) >= 0) return true;
   return false;
@@ -1256,7 +1270,7 @@ function catalogRows() {
   }
   for (var i = 0; i < rowsRep.length; i++) {
     var m = MODEL.meta[rowsRep[i].id] || {};
-    var vals = gk === 'collection' ? (m.colls || []) : [m.owner_login];
+    var vals = gk === 'collection' ? (m.colls || []) : (m.owners || []);
     for (var c = 0; c < vals.length; c++) {
       var val = String(vals[c]);
       if (!val) continue;

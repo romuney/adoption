@@ -38,6 +38,12 @@
 {% set CYR = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя' %}
 {% set TGT = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%' %}
 {% macro cz(x) %}translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate({{ x }}, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), '([А-Яа-яЁё][А-Яа-яЁё ]*)', '`\\1`'), '{{ CYR }}', '{{ TGT }}'){% endmacro %}
+{#- Владельцы отчёта (все, а не автор, 2026-10-02): owners_string без пустых, в нижнем регистре, без повторов;
+    пустой список — запасной owner_login. Одно выражение на датасет — для вкладки «Владельцы» и для выбора владельца. -#}
+{% macro owns(p) -%}
+arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '') != '', {{ p }}owners_string)),
+  arrayMap(x -> lower(trim(toString(ifNull(x, '')))), {{ p }}owners_string), [lower(trim(toString(ifNull({{ p }}owner_login, ''))))])))
+{%- endmacro %}
 {% macro fx(x) %}translate({{ x }}, '|\t\n\r', '    '){% endmacro %}
 {% macro jes(s) -%}{{ s|string|replace('\\', '\\\\')|replace('"', '\\"')|replace("'", "''") }}{%- endmacro %}
 {% macro jal(a) -%}[{% for v in a %}{% if not loop.first %}, {% endif %}"{{ jes(v) }}"{% endfor %}]{%- endmacro %}
@@ -175,9 +181,10 @@ WITH
     FROM (
       SELECT arrayJoin(arrayConcat(
           {# Все элементы — строго Tuple(UInt8, String): arrayConcat в CH 24 приводит массивы к типу
-             первого, и Nullable-значение с NULL (owner_login меты) роняло запрос — Code 349. #}
+             первого, и Nullable-значение с NULL (owner_login меты) роняло запрос — Code 349.
+             Владелец — КАЖДЫЙ из владельцев отчёта: зритель отчёта с двумя владельцами считается у обоих. #}
           [(toUInt8(0), '')],
-          arrayFilter(t -> t.2 != '', [(toUInt8(2), toString(ifNull(mm.owner_login, '')))]),
+          arrayMap(o -> (toUInt8(2), o), {{ owns('mm.') }}),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
         p.login AS login, p.msk AS m0, p.v_cur AS v_cur, p.dmax AS dmax
@@ -274,7 +281,7 @@ FROM (
         kd = 1, concat(k0, '|', toString(users), '|', toString(views), '|', toString(regular_users), '|', toString(last_view_days), '|', rhythm, '|',
           {% if WITH_CA %}toString({% if custom %}(SELECT count() FROM ({{ caset() }})){% if excv == '1' %} - ifNull(oc.n_own, 0){% endif %}{% else %}ifNull(c.ca_n, 0){% endif %}), '|',
           toString({% if custom %}toUInt8(0){% else %}ifNull(c.ca_wide, 0){% endif %}), '|', toString(ca_u){% else %}'||'{% endif %}, '|',
-          {{ cz("toString(ifNull(m.dashboard_nm, ''))") }}, '|', {{ fx("toString(ifNull(m.owner_login, ''))") }}, '|',
+          {{ cz("toString(ifNull(m.dashboard_nm, ''))") }}, '|', arrayStringConcat(arrayMap(o -> {{ fx('o') }}, {{ owns('m.') }}), '^'), '|',
           arrayStringConcat(arrayMap(cc -> {{ cz('cc') }}, arrayFilter(cc -> cc != '', arrayMap(cc -> toString(ifNull(cc, '')), m.collection_names))), '^'), '|',
           toString(ifNull(m.published, 0)), '|', {{ cz("toString(ifNull(m.certified_by, ''))") }}, '|', if(isNull(m.created_dt), '', toString(toDate(m.created_dt)))),
         kd = 0, concat(toString(users), '|', toString(views), '|', toString(regular_users), '|', toString(last_view_days)),

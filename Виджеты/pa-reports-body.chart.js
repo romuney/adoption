@@ -763,6 +763,10 @@ function buildCSS() {
     P + '-tip ' + P + '-t-x b{font-weight:600;color:#23272e;}',
     P + '-ptable td{text-align:right;padding:6px 8px;height:44px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
     P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:500;color:var(--ink);white-space:normal;min-width:0;}',
+    // Таблица отчётов: ширины колонок заданы colgroup, ячейки не раздвигают таблицу; длинное название переносится.
+    P + '-ptable.fix{table-layout:fixed;}',
+    P + '-ptable.fix th,' + P + '-ptable.fix td{padding-left:4px;padding-right:6px;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-ptable.fix th.txt,' + P + '-ptable.fix td.txt{padding-left:12px;overflow-wrap:anywhere;}',
     P + '-ptable td.lead{font-weight:500;color:var(--ink);}',
     P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
@@ -1153,14 +1157,21 @@ function reportTableHtml() {
       (sc.col === col ? ' class="on"' : '') + '>' + esc(label) +
       '<span class="' + CFG.ns + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>';
   };
-  var h = '<table class="' + CFG.ns + '-ptable dense sortable"><thead><tr>' +
+  // Колонки фиксированной ширины (table-layout:fixed), название забирает остаток и переносится:
+  // таблица не шире каталога — без горизонтальной прокрутки на ноутбуке (правка владельца 2026-10-02:
+  // вернуть «Просм.» рядом с ЦА, «Охват ЦА» → «ЦА»). Ширины — по самому широкому заголовку со стрелкой.
+  var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 86 : 50) : 0;
+  var h = '<table class="' + CFG.ns + '-ptable dense sortable fix"><colgroup><col>' +
+    '<col style="width:64px"><col style="width:66px">' + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
+    '<col style="width:56px"><col style="width:80px"></colgroup><thead><tr>' +
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
-    th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() } : null) + (MODEL.hasCa && segNow() === 'never'
+    th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() } : null) +
+    th('views', 'Просм.', { text: 'Просмотры отчёта за период' + (segNow() ? ' — тех же зрителей, что в первой колонке' : '') }) + (MODEL.hasCa && segNow() === 'never'
       ? th('never', 'Не заходили', { title: 'ЦА не заходили', text: 'Люди ЦА отчёта без визитов за период: ЦА минус заходившие из неё. Сортировка — по убыванию: где больше всего не дошедших. «—» — доступ почти у всей компании или прав нет.' })
       : MODEL.hasCa
-      ? th('cov', 'Охват ЦА', { title: 'Охват целевой аудитории', text: 'Зрители за период, входящие в ЦА отчёта, от размера ЦА (по правам: AD-группы + поимённо; или по условиям строки «Целевая аудитория»). Совпадает с «Дошли / ЦА» в панели. «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет.' })
-      : th('views', 'Просм.')) +
+      ? th('cov', 'ЦА', { title: 'Охват целевой аудитории', text: 'Зрители за период, входящие в ЦА отчёта, от размера ЦА (по правам: AD-группы + поимённо; или по условиям строки «Целевая аудитория»). Совпадает с «Дошли / ЦА» в панели. «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет.' })
+      : '') +
     th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
     // «Ритм»: сортировка по клику на заголовок, правило — в легенде по значку ⓘ (не сортирует).
     th('rhythm', 'Ритм').replace('</th>', '<i class="' + CFG.ns + '-thi" data-nosort="1"' + tip(rhythmLegendHtml()) + ' aria-label="Как считается ритм">i</i></th>') +
@@ -1174,7 +1185,8 @@ function reportTableHtml() {
         rows: [
           { label: 'Пользователи', value: nf(x.k.users), color: CFG.colors.ret },
           { label: 'Постоянные', value: nf(x.k.regular_users) + ' · ' + pct(x.rs, 0) },
-          MODEL.hasCa ? { label: 'ЦА', value: x.k.ca_n ? nf(x.k.ca_n) + (x.k.ca_wide ? ' · почти вся компания' : '') : 'прав нет' } : { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) },
+          { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) },
+          MODEL.hasCa ? { label: 'ЦА', value: x.k.ca_n ? nf(x.k.ca_n) + (x.k.ca_wide ? ' · почти вся компания' : '') : 'прав нет' } : null,
           MODEL.hasCa && x.k.ca_users != null ? { label: 'Из них заходили', value: nf(x.k.ca_users) } : null
         ],
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
@@ -1188,7 +1200,8 @@ function reportTableHtml() {
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
           esc(x.m.owner_login || '—') + '</span></div></div></td>' +
       '<td class="lead">' + nf(x.k.users) + '</td>' +
-      (MODEL.hasCa ? (segNow() === 'never' ? neverCellHtml(x) : (segNow() === 'out' ? '<td><span class="mut">—</span></td>' : covCellHtml(x))) : '<td>' + compact(x.k.views) + '</td>') +
+      '<td>' + compact(x.k.views) + '</td>' +
+      (MODEL.hasCa ? (segNow() === 'never' ? neverCellHtml(x) : (segNow() === 'out' ? '<td><span class="mut">—</span></td>' : covCellHtml(x))) : '') +
       '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
       // Ритм — пилюлей; своя подсказка — только о ритме (ядро и последний заход).
       '<td class="rh"' + tip(rhythmTip(x.k)) + '><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span></td>' +
@@ -1521,7 +1534,7 @@ function catalogTableHtml() {
     var cells = [];
     if (cat.axis === 'grp') cells.push(nf(cr.reports));
     cells.push(nf(cr.k.users));
-    if (!MODEL.hasCa) cells.push(compact(cr.k.views));
+    cells.push(compact(cr.k.views));
     barRows.push({
       key: cr.key, label: cr.label, cells: cells, bar: cr.k.users,
       tip: {
@@ -1535,11 +1548,11 @@ function catalogTableHtml() {
   var totCells = [];
   if (cat.axis === 'grp') totCells.push(nf(repRows().length));
   totCells.push(nf(cat.total.users));
-  if (!MODEL.hasCa) totCells.push(compact(cat.total.views));
+  totCells.push(compact(cat.total.views));
   var table2 = barTableHtml({
     cutKey: state.mode, selected: pickList(state.mode),
     firstH: modeInfo.one, firstW: '34%', colW: '15%', barH: 'Доля пользователей', dense: true,
-    cols: [{ label: 'Отчётов' }, { label: 'Польз.', hint: { text: 'Уникальные пользователи группы за период' } }].concat(MODEL.hasCa ? [] : [{ label: 'Просм.' }]),
+    cols: [{ label: 'Отчётов' }, { label: 'Польз.', hint: { text: 'Уникальные пользователи группы за период' } }, { label: 'Просм.' }],
     total: {
       cells: totCells,
       tip: { title: 'ИТОГО', text: 'Пользователи в ИТОГО — уникальные по всей выборке, а не сумма строк: один человек, открывший отчёты двух групп, посчитан один раз.' }

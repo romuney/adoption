@@ -121,3 +121,76 @@
 .dashboard-component-chart-holder:has(.react_sanbbox) [aria-label="Loading"] {
   display: none !important;
 }
+
+/* ==========================================================================
+   Загрузка борда (2026-10-07, как в «Детальных списках»). Пока ответа нет, iframe чарта в ячейке ещё нет, и
+   Proteus пишет «Не было получено данных по этому запросу» с картинкой-графиком. Прячем это: вместо неё — белая
+   карточка со скруглением 12 px, как у самих чартов, значок загрузки Proteus и подпись. Появился iframe —
+   правила снимаются сами.
+   id чартов: 803089 — шапка, 111111 — каталог, 222222 — панель «Аудитория».
+   ЗАМЕНИТЕ (Ctrl+H) 111111 и 222222 на id чартов каталога и панели этого борда (id — в адресе чарта
+   или в «…» → «Изменить чарт»); на боевом борде — и 803089 на id шапки.
+   ========================================================================== */
+.dashboard-chart-id-803089:not(:has(iframe)) .slice_container,
+.dashboard-chart-id-111111:not(:has(iframe)) .slice_container,
+.dashboard-chart-id-222222:not(:has(iframe)) .slice_container {
+  visibility: hidden !important;
+}
+.dashboard-chart-id-803089:not(:has(iframe)) .chart-container,
+.dashboard-chart-id-111111:not(:has(iframe)) .chart-container,
+.dashboard-chart-id-222222:not(:has(iframe)) .chart-container {
+  position: relative !important;
+  background: #fff !important;
+  border-radius: 12px !important;
+}
+/* ячейка тянется на всю высоту и до отрисовки (правила растяжки выше срабатывают, когда чарт уже есть) */
+.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-111111, .dashboard-chart-id-222222):not(:has(iframe)) {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-111111, .dashboard-chart-id-222222):not(:has(iframe)) .chart-slice,
+.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-111111, .dashboard-chart-id-222222):not(:has(iframe)) .dashboard-chart,
+.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-111111, .dashboard-chart-id-222222):not(:has(iframe)) .chart-container {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+}
+/* свой значок загрузки — кольцо (в низкой строке шапки — только подпись) */
+.dashboard-chart-id-111111:not(:has(iframe)) .chart-container::before,
+.dashboard-chart-id-222222:not(:has(iframe)) .chart-container::before {
+  content: '';
+  position: absolute;
+  left: calc(50% - 14px);
+  top: calc(50% - 22px);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid #e7e9ee;
+  border-top-color: #245FD4;
+  box-sizing: border-box;
+  animation: pa-load-spin .9s linear infinite;
+}
+@keyframes pa-load-spin {
+  to { transform: rotate(360deg); }
+}
+.dashboard-chart-id-803089:not(:has(iframe)) .chart-container::after,
+.dashboard-chart-id-111111:not(:has(iframe)) .chart-container::after,
+.dashboard-chart-id-222222:not(:has(iframe)) .chart-container::after {
+  content: 'Загружаю каталог…';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + 16px);
+  text-align: center;
+  font: 500 13px/1.4 Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  color: #8a909c;
+  pointer-events: none;
+  animation: pa-load-pulse 1.6s ease-in-out infinite;
+}
+.dashboard-chart-id-803089:not(:has(iframe)) .chart-container::after { content: 'Загружаю шапку…'; top: calc(50% - 9px); }
+.dashboard-chart-id-222222:not(:has(iframe)) .chart-container::after { content: 'Загружаю показатели…'; }
+@keyframes pa-load-pulse {
+  50% { opacity: .6; }
+}

@@ -86,6 +86,9 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
     каждого пользователя). Логин Proteus может быть прежним — в секции me он переводится в актуальный (pa_login_map),
     тем же каноном, что владельцы в pa_dash_meta. Нет функции / не вошёл — пусто, кнопки нет. -#}
 {% set ME = ((current_username() if current_username is defined else '') or '')|string|lower|trim|replace("'", '')|replace('\\', '') %}
+{#- Логин — ЯВНО в ключ кэша (cache_key_wrapper Superset): если форк не кладёт current_username() в ключ сам, ответ
+    первого открывшего борд (с его «Мои») отдавался бы всем до истечения кэша. -#}
+{% if ME and cache_key_wrapper is defined %}{% set _ck = cache_key_wrapper(ME) %}{% endif %}
 {#- Сегмент ЦА из «Кто смотрит» панели (seg_f): reach — только зрители из ЦА (пара с доступом / люди условий),
     out — только зрители вне ЦА; never — людей не сужает (каталог показывает «не заходили из ЦА» по отчётам). -#}
 {% set segv = filter_values('seg_f')|first|default('', true) %}{% set segv = segv if WITH_CA and segv in ['reach', 'never', 'out'] else '' %}

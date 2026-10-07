@@ -1205,21 +1205,25 @@ function reportTableHtml() {
   // Колонки фиксированной ширины (table-layout:fixed), название забирает остаток и переносится:
   // таблица не шире каталога — без горизонтальной прокрутки на ноутбуке (правка владельца 2026-10-02:
   // вернуть «Просм.» рядом с ЦА, «Охват ЦА» → «ЦА»). Ширины — по самому широкому заголовку со стрелкой.
+  // Узкий каталог (режим правки борда, маленький экран): названию — не меньше 170 px; не влезает — прячем колонки
+  // по одной: «Ритм», «Пост.», «Просм.» (2026-10-07: в режиме правки название рассыпалось по буквам).
   var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 86 : 50) : 0;
+  var avail = (state.catW || 9999) - 40, need = 170 + 64 + ca3 + 66 + 56 + 80;
+  var showRh = need <= avail, showReg = need - 80 <= avail, showV = need - 80 - 56 <= avail;
   var h = '<table class="' + CFG.ns + '-ptable dense sortable fix"><colgroup><col>' +
-    '<col style="width:64px"><col style="width:66px">' + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
-    '<col style="width:56px"><col style="width:80px"></colgroup><thead><tr>' +
+    '<col style="width:64px">' + (showV ? '<col style="width:66px">' : '') + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
+    (showReg ? '<col style="width:56px">' : '') + (showRh ? '<col style="width:80px">' : '') + '</colgroup><thead><tr>' +
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
     th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() } : null) +
-    th('views', 'Просм.', { text: 'Просмотры отчёта за период' + (segNow() ? ' — тех же зрителей, что в первой колонке' : '') }) + (MODEL.hasCa && segNow() === 'never'
+    (showV ? th('views', 'Просм.', { text: 'Просмотры отчёта за период' + (segNow() ? ' — тех же зрителей, что в первой колонке' : '') }) : '') + (MODEL.hasCa && segNow() === 'never'
       ? th('never', 'Не заходили', { title: 'ЦА не заходили', text: 'Люди ЦА отчёта без визитов за период: ЦА минус заходившие из неё. Сортировка — по убыванию: где больше всего не дошедших. «—» — доступ почти у всей компании или прав нет.' })
       : MODEL.hasCa
       ? th('cov', 'ЦА', { title: 'Охват целевой аудитории', text: 'Зрители за период, входящие в ЦА отчёта, от размера ЦА (по правам: AD-группы + поимённо; или по условиям строки «Целевая аудитория»). Совпадает с «Дошли / ЦА» в панели. «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет.' })
       : '') +
-    th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) +
+    (showReg ? th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) : '') +
     // «Ритм»: сортировка по клику на заголовок, правило — в легенде по значку ⓘ (не сортирует).
-    th('rhythm', 'Ритм').replace('</th>', '<i class="' + CFG.ns + '-thi" data-nosort="1"' + tip(rhythmLegendHtml()) + ' aria-label="Как считается ритм">i</i></th>') +
+    (showRh ? th('rhythm', 'Ритм').replace('</th>', '<i class="' + CFG.ns + '-thi" data-nosort="1"' + tip(rhythmLegendHtml()) + ' aria-label="Как считается ритм">i</i></th>') : '') +
     '</tr></thead><tbody>';
   for (var r = 0; r < pageRows.length; r++) {
     var x = pageRows[r], sel = indexOfId(picked, x.id) >= 0;
@@ -1245,11 +1249,11 @@ function reportTableHtml() {
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
           ownersHtml(x.m) + '</span></div></div></td>' +
       '<td class="lead">' + nf(x.k.users) + '</td>' +
-      '<td>' + compact(x.k.views) + '</td>' +
+      (showV ? '<td>' + compact(x.k.views) + '</td>' : '') +
       (MODEL.hasCa ? (segNow() === 'never' ? neverCellHtml(x) : (segNow() === 'out' ? '<td><span class="mut">—</span></td>' : covCellHtml(x))) : '') +
-      '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' +
+      (showReg ? '<td>' + pct(x.k.users ? x.k.regular_users / x.k.users * 100 : 0, 0) + '</td>' : '') +
       // Ритм — пилюлей; своя подсказка — только о ритме (ядро и последний заход).
-      '<td class="rh"' + tip(rhythmTip(x.k)) + '><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span></td>' +
+      (!showRh ? '' : '<td class="rh"' + tip(rhythmTip(x.k)) + '><span class="' + CFG.ns + '-sig-chip ' + (['dead', 'neutral', 'note', 'good', 'good'][x.k.rh.rank] || 'dead') + '">' + esc(x.k.rh.label) + '</span></td>') +
       '</tr>';
   }
   return { html: h + '</tbody></table>', total: total };
@@ -2157,6 +2161,10 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     if (state.onTourRs) window.removeEventListener('resize', state.onTourRs);
     state.onTourRs = function () { if (state.tour) tourPos(); };
     window.addEventListener('resize', state.onTourRs);
+    // ячейку сузили/расширили (режим правки борда, окно) — пересобрать таблицу под новую ширину
+    if (state.onCatRs) window.removeEventListener('resize', state.onCatRs);
+    state.onCatRs = function () { var cw = overlay.clientWidth; if (cw && Math.abs(cw - (state.catW || 0)) > 24) render(); };
+    window.addEventListener('resize', state.onCatRs);
 
     // Показ/скрытие тултипа НЕ требует полного render(): hover меняет только
     // содержимое и позицию, полный render() — только на клик (RETRO 20).
@@ -2177,6 +2185,9 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       // прыгал наверх (правка владельца 2026-09-18). Сохраняем обе оси.
       var st = overlay.scrollTop, sl = overlay.scrollLeft;
       overlay.innerHTML = buildHTML();
+      // ширина каталога — для числа колонок таблицы отчётов (узко — часть колонок прячется)
+      var cw = overlay.clientWidth;
+      if (cw && Math.abs(cw - (state.catW || 0)) > 4) { state.catW = cw; overlay.innerHTML = buildHTML(); }
       overlay.scrollTop = st;
       overlay.scrollLeft = sl;
       renderTip();

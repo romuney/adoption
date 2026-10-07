@@ -1054,7 +1054,8 @@ function buildCSS() {
     P + '-tour{display:none;}',
     P + '-tb{position:fixed;left:0;top:0;width:0;height:0;z-index:99990;background:rgba(17,24,39,.55);transition:left .2s,top .2s,width .2s,height .2s;}',
     P + '-tb[data-tb="h"]{background:transparent;cursor:default;}',
-    P + '-tring{position:fixed;z-index:99991;border-radius:10px;box-shadow:0 0 0 2px #245FD4,0 0 0 6px rgba(43,108,255,.22);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s;}',
+    P + '-tring{position:fixed;z-index:99991;border-radius:10px;box-shadow:0 0 0 2px #245FD4,0 0 0 6px rgba(43,108,255,.22);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s,opacity .2s;}',
+    P + '-tnoa *{transition:none !important;}',
     P + '-who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px;}',
     P + '-who-opts-pop>*{flex-shrink:0;}',          // тело с прокруткой (fitDd) не сминает строки
     P + '-who-opts-pop ' + P + '-psearch input{width:100%;height:30px;}',
@@ -4179,24 +4180,24 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var L = tourLayer(), Q = function (k) { return L.querySelector('[data-tb="' + k + '"]'); };
       var ring = L.querySelector('.' + CFG.ns + '-tring'), W = window.innerWidth, H = window.innerHeight;
       var el = t.key ? tourTarget(t.key) : null, r = null;
+      var fresh = L.style.display !== 'block';
+      if (fresh) L.classList.add(CFG.ns + '-tnoa');
       L.style.display = 'block';
       if (el) {
         var u = el.getBoundingClientRect(), pd = typeof t.pad === 'number' ? t.pad : 6;
         r = { l: Math.max(0, u.left - pd), t: Math.max(0, u.top - pd), r: Math.min(W, u.right + pd), b: Math.min(H, u.bottom + pd) };
       }
-      if (r) {
-        tourBox(Q('t'), 0, 0, W, r.t, '12px 12px 0 0');
-        tourBox(Q('b'), 0, r.b, W, H - r.b, '0 0 12px 12px');
-        tourBox(Q('l'), 0, r.t, r.l, r.b - r.t);
-        tourBox(Q('r'), r.r, r.t, W - r.r, r.b - r.t);
-        tourBox(Q('h'), r.l, r.t, r.r - r.l, r.b - r.t);
-        tourBox(ring, r.l, r.t, r.r - r.l, r.b - r.t, '10px');
-        ring.style.display = 'block';
-      } else {
-        tourBox(Q('t'), 0, 0, W, H, '12px');
-        tourBox(Q('b'), 0, 0, 0, 0); tourBox(Q('l'), 0, 0, 0, 0); tourBox(Q('r'), 0, 0, 0, 0); tourBox(Q('h'), 0, 0, 0, 0);
-        ring.style.display = 'none';
-      }
+      // цели нет — «дырка» схлопывается в точку на месте прошлой цели (шторки не разъезжаются в угол)
+      var c = state.tourC || { x: W / 2, y: H / 2 }, h = r || { l: c.x, t: c.y, r: c.x, b: c.y };
+      if (r) state.tourC = { x: (r.l + r.r) / 2, y: (r.t + r.b) / 2 };
+      tourBox(Q('t'), 0, 0, W, h.t, '12px 12px 0 0');
+      tourBox(Q('b'), 0, h.b, W, H - h.b, '0 0 12px 12px');
+      tourBox(Q('l'), 0, h.t, h.l, h.b - h.t);
+      tourBox(Q('r'), h.r, h.t, W - h.r, h.b - h.t);
+      tourBox(Q('h'), h.l, h.t, h.r - h.l, h.b - h.t);
+      tourBox(ring, h.l, h.t, h.r - h.l, h.b - h.t, '10px');
+      ring.style.opacity = r ? '1' : '0';
+      if (fresh) { void L.offsetWidth; L.classList.remove(CFG.ns + '-tnoa'); }
       if (report && t.key) paBcast({ type: 'PA_TOUR_AT', from: TOUR_FROM, key: t.key, ok: !!el, l: r ? r.l : 0, t: r ? r.t : 0, r: r ? r.r : 0, b: r ? r.b : 0 });
     }
     if (state.onTour) window.removeEventListener('message', state.onTour);

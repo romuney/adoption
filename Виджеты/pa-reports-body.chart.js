@@ -831,8 +831,10 @@ function buildCSS() {
     P + '-tour *{box-sizing:border-box;font-family:inherit;}',
     P + '-tb{position:fixed;left:0;top:0;width:0;height:0;z-index:99990;background:rgba(17,24,39,.55);transition:left .2s,top .2s,width .2s,height .2s;}',
     P + '-tb[data-tb="h"]{background:transparent;cursor:default;}',
-    P + '-trings{position:fixed;z-index:99991;border-radius:10px;box-shadow:0 0 0 2px #245FD4,0 0 0 6px rgba(43,108,255,.22);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s;}',
-    P + '-tcard{position:fixed;z-index:99992;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.28),0 2px 8px rgba(15,23,42,.12);padding:12px 16px 14px;color:#454b55;font-size:13px;line-height:1.5;font-weight:400;}',
+    P + '-trings{position:fixed;z-index:99991;border-radius:10px;box-shadow:0 0 0 2px #245FD4,0 0 0 6px rgba(43,108,255,.22);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s,opacity .2s;}',
+    // первый кадр слоя (был скрыт) — без анимации, иначе затемнение «вырастает» из угла
+    P + '-tnoa *{transition:none !important;}',
+    P + '-tcard{position:fixed;z-index:99992;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.28),0 2px 8px rgba(15,23,42,.12);padding:12px 16px 14px;color:#454b55;font-size:13px;line-height:1.5;font-weight:400;transition:left .2s,top .2s,opacity .15s;}',
     P + '-tarr{position:absolute;display:none;width:10px;height:10px;background:#fff;transform:rotate(45deg);}',
     P + '-tarr.' + CFG.ns + '-ta-bottom{display:block;top:-5px;}',
     P + '-tarr.' + CFG.ns + '-ta-top{display:block;bottom:-5px;}',
@@ -2055,19 +2057,17 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
         if (r.r - r.l < 4 || r.b - r.t < 4) r = null;
       }
       var Q = function (k) { return tourNode.querySelector('[data-tb="' + k + '"]'); }, ring = tourQ('trings');
-      if (r) {
-        tourBox(Q('t'), 0, 0, W, r.t, '12px 12px 0 0');
-        tourBox(Q('b'), 0, r.b, W, H - r.b, '0 0 12px 12px');
-        tourBox(Q('l'), 0, r.t, r.l, r.b - r.t);
-        tourBox(Q('r'), r.r, r.t, W - r.r, r.b - r.t);
-        tourBox(Q('h'), r.l, r.t, step.lock ? r.r - r.l : 0, step.lock ? r.b - r.t : 0);
-        tourBox(ring, r.l, r.t, r.r - r.l, r.b - r.t, '10px');
-        ring.style.display = 'block';
-      } else {
-        tourBox(Q('t'), 0, 0, W, H, '12px');
-        tourBox(Q('b'), 0, 0, 0, 0); tourBox(Q('l'), 0, 0, 0, 0); tourBox(Q('r'), 0, 0, 0, 0); tourBox(Q('h'), 0, 0, 0, 0);
-        ring.style.display = 'none';
-      }
+      // Цели нет (вступление, шаг соседа) — «дырка» схлопывается в точку на месте прошлой цели, а не шторки
+      // разъезжаются в угол: переход между шагами — одно плавное движение.
+      var c = t.c || { x: W / 2, y: H / 2 }, h = r || { l: c.x, t: c.y, r: c.x, b: c.y };
+      if (r) t.c = { x: (r.l + r.r) / 2, y: (r.t + r.b) / 2 };
+      tourBox(Q('t'), 0, 0, W, h.t, '12px 12px 0 0');
+      tourBox(Q('b'), 0, h.b, W, H - h.b, '0 0 12px 12px');
+      tourBox(Q('l'), 0, h.t, h.l, h.b - h.t);
+      tourBox(Q('r'), h.r, h.t, W - h.r, h.b - h.t);
+      tourBox(Q('h'), h.l, h.t, r && step.lock ? h.r - h.l : 0, r && step.lock ? h.b - h.t : 0);
+      tourBox(ring, h.l, h.t, h.r - h.l, h.b - h.t, '10px');
+      ring.style.opacity = r ? '1' : '0';
       tourPlace(r, step.remote ? (t.at || { from: step.remote.split(':')[0] }) : null);
     }
     function tourScroll(els) {
@@ -2089,11 +2089,18 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       paBcast({ type: 'PA_TOUR', op: step.remote ? 'show' : 'dim', key: step.remote || '', pad: step.pad, ask: !!step.intro });
       state.tip = null;
       hideTip();
-      var L = tourLayer();
+      var L = tourLayer(), fresh = L.style.display !== 'block', card = tourQ('tcard');
+      if (fresh) L.classList.add(CFG.ns + '-tnoa');
       L.style.display = 'block';
       tourScroll(els);
-      tourQ('tcard').innerHTML = tourCardHTML(list, t.i, step);
+      card.innerHTML = tourCardHTML(list, t.i, step);
+      // Шаг соседа: где цель, станет известно из его ответа PA_TOUR_AT — до него карточка не показывается
+      // (иначе она встаёт «наугад» и через миг прыгает к цели). Нет ответа за 400 мс — показываем как есть.
+      clearTimeout(t.wait);
+      card.style.opacity = step.remote ? '0' : '1';
+      if (step.remote) t.wait = setTimeout(function () { if (state.tour === t) card.style.opacity = '1'; }, 400);
       tourPos();
+      if (fresh) { void L.offsetWidth; L.classList.remove(CFG.ns + '-tnoa'); }
       var pb = L.querySelector('.' + CFG.ns + '-tcf .pri');
       if (pb && pb.focus) pb.focus();
     }
@@ -2113,6 +2120,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       render();
     }
     function tourEnd() {
+      if (state.tour) clearTimeout(state.tour.wait);
       state.tour = null;
       if (tourNode) tourNode.style.display = 'none';
       paBcast({ type: 'PA_TOUR', op: 'off' });
@@ -2145,7 +2153,13 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
         return;
       }
       var step = tourSteps()[t.i];
-      if (step && step.remote === d.from + ':' + d.key) { t.at = d; tourPos(); }
+      if (step && step.remote === d.from + ':' + d.key) {
+        t.at = d;
+        tourPos();
+        clearTimeout(t.wait);
+        var cd = tourQ('tcard');
+        if (cd) cd.style.opacity = '1';
+      }
     };
     window.addEventListener('message', state.onTourMsg);
     if (state.onTourKey) document.removeEventListener('keydown', state.onTourKey, true);

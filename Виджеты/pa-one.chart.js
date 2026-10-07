@@ -1300,51 +1300,55 @@ function buildCSS() {
     P + '-warn{font-size:var(--fs-note);line-height:1.45;color:#7a5200;background:#fff6e6;border-radius:8px;padding:8px 10px;}',
     P + '-sig-chip.dead{background:#f0f1f3;color:var(--muted);}',
     P + '-segstrip.ca ' + P + '-seg-part.never .sp-bar{background:repeating-linear-gradient(135deg,#dfe3e8 0 4px,#eef0f3 4px 8px)!important;}',
-    P + '-panel-b.path-wrap{overflow:auto;display:flex;flex-direction:column;gap:18px;}',
+    P + '-panel-b.path-wrap{overflow:auto;display:flex;flex-direction:column;gap:12px;}',
     P + '-aud-sum{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:var(--fs-note);color:var(--muted);margin:2px 0 8px;}',
     P + '-aud-sum b{color:var(--ink);font-weight:600;}',
     P + '-aud-sum button{margin-left:auto;}',
     P + '-who-mode{display:flex;align-items:center;gap:8px;margin:0 0 10px;}',
     P + '-who-mode-l{font-size:var(--fs-note);color:var(--muted);}',
     // Календарь посещений: месяцы — отдельными мини-календарями (Пн…Вс × недели), чтобы не слипались.
-    P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:14px;}',
+    P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:10px;}',
     P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
     P + '-cal-chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}',
     P + '-cal-chip{border:1px solid var(--line2);border-radius:8px;padding:5px 10px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
     P + '-cal-chip b{display:block;color:var(--ink);font-size:var(--fs-lead);font-weight:600;font-variant-numeric:tabular-nums;}',
     // Месяцы — всегда ОДНИМ рядом (без переноса): на широкой панели свободное место делится поровну —
     // между месяцами и от краёв чарта (space-evenly), на узкой сжимаются до 130 px (отступ 20 px — и между, и у краёв: gap + padding); уже этого — горизонтальная прокрутка ряда.
-    P + '-cal-months{display:flex;flex:0 0 auto;flex-wrap:nowrap;justify-content:space-evenly;gap:0 20px;padding:0 20px;box-sizing:border-box;overflow-x:auto;overflow-y:hidden;}',
-    P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:280px;}',
+    // Месяцы забирают всю высоту вкладки: 6 строк недель у каждого (ровные ряды), клетка — от 20 px до потолка
+    // сетки; дни недели — одной строкой кубиков под ними.
+    P + '-cal-months{display:flex;flex:1 1 auto;flex-wrap:nowrap;justify-content:space-evenly;gap:0 24px;padding:0 12px;box-sizing:border-box;}',
+    P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:330px;display:flex;flex-direction:column;}',
     P + '-cal-mt{font-size:var(--fs-body);font-weight:500;color:var(--ink2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-cal-mt span{color:var(--muted);font-weight:400;}',
-    P + '-cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}',
+    P + '-cal-g{flex:1 1 auto;max-height:310px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(6,minmax(20px,1fr));gap:3px;}',
     P + '-cal-wd{font-size:var(--fs-cap);color:var(--muted);text-align:center;letter-spacing:.3px;padding-bottom:2px;}',
     P + '-cal-wd.we{color:var(--muted2);}',
-    P + '-cal-c{height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;}',
+    P + '-cal-c{min-height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;}',
     P + '-cal-c.hi{color:#fff;}',
     P + '-cal-c.out{background:transparent;color:var(--muted2);cursor:default;}',
     P + '-cal-c.nd{background:transparent;border:1px dashed #dde0e6;color:var(--muted2);}',
     P + '-cal-c.last{box-shadow:0 0 0 2px var(--ink);}',
     P + '-cal-c:not(.out):hover{box-shadow:0 0 0 2px var(--ink2);}',
     P + '-cal-lg{display:flex;align-items:center;gap:4px;font-size:var(--fs-cap);color:var(--muted);flex-wrap:wrap;}',
+    P + '-cal-bar ' + P + '-cal-lg{margin-left:6px;}',
     P + '-cal-lg i{width:11px;height:11px;border-radius:3px;display:inline-block;}',
     P + '-cal-lg .sp{width:12px;}',
-    P + '-cal-low{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px;align-items:start;}',
-    '@media (max-width:640px){' + P + '-cal-low{grid-template-columns:1fr;}}',
-    P + '-cal-h{font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:8px;}',
-    P + '-cal-wr{display:grid;grid-template-columns:24px 1fr 76px;align-items:center;gap:8px;font-size:var(--fs-body);margin-bottom:6px;}',
-    P + '-cal-wr .l{color:var(--ink2);font-weight:500;}',
-    P + '-cal-wr.we .l{color:var(--muted);}',
-    P + '-cal-tr{position:relative;height:16px;background:#f5f6f8;border-radius:4px;}',
-    P + '-cal-tr i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;}',
-    P + '-cal-tr u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.5;border-radius:1px;}',
-    P + '-cal-wr .v{text-align:right;color:var(--ink);font-variant-numeric:tabular-nums;}',
-    P + '-cal-wr .v s{text-decoration:none;color:var(--muted);font-size:var(--fs-cap);margin-left:3px;}',
-    P + '-cal-split{display:flex;height:8px;border-radius:4px;overflow:hidden;margin:4px 0 6px;}',
+    // дни недели: строка кубиков в той же шкале цвета, справа — «Что видно»
+    P + '-cal-low{flex:0 0 auto;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 20px;align-items:center;}',
+    '@media (max-width:760px){' + P + '-cal-low{grid-template-columns:minmax(0,1fr);}}',
+    P + '-cal-h{grid-column:1 / -1;font-size:var(--fs-body);font-weight:500;color:var(--ink2);}',
+    P + '-cal-h span{color:var(--muted);font-weight:400;}',
+    P + '-cal-wk{display:grid;grid-template-columns:repeat(7,minmax(54px,66px));gap:4px;}',
+    P + '-cal-wt{height:46px;box-sizing:border-box;border-radius:7px;padding:5px 7px;display:flex;flex-direction:column;justify-content:space-between;color:var(--ink2);cursor:help;font-variant-numeric:tabular-nums;}',
+    P + '-cal-wt.hi{color:#fff;}',
+    P + '-cal-wt.pk{box-shadow:0 0 0 2px var(--ink);}',
+    P + '-cal-wt:hover{box-shadow:0 0 0 2px var(--ink2);}',
+    P + '-cal-wt .t{display:flex;justify-content:space-between;align-items:baseline;gap:4px;font-size:var(--fs-cap);line-height:1;}',
+    P + '-cal-wt .t s{text-decoration:none;opacity:.8;}',
+    P + '-cal-wt b{font-size:13px;font-weight:600;line-height:1;}',
     P + '-cal-note{font-size:var(--fs-note);color:var(--muted);line-height:1.45;}',
     P + '-cal-note b{color:var(--ink);font-weight:500;}',
-    P + '-cal-see{background:#f8f9fb;border-radius:8px;padding:10px 12px;font-size:var(--fs-body);line-height:1.5;color:var(--ink2);}',
+    P + '-cal-see{background:#f8f9fb;border-radius:8px;padding:7px 12px;font-size:var(--fs-note);line-height:1.45;color:var(--ink2);}',
     P + '-cal-see b{font-weight:500;color:var(--ink);}',
     '</style>'
   ].join('\n');
@@ -2828,8 +2832,11 @@ function caCardHtml() {
 // Воронка (порт U.funnelSvg макета): центрированные бары сверху вниз, ширина ровно
 // пропорциональна значению (масштаб — по самому большому этапу), название НАД баром,
 // число слева, конверсия с предыдущего этапа справа, между барами — диагонали.
-// Высота ступени фиксирована: растянутая на всю панель воронка читается как фон.
-var FN_ROW = 74, FN_MIN_H = 300, FN_MAX_BAR = 460;
+// Высота ступени — не больше FN_ROW (растянутая на всю панель воронка читается как фон), а на низкой панели
+// воронка ужимается до FN_H — остатка вкладки под карточкой ЦА и подписями (меряется после монтажа, syncFnH),
+// но не ниже FN_ROW_MIN на ступень: ниже подпись налезает на бар.
+var FN_ROW = 74, FN_ROW_MIN = 36, FN_MAX_BAR = 460;
+var FN_H = state.fnH || 0;
 // Права в данных неполные: людей ЦА, открывших отчёты, больше, чем людей ЦА с правом (поимённо / AD-группа) —
 // значит, доступ выдан и иначе (роль Proteus и т. п.), ступень «Есть доступ» занижена (скрин владельца 2026-10-07).
 function accGap(t) { return t.reach > t.acc; }
@@ -2846,14 +2853,14 @@ function funnelSteps() {
 function funnelSvg(steps, w) {
   var n = steps.length, i;
   if (!n || !w) return '';
-  var H = Math.max(FN_MIN_H, n * FN_ROW), rowH = (H - 12) / n;
+  var H = FN_H ? Math.max(n * FN_ROW_MIN, Math.min(n * FN_ROW, FN_H)) : n * FN_ROW, rowH = (H - 12) / n;
   var max = 1;
   for (i = 0; i < n; i++) if (steps[i].value > max) max = steps[i].value;
   var cx = w / 2, sideW = 64, maxBar = Math.max(60, Math.min(FN_MAX_BAR, w - sideW * 2 - 20));
   var W = wide(), body = '';
   for (i = 0; i < n; i++) {
     var st = steps[i], y = i * rowH + 16;
-    var bh = Math.max(14, Math.min(FN_ROW - 26, rowH - 26));
+    var bh = Math.max(12, Math.min(FN_ROW - 26, rowH - 24));
     var bw = st.value / max * maxBar;
     var prev = i > 0 ? steps[i - 1].value : null;
     var conv = prev != null ? (prev ? st.value / prev * 100 : 0) : null;
@@ -2878,7 +2885,7 @@ function funnelSvg(steps, w) {
         'M' + r1(cx + bw / 2) + ' ' + r1(y + bh) + 'L' + r1(cx + nb / 2) + ' ' + r1(ny) + '" fill="none" stroke="#dfe3ea" stroke-width="1"/>';
     }
   }
-  return '<svg viewBox="0 0 ' + r1(w) + ' ' + r1(H) + '" width="100%" data-dyn-svg="1" style="height:auto;display:block;overflow:visible" font-family="' + CFG.fonts.family +
+  return '<svg viewBox="0 0 ' + r1(w) + ' ' + r1(H) + '" width="100%" data-dyn-svg="1" data-fn="1" style="height:auto;display:block;overflow:visible" font-family="' + CFG.fonts.family +
     '" role="img" aria-label="Путь целевой аудитории">' + body + '</svg>';
 }
 function funnelHtml() {
@@ -2965,15 +2972,18 @@ function calendarHtml() {
     am = Math.max(am, avg[i], pav[i] || 0);
     if (avg[i] > avg[pk]) pk = i;
   }
+  // Дни недели — строка кубиков в шкале календаря: цвет — среднее за день от пика, подпись — к тем же дням
+  // недели в предыдущие 30 дней.
   var wh = '';
   for (i = 0; i < 7; i++) {
-    var dl = pav[i] ? (avg[i] / pav[i] - 1) * 100 : null;
-    wh += '<div class="' + N + '-cal-wr' + (i >= 5 ? ' we' : '') + '"' + tip({ title: WD_S[i] + ' · в среднем за день', rows: [
+    var dl = pav[i] ? (avg[i] / pav[i] - 1) * 100 : null, wl = calLvl(avg[i], am);
+    wh += '<span class="' + N + '-cal-wt' + (wl >= 4 ? ' hi' : '') + (i === pk && avg[i] ? ' pk' : '') + '" style="background:' + CAL_C[Math.max(0, wl)] + '"' +
+      tip({ title: WD_N[i].charAt(0).toUpperCase() + WD_N[i].slice(1) + ' · в среднем за день', rows: [
         { label: 'Последние 30 дней', value: nf(Math.round(avg[i])) },
-        pav[i] != null ? { label: 'Предыдущие 30 дней', value: nf(Math.round(pav[i])) } : null] }) + '>' +
-      '<span class="l">' + WD_S[i] + '</span><span class="' + N + '-cal-tr"><i style="width:' + (am ? avg[i] / am * 100 : 0).toFixed(1) + '%;background:' + (i === pk ? CAL_C[5] : (i >= 5 ? CAL_C[3] : CAL_C[4])) + '"></i>' +
-      (pav[i] != null && am ? '<u style="left:' + (pav[i] / am * 100).toFixed(1) + '%"></u>' : '') + '</span>' +
-      '<span class="v">' + compact(Math.round(avg[i])) + (dl != null && isFinite(dl) ? '<s>' + (dl >= 0 ? '+' : MINUS) + nf(Math.abs(dl), 0) + '%</s>' : '') + '</span></div>';
+        pav[i] != null ? { label: 'Предыдущие 30 дней', value: nf(Math.round(pav[i])) } : null],
+        note: i === pk && avg[i] ? 'Пик недели.' : null }) + '>' +
+      '<span class="t">' + WD_S[i] + (dl != null && isFinite(dl) ? '<s>' + (dl >= 0 ? '+' : MINUS) + nf(Math.abs(dl), 0) + '%</s>' : '') + '</span>' +
+      '<b>' + compact(Math.round(avg[i])) + '</b></span>';
   }
   var wdS = cur[0] + cur[1] + cur[2] + cur[3] + cur[4], all = wdS + cur[5] + cur[6], sh = all ? wdS / all * 100 : 0;
   // Лучший день и провал (будний день, сильнее всего ниже среднего своего дня недели, порог −25 %) — за последние 30
@@ -2989,27 +2999,22 @@ function calendarHtml() {
   var what = isV ? 'Просмотров' : 'Человеко-дней';
   var h = '<div class="' + N + '-cal-bar">' +
     '<div class="' + N + '-sub-tabs tiny" role="tablist">' + tabsHtml('calM', [
-      { key: 'u', label: 'Пользователи', on: !isV }, { key: 'v', label: 'Просмотры', on: isV }]) + '</div>' +
+      { key: 'u', label: 'Пользователи', on: !isV }, { key: 'v', label: 'Просмотры', on: isV }]) + '</div>' + '<div class="' + N + '-cal-lg">меньше' + CAL_C.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + 'больше' +
+    '<span class="sp"></span><i style="box-shadow:0 0 0 2px #23272e;background:' + CAL_C[4] + '"></i>последний день данных' +
+    (isV ? '<span class="sp"></span><i style="border:1px dashed #dde0e6"></i>просмотров по дням нет (старше 30 дней)' : '') + '</div>' +
     '<div class="' + N + '-cal-chips">' +
       '<span class="' + N + '-cal-chip"' + tip({ title: 'Пик недели', text: 'День недели с наибольшим средним за день в последние 30 дней.' }) + '>Пик недели<b>' + WD_S[pk] + ' · ' + compact(Math.round(avg[pk])) + '</b></span>' +
       '<span class="' + N + '-cal-chip"' + tip({ title: 'В будни', text: 'Доля ' + (isV ? 'просмотров' : 'человеко-дней (сумма людей по дням)') + ' с понедельника по пятницу, последние 30 дней.' }) + '>В будни<b>' + nf(sh, 0) + '%</b></span>' +
       (best ? '<span class="' + N + '-cal-chip">Лучший день<b>' + best.d + ' ' + MONTHS[best.m] + ' · ' + compact(calVal(best)) + '</b></span>' : '') +
     '</div></div>';
   h += '<div class="' + N + '-cal-months">' + mh + '</div>';
-  h += '<div class="' + N + '-cal-lg">меньше' + CAL_C.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + 'больше' +
-    '<span class="sp"></span><i style="box-shadow:0 0 0 2px #23272e;background:' + CAL_C[4] + '"></i>последний день данных' +
-    (isV ? '<span class="sp"></span><i style="border:1px dashed #dde0e6"></i>просмотров по дням нет (старше 30 дней)' : '') + '</div>';
-  h += '<div class="' + N + '-cal-low"><div><div class="' + N + '-cal-h">По дням недели · в среднем за день, последние 30 дней</div>' + wh +
-    '<div class="' + N + '-cal-note">Черта — тот же день недели в предыдущие 30 дней' + (isV ? ' (просмотров за них нет — только люди)' : '') + '.</div></div>' +
-    '<div><div class="' + N + '-cal-h">Будни и выходные</div>' +
-    '<div class="' + N + '-cal-split"><span style="width:' + sh.toFixed(1) + '%;background:' + CAL_C[4] + '"></span><span style="flex:1;background:' + CAL_C[2] + '"></span></div>' +
-    '<div class="' + N + '-cal-note">' + what + ' в будни — <b>' + nf(sh, 0) + '%</b>, в выходные — ' + nf(100 - sh, 0) + '%</div>' +
-    '<div class="' + N + '-cal-see" style="margin-top:12px"><b>Что видно:</b> ' +
-      (all ? 'пик — ' + WD_N[pk] : '') +
-      (all ? ', меньше всего из будней — ' + WD_S[lowWd].toLowerCase() + ' (на ' + nf((1 - avg[lowWd] / (avg[pk] || 1)) * 100, 0) + '% ниже пика). ' : 'данных за последние 30 дней нет. ') +
+  h += '<div class="' + N + '-cal-low"><div class="' + N + '-cal-h">По дням недели <span>· в среднем за день за последние 30 дней, % — к предыдущим 30' + (isV ? ' (просмотров за них нет)' : '') + '</span></div>' +
+    '<div class="' + N + '-cal-wk">' + wh + '</div>' +
+    '<div class="' + N + '-cal-see"><b>Что видно:</b> ' +
+      (all ? 'пик — ' + WD_N[pk] + ', меньше всего из будней — ' + WD_S[lowWd].toLowerCase() + ' (на ' + nf((1 - avg[lowWd] / (avg[pk] || 1)) * 100, 0) + '% ниже пика). ' : 'данных за последние 30 дней нет. ') +
       (dip ? 'Провал ' + dip.d + ' ' + MONTHS[dip.m] + ' (' + WD_S[dip.w].toLowerCase() + ') — на ' + nf((1 - dr) * 100, 0) + '% ниже ' + WD_O[dip.w] + '. ' : '') +
-      (all ? 'В выходные — ' + compact(Math.round((avg[5] + avg[6]) / 2)) + ' в день.' : '') +
-    '</div></div></div>';
+      (all ? what + ' в будни — <b>' + nf(sh, 0) + '%</b>, в выходные — ' + compact(Math.round((avg[5] + avg[6]) / 2)) + ' в день.' : '') +
+    '</div></div>';
   return h;
 }
 
@@ -3590,6 +3595,20 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       COH_H = avail; state.cohH = avail;
       return true;
     }
+    // Воронка «Путь ЦА» — в остаток вкладки: высота тела минус всё, что в нём не воронка (карточка ЦА, подписи,
+    // зазоры). Не влезает и в минимум ступеней — тогда прокрутка тела.
+    function syncFnH() {
+      var body = overlay.querySelector('.' + CFG.ns + '-panel-b.path-wrap'), svg = body && body.querySelector('svg[data-fn]');
+      if (!svg) return false;
+      var cs = getComputedStyle(body), kids = body.children;
+      if (!kids.length) return false;
+      var inner = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      var used = kids[kids.length - 1].getBoundingClientRect().bottom - kids[0].getBoundingClientRect().top;
+      var avail = Math.floor(inner - (used - svg.getBoundingClientRect().height)) - 2;
+      if (avail >= FN_H && avail - FN_H <= 4) return false;
+      FN_H = avail; state.fnH = avail;
+      return true;
+    }
     function syncSvgWidth() {
       var svgs = overlay.querySelectorAll('svg[data-dyn-svg]');
       if (!svgs.length) return false;
@@ -3659,8 +3678,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       ANIM = MODEL.sig !== state.animSig;     // новые данные → анимация только в этом рендере
       state.animSig = MODEL.sig;
       overlay.innerHTML = buildHTML();
-      var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch3 = syncCohH();
-      if (ch1 || ch2 || ch3) overlay.innerHTML = buildHTML();
+      var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch3 = syncCohH(), ch4 = syncFnH();
+      if (ch1 || ch2 || ch3 || ch4) overlay.innerHTML = buildHTML();
       if (ANIM) animateIn(overlay);
       ANIM = false;
       fitDd();
@@ -4232,7 +4251,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     if (state.onTourRs) window.removeEventListener('resize', state.onTourRs);
     state.onTourRs = function () { if (state.tour) tourPos(true); };
     window.addEventListener('resize', state.onTourRs);
-    state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(); if (w || hh || ch) render(); if (state.tip) renderTip(); };
+    state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(), fh = syncFnH(); if (w || hh || ch || fh) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 
     // Сверка фильтров: плашка «Пересчитываем…/повторяю запрос», источник людской шины отвечает на «повтори».
@@ -4257,8 +4276,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         // реальной смене размеров графиков — без цикла render ↔ observer.
         if (state.roT) clearTimeout(state.roT);
         state.roT = setTimeout(function () {
-          var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH();
-          if (w || hh) render();
+          var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(), fh = syncFnH();
+          if (w || hh || ch || fh) render();
         }, 150);
       });
       ro.observe(host);

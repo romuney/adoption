@@ -51,7 +51,10 @@ def render(path, flt=None, always_true=False):
         if v is None:
             return [] if default is None else [default]
         return list(v) if isinstance(v, (list, tuple)) else [v]
-    return env.from_string(open(path).read()).render(filter_values=filter_values)
+    # current_username() как в Superset: логин пользователя борда (flt['__user'], по умолчанию — нет пользователя)
+    def current_username(add_to_cache_keys=True):
+        return flt.get('__user')
+    return env.from_string(open(path).read()).render(filter_values=filter_values, current_username=current_username)
 
 
 def stat(sql):
@@ -142,6 +145,10 @@ def _aud(n_dash, n_login):
     # админы, доступ снят): тогда «Заходили вне ЦА» — меньшинство, как в бою
     S.query("""INSERT INTO prod_proteus.pa_dash_acl SELECT DISTINCT dashboard_id, login, 'user' FROM prod_proteus.pa_pair
       WHERE cityHash64(login, dashboard_id) % 100 < 85 AND login LIKE 'u%'""")
+    # словарь склейки логинов (pa_login_map): старый логин → текущий; own3 когда-то был own3_old
+    S.query('DROP TABLE IF EXISTS prod_proteus.pa_login_map')
+    S.query("CREATE TABLE prod_proteus.pa_login_map (login String, canon String) ENGINE=MergeTree ORDER BY login")
+    S.query("INSERT INTO prod_proteus.pa_login_map VALUES ('own3_old', 'own3'), ('u12_old', 'u12')")
     S.query('DROP TABLE IF EXISTS prod_proteus.pa_adg_size')
     S.query("""CREATE TABLE prod_proteus.pa_adg_size ENGINE=MergeTree ORDER BY ad_group AS
       SELECT ad_group, toInt64(uniqExact(login)) AS n FROM prod_proteus.pa_adg_member

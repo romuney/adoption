@@ -432,6 +432,8 @@ function buildModelV2(M) {
         var gv = unz(f[0]);
         if (gv) M.grps[gr][gk][gv] = { kpi: kpiOf(int(f[1]), int(f[2]), int(f[3]), int(f[4]), '', null, 0, null) };
       }
+    } else if (sec === 'me') {
+      M.me = txt;                    // пользователь борда актуальным логином (кнопка «Мои отчёты»)
     } else if (sec === 'aud') {
       // значение|родитель|людей заходило|просмотров|постоянных|сотрудников
       var d = String(r[F.g] || ''), A = M.aud[d] = M.aud[d] || {};
@@ -824,6 +826,11 @@ function buildCSS() {
     P + '-dd-sep{height:1px;background:var(--line2);margin:4px 6px;}',
 
     // ── Таблицы ──
+    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin-right:8px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;}',
+    P + '-mine:hover{border-color:var(--act);color:var(--act);}',
+    P + '-mine.on{background:var(--blue-bg);border-color:var(--act);color:var(--act-ink);}',
+    P + '-mine[disabled]{opacity:.45;cursor:default;}',
+    P + '-mine-n{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}',
     P + '-own-more{font-style:normal;color:var(--muted);cursor:help;}',
     P + '-rname{display:flex;align-items:flex-start;gap:6px;min-width:0;}',
     P + '-rname-t{flex:1 1 auto;min-width:0;}',
@@ -1240,6 +1247,21 @@ function segText() {
 }
 function neverOf(k) { return k.ca_n && !k.ca_wide && k.ca_users != null ? Math.max(0, k.ca_n - k.ca_users) : null; }
 function neverCellHtml(x) { return x.nev == null ? '<td><span class="mut">—</span></td>' : '<td class="lead">' + nf(x.nev) + '</td>'; }
+// Кнопка «Мои отчёты» (фидбек 2026-10-07): выбор «владелец = я» во вкладке «Владельцы» одним кликом — сужает каталог
+// и всё справа, как клик по своей строке у владельцев. «Я» — логин пользователя борда из датасета (секция me),
+// уже актуальный; владельцы в мете — тоже актуальными логинами. Повторный клик снимает выбор.
+function mineOn() { var o = pickList('owner'); return !!MODEL.me && o.length === 1 && String(o[0]) === MODEL.me; }
+function mineBtnHtml() {
+  if (!MODEL.me) return '';
+  var n = 0, rows = repRows();
+  for (var i = 0; i < rows.length; i++) if (indexOfId((MODEL.meta[rows[i].id] || {}).owners || [], MODEL.me) >= 0) n++;
+  var on = mineOn(), N = CFG.ns;
+  return '<button type="button" class="' + N + '-mine' + (on ? ' on' : '') + '" data-action="mine" aria-pressed="' + on + '"' + (n || on ? '' : ' disabled') +
+    tip(n || on
+      ? { title: on ? 'Показаны ваши отчёты' : 'Мои отчёты', text: (on ? 'Каталог и панель справа — по отчётам, где вы среди владельцев (' + MODEL.me + '). Клик — снять.' : 'Отчёты, где вы (' + MODEL.me + ') среди владельцев: сузит каталог и всё справа. Повторный клик — снять.') }
+      : { title: 'Мои отчёты', text: 'Вы (' + MODEL.me + ') не владелец ни одного отчёта за период с учётом фильтров шапки.' }) + '>' +
+    (on ? '✓ ' : '') + 'Мои отчёты' + (n ? ' <span class="' + N + '-mine-n">' + nf(n) + '</span>' : '') + '</button>';
+}
 // Под названием отчёта: автор первым, за ним владельцы — «автор +N» (все — в подсказке). Старый SQL без автора —
 // первый владелец.
 function ownersHtml(m) {
@@ -1624,7 +1646,7 @@ function buildHTML() {
     cls: 'cat', title: 'Каталог',
     subHtml: segNow() ? '<span' + tip({ title: 'Сегмент ЦА', text: segText() }) + '>показаны: <b>' + (segNow() === 'reach' ? 'ЦА заходили' : (segNow() === 'out' ? 'вне ЦА заходили' : 'ЦА не заходили')) + '</b> · из «Кто смотрит»</span>' : '',
     sub: 'клик — выбрать для панели справа · Shift — несколько',
-    right: searchBoxHtml('repQ', state.mode === 'report' ? 'Название, ID или владелец' : (state.mode === 'aud' ? 'Найти группу' : 'Найти: ' + modeInfo.one.toLowerCase()), state.repQuery),
+    right: mineBtnHtml() + searchBoxHtml('repQ', state.mode === 'report' ? 'Название, ID или владелец' : (state.mode === 'aud' ? 'Найти группу' : 'Найти: ' + modeInfo.one.toLowerCase()), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
   }));
 
@@ -2159,6 +2181,13 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       var act = trigger(e.target, 'data-action');
       if (act) {
         var a = act.getAttribute('data-action');
+        if (a === 'mine') {
+          state.picks.owner = mineOn() ? [] : [MODEL.me];
+          state.page = 0;
+          emitSel();
+          render();
+          return;
+        }
         if (a === 'clearPicks') {
           state.picks = { report: [], collection: [], owner: [] };
           state.aud.picks = { o: [], s: [], t: [], q: [], i: [], h: [] };

@@ -82,6 +82,10 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
 {% for v in (filter_values('ca_adg_f') or []) %}{% if v|string != '' %}{% set _ = caadg.append(v|string) %}{% endif %}{% endfor %}
 {% endif %}
 {% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' or caadg %}
+{#- Кнопка «Мои отчёты» (2026-10-07): логин пользователя борда — current_username() Superset (кэш датасета — свой у
+    каждого пользователя). Логин Proteus может быть прежним — в секции me он переводится в актуальный (pa_login_map),
+    тем же каноном, что владельцы в pa_dash_meta. Нет функции / не вошёл — пусто, кнопки нет. -#}
+{% set ME = ((current_username() if current_username is defined else '') or '')|string|lower|trim|replace("'", '')|replace('\\', '') %}
 {#- Сегмент ЦА из «Кто смотрит» панели (seg_f): reach — только зрители из ЦА (пара с доступом / люди условий),
     out — только зрители вне ЦА; never — людей не сужает (каталог показывает «не заходили из ЦА» по отчётам). -#}
 {% set segv = filter_values('seg_f')|first|default('', true) %}{% set segv = segv if WITH_CA and segv in ['reach', 'never', 'out'] else '' %}
@@ -310,6 +314,12 @@ FROM (
     '' AS parent, toInt64(count()) AS n
   FROM ak
   GROUP BY ad
+
+  UNION ALL
+  {# Текущий пользователь борда актуальным логином: k — логин (пусто — неизвестен). #}
+  SELECT 'me' AS section, '' AS g,
+    {% if ME %}ifNull(nullIf((SELECT any(toString(lm.canon)) FROM prod_proteus.pa_login_map lm WHERE lm.login = '{{ ME }}'), ''), '{{ ME }}'){% else %}''{% endif %} AS k,
+    '' AS parent, toInt64(0) AS n
 
   UNION ALL
   {# Все зрители периода (и не сотрудники: увол., служебные) — ИТОГО вкладки «Аудитория» = «Польз.» ИТОГО каталога.

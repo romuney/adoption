@@ -76,12 +76,13 @@ distributed by (dashboard_id);
 -- ---------------------------------------------------------------------------
 -- Параграф «PA · мета отчётов» → usr_cross_data.pa_dash_meta (1 строка на отчёт,
 -- последнее известное состояние по log_dttm).
+-- 2026-10-07: автор и владельцы — АКТУАЛЬНЫМИ логинами (pa_login_map, как зрители): у сменившего логин
+-- старый аккаунт Proteus остаётся автором/владельцем его прежних отчётов — без склейки его отчёты «размазаны».
+-- Логины владельцев — lower(trim()), без кавычек и повторов. Тот же канон берёт own_flg в «PA · пары».
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_dash_meta;
 create table usr_cross_data.pa_dash_meta as
-select dashboard_id, dashboard_nm, owner_login, owners_string, collection_names,
-       published, actual_flg, certified_by, created_dt
-from (
+with t as (
     select
         v.dashboard_id::int                                   as dashboard_id,
         coalesce(v.dashboard_nm, '')::text                    as dashboard_nm,
@@ -95,8 +96,25 @@ from (
         row_number() over (partition by v.dashboard_id order by v.log_dttm desc) as rn
     from usr_cross_data.proteus_views_1 v
     where v.dashboard_id is not null and v.dashboard_id <> 13040
-) t
-where rn = 1
+),
+m as (select * from t where rn = 1),
+ow as (    -- владельцы → актуальные логины
+    select u.dashboard_id, array_agg(distinct coalesce(mp.canon, u.o)) as owners
+    from (
+        select z.dashboard_id, btrim(lower(trim(z.x)), '"') as o
+        from (select dashboard_id, unnest(owners_string) as x from m) z
+    ) u
+    left join usr_cross_data.pa_login_map mp on mp.login = u.o
+    where u.o <> ''
+    group by u.dashboard_id
+)
+select m.dashboard_id, m.dashboard_nm,
+       coalesce(ma.canon, btrim(lower(trim(m.owner_login)), '"'))::text  as owner_login,
+       coalesce(ow.owners, array[]::text[])                                as owners_string,
+       m.collection_names, m.published, m.actual_flg, m.certified_by, m.created_dt
+from m
+left join ow on ow.dashboard_id = m.dashboard_id
+left join usr_cross_data.pa_login_map ma on ma.login = btrim(lower(trim(m.owner_login)), '"')
 distributed by (dashboard_id);
 
 -- ---------------------------------------------------------------------------

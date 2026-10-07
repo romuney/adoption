@@ -472,6 +472,11 @@ for ow in ['own3', 'u131', 'own7']:
     rr = run(ONE, {'mode_param': 'report', 'sel_f': [str(i) for i in reps]}, raw=True)
     ok(nofs(ro) == nofs(rr), f'владелец {ow}: панель == панель по выбору всех его {len(reps)} отчётов')
 
+# ---- 12. «Мои отчёты»: пользователь борда → актуальный логин (секция me каталога) ---------------------------------
+for u, want in [(None, ''), ('OWN3_OLD', 'own3'), ('own7', 'own7'), ("x'; drop", 'x; drop')]:
+    me = [r['k'] for r in run(CAT, {'__user': u} if u else {}, with_ca=True) if r['section'] == 'me']
+    ok(me == [want], f'me: пользователь {u!r} → {me} (ждали {want!r})')
+
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):
     fa = os.path.join(LAB_DIR, ALL_NAME)

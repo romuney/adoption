@@ -985,12 +985,17 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
     state.onTour = function (ev) {
       var d = ev.data || {};
       if (d.type !== 'PA_TOUR' || !overlay.parentNode) return;
-      if (d.op === 'off') { state.tour = null; tourPos(); if (!state.sig) tourSig(false); return; }
+      if (d.op === 'off') { clearInterval(state.tourIv); state.tour = null; tourPos(); if (!state.sig) tourSig(false); return; }
       if (state.dd) openDd(null);
       if (state.tip) { state.tip = null; hideTip(); }
       clearTimeout(state.tipT);
       if (state.sig) signal(false);
-      if (!state.tour) { tourSig(true); setTimeout(function () { if (state.tour) tourSig(true); }, 400); }
+      // маркер — сразу и повтором, пока тур идёт: скриншот платформы может затереть его в img в любой момент
+      if (!state.tour) {
+        tourSig(true);
+        clearInterval(state.tourIv);
+        state.tourIv = setInterval(function () { if (state.tour) tourSig(true); else clearInterval(state.tourIv); }, 1500);
+      }
       var key = d.op === 'show' && String(d.key || '').indexOf(TOUR_FROM + ':') === 0 ? String(d.key).slice(TOUR_FROM.length + 1) : '';
       var el = key ? tourTarget(key) : null;
       state.tour = { key: key, pad: d.pad };

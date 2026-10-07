@@ -111,26 +111,16 @@
 }
 
 /* ==========================================================================
-   Тур «Как работать» (2026-10-07): лист — одно полотно. Каждый чарт затемняет себя сам, а швы между чартами,
-   поля и заголовок страницы — это правило. Пока идёт тур, шапка шлёт в канал скриншотов маркер UEEtVE9VUi1PTi0x
-   (iframe при этом НЕ разворачивается): страница под чартами темнеет тем же цветом, три чарта — над затемнением.
-   Тур закрыли — маркер снят, правило уходит само. id — те же три (803089 шапка, 803049 каталог, 803057 панель).
+   Тур «Как работать» (2026-10-07): лист — одно полотно. Каждый чарт затемняет себя сам, а швы между чартами и поля
+   страницы — это правило. Пока идёт тур, шапка шлёт в канал скриншотов маркер UEEtVE9VUi1PTi0x (iframe при этом НЕ
+   разворачивается), и все обёртки, в которых лежат ячейки чартов (сетка, строки, страница борда), красятся в
+   #7c8088 — ровно тот цвет, который даёт затемнение тура поверх белого. Отдельного слоя поверх страницы нет:
+   его могли бы перекрыть слои самого Proteus. Тур закрыли — маркер снят, цвета вернулись.
    ========================================================================== */
-body:has(.dashboard-chart-id-803089 img.echarts-plugin[src*="UEEtVE9VUi1PTi0x"])::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  z-index: 990;
-  background: rgba(17, 24, 39, .55);
-  pointer-events: none;
-  animation: pa-tour-in .2s ease-out;
-}
-body:has(.dashboard-chart-id-803089 img.echarts-plugin[src*="UEEtVE9VUi1PTi0x"]) .dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057) {
-  position: relative !important;
-  z-index: 991 !important;
-}
-@keyframes pa-tour-in {
-  from { opacity: 0; }
+body:has(.dashboard-chart-id-803089 img.echarts-plugin[src*="UEEtVE9VUi1PTi0x"]),
+body:has(.dashboard-chart-id-803089 img.echarts-plugin[src*="UEEtVE9VUi1PTi0x"]) :not(iframe):has(.dashboard-component-chart-holder) {
+  background-color: #7c8088 !important;
+  background-image: none !important;
 }
 
 /* ==========================================================================

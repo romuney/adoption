@@ -156,24 +156,7 @@
   flex: 1 1 auto !important;
   min-height: 0 !important;
 }
-/* свой значок загрузки — кольцо (в низкой строке шапки — только подпись) */
-.dashboard-chart-id-803049:not(:has(iframe)) .chart-container::before,
-.dashboard-chart-id-803057:not(:has(iframe)) .chart-container::before {
-  content: '';
-  position: absolute;
-  left: calc(50% - 14px);
-  top: calc(50% - 22px);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 3px solid #e7e9ee;
-  border-top-color: #245FD4;
-  box-sizing: border-box;
-  animation: pa-load-spin .9s linear infinite;
-}
-@keyframes pa-load-spin {
-  to { transform: rotate(360deg); }
-}
+/* подпись под значком загрузки Proteus (своего кольца нет — значок Proteus уже стоит в центре ячейки) */
 .dashboard-chart-id-803089:not(:has(iframe)) .chart-container::after,
 .dashboard-chart-id-803049:not(:has(iframe)) .chart-container::after,
 .dashboard-chart-id-803057:not(:has(iframe)) .chart-container::after {

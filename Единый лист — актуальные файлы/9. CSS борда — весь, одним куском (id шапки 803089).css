@@ -164,14 +164,15 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(50% + 16px);
+  top: calc(50% + 24px);
   text-align: center;
   font: 500 13px/1.4 Inter, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
   color: #8a909c;
   pointer-events: none;
   animation: pa-load-pulse 1.6s ease-in-out infinite;
 }
-.dashboard-chart-id-803089:not(:has(iframe)) .chart-container::after { content: 'Загружаю шапку…'; top: calc(50% - 9px); }
+/* шапка низкая — подпись справа от значка Proteus, а не под ним */
+.dashboard-chart-id-803089:not(:has(iframe)) .chart-container::after { content: 'Загружаю шапку…'; top: calc(50% - 9px); left: calc(50% + 30px); right: auto; text-align: left; }
 .dashboard-chart-id-803057:not(:has(iframe)) .chart-container::after { content: 'Загружаю показатели…'; }
 @keyframes pa-load-pulse {
   50% { opacity: .6; }

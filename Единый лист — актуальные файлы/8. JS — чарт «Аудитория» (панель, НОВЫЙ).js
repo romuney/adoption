@@ -4190,8 +4190,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       // цели нет — «дырка» схлопывается в точку на месте прошлой цели (шторки не разъезжаются в угол)
       var c = state.tourC || { x: W / 2, y: H / 2 }, h = r || { l: c.x, t: c.y, r: c.x, b: c.y };
       if (r) state.tourC = { x: (r.l + r.r) / 2, y: (r.t + r.b) / 2 };
-      tourBox(Q('t'), 0, 0, W, h.t, '12px 12px 0 0');
-      tourBox(Q('b'), 0, h.b, W, H - h.b, '0 0 12px 12px');
+      tourBox(Q('t'), 0, 0, W, h.t, '0');
+      tourBox(Q('b'), 0, h.b, W, H - h.b, '0');
       tourBox(Q('l'), 0, h.t, h.l, h.b - h.t);
       tourBox(Q('r'), h.r, h.t, W - h.r, h.b - h.t);
       tourBox(Q('h'), h.l, h.t, h.r - h.l, h.b - h.t);

@@ -2061,8 +2061,8 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       // разъезжаются в угол: переход между шагами — одно плавное движение.
       var c = t.c || { x: W / 2, y: H / 2 }, h = r || { l: c.x, t: c.y, r: c.x, b: c.y };
       if (r) t.c = { x: (r.l + r.r) / 2, y: (r.t + r.b) / 2 };
-      tourBox(Q('t'), 0, 0, W, h.t, '12px 12px 0 0');
-      tourBox(Q('b'), 0, h.b, W, H - h.b, '0 0 12px 12px');
+      tourBox(Q('t'), 0, 0, W, h.t, '0');
+      tourBox(Q('b'), 0, h.b, W, H - h.b, '0');
       tourBox(Q('l'), 0, h.t, h.l, h.b - h.t);
       tourBox(Q('r'), h.r, h.t, W - h.r, h.b - h.t);
       tourBox(Q('h'), h.l, h.t, r && step.lock ? h.r - h.l : 0, r && step.lock ? h.b - h.t : 0);

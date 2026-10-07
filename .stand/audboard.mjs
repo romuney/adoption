@@ -35,8 +35,8 @@ const page = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margi
   + '<div class="full cell dashboard-component-chart-holder" style="height:' + BAR + 'px"><div class="dashboard-chart dashboard-chart-id-' + CID + '">'
   + '<div class="chart-container"><div class="slice_container"><div id="chart-id-' + CID + '" style="width:100%;height:100%"><div class="react_sanbbox">'
   + '<iframe sandbox="allow-scripts" data-f="bar"></iframe></div></div><img class="echarts-plugin"></div></div></div></div>'
-  + '<div class="cell" style="height:' + ROW + 'px"><iframe sandbox="allow-scripts" data-f="cat"></iframe></div>'
-  + '<div class="cell" style="height:' + ROW + 'px"><iframe sandbox="allow-scripts" data-f="pan"></iframe></div>'
+  + '<div class="cell dashboard-component-chart-holder" style="height:' + ROW + 'px"><div class="dashboard-chart-id-803049" style="height:100%"><iframe sandbox="allow-scripts" data-f="cat"></iframe></div></div>'
+  + '<div class="cell dashboard-component-chart-holder" style="height:' + ROW + 'px"><div class="dashboard-chart-id-803057" style="height:100%"><iframe sandbox="allow-scripts" data-f="pan"></iframe></div></div>'
   + '</div><script>window.__emits=[];window.addEventListener("message",function(e){var d=e.data||{};'
   + 'if(d.type==="ECHARTS_UPDATE_DATA_URL")setTimeout(function(){document.querySelector("img.echarts-plugin").src=d.dataUrl;},' + (+process.env.DELAY || 0) + ');'
   + 'if(d.type==="ECHARTS_APPLY_CROSS_FILTER")window.__emits.push(JSON.stringify(d.filters));});<\/script></body></html>';

@@ -63,6 +63,8 @@ var CFG = {
     mark: 'UEEtQ0EtREQtT04x',
     // «PA-ST-TIP-ON» — подсказка переключателя (разворот ниже).
     tipMark: 'UEEtU1QtVElQLU9O',
+    // «PA-TOUR-ON-1» — идёт тур «Как работать»: CSS борда затемняет страницу между чартами (iframe не разворачивается).
+    tourMark: 'UEEtVE9VUi1PTi0x',
     png: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
   },
   // Условия: порядок кнопок; q — ключ поиска; w — ширина выпадашки.
@@ -715,7 +717,7 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
       if (kind) {
         var raw = atob(b);
         while (raw.length % 3) raw += '\0';
-        b = btoa(raw + atob(kind === 'tip' ? CFG.overlay.tipMark : CFG.overlay.mark));
+        b = btoa(raw + atob(kind === 'tip' ? CFG.overlay.tipMark : kind === 'tour' ? CFG.overlay.tourMark : CFG.overlay.mark));
       }
       return 'data:image/png;base64,' + b;
     }
@@ -742,6 +744,15 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
         overlay.style.height = state.baseH ? state.baseH + 'px' : '100%';
         state.pin = !open && !!state.baseH;
       } else { overlay.style.height = '100%'; state.pin = false; }
+    }
+    // Тур: только маркер для CSS борда (затемнить швы и поля страницы между чартами) — без разворота iframe и смены фона.
+    function tourSig(on) {
+      var url = pngUrl(on ? 'tour' : false);
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: 'ECHARTS_UPDATE_DATA_URL', dataUrl: url, payload: { dataUrl: url } }, '*');
+        }
+      } catch (e) { /* нет родителя (стенд) */ }
     }
     function unpinIfShrunk() {
       if (state.pin && !state.sig && window.innerHeight <= state.baseH + 4) { overlay.style.height = '100%'; state.pin = false; }
@@ -960,8 +971,8 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
       // цели нет — «дырка» схлопывается в точку на месте прошлой цели (шторки не разъезжаются в угол)
       var c = state.tourC || { x: W / 2, y: H / 2 }, h = r || { l: c.x, t: c.y, r: c.x, b: c.y };
       if (r) state.tourC = { x: (r.l + r.r) / 2, y: (r.t + r.b) / 2 };
-      tourBox(Q('t'), 0, 0, W, h.t, '12px 12px 0 0');
-      tourBox(Q('b'), 0, h.b, W, H - h.b, '0 0 12px 12px');
+      tourBox(Q('t'), 0, 0, W, h.t, '0');
+      tourBox(Q('b'), 0, h.b, W, H - h.b, '0');
       tourBox(Q('l'), 0, h.t, h.l, h.b - h.t);
       tourBox(Q('r'), h.r, h.t, W - h.r, h.b - h.t);
       tourBox(Q('h'), h.l, h.t, h.r - h.l, h.b - h.t);
@@ -974,9 +985,12 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
     state.onTour = function (ev) {
       var d = ev.data || {};
       if (d.type !== 'PA_TOUR' || !overlay.parentNode) return;
-      if (d.op === 'off') { state.tour = null; tourPos(); return; }
+      if (d.op === 'off') { state.tour = null; tourPos(); if (!state.sig) tourSig(false); return; }
       if (state.dd) openDd(null);
       if (state.tip) { state.tip = null; hideTip(); }
+      clearTimeout(state.tipT);
+      if (state.sig) signal(false);
+      if (!state.tour) { tourSig(true); setTimeout(function () { if (state.tour) tourSig(true); }, 400); }
       var key = d.op === 'show' && String(d.key || '').indexOf(TOUR_FROM + ':') === 0 ? String(d.key).slice(TOUR_FROM.length + 1) : '';
       var el = key ? tourTarget(key) : null;
       state.tour = { key: key, pad: d.pad };
@@ -1031,6 +1045,7 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
     // скриншот платформы мог затереть маркер — повторяем сигнал.
     if (state.dd) { signal('dd'); setTimeout(function () { if (state.dd) signal('dd'); }, 400); setTimeout(function () { if (state.dd) signal('dd'); }, 1500); }
     else if (state.sig) { state.tip = null; signal(false); }
+    else if (state.tour) tourSig(true);
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     if (typeof ResizeObserver !== 'undefined') {

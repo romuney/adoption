@@ -1050,6 +1050,11 @@ function buildCSS() {
 
     // ── Настройки списка (поповер) ──
     P + '-who-opts ' + P + '-dd-trg{width:auto;}',
+    // Тур «Как работать» (ведёт каталог): затемнение вокруг цели и рамка — в body, как подсказка.
+    P + '-tour{display:none;}',
+    P + '-tb{position:fixed;left:0;top:0;width:0;height:0;z-index:99990;background:rgba(17,24,39,.55);transition:left .2s,top .2s,width .2s,height .2s;}',
+    P + '-tb[data-tb="h"]{background:transparent;cursor:default;}',
+    P + '-tring{position:fixed;z-index:99991;border-radius:10px;box-shadow:0 0 0 2px #245FD4,0 0 0 6px rgba(43,108,255,.22);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s;}',
     P + '-who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px;}',
     P + '-who-opts-pop>*{flex-shrink:0;}',          // тело с прокруткой (fitDd) не сминает строки
     P + '-who-opts-pop ' + P + '-psearch input{width:100%;height:30px;}',
@@ -4141,6 +4146,91 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     // Старый снимаем ЯВНО, ссылку держим в state. Escape вешай здесь же,
     // тем же способом, и никогда не внутри render().
     if (state.onWinResize) window.removeEventListener('resize', state.onWinResize);
+    // ── ТУР «КАК РАБОТАТЬ» (2026-10-07; движок — как в «Детальных списках») ── ведёт каталог, карточка — у него.
+    // PA_TOUR {op}: dim — чарт затемнён целиком, show — затемнён вокруг цели key, off — слоя нет. Ответ PA_TOUR_AT
+    // {from, key, ok, l, t, r, b}: где цель (колонки и ряд борда общие — стрелка карточки каталога смотрит туда же);
+    // на dim — какие цели есть (keys). Клики под затемнением не проходят; Esc и стрелки уходят в каталог (PA_TOUR_KEY).
+    var tourNode = null, TOUR_FROM = 'one', TOUR_T = { kpi: '.' + CFG.ns + '-kpis', obs: '.' + CFG.ns + '-obs', tabs: function () { var b = overlay.querySelector('[data-view^="view:"]'); return b ? b.parentNode : null; } };
+    function tourTarget(key) {
+      var s = TOUR_T[key], el = !s ? null : (typeof s === 'function' ? s() : overlay.querySelector(s));
+      var q = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      return q && q.width > 0 && q.height > 0 ? el : null;
+    }
+    function tourLayer() {
+      if (tourNode && tourNode.parentNode) return tourNode;
+      var old = document.querySelector('body > .' + CFG.ns + '-tour');
+      if (old) old.parentNode.removeChild(old);
+      var P = CFG.ns, sides = ['t', 'b', 'l', 'r', 'h'], h = '';
+      for (var i = 0; i < sides.length; i++) h += '<div class="' + P + '-tb" data-tb="' + sides[i] + '"></div>';
+      tourNode = document.createElement('div');
+      tourNode.className = P + '-tour';
+      tourNode.innerHTML = h + '<div class="' + P + '-tring"></div>';
+      document.body.appendChild(tourNode);
+      return tourNode;
+    }
+    function tourBox(el, l, t, w, h, rad) {
+      el.style.left = Math.round(l) + 'px'; el.style.top = Math.round(t) + 'px';
+      el.style.width = Math.max(0, Math.round(w)) + 'px'; el.style.height = Math.max(0, Math.round(h)) + 'px';
+      el.style.borderRadius = rad || '0';
+    }
+    function tourPos(report) {
+      var t = state.tour;
+      if (!t) { if (tourNode) tourNode.style.display = 'none'; return; }
+      var L = tourLayer(), Q = function (k) { return L.querySelector('[data-tb="' + k + '"]'); };
+      var ring = L.querySelector('.' + CFG.ns + '-tring'), W = window.innerWidth, H = window.innerHeight;
+      var el = t.key ? tourTarget(t.key) : null, r = null;
+      L.style.display = 'block';
+      if (el) {
+        var u = el.getBoundingClientRect(), pd = typeof t.pad === 'number' ? t.pad : 6;
+        r = { l: Math.max(0, u.left - pd), t: Math.max(0, u.top - pd), r: Math.min(W, u.right + pd), b: Math.min(H, u.bottom + pd) };
+      }
+      if (r) {
+        tourBox(Q('t'), 0, 0, W, r.t, '12px 12px 0 0');
+        tourBox(Q('b'), 0, r.b, W, H - r.b, '0 0 12px 12px');
+        tourBox(Q('l'), 0, r.t, r.l, r.b - r.t);
+        tourBox(Q('r'), r.r, r.t, W - r.r, r.b - r.t);
+        tourBox(Q('h'), r.l, r.t, r.r - r.l, r.b - r.t);
+        tourBox(ring, r.l, r.t, r.r - r.l, r.b - r.t, '10px');
+        ring.style.display = 'block';
+      } else {
+        tourBox(Q('t'), 0, 0, W, H, '12px');
+        tourBox(Q('b'), 0, 0, 0, 0); tourBox(Q('l'), 0, 0, 0, 0); tourBox(Q('r'), 0, 0, 0, 0); tourBox(Q('h'), 0, 0, 0, 0);
+        ring.style.display = 'none';
+      }
+      if (report && t.key) paBcast({ type: 'PA_TOUR_AT', from: TOUR_FROM, key: t.key, ok: !!el, l: r ? r.l : 0, t: r ? r.t : 0, r: r ? r.r : 0, b: r ? r.b : 0 });
+    }
+    if (state.onTour) window.removeEventListener('message', state.onTour);
+    state.onTour = function (ev) {
+      var d = ev.data || {};
+      if (d.type !== 'PA_TOUR' || !overlay.parentNode) return;
+      if (d.op === 'off') { state.tour = null; tourPos(); return; }
+      if (state.dd) { state.dd = null; render(); }
+      if (state.tip) { state.tip = null; hideTip(); }
+      var key = d.op === 'show' && String(d.key || '').indexOf(TOUR_FROM + ':') === 0 ? String(d.key).slice(TOUR_FROM.length + 1) : '';
+      var el = key ? tourTarget(key) : null;
+      state.tour = { key: key, pad: d.pad };
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+      tourPos(true);
+      if (d.op === 'dim' && d.ask) {
+        var ks = [];
+        for (var k in TOUR_T) if (Object.prototype.hasOwnProperty.call(TOUR_T, k) && tourTarget(k)) ks.push(k);
+        paBcast({ type: 'PA_TOUR_AT', from: TOUR_FROM, key: '', keys: ks });
+      }
+    };
+    window.addEventListener('message', state.onTour);
+    if (state.onTourKey) document.removeEventListener('keydown', state.onTourKey, true);
+    state.onTourKey = function (ev) {
+      if (!state.tour) return;
+      var k = ev.keyCode || ev.which, a = k === 27 ? 'close' : k === 39 ? 'next' : k === 37 ? 'back' : '';
+      if (!a) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      paBcast({ type: 'PA_TOUR_KEY', k: a });
+    };
+    document.addEventListener('keydown', state.onTourKey, true);
+    if (state.onTourRs) window.removeEventListener('resize', state.onTourRs);
+    state.onTourRs = function () { if (state.tour) tourPos(true); };
+    window.addEventListener('resize', state.onTourRs);
     state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(); if (w || hh || ch) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 

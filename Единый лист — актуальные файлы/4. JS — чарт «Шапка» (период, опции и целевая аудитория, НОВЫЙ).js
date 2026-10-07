@@ -384,6 +384,14 @@ function buildCSS() {
     P + '-btn.primary:hover{background:' + C.actInk + ';}',
     P + '-btn.sm{height:28px;padding:0 10px;font-size:12px;}',
     P + '-btn[disabled]{opacity:.45;cursor:default;}',
+    // Тур «Как работать» (ведёт каталог): затемнение вокруг цели и рамка — в body, как подсказка.
+    P + '-tour{display:none;}',
+    P + '-tb{position:fixed;left:0;top:0;width:0;height:0;z-index:99990;background:rgba(17,24,39,.55);transition:left .2s,top .2s,width .2s,height .2s;}',
+    P + '-tb[data-tb="h"]{background:transparent;cursor:default;}',
+    P + '-tring{position:fixed;z-index:99991;border-radius:10px;box-shadow:0 0 0 2px #245FD4,0 0 0 6px rgba(43,108,255,.22);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s;}',
+    P + '-help{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:28px;margin-left:12px;padding:0 11px;border:1px solid ' + C.line + ';border-radius:999px;background:#fff;color:' + C.ink2 + ';font:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;}',
+    P + '-help:hover{border-color:' + C.act + ';color:' + C.act + ';}',
+    P + '-help i{font-style:normal;display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1.5px solid currentColor;font-size:10px;font-weight:600;}',
     // ── Выпадашка (в body iframe, position:fixed) ──
     // border-box: maxHeight из placeDd — вся высота с отступами (иначе +22 px и низ резался краем iframe, 2026-09-30)
     P + '-dd{position:fixed;z-index:9000;box-sizing:border-box;background:#fff;border:1px solid ' + C.line + ';border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.18);'
@@ -557,7 +565,10 @@ function buildHTML() {
         note: son !== sw.def ? 'Отличается от умолчания' : '' }) + '>' +
       '<input type="checkbox" data-f="' + esc(sw.key) + '"' + (son ? ' checked' : '') + '><i aria-hidden="true"></i>' + esc(sw.short) + '</label>');
   }
-  h.push('</div><span class="' + N + '-sp"></span>' + freshHtml(MODEL.md, N) + '</div>');
+  h.push('</div><span class="' + N + '-sp"></span>' + freshHtml(MODEL.md, N) +
+    // «Как работать»: тур по листу ведёт каталог (PA_TOUR_GO) — шапка, каталог и панель по шагам
+    '<button type="button" class="' + N + '-help" data-tourstart="1"' + tip({ title: 'Как работать', text: 'Короткий тур по листу: что где и как пользоваться — шапка, каталог и панель справа по шагам.' }) +
+    '><i aria-hidden="true">?</i>Как работать</button></div>');
   // Ряд 2 — «Целевая аудитория».
   h.push('<div class="' + N + '-bar">');
   // Слева — что это за строка и в каком состоянии ЦА.
@@ -820,6 +831,7 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
 
     function onClick(e) {
       var d = state.draft;
+      if (trigger(e.target, 'data-tourstart')) { if (state.dd) openDd(null); paBcast({ type: 'PA_TOUR_GO' }); return; }
       // Ряд 1: период — взаимоисключающий выбор; опция — браузер уже переключил input.checked до click.
       var gb = trigger(e.target, 'data-grain');
       if (gb) { state.grain = gb.getAttribute('data-grain'); render(); emit(); return; }
@@ -904,6 +916,91 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
 
     // Глобальные слушатели переживают перезапуск скрипта — старые снимаем явно.
     if (state.onWinResize) window.removeEventListener('resize', state.onWinResize);
+    // ── ТУР «КАК РАБОТАТЬ» (2026-10-07; движок — как в «Детальных списках») ── ведёт каталог, карточка — у него.
+    // PA_TOUR {op}: dim — чарт затемнён целиком, show — затемнён вокруг цели key, off — слоя нет. Ответ PA_TOUR_AT
+    // {from, key, ok, l, t, r, b}: где цель (колонки и ряд борда общие — стрелка карточки каталога смотрит туда же);
+    // на dim — какие цели есть (keys). Клики под затемнением не проходят; Esc и стрелки уходят в каталог (PA_TOUR_KEY).
+    var tourNode = null, TOUR_FROM = 'head', TOUR_T = { period: '.' + CFG.ns + '-strip-seg', opts: '.' + CFG.ns + '-togs', ca: '.' + CFG.ns + '-bar', help: '[data-tourstart]' };
+    function tourTarget(key) {
+      var s = TOUR_T[key], el = !s ? null : (typeof s === 'function' ? s() : overlay.querySelector(s));
+      var q = el && el.getBoundingClientRect ? el.getBoundingClientRect() : null;
+      return q && q.width > 0 && q.height > 0 ? el : null;
+    }
+    function tourLayer() {
+      if (tourNode && tourNode.parentNode) return tourNode;
+      var old = document.querySelector('body > .' + CFG.ns + '-tour');
+      if (old) old.parentNode.removeChild(old);
+      var P = CFG.ns, sides = ['t', 'b', 'l', 'r', 'h'], h = '';
+      for (var i = 0; i < sides.length; i++) h += '<div class="' + P + '-tb" data-tb="' + sides[i] + '"></div>';
+      tourNode = document.createElement('div');
+      tourNode.className = P + '-tour';
+      tourNode.innerHTML = h + '<div class="' + P + '-tring"></div>';
+      document.body.appendChild(tourNode);
+      return tourNode;
+    }
+    function tourBox(el, l, t, w, h, rad) {
+      el.style.left = Math.round(l) + 'px'; el.style.top = Math.round(t) + 'px';
+      el.style.width = Math.max(0, Math.round(w)) + 'px'; el.style.height = Math.max(0, Math.round(h)) + 'px';
+      el.style.borderRadius = rad || '0';
+    }
+    function tourPos(report) {
+      var t = state.tour;
+      if (!t) { if (tourNode) tourNode.style.display = 'none'; return; }
+      var L = tourLayer(), Q = function (k) { return L.querySelector('[data-tb="' + k + '"]'); };
+      var ring = L.querySelector('.' + CFG.ns + '-tring'), W = window.innerWidth, H = window.innerHeight;
+      var el = t.key ? tourTarget(t.key) : null, r = null;
+      L.style.display = 'block';
+      if (el) {
+        var u = el.getBoundingClientRect(), pd = typeof t.pad === 'number' ? t.pad : 6;
+        r = { l: Math.max(0, u.left - pd), t: Math.max(0, u.top - pd), r: Math.min(W, u.right + pd), b: Math.min(H, u.bottom + pd) };
+      }
+      if (r) {
+        tourBox(Q('t'), 0, 0, W, r.t, '12px 12px 0 0');
+        tourBox(Q('b'), 0, r.b, W, H - r.b, '0 0 12px 12px');
+        tourBox(Q('l'), 0, r.t, r.l, r.b - r.t);
+        tourBox(Q('r'), r.r, r.t, W - r.r, r.b - r.t);
+        tourBox(Q('h'), r.l, r.t, r.r - r.l, r.b - r.t);
+        tourBox(ring, r.l, r.t, r.r - r.l, r.b - r.t, '10px');
+        ring.style.display = 'block';
+      } else {
+        tourBox(Q('t'), 0, 0, W, H, '12px');
+        tourBox(Q('b'), 0, 0, 0, 0); tourBox(Q('l'), 0, 0, 0, 0); tourBox(Q('r'), 0, 0, 0, 0); tourBox(Q('h'), 0, 0, 0, 0);
+        ring.style.display = 'none';
+      }
+      if (report && t.key) paBcast({ type: 'PA_TOUR_AT', from: TOUR_FROM, key: t.key, ok: !!el, l: r ? r.l : 0, t: r ? r.t : 0, r: r ? r.r : 0, b: r ? r.b : 0 });
+    }
+    if (state.onTour) window.removeEventListener('message', state.onTour);
+    state.onTour = function (ev) {
+      var d = ev.data || {};
+      if (d.type !== 'PA_TOUR' || !overlay.parentNode) return;
+      if (d.op === 'off') { state.tour = null; tourPos(); return; }
+      if (state.dd) openDd(null);
+      if (state.tip) { state.tip = null; hideTip(); }
+      var key = d.op === 'show' && String(d.key || '').indexOf(TOUR_FROM + ':') === 0 ? String(d.key).slice(TOUR_FROM.length + 1) : '';
+      var el = key ? tourTarget(key) : null;
+      state.tour = { key: key, pad: d.pad };
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
+      tourPos(true);
+      if (d.op === 'dim' && d.ask) {
+        var ks = [];
+        for (var k in TOUR_T) if (Object.prototype.hasOwnProperty.call(TOUR_T, k) && tourTarget(k)) ks.push(k);
+        paBcast({ type: 'PA_TOUR_AT', from: TOUR_FROM, key: '', keys: ks });
+      }
+    };
+    window.addEventListener('message', state.onTour);
+    if (state.onTourKey) document.removeEventListener('keydown', state.onTourKey, true);
+    state.onTourKey = function (ev) {
+      if (!state.tour) return;
+      var k = ev.keyCode || ev.which, a = k === 27 ? 'close' : k === 39 ? 'next' : k === 37 ? 'back' : '';
+      if (!a) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      paBcast({ type: 'PA_TOUR_KEY', k: a });
+    };
+    document.addEventListener('keydown', state.onTourKey, true);
+    if (state.onTourRs) window.removeEventListener('resize', state.onTourRs);
+    state.onTourRs = function () { if (state.tour) tourPos(true); };
+    window.addEventListener('resize', state.onTourRs);
     state.onWinResize = function () { unpinIfShrunk(); placeDd(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
     // Клик мимо выпадашки: внутри развёрнутого iframe — это клик по прозрачной части;

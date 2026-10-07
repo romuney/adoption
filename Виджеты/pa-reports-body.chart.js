@@ -851,7 +851,8 @@ function buildCSS() {
     P + '-tbtn:first-child{margin-right:auto;}',
     P + '-tbtn.pri{background:#245FD4;border-color:#245FD4;color:#fff;}',
     P + '-tbtn.pri:hover{background:#1B4AA8;}',
-    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin-right:8px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;}',
+    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 8px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;}',
+    P + '-mine + ' + P + '-psearch{margin-left:0;}',          // кнопка прижата к поиску, вместе — справа
     P + '-mine:hover{border-color:var(--act);color:var(--act);}',
     P + '-mine.on{background:var(--blue-bg);border-color:var(--act);color:var(--act-ink);}',
     P + '-mine[disabled]{opacity:.45;cursor:default;}',

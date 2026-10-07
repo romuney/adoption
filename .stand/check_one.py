@@ -473,9 +473,11 @@ for ow in ['own3', 'u131', 'own7']:
     ok(nofs(ro) == nofs(rr), f'владелец {ow}: панель == панель по выбору всех его {len(reps)} отчётов')
 
 # ---- 12. «Мои отчёты»: пользователь борда → актуальный логин (секция me каталога) ---------------------------------
-for u, want in [(None, ''), ('OWN3_OLD', 'own3'), ('own7', 'own7'), ("x'; drop", 'x; drop')]:
-    me = [r['k'] for r in run(CAT, {'__user': u} if u else {}, with_ca=True) if r['section'] == 'me']
+for u, want in [(None, ''), ('OWN3_OLD', 'own3'), ('own7', 'own7'), (' u131 ', 'u131')]:
+    keys = []
+    me = [r['k'] for r in run(CAT, {'__user': u, '__keys': keys} if u else {'__keys': keys}, with_ca=True) if r['section'] == 'me']
     ok(me == [want], f'me: пользователь {u!r} → {me} (ждали {want!r})')
+    ok(u is None or (keys and all(k == u for k in keys)), f'me: логин {u!r} в ключе кэша (cache_key_wrapper, как в proteus_adoption_virt): {keys[:1]}')
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):

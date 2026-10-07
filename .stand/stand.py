@@ -53,8 +53,13 @@ def render(path, flt=None, always_true=False):
         return list(v) if isinstance(v, (list, tuple)) else [v]
     # current_username() как в Superset: логин пользователя борда (flt['__user'], по умолчанию — нет пользователя)
     def current_username(add_to_cache_keys=True):
-        return flt.get('__user')
-    return env.from_string(open(path).read()).render(filter_values=filter_values, current_username=current_username)
+        return flt.get('__user') or ''
+    # cache_key_wrapper(x) как в Superset: кладёт x в ключ кэша и возвращает его же; ключи — в flt['__keys'] (если передан список)
+    def cache_key_wrapper(x):
+        if isinstance(flt.get('__keys'), list): flt['__keys'].append(x)
+        return x
+    return env.from_string(open(path).read()).render(filter_values=filter_values, current_username=current_username,
+                                                     cache_key_wrapper=cache_key_wrapper)
 
 
 def stat(sql):

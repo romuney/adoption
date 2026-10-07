@@ -82,13 +82,10 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
 {% for v in (filter_values('ca_adg_f') or []) %}{% if v|string != '' %}{% set _ = caadg.append(v|string) %}{% endif %}{% endfor %}
 {% endif %}
 {% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' or caadg %}
-{#- Кнопка «Мои отчёты» (2026-10-07): логин пользователя борда — current_username() Superset (кэш датасета — свой у
-    каждого пользователя). Логин Proteus может быть прежним — в секции me он переводится в актуальный (pa_login_map),
-    тем же каноном, что владельцы в pa_dash_meta. Нет функции / не вошёл — пусто, кнопки нет. -#}
-{% set ME = ((current_username() if current_username is defined else '') or '')|string|lower|trim|replace("'", '')|replace('\\', '') %}
-{#- Логин — ЯВНО в ключ кэша (cache_key_wrapper Superset): если форк не кладёт current_username() в ключ сам, ответ
-    первого открывшего борд (с его «Мои») отдавался бы всем до истечения кэша. -#}
-{% if ME and cache_key_wrapper is defined %}{% set _ck = cache_key_wrapper(ME) %}{% endif %}
+{#- Кнопка «Мои» (2026-10-07): пользователь борда — ДОСЛОВНО как в боевом датасете proteus_adoption_virt (борд 13896):
+    '{{ cache_key_wrapper(current_username()) }}' прямо в тексте SQL — логин подставляется И попадает в ключ кэша
+    (у каждого пользователя свой ответ). Логин Proteus может быть прежним — в секции me он переводится в актуальный
+    (pa_login_map), тем же каноном, что владельцы в pa_dash_meta. -#}
 {#- Сегмент ЦА из «Кто смотрит» панели (seg_f): reach — только зрители из ЦА (пара с доступом / люди условий),
     out — только зрители вне ЦА; never — людей не сужает (каталог показывает «не заходили из ЦА» по отчётам). -#}
 {% set segv = filter_values('seg_f')|first|default('', true) %}{% set segv = segv if WITH_CA and segv in ['reach', 'never', 'out'] else '' %}
@@ -321,7 +318,9 @@ FROM (
   UNION ALL
   {# Текущий пользователь борда актуальным логином: k — логин (пусто — неизвестен). #}
   SELECT 'me' AS section, '' AS g,
-    {% if ME %}ifNull(nullIf((SELECT any(toString(lm.canon)) FROM prod_proteus.pa_login_map lm WHERE lm.login = '{{ ME }}'), ''), '{{ ME }}'){% else %}''{% endif %} AS k,
+    ifNull(nullIf((SELECT any(toString(lm.canon)) FROM prod_proteus.pa_login_map lm
+      WHERE lm.login = lower(trim('{{ cache_key_wrapper(current_username()) }}'))), ''),
+      lower(trim('{{ cache_key_wrapper(current_username()) }}'))) AS k,
     '' AS parent, toInt64(0) AS n
 
   UNION ALL

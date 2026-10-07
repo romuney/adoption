@@ -139,7 +139,9 @@ FROM (
   GROUP BY ad
   UNION ALL
   SELECT 'me' AS section, '' AS g,
-    '' AS k,
+    ifNull(nullIf((SELECT any(toString(lm.canon)) FROM prod_proteus.pa_login_map lm
+      WHERE lm.login = lower(trim(''))), ''),
+      lower(trim(''))) AS k,
     '' AS parent, toInt64(0) AS n
   UNION ALL
   SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',
@@ -270,7 +272,9 @@ FROM (
   GROUP BY ad
   UNION ALL
   SELECT 'me' AS section, '' AS g,
-    '' AS k,
+    ifNull(nullIf((SELECT any(toString(lm.canon)) FROM prod_proteus.pa_login_map lm
+      WHERE lm.login = lower(trim(''))), ''),
+      lower(trim(''))) AS k,
     '' AS parent, toInt64(0) AS n
   UNION ALL
   SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',

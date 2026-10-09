@@ -1471,10 +1471,17 @@ function addPerson(g, p) {
 function emptyAgg() { return { users: 0, users_prev: 0, views: 0, views_prev: 0, new_u: 0, new_prev: 0, regular: 0, regular_prev: 0, sleeping: 0, mau: 0, mau_prev: 0 }; }
 // KPI при фильтре людей: по отобранным (прошлого периода для них нет — дельты «не сравнивается»).
 // Корзина частоты на KPI НЕ влияет (фидбек владельца: по одной корзине KPI бесполезны —
-// «постоянных 100%» и т. п.); влияют только настройки списка (руководители, исключения).
+// «постоянных 100%» и т. п.); влияют настройки списка (руководители, исключения) и — с 2026-10-09 — выбор людей и
+// групп в «Кто смотрит» (тот же набор, что у «Динамики»: dynPeople).
+function dynPeopleOn() { return !!(state.headsOnly || state.excl.length || pickCount()); }
+// Выбранные логины — сужают (в отличие от списка, где человек лишь подсвечивается).
+function dynPeople() {
+  var lg = state.picks.login;
+  return viewersKept().filter(function (p) { return matchesPicks(p) && (!lg.length || lg.indexOf(p.login) >= 0); });
+}
 function effKpi() {
-  if (!(state.headsOnly || state.excl.length) || !MODEL.kpi) return MODEL.kpi;
-  var ps = viewersKept(), k = emptyAgg();
+  if (!dynPeopleOn() || !MODEL.kpi) return MODEL.kpi;
+  var ps = dynPeople(), k = emptyAgg();
   for (var i = 0; i < ps.length; i++) addPerson(k, ps[i]);
   k.local = true;
   return k;
@@ -2706,7 +2713,7 @@ function kpisHtml() {
   var dPct = function (a, b) { return b ? (a / b - 1) * 100 : null; };
   // KPI по отобранным людям (корзина частоты / настройки списка): прошлого периода
   // для такой выборки нет — дельты «не сравнивается», в подписи — сколько во всей области.
-  var loc = !!k.local, whyLoc = 'Включены настройки списка (руководители / исключения): KPI — по отобранным людям, сравнения с прошлым периодом для них нет.';
+  var loc = !!k.local, whyLoc = 'KPI — по людям, отобранным в «Кто смотрит»: сравнения с прошлым периодом для них нет.';
   var why = loc ? whyLoc : 'В витрине нет полной истории предыдущего периода (' + G.label + ').';
   var dl = function (v, o) { return G.prev && !loc ? delta(v, o) : delta(null, { why: why }); };
   var all = MODEL.kpi || k;
@@ -2758,6 +2765,8 @@ var OBS_TIP = tip({ title: 'Как собраны эти факты', text: 'П�
 function obsHtml(what) {
   var list = obsList(MODEL.kpi, CFG.grains[MODEL.grain] || CFG.grains.d, what);
   var N = CFG.ns;
+  // KPI выше — по выбранным в «Кто смотрит», факты — по всей области: подписываем, чтобы не спорили с карточками
+  if (dynPeopleOn()) list = list.map(function (o) { return { sev: o.sev, lead: 'По всей области: ' + o.lead, body: o.body, rule: o.rule }; });
   if (!list.length) {
     return '<div class="' + N + '-obs"><div class="' + N + '-obs-h"><span class="' + N + '-obs-ico" aria-hidden="true">✓</span>' +
       '<span class="' + N + '-obs-t"' + OBS_TIP + '>Что видно в данных</span>' +
@@ -2801,7 +2810,8 @@ function buildHTML() {
     body = (isCa() ? segStripHtml() : freqStripHtml(busList())) + '<div class="' + N + '-list-zone">' + listZoneHtml() + '</div>';
     bodyCls = 'tbl-wrap'; title = 'Кто смотрит';
   } else if (view === 'dyn') {
-    body = dynamicsHtml(MODEL.ts, MODEL.grain);
+    var dts = dynTs();
+    body = dynamicsHtml(dts, MODEL.grain);
     bodyCls = 'dyn-wrap'; title = 'Динамика';
   } else if (view === 'cal') {
     body = calendarHtml();
@@ -2831,10 +2841,11 @@ function buildHTML() {
       '</span>' +
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
-        : (view === 'dyn' ? 'пользователи по периодам · клик по строке каталога выбирает отчёты'
+        : (view === 'dyn' ? (dynPeopleOn() ? 'пользователи по периодам · только люди, выбранные в «Кто смотрит» (' + nf(dynPeople().length) + ')'
+          : 'пользователи по периодам · клик по строке каталога выбирает отчёты')
           : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке'
             : (view === 'path' ? 'кого считаем аудиторией и как она доходит до отчётов' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
-    (view === 'dyn' ? dynLegendHtml(MODEL.ts, MODEL.grain, {}) : '') +
+    (view === 'dyn' ? dynLegendHtml(dts, MODEL.grain, {}) : '') +
     // «Кто смотрит»: разбивка — в заголовке карточки справа (своя строка съедала место у таблицы, 09.10)
     (view === 'who' ? '<div class="' + N + '-sub-tabs tiny ' + N + '-hmode" role="tablist" aria-label="Разбивка">' +
       tabsHtml('whoMode', [{ key: 'freq', label: 'По частоте', on: !isCa() }, { key: 'ca', label: 'По целевой аудитории', on: isCa() }]) + '</div>' : '') +
@@ -3121,7 +3132,8 @@ function revealClip(h) {
 var COH_H = state.cohH || 0;
 function r1(v) { return Math.round(v * 10) / 10; }
 function svgHeadroom(max, n) {
-  return Math.max(1, Math.ceil(max * (n > CFG.spacing.dense ? CFG.spacing.headroomDense : CFG.spacing.headroom)));
+  // без округления вверх: при малых числах (один выбранный человек — столбики по 1) ceil(1,3) = 2 съедал полвысоты
+  return max > 0 ? max * (n > CFG.spacing.dense ? CFG.spacing.headroomDense : CFG.spacing.headroom) : 1;
 }
 function svgBarWidth(n) {
   var inner = Math.max(40, SVG_W - 34);
@@ -3162,7 +3174,8 @@ function usersChartSvg(ts, grain) {
   var step = inner / n;
   var bw = svgBarWidth(n);
   var top = 14, axH = 32;
-  var pH = DYN_H ? Math.max(64, Math.round(DYN_H * 0.6) - top - axH) : 164;   // пороги 64 + 40 (+ поля 2 × 46) = 196 ≤ DYN_H
+  // пороги 64 + 40 (+ поля 2 × 46) = 196 ≤ DYN_H; по выбранным людям нижнего графика нет — верхний на всю высоту
+  var pH = DYN_H ? Math.max(64, Math.round(DYN_H * (dynPeopleOn() ? 1 : 0.6)) - top - axH) : 164;
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
   var fsVal = dense ? CFG.fonts.dense : CFG.fonts.val;
@@ -3300,9 +3313,51 @@ function dynLegendHtml(ts, grain, opts) {
     '<i style="background:' + CFG.colors.nohist + '"></i>Мало истории</span>';
   return h + '</div>';
 }
+// «Динамика» по людям, выбранным в «Кто смотрит» (владелец 2026-10-09: «выбрал человека — по нему динамику не посмотреть»).
+// Сервер считает ts по маске активности людей области (pa_one, tc): пользователь в бакете — бит бакета, новый — бакет
+// первого визита fd_k (если он в окне и не старше начала истории KT), вернувшийся — активен, не первый визит и ни
+// одного визита в GAP бакетах перед ним. У каждого зрителя в списке есть те же данные: cur = msk & CUR, prev = msk >> n,
+// fk = fd_k — значит, по любому подмножеству людей ts считается В ЧАРТЕ, ровно как в SQL (сверка: по всем людям == ts
+// ответа). Просмотров по бакетам у людей в ответе нет — нижний график в этом режиме честно не рисуется.
+var DYN_GAP = { d: 7, w: 1, m: 1, q: 1 };   // = GRAINS[grain].gap в pa-one.data.sql
+function bitAt(v, k) { return Math.floor(v / Math.pow(2, k)) % 2; }
+function peopleTs(ps, grain) {
+  var n = CFG.grains[grain].n, gap = DYN_GAP[grain] || 1, kt = MODEL.hist.kt, byK = [], i, t, j;
+  for (t = 0; t < n; t++) byK.push({ k: t, users: 0, new_u: 0, react_u: 0, views: 0 });
+  var on = function (p, b) { return b < n ? bitAt(p.cur, b) : bitAt(p.prev, b - n); };
+  for (i = 0; i < ps.length; i++) {
+    var p = ps[i];
+    for (t = 0; t < n; t++) {
+      if (!on(p, t)) continue;
+      byK[t].users++;
+      if (p.fk === t && t <= kt) byK[t].new_u++;
+      if (p.fk !== t) {
+        var quiet = true;
+        for (j = 1; j <= gap; j++) if (on(p, t + j)) { quiet = false; break; }
+        if (quiet) byK[t].react_u++;
+      }
+    }
+  }
+  var out = [];
+  for (t = n - 1; t >= 0; t--) {              // как в ответе: старые бакеты слева, свежий справа
+    var b = byK[t];
+    b.ret = Math.max(0, b.users - b.new_u - b.react_u);
+    b.nohist = b.k > kt;
+    out.push(b);
+  }
+  return out;
+}
+function dynTs() { return dynPeopleOn() ? peopleTs(dynPeople(), MODEL.grain) : MODEL.ts; }
 function dynamicsHtml(ts, grain) {
   if (!ts.length) return '<div class="' + CFG.ns + '-tbl-note">Динамики за этот период в данных нет.</div>';
   var h = usersChartSvg(ts, grain);
+  if (dynPeopleOn()) {
+    var ps = dynPeople(), vs = 0;
+    for (var pi = 0; pi < ps.length; pi++) vs += ps[pi].views || 0;
+    return h + '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">Просмотры</span></div>' +
+      '<div class="' + CFG.ns + '-tbl-note">По выбранным людям — только за весь период: <b>' + nf(vs) + '</b>. По ' +
+      (CFG.grains[grain] ? CFG.grains[grain].units : 'периодам') + ' просмотры отдельных людей в данных не хранятся.</div>';
+  }
   // Охват ЦА: «% от ЦА N» — в заголовке, пояснение линий — в подсказке (отдельная строка делала вкладку выше → прокрутка)
   var tc0 = caTotals(), gu0 = CFG.grains[grain] ? CFG.grains[grain].unit : 'периоде';
   h += '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap"' + (state.viewsMode === 'cov' ? tip({ title: 'Охват целевой аудитории',
@@ -3640,6 +3695,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var avail = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
       for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
+      var notes = body.querySelectorAll('.' + CFG.ns + '-tbl-note');   // пояснение вместо нижнего графика (люди)
+      for (i = 0; i < notes.length; i++) avail -= notes[i].offsetHeight;
       // зазоры flex-колонки — по факту (детей − 1) × gap: строка «Пользователи по периодам» ушла в заголовок (09.10)
       avail -= Math.max(0, body.children.length - 1) * (parseFloat(cs.rowGap) || CFG.spacing.stackGap);
       avail = Math.max(200, Math.floor(avail));   // нижний порог графиков (360 → 300 → 200, 2026-10-09: ноутбук — без прокрутки)

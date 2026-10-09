@@ -16,6 +16,8 @@
 7. Сегмент ЦА (seg_f) в SQL каталога: у каждого отчёта заходили == из ЦА + вне ЦА (панель seg_f больше не шлёт — запас).
 9. ЦА по условиям: список ЦА + «вне ЦА» поимённо (lo) == все зрители периода, без пересечений, число == ca_out.
 10. Выбрана область: разрезы aa (для вкладки «Аудитория» каталога) == панель после клика по этой группе (люди, просмотры, постоянные).
+13. Выбрана группа во вкладке «Аудитория» каталога: секция ar панели (числа вкладок «Отчёты», «Коллекции», «Владельцы»
+   и ИТОГО) == каталог, у которого условия строки ЦА == эта группа (построчно, все поля чисел); выбор отчётов её не сужает.
 8. <папка>/Проверки: рендеры без джини == текущие шаблоны поставки (не устарели), исполняются; метка id отчёта
    не встречается в SQL сама по себе (цифры 12345 сидят в таблице перекодировки кириллицы — «заменить всё» её сломает).
 """
@@ -340,7 +342,12 @@ for p_, c in [(ONE, {}), (ONE, {'ca_spec_f': ['Спец 3'], 'ca_head_f': '1'}),
               (CATCA, {}), (CATCA, {'ca_it_f': ['IT'], 'seg_f': 'out', 'spec_f': ['Спец 3'], 'freq_f': ['2']}), (CATCA, {'seg_f': 'reach', 'org_f': ['Блок 3']})]:
     sql = stand.render(p_, c)
     a = stand.stat(sql)[0]
-    b = stand.stat(sql + '\nSETTINGS enable_analyzer = 0')[0]
+    try:
+        b = stand.stat(sql + '\nSETTINGS enable_analyzer = 0')[0]
+    except Exception as e:      # chdb ≥ 26.9: старого анализатора нет — сверка с ним невозможна, пропуск с пометкой
+        if 'analyzer is mandatory' not in str(e): raise
+        print('SKIP старый анализатор: в chdb ' + str(e).split('(version ')[-1].split(')')[0] + ' его нет')
+        b = a
     d = stand.stat(sql + '\nSETTINGS prefer_column_name_to_alias = 1')[0]
     # порядок строк ВНУТРИ упакованной ячейки (groupArray) не гарантирован — сравниваем как множество строк
     norm = lambda rows: sorted(json.dumps(dict(r, k='\n'.join(sorted(str(r.get('k') or '').split('\n')))), sort_keys=True, default=str) for r in rows)
@@ -478,6 +485,37 @@ for u, want in [(None, ''), ('OWN3_OLD', 'own3'), ('own7', 'own7'), (' u131 ', '
     me = [r['k'] for r in run(CAT, {'__user': u, '__keys': keys} if u else {'__keys': keys}, with_ca=True) if r['section'] == 'me']
     ok(me == [want], f'me: пользователь {u!r} → {me} (ждали {want!r})')
     ok(u is None or (keys and all(k == u for k in keys)), f'me: логин {u!r} в ключе кэша (cache_key_wrapper, как в proteus_adoption_virt): {keys[:1]}')
+
+# ---- 13. Группа из «Аудитории» каталога → числа вкладок отчётов (секция ar панели) == каталог с ЦА = группа ----------
+def cat_nums(rows, sec_rep='rep', sec_grp='grp', sec_tot='total'):
+    """{('rep', id): 9 полей чисел, ('owner'|'collection', значение): поля, ('total', ''): поля}."""
+    out = {}
+    for r in rows:
+        L = [x for x in (r['k'] or '').split('\n') if x]
+        if r['section'] == sec_rep or (r['section'] == 'ar' and r['g'].startswith('r')):
+            for x in L:
+                f = x.split('|'); out[('rep', int(f[0]))] = '|'.join(f[:9])
+        elif r['section'] == sec_grp or (r['section'] == 'ar' and r['g'] in ('owner', 'collection')):
+            for x in L:
+                f = x.split('|'); out[(r['g'], unz(f[0]))] = '|'.join(f[1:5])
+        elif r['section'] == sec_tot or (r['section'] == 'ar' and r['g'] == 'total'):
+            out[('total', '')] = '|'.join(r['k'].split('|')[:4])
+    return out
+A2C = {'aud_org_f': 'ca_org_f', 'aud_spec_f': 'ca_spec_f', 'aud_stream_f': 'ca_stream_f', 'aud_hq_f': 'ca_hq_f', 'aud_it_f': 'ca_it_f'}
+for c in [{'aud_spec_f': ['Спец 3']}, {'aud_org_f': ['Блок 3'], 'aud_head_f': ['1'], 'period_param': 'w'},
+          {'aud_it_f': ['IT'], 'ca_spec_f': ['Спец 3']}, {'aud_hq_f': ['HQ'], 'exc_f': '0', 'period_param': 'm'},
+          {'aud_org_f': ['Блок 3 › Деп 3.3'], 'aud_head_f': ['0'], 'mode_param': 'report', 'sel_f': ['2']},
+          {'aud_stream_f': ['Стрим 4'], 'pub_f': '0', 'period_param': 'q'}]:
+    rows = run(ONE, c, raw=True)
+    a = cat_nums([r for r in rows if r['section'] == 'ar'])
+    cc = {A2C.get(k, k): v for k, v in c.items() if k not in ('aud_head_f', 'mode_param', 'sel_f')}
+    if c.get('aud_head_f'): cc['ca_head_f'] = '1' if c['aud_head_f'] == ['1'] else 'n'
+    b = cat_nums([r for r in run(CAT, cc, with_ca=True) if r['section'] in ('rep', 'grp', 'total')])
+    diff = [k for k in set(a) | set(b) if a.get(k) != b.get(k)]
+    nrep = sum(1 for k in a if k[0] == 'rep')
+    ok(a and not diff, f'ar {c}: == каталог с ЦА {cc} — {nrep} отчётов, {len(a) - nrep - 1} групп, ИТОГО {a.get(("total", ""))}' +
+       ('' if not diff else f'\n       расходится {len(diff)}: ' + '; '.join(f'{k}: {a.get(k)} / {b.get(k)}' for k in diff[:4])))
+ok(not [r for r in run(ONE, {'mode_param': 'report', 'sel_f': ['2']}, raw=True) if r['section'] == 'ar'], 'без группы из «Аудитории» секции ar нет')
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):

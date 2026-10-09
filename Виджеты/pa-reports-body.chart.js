@@ -475,7 +475,7 @@ function curGrain() {
   return state.grain;
 }
 function repRows() {
-  var g = curGrain(), byId = MODEL.reps[g] || {}, out = [];
+  var byId = repsNow(), out = [];
   for (var i = 0; i < MODEL.ids.length; i++) if (byId[MODEL.ids[i]]) out.push(byId[MODEL.ids[i]]);
   return out;
 }
@@ -532,7 +532,7 @@ function selection() {
   }
   // Ровно один отчёт — своя карточка, свои когорты.
   if (pickList('report').length === 1 && pickCount() === 1) {
-    var row = (MODEL.reps[g] || {})[pickList('report')[0]];
+    var row = repsNow()[pickList('report')[0]];
     if (row) {
       var m1 = MODEL.meta[row.id] || {};
       return { kind: 'rep', id: row.id, ids: [row.id], title: m1.dash_nm || 'Отчёт',
@@ -542,7 +542,7 @@ function selection() {
   if (pickCount() === 1 && (pickList('collection').length === 1 || pickList('owner').length === 1)) {
     var gk = pickList('collection').length ? 'collection' : 'owner';
     var gv = pickList(gk)[0];
-    var exact = ((MODEL.grps[g] || {})[gk] || {})[gv];
+    var exact = (grpsNow()[gk] || {})[gv];
     var cnt = 0;
     if (MODEL.repMode) cnt = groupIds(gk, gv).length;
     return { kind: 'grp', gk: gk, gv: gv, ids: pickedIds(), title: gv, exact: !!exact,
@@ -797,9 +797,12 @@ function buildCSS() {
     P + '-ptable tbody tr.sel td:first-child{font-weight:700;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-gh-sub{font-weight:400;}',
-    P + '-ptable tr.' + CFG.ns + '-aud-oth td{color:var(--muted);height:34px;border-bottom:2px solid var(--line);}',
+    P + '-ptable tr.' + CFG.ns + '-aud-oth td{color:var(--muted);border-bottom:1px solid var(--line);}',
     P + '-ptable tr.' + CFG.ns + '-aud-oth td.txt{font-weight:400;color:var(--muted);}',
-    P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
+    P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:1px solid var(--line);}',
+    // однострочные таблицы (вкладки «Аудитория», «Владельцы», «Коллекции» — без второй строки под названием): строки
+    // ниже, больше строк на экране (фидбек 2026-10-09); ИТОГО — той же высоты, отделён линией в 1 px, а не 2
+    P + '-ptable.flat td{height:30px;padding-top:2px;padding-bottom:2px;}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
     P + '-pginfo{font-size:var(--fs-note);color:var(--muted);}',
@@ -1018,7 +1021,7 @@ function catFilterRowHtml() {
   // Справочные пилюли соседнего чарта не показываем (правка владельца 2026-09-23):
   // в строке — только то, что снимается здесь же ×. Людская шина видна по суженному каталогу.
   ext = [];
-  return filterRowHtml(own, ext, 'кликните по строке каталога — выбор появится здесь');
+  return filterRowHtml(own, ext, 'кликни по строке каталога — выбор появится здесь');
 }
 function panelHtml(o) {
   return '<div class="' + CFG.ns + '-panel' + (o.cls ? ' ' + CFG.ns + '-' + o.cls : '') + '">' +
@@ -1164,7 +1167,7 @@ function queryId(q) {
   return m ? { v: m[1], exact: false } : null;
 }
 function reportTableHtml() {
-  var g = curGrain(), byId = MODEL.reps[g] || {};
+  var byId = repsNow();
   var rows = [];
   var q = (state.repQuery || '').toLowerCase(), qid = queryId(state.repQuery);
   // Кросс-фильтр вкладок: во вкладке «Отчёты» список сужают пики коллекций
@@ -1203,7 +1206,7 @@ function reportTableHtml() {
     return b.k.users - a.k.users;
   });
   if (!rows.length) {
-    return { html: '<div class="' + CFG.ns + '-empty"><b>Ничего не найдено</b>Снимите часть фильтров или очистите поиск.</div>', total: 0 };
+    return { html: '<div class="' + CFG.ns + '-empty"><b>Ничего не найдено</b>Сними часть фильтров или очисти поиск.</div>', total: 0 };
   }
   // Пагинация применяется ПОСЛЕДНЕЙ — после поиска и сортировки (TABLES.md);
   // в DOM живёт только текущая страница.
@@ -1309,7 +1312,7 @@ function tourIntroHTML() {
     + '<li><b>Шапка</b>: период и что считать — для всего листа; «Целевая аудитория» — кого считать аудиторией отчётов.</li>'
     + '<li><b>Каталог</b> слева: отчёты, коллекции, владельцы, группы сотрудников. Клик по строке — выбрать: всё справа посчитается по выбору.</li>'
     + '<li><b>Панель</b> справа: показатели, «Что видно в данных» и вкладки — динамика, календарь, путь ЦА, кто смотрит, закрепляемость.</li>'
-    + '<li><b>Пользователь</b> — тот, кто хотя бы раз открыл отчёт; <b>просмотр</b> — одно открытие. Наведите на «i» или число — подсказка объяснит.</li></ul>';
+    + '<li><b>Пользователь</b> — тот, кто хотя бы раз открыл отчёт; <b>просмотр</b> — одно открытие. Наведи на «i» или число — подсказка объяснит.</li></ul>';
 }
 function tourSteps() {
   var P = '.' + CFG.ns, out = [], K = (state.tour && state.tour.keys) || {};
@@ -1319,13 +1322,13 @@ function tourSteps() {
   add({ remote: 'head:period', pad: 4, title: 'Период',
     html: '30 дней, 20 недель, 12 месяцев или 8 кварталов — окно для всех чисел листа. Изменения в процентах — к такому же предыдущему окну.' });
   add({ remote: 'head:opts', pad: 4, title: 'Что считать',
-    html: 'По умолчанию — опубликованные и актуальные отчёты, без просмотров владельцами своих отчётов. Выключите переключатель — посчитаем и их.' });
+    html: 'По умолчанию — опубликованные и актуальные отчёты, без просмотров владельцами своих отчётов. Выключи переключатель — посчитаем и их.' });
   add({ remote: 'head:ca', pad: 2, title: 'Целевая аудитория',
-    html: 'Кого считать аудиторией. По умолчанию — у кого есть доступ к отчёту. Условия (структура, стрим, специализация, HQ, IT, руководители, AD-группы) собирают свою ЦА — нажмите «Применить». От ЦА зависят «Охват ЦА», колонка «ЦА» каталога и «Путь ЦА».' });
+    html: 'Кого считать аудиторией. По умолчанию — у кого есть доступ к отчёту. Условия (структура, стрим, специализация, HQ, IT, руководители, AD-группы) собирают свою ЦА — нажми «Применить». От ЦА зависят «Охват ЦА», колонка «ЦА» каталога и «Путь ЦА».' });
   add({ sel: function (o) { var b = o.querySelector('[data-mode]'); return b ? b.parentNode : null; }, pad: 3, title: 'Разрезы каталога',
     html: '<b>Отчёты</b>, <b>коллекции</b>, <b>владельцы</b> и <b>аудитория</b> (группы сотрудников). Выбор в одной вкладке сужает остальные — и всё справа.' });
   add({ sel: '[data-action="mine"]', need: !!MODEL.me, pad: 4, lock: true, title: 'Мои отчёты',
-    html: 'Одним кликом — отчёты, где вы среди владельцев: каталог и вся панель справа. Повторный клик снимает.' });
+    html: 'Одним кликом — отчёты, где ты среди владельцев: каталог и вся панель справа. Повторный клик снимает.' });
   add({ sel: P + '-psearch', pad: 3, lock: true, title: 'Поиск',
     html: 'По названию, ID или владельцу отчёта. У каждой вкладки свой поиск.' });
   add({ sel: P + '-cat tbody tr[role=button]', pad: 2, lock: true, title: 'Выбрать строку',
@@ -1366,9 +1369,11 @@ function mineBtnHtml() {
   for (var i = 0; i < rows.length; i++) if (indexOfId((MODEL.meta[rows[i].id] || {}).owners || [], MODEL.me) >= 0) n++;
   var on = mineOn(), N = CFG.ns;
   return '<button type="button" class="' + N + '-mine' + (on ? ' on' : '') + '" data-action="mine" aria-pressed="' + on + '"' + (n || on ? '' : ' disabled') +
+    // логин — строкой подсказки (значение жирным), обращение на «ты» (фидбек 2026-10-09)
     tip(n || on
-      ? { title: on ? 'Показаны ваши отчёты' : 'Мои отчёты', text: (on ? 'Каталог и панель справа — по отчётам, где вы среди владельцев (' + MODEL.me + '). Клик — снять.' : 'Отчёты, где вы (' + MODEL.me + ') среди владельцев: сузит каталог и всё справа. Повторный клик — снять.') }
-      : { title: 'Мои отчёты', text: 'Вы (' + MODEL.me + ') не владелец ни одного отчёта за период с учётом фильтров шапки.' }) + '>' +
+      ? { title: on ? 'Показаны твои отчёты' : 'Мои отчёты', text: on ? 'Каталог и панель справа — по отчётам, где ты среди владельцев. Клик — снять.' : 'Отчёты, где ты среди владельцев: сузит каталог и всё справа. Повторный клик — снять.',
+        rows: [{ label: 'Твой логин', value: MODEL.me }, { label: 'Отчётов', value: nf(n) }] }
+      : { title: 'Мои отчёты', text: 'Ты не владелец ни одного отчёта за период с учётом фильтров шапки.', rows: [{ label: 'Твой логин', value: MODEL.me }] }) + '>' +
     (on ? '✓ ' : '') + 'Мои' + (n ? ' <span class="' + N + '-mine-n">' + nf(n) + '</span>' : '') + '</button>';
 }
 // Под названием отчёта: автор первым, за ним владельцы — «автор +N» (все — в подсказке). Старый SQL без автора —
@@ -1432,13 +1437,13 @@ function catalogRows() {
   var mode = MODE(state.mode);
   if (mode.axis === 'rep') return { rows: null, axis: 'rep' };
   var gk = state.mode;
-  var exactByVal = (MODEL.grps[g] || {})[gk] || {};
+  var exactByVal = grpsNow()[gk] || {};
   var agg = {}, order = [];
   // Кросс-фильтр: во вкладке групп действуют пики ДРУГИХ отчётных разрезов.
   var rel = pickedIds(gk);       // null = фильтра нет, сканируем всё
   var rowsRep = rel == null ? repRows() : [];
   if (rel != null) {
-    var byId = MODEL.reps[g] || {};
+    var byId = repsNow();
     for (var ri = 0; ri < rel.length; ri++) if (byId[rel[ri]]) rowsRep.push(byId[rel[ri]]);
   }
   for (var i = 0; i < rowsRep.length; i++) {
@@ -1460,7 +1465,7 @@ function catalogRows() {
     rows2.push({ key: a.key, label: a.label, k: ex.kpi, reports: a.n });
   }
   rows2.sort(function (x, y) { return y.k.users - x.k.users; });
-  var tot2 = MODEL.totals[g] ? MODEL.totals[g].kpi : { users: 0, views: 0, regular_users: 0 };
+  var tot2 = totalNow() || { users: 0, views: 0, regular_users: 0 };
   return { rows: rows2, total: tot2, axis: 'grp', filtered: rel != null };
 }
 
@@ -1507,6 +1512,75 @@ function audNoAa() { var k = audSelKey(), e = state.audExt; return !!k && !!e &&
 function audLate() {
   var k = audSelKey(), e = state.audExt;
   return !!k && !(e && e.key === k) && state.audWaitKey === k && Date.now() - (state.audWaitT || 0) > CFG.audWait;
+}
+// --- Группа из «Аудитории» → числа вкладок «Отчёты», «Коллекции», «Владельцы» (2026-10-09) -----------------------------
+// Каталог свой выбор не видит (самовлияние выключено): числа отчётов по выбранной группе людей считает панель (секция ar
+// pa_one, правила — секций rep / grp / total каталога при ЦА по условиям) и шлёт сюда (PA_REP) с ключом группы (aud_*_f).
+// При выборе в «Кто смотрит» — свои числа каталога (люди из «Кто смотрит» — уже люди группы; панель их не видит).
+function busOn() {
+  var j = MODEL.stateJ || {}, ks = ['lvl3', 'lvl4', 'stream', 'spec', 'adg', 'org', 'login', 'exl', 'freq', 'heads', 'seg'];
+  for (var i = 0; i < ks.length; i++) if (j[ks[i]] && String(j[ks[i]]) !== '' && String(j[ks[i]]) !== '0') return true;
+  return false;
+}
+function repGrpKey() { return audCount() && state.audKeyFn ? state.audKeyFn() : ''; }
+// Числа по группе: {reps, grps, total}; undefined — ждём панель; null — группы нет, люди из «Кто смотрит», не дождались.
+function repExt() {
+  var k = repGrpKey();
+  if (!k || busOn()) return null;
+  var e = state.repExt;
+  if (e && e.key === k) {
+    if (e.noar) return null;
+    // разбор — под текущую модель каталога (мета отчётов приходит в его ответе и меняется с ним)
+    if (e.m !== MODEL) { var X = repExtOf(e.rows); e.reps = X.reps; e.grps = X.grps; e.total = X.total; e.m = MODEL; }
+    return e;
+  }
+  if (state.repWaitKey !== k) { state.repWaitKey = k; state.repWaitT = Date.now(); }
+  return repLate() ? null : undefined;
+}
+function repLate() {
+  var k = repGrpKey(), e = state.repExt;
+  return !!k && !busOn() && !(e && e.key === k) && state.repWaitKey === k && Date.now() - (state.repWaitT || 0) > CFG.audWait;
+}
+function repNoAr() { var k = repGrpKey(), e = state.repExt; return !!k && !busOn() && !!e && e.key === k && !!e.noar; }
+// Модель на экране: свои числа каталога или числа группы от панели. state.noExt — свои (маска выбора для панели).
+function repsNow() { var e = state.noExt ? null : repExt(); return e ? e.reps : (MODEL.reps[curGrain()] || {}); }
+function grpsNow() { var e = state.noExt ? null : repExt(); return e ? e.grps : (MODEL.grps[curGrain()] || {}); }
+function totalNow() { var e = repExt(); return e ? e.total : (MODEL.totals[curGrain()] ? MODEL.totals[curGrain()].kpi : null); }
+// Разбор секции ar (формат — шапка pa-one.data.sql): строки отчётов, групп и ИТОГО — как свои rep / grp / total.
+function repExtOf(rows) {
+  var X = { reps: {}, grps: { owner: {}, collection: {} }, total: null }, i, j, f;
+  var kp = function (u, v, rg, lst, rh, cn, cw, cu) {
+    return { users: int(u), views: int(v), regular_users: int(rg), last_view_days: int(lst), rh: rhythmOf(rh || ''),
+      ca_n: cn === '' || cn == null ? null : int(cn), ca_wide: int(cw) === 1, ca_users: cu === '' || cu == null ? null : int(cu) };
+  };
+  for (i = 0; i < rows.length; i++) {
+    var g = String(rows[i].g || ''), L = String(rows[i].k || '');
+    L = L ? L.split('\n') : [];
+    for (j = 0; j < L.length; j++) {
+      f = L[j].split('|');
+      if (g === 'total') X.total = kp(f[0], f[1], f[2], f[3]);
+      else if (g === 'owner' || g === 'collection') { var gv = unz(f[0]); if (gv) X.grps[g][gv] = { kpi: kp(f[1], f[2], f[3], f[4]) }; }
+      else if (g.charAt(0) === 'r') { var id = int(f[0]); if (id && MODEL.meta[id]) X.reps[id] = { id: id, kpi: kp(f[1], f[2], f[3], f[4], f[5], f[6], f[7], f[8]) }; }
+    }
+  }
+  if (!X.total) X.total = { users: 0, views: 0, regular_users: 0, last_view_days: 0 };
+  return X;
+}
+// Пометка над таблицей вкладок отчётов: откуда числа (группа / ждём / не дождались).
+function repExtNote() {
+  if (state.mode === 'aud' || !audCount()) return '';
+  if (busOn()) return '<span' + tip({ title: 'Числа — по людям из «Кто смотрит»',
+    text: 'Справа выбраны люди или группы в «Кто смотрит» — каталог считает по ним. Они уже внутри группы из «Аудитории».' }) + '>числа — по выбору в «Кто смотрит»</span>';
+  if (repNoAr()) return '<span style="color:#b45309"' + tip({ title: 'Числа по группе не пришли',
+    text: 'Панель ответила без чисел для этой вкладки (секции ar): в датасете pa_one старый SQL. Вставь SQL из файла 7 в pa_one, сохрани и обнови страницу. Пока — весь Proteus.' }) + '>весь Proteus: в pa_one старый SQL</span>';
+  if (repLate()) return '<span style="color:#b45309"' + tip({ title: 'Числа по группе не пришли',
+    text: (state.repExt ? 'Панель прислала числа для другой группы: «' + state.repExt.key + '», а выбрано «' + repGrpKey() + '». Пришли этот текст.'
+      : 'Панель справа не отвечает — в её чарте старый JS. Вставь JS из файла 8 в чарт панели (и SQL файла 7 в pa_one), сохрани и обнови страницу (Cmd+Shift+R).') +
+      ' Пока — весь Proteus.' }) + '>весь Proteus: нет чисел по группе</span>';
+  if (repExt() === undefined) return '<span>считаем по группе из «Аудитории»…</span>';
+  return '<span' + tip({ title: 'Числа по группе из «Аудитории»',
+    text: 'Во вкладке «Аудитория» выбрана группа — здесь только отчёты, которые открывали её люди, и числа по ним. «ЦА» — сама группа.',
+    note: 'Сними выбор в «Аудитории» — вернётся весь Proteus.' }) + '>числа — по группе из «Аудитории»</span>';
 }
 function audRows() {
   var dim = audDim(), src = MODEL.aud[dim.d] || {}, out = [], q = (state.repQuery || '').toLowerCase(), ext = audExt();
@@ -1566,23 +1640,23 @@ function audBarHtml() {
   // при выборе в других вкладках — числа только по выбранному (от панели), группы без зрителей скрыты
   if (audNoAa()) {
     h += '<span class="' + N + '-audbar-l" style="margin-left:12px;color:#b45309"' + tip({ title: 'Числа по выбору не пришли', text:
-      'Панель ответила, но в её ответе нет разрезов для этой вкладки (секции aa): в датасете pa_one старый SQL. Вставьте SQL из файла 7 в pa_one, сохраните и обновите страницу. Пока показан весь Proteus.' }) +
+      'Панель ответила, но в её ответе нет разрезов для этой вкладки (секции aa): в датасете pa_one старый SQL. Вставь SQL из файла 7 в pa_one, сохрани и обнови страницу. Пока показан весь Proteus.' }) +
       '>весь Proteus: в pa_one старый SQL</span>';
   } else if (audLate()) {
     var ae = state.audExt;
     h += '<span class="' + N + '-audbar-l" style="margin-left:12px;color:#b45309"' + tip({ title: 'Числа по выбору не пришли', text:
-      (ae ? 'Панель прислала числа для другого выбора: «' + ae.key + '», а в каталоге выбрано «' + audSelKey() + '». Пришлите этот текст.'
-        : state.audHeard && state.audHeard.noflt ? 'Панель отвечает, но в её ответе нет эха фильтров (строка flt датасета pa_one). Пришлите этот текст.'
-        : 'Панель справа не отвечает — в её чарте старый JS. Вставьте JS из файла 8 в чарт панели (и SQL файла 7 в pa_one), сохраните чарт и обновите страницу (Cmd+Shift+R).') +
+      (ae ? 'Панель прислала числа для другого выбора: «' + ae.key + '», а в каталоге выбрано «' + audSelKey() + '». Пришли этот текст.'
+        : state.audHeard && state.audHeard.noflt ? 'Панель отвечает, но в её ответе нет эха фильтров (строка flt датасета pa_one). Пришли этот текст.'
+        : 'Панель справа не отвечает — в её чарте старый JS. Вставь JS из файла 8 в чарт панели (и SQL файла 7 в pa_one), сохрани чарт и обнови страницу (Cmd+Shift+R).') +
       ' Каталог: «' + audSelKey() + '».' +
       ' Пока показан весь Proteus.' }) + '>весь Proteus: нет чисел по выбору</span>';
-  } else if (audSelKey()) h += '<span class="' + N + '-audbar-l" style="margin-left:12px"' + tip({ title: 'Аудитория выбранного', text: 'Выбраны отчёты, коллекции или владельцы — показаны только группы, где кто-то их смотрел за период: «Польз.», «Охват» и «Пост.» — по выбранному, «Сотр.» — вся группа. Снимите выбор — вернётся весь Proteus.' }) + '>по выбору в каталоге</span>';
+  } else if (audSelKey()) h += '<span class="' + N + '-audbar-l" style="margin-left:12px"' + tip({ title: 'Аудитория выбранного', text: 'Выбраны отчёты, коллекции или владельцы — показаны только группы, где кто-то их смотрел за период: «Польз.», «Охват» и «Пост.» — по выбранному, «Сотр.» — вся группа. Сними выбор — вернётся весь Proteus.' }) + '>по выбору в каталоге</span>';
   return h + '</div>';
 }
 function audTableHtml() {
   var N = CFG.ns, dim = audDim(), rows = audRows(), sc = state.aud.sort;
   if (!MODEL.aud.h) {
-    return '<div class="' + N + '-empty"><b>Разрезов аудитории нет в ответе</b>Обновите датасет каталога (SQL поставки единого листа).</div>';
+    return '<div class="' + N + '-empty"><b>Разрезов аудитории нет в ответе</b>Обнови датасет каталога (SQL поставки единого листа).</div>';
   }
   var ext = audExt();
   if (ext === undefined) {
@@ -1598,7 +1672,7 @@ function audTableHtml() {
     return '<div class="' + N + '-empty"><b>Считаем аудиторию выбранных отчётов…</b>Числа придут вместе с пересчётом панели справа.</div>';
   }
   var t = audTotal(), qOn = !!(state.repQuery || '').trim();
-  if (!rows.length && (qOn || !t.other)) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (qOn ? 'В поиске «' + esc(state.repQuery) + '» — очистите его.' : (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Снимите выбор или выберите другой разрез.' : 'Выберите другой разрез.')) + '</div>';
+  if (!rows.length && (qOn || !t.other)) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (qOn ? 'В поиске «' + esc(state.repQuery) + '» — очисти его.' : (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Сними выбор или выбери другой разрез.' : 'Выбери другой разрез.')) + '</div>';
   var PS = state.pageSize || 20, total = rows.length, pages = Math.max(1, Math.ceil(total / PS));
   if ((state.page || 0) > pages - 1) state.page = pages - 1;
   if (state.page < 0) state.page = 0;
@@ -1609,7 +1683,7 @@ function audTableHtml() {
       ' data-asort="' + col + '">' + esc(label) + '<span class="' + N + '-sa">' + sortMark(sc, 'col', col) + '</span></th>';
   };
   var tu = t.all || t;    // ИТОГО — все зрители: сходится с «Польз.» каталога и панелью; охват — по сотрудникам
-  var h = '<table class="' + N + '-ptable dense sortable"><thead><tr>' +
+  var h = '<table class="' + N + '-ptable dense sortable flat"><thead><tr>' +
     th('name', dim.lvl ? 'Подразделение ' + dim.label : dim.label, null, 'txt') +
     th('users', 'Польз.', { text: 'Сотрудники группы, заходившие в отчёты за период (с учётом шапки, ЦА и выбора в «Кто смотрит»)' }) +
     th('cov', 'Охват', { title: 'Охват группы', text: 'Доля сотрудников группы, заходивших за период: пользователи / сотрудники. Сотрудники — действующие с AD-логином, штатные и ГПХ.' }) +
@@ -1651,7 +1725,7 @@ function barTableHtml(o) {
   var rows = o.rows || [];
   var max = 1;
   for (var i = 0; i < rows.length; i++) if (rows[i].bar > max) max = rows[i].bar;
-  var h = '<table class="' + CFG.ns + '-ptable' + (o.dense ? ' dense' : '') + '"><colgroup>' +
+  var h = '<table class="' + CFG.ns + '-ptable flat' + (o.dense ? ' dense' : '') + '"><colgroup>' +
     '<col style="width:' + (o.firstW || '38%') + '">';
   for (var c = 0; c < (o.cols || []).length; c++) h += '<col style="width:' + (o.colW || '13%') + '">';
   h += '<col></colgroup><thead><tr><th class="txt">' + esc(o.firstH || '') + '</th>';
@@ -1720,6 +1794,17 @@ function catalogTableHtml() {
     return '<div class="' + CFG.ns + '-tbl-note">Каталог считается по секциям отчётов.</div>';
   }
   if (state.mode === 'aud') return audTableHtml();
+  if (repExt() === undefined) {
+    // ждём числа группы от панели: раз в 1,5 с переспрашиваем (могла ответить раньше, чем каталог начал слушать)
+    clearTimeout(state.repT);
+    var ask = function () {
+      if (state.mode === 'aud' || repExt() !== undefined) { if (state.audRender) state.audRender(); return; }
+      paBcast({ type: 'PA_REP_ASK' });
+      state.repT = setTimeout(ask, 1500);
+    };
+    state.repT = setTimeout(ask, 1500);
+    return '<div class="' + CFG.ns + '-empty"><b>Считаем отчёты группы…</b>Числа придут вместе с пересчётом панели справа.</div>';
+  }
   if (state.mode === 'report' && MODEL.repMode) {
     var rt = reportTableHtml();
     return '<div class="' + CFG.ns + '-tscroll">' + rt.html + '</div>' + pagerHtml(rt.total);
@@ -1727,8 +1812,8 @@ function catalogTableHtml() {
   var cat = catalogRows();
   if (!cat.rows || !cat.rows.length) {
     return '<div class="' + CFG.ns + '-empty"><b>Ничего не найдено</b>' +
-      (cat.filtered ? 'Выбор в другой вкладке не оставил здесь ни одной строки — снимите часть условий.' :
-        'Очистите поиск или снимите часть условий.') + '</div>';
+      (cat.filtered ? 'Выбор в другой вкладке не оставил здесь ни одной строки — сними часть условий.' :
+        'Очисти поиск или сними часть условий.') + '</div>';
   }
   var PS = state.pageSize || 20;
   var total2 = cat.rows.length;
@@ -1792,7 +1877,7 @@ function buildHTML() {
     // v7.1: шапка листа, KPI и общие пилюли фильтров — в чарте-шапке сверху;
     // здесь только карточка каталога. Выбор снимается тут же.
     cls: 'cat', title: 'Каталог',
-    subHtml: segNow() ? '<span' + tip({ title: 'Сегмент ЦА', text: segText() }) + '>показаны: <b>' + (segNow() === 'reach' ? 'ЦА заходили' : (segNow() === 'out' ? 'вне ЦА заходили' : 'ЦА не заходили')) + '</b> · из «Кто смотрит»</span>' : '',
+    subHtml: segNow() ? '<span' + tip({ title: 'Сегмент ЦА', text: segText() }) + '>показаны: <b>' + (segNow() === 'reach' ? 'ЦА заходили' : (segNow() === 'out' ? 'вне ЦА заходили' : 'ЦА не заходили')) + '</b> · из «Кто смотрит»</span>' : repExtNote(),
     sub: 'клик — выбрать для панели справа · Shift — несколько',
     right: mineBtnHtml() + searchBoxHtml('repQ', state.mode === 'report' ? 'Название, ID или владелец' : (state.mode === 'aud' ? 'Найти группу' : 'Найти: ' + modeInfo.one.toLowerCase()), state.repQuery),
     under: cutBarHtml(), bodyCls: 'tbl-wrap', body: tableHtml
@@ -2373,7 +2458,10 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
         return [{ column: 'mode_param', operator: 'IN', value: [used[0]] },
                 { column: 'sel_f', operator: 'IN', value: vals }];
       }
+      // пересечение — по своим числам каталога (не по группе из «Аудитории»): маска не зависит от ответа панели
+      state.noExt = true;
       var ids = pickedIds() || [];
+      state.noExt = false;
       for (i = 0; i < ids.length; i++) vals.push(String(ids[i]));
       if (!vals.length) vals = ['0'];
       vals.sort();
@@ -2677,6 +2765,22 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     };
     window.addEventListener('message', state.onAud);
     paBcast({ type: 'PA_AUD_ASK' });
+    // Обратно: группа из «Аудитории» → числа вкладок «Отчёты» / «Коллекции» / «Владельцы» от панели (PA_REP, секция ar).
+    var AUDCOLS = ['aud_org_f', 'aud_spec_f', 'aud_stream_f', 'aud_hq_f', 'aud_it_f', 'aud_head_f'];
+    state.audKeyFn = function () { return paKey(AUDCOLS, paMaskGet(audMask())); };
+    if (state.onRep) window.removeEventListener('message', state.onRep);
+    state.onRep = function (e) {
+      var d = e.data || {};
+      if (d.type !== 'PA_REP' || d.noflt) return;
+      var key = String(d.key || ''), sig = key;
+      for (var i = 0; i < (d.rows || []).length; i++) sig += '|' + d.rows[i].g + ':' + String(d.rows[i].k || '').length;
+      if (!d.rows) sig += '|-';
+      if (state.repExt && state.repExt.sig === sig) return;    // тот же ответ (панель шлёт при каждом монтаже и на ASK)
+      state.repExt = { key: key, sig: sig, noar: !d.rows, rows: d.rows || [] };
+      if (state.mode !== 'aud' && key === repGrpKey()) render();
+    };
+    window.addEventListener('message', state.onRep);
+    if (audCount()) paBcast({ type: 'PA_REP_ASK' });
     var paSync = paGuardMount(host, function () { return MODEL.stateJ && MODEL.stateJ.flt ? MODEL.stateJ.flt : null; }, sheetOf,
       MODEL.hasCa ? ['strip', 'ppl', 'ca'] : ['strip', 'ppl']);
     render();

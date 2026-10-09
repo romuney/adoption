@@ -734,6 +734,12 @@ FROM (
 UNION ALL
 SELECT '6 панель · ЦА IT-руководители' AS item, toFloat64(count()) AS rows_or_n, round(sum(length(k)) / 1024) AS answer_kb FROM (
 WITH
+  cset AS (SELECT lg FROM (SELECT lower(toString(s.login)) AS lg,
+      [if(match(toString(ifNull(s.lvl3_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl4_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl5_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl6_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl7_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl7_management_unit_nm, '')))] AS slv,
+      arrayStringConcat(arraySlice(slv, 1, if(arrayFirstIndex(x -> x = '', slv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', slv) - 1))), ' › ') AS op,
+      toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
+      toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf,
+      toString(ifNull(s.fio, '')) AS sfio, toString(ifNull(s.exp_nm, '')) AS sexp FROM prod_proteus.pa_staff s) WHERE 1 AND itc IN ('IT') AND hdf = 1),
   maxd AS (
     SELECT tuple(md, ds, toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1),
       toInt64(dateDiff('day', dt, toDate(md)))) AS h
@@ -766,12 +772,7 @@ WITH
       groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon,groupBitOr(toUInt64(ifNull(e.msk_d, 0))) AS mskd,
       max(ifNull(e.kmax_d, 0)) AS fd_d
     FROM prod_proteus.pa_pair e
-    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0 AND lower(toString(e.login)) IN (SELECT lg FROM (SELECT lower(toString(s.login)) AS lg,
-      [if(match(toString(ifNull(s.lvl3_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl4_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl5_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl6_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl7_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl7_management_unit_nm, '')))] AS slv,
-      arrayStringConcat(arraySlice(slv, 1, if(arrayFirstIndex(x -> x = '', slv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', slv) - 1))), ' › ') AS op,
-      toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
-      toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf,
-      toString(ifNull(s.fio, '')) AS sfio, toString(ifNull(s.exp_nm, '')) AS sexp FROM prod_proteus.pa_staff s) WHERE 1 AND itc IN ('IT') AND hdf = 1)
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0 AND lower(toString(e.login)) IN (SELECT lg FROM cset)
     GROUP BY e.login
   ),
   pr AS (SELECT p.msk AS msk, p.v_cur AS v_cur, p.v_prev AS v_prev,
@@ -814,12 +815,7 @@ WITH
       max(ifNull(e.kmax_d, 0)) AS fd_k, max(e.dmax) AS dmax, groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
-      AND lower(toString(e.login)) NOT IN (SELECT lg FROM (SELECT lower(toString(s.login)) AS lg,
-      [if(match(toString(ifNull(s.lvl3_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl4_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl5_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl6_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl7_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl7_management_unit_nm, '')))] AS slv,
-      arrayStringConcat(arraySlice(slv, 1, if(arrayFirstIndex(x -> x = '', slv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', slv) - 1))), ' › ') AS op,
-      toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
-      toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf,
-      toString(ifNull(s.fio, '')) AS sfio, toString(ifNull(s.exp_nm, '')) AS sexp FROM prod_proteus.pa_staff s) WHERE 1 AND itc IN ('IT') AND hdf = 1)
+      AND lower(toString(e.login)) NOT IN (SELECT lg FROM cset)
     GROUP BY e.login
     HAVING bitAnd(msk, 1073741823) != 0
   ),
@@ -884,12 +880,7 @@ WITH
     ARRAY JOIN arrayFilter(y -> y.2 < if(y.1 = 'g', 30, 30), [('g', toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay(tupleElement((SELECT h FROM maxd), 1))))), ('d', toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay(tupleElement((SELECT h FROM maxd), 1)))))]) AS x
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok)
       AND e.log_dttm >= least(toDateTime(toStartOfDay(tupleElement((SELECT h FROM maxd), 1)) - toIntervalDay(29)), toDateTime(toStartOfDay(tupleElement((SELECT h FROM maxd), 1)) - toIntervalDay(29)))
-      AND (toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay(tupleElement((SELECT h FROM maxd), 1)))) < 30 OR toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay(tupleElement((SELECT h FROM maxd), 1)))) < 30) AND lower(toString(e.login)) IN (SELECT lg FROM (SELECT lower(toString(s.login)) AS lg,
-      [if(match(toString(ifNull(s.lvl3_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl4_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl5_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl6_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl7_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl7_management_unit_nm, '')))] AS slv,
-      arrayStringConcat(arraySlice(slv, 1, if(arrayFirstIndex(x -> x = '', slv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', slv) - 1))), ' › ') AS op,
-      toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
-      toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf,
-      toString(ifNull(s.fio, '')) AS sfio, toString(ifNull(s.exp_nm, '')) AS sexp FROM prod_proteus.pa_staff s) WHERE 1 AND itc IN ('IT') AND hdf = 1) AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1)
+      AND (toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay(tupleElement((SELECT h FROM maxd), 1)))) < 30 OR toInt64(dateDiff('day', toStartOfDay(e.log_dttm), toStartOfDay(tupleElement((SELECT h FROM maxd), 1)))) < 30) AND lower(toString(e.login)) IN (SELECT lg FROM cset) AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1)
     GROUP BY gg, bk
   ),
   sv AS (SELECT lower(toString(s.login)) AS lg,

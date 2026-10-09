@@ -28,6 +28,10 @@
       n     — поимённо люди ЦА без визитов (только если их ≤ NAMES_MAX): «логин|ФИО|спец|стрим|рук|HQ|IT|доступ|стаж» (коды);
       aa    — только при выбранной области: разрезы вкладки «Аудитория» каталога (g = o|s|t|q|i|h, «значение|людей|просмотров|
               постоянных») — каталог свой выбор не видит, панель передаёт ему эти числа;
+      ar    — только при группе из вкладки «Аудитория» каталога (aud_*_f): числа вкладок «Отчёты», «Коллекции», «Владельцы» и
+              ИТОГО по людям группы (каталог свой выбор не видит — панель передаёт ему). g = rNNN (отчёты порциями по 1000 id):
+              «id|users|views|regular|last|ритм d,w,m,o|ЦА|0|ЦА заходили»; g = owner | collection: «значение|users|views|regular|last»;
+              g = total: «users|views|regular|last». Правила — секций rep / grp / total каталога при ЦА по условиям;
       lo    — только при ЦА по условиям: зрители периода ВНЕ ЦА поимённо (≤ OUT_MAX самых активных), поля как у list;
       d     — словарь кодов: строка на g (spec | stream | exp | hq | it), значения по строкам, код = номер строки (1…);
       acl   — как роздан доступ: k = «группа|людей штата» по строкам, n = поимённых прав. -#}
@@ -163,7 +167,15 @@ lower(toString(s.login)) AS lg,
 arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '') != '', {{ p }}owners_string)),
   arrayMap(x -> lower(trim(toString(ifNull(x, '')))), {{ p }}owners_string), [lower(trim(toString(ifNull({{ p }}owner_login, ''))))])))
 {%- endmacro %}
+{#- Метрики строки каталога (секция ar) — как mets() каталога: пользователи, просмотры, постоянные, дней с визита. -#}
+{% macro armets() -%}
+countIf(bitAnd(msk, {{ CUR }}) != 0) AS users, sum(v_cur) AS views,
+      countIf(bitCount(bitAnd(msk, {{ CUR }})) > {{ FBIN[1] }}) AS regular_users,
+      dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay({{ MD }})) AS last_view_days
+{%- endmacro %}
 {% macro caset() -%}SELECT lg FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) WHERE {{ cond() }}{%- endmacro %}
+{#- Ссылка на логины ЦА по условиям: само множество — один раз, CTE cset (текст запроса короче — разбор Superset растёт с длиной). -#}
+{% set CSET = 'SELECT lg FROM cset' %}
 {#- Логины с правом хотя бы на один отчёт области: поимённо или через AD-группу. -#}
 {% macro accset() -%}
 SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
@@ -199,6 +211,9 @@ SELECT lower(toString(login)) FROM prod_proteus.pa_pair
 {%- endmacro %}
 {% set OUT_MAX = NAMES_MAX %}{#- «вне ЦА» (при ЦА по условиям) поимённо — не больше стольких, самые активные -#}
 WITH
+  {% if custom %}
+  cset AS ({{ caset() }}),
+  {% endif %}
   {# Дата свежести md — как у каталога: md пары, запасной источник — последний визит.
       Начало истории событий ds и «надёжные» периоды: новым человека можно назвать, только если до начала
       периода есть ≥ {{ HIST_DAYS }} дней истории — иначе «впервые в данных» = «давно не заходил». kt — самый
@@ -246,7 +261,7 @@ WITH
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
-    {%- if custom %} AND lower(toString(e.login)) IN ({{ caset() }}){% endif %}
+    {%- if custom %} AND lower(toString(e.login)) IN ({{ CSET }}){% endif %}
     GROUP BY e.login
   ),
   pr AS (
@@ -323,6 +338,49 @@ WITH
     GROUP BY ad, ak0
   ),
   {% endif %}
+{% if auon %}
+  {#- Группа из вкладки «Аудитория» каталога: числа вкладок «Отчёты» / «Коллекции» / «Владельцы» и ИТОГО по людям группы.
+      Каталог свой выбор не видит (самовлияние выключено) — их считает панель (секция ar) и шлёт каталогу (PA_REP).
+      Правила — как секции rep / grp / total каталога при ЦА по условиям (каталог с условиями строки ЦА = эта группа):
+      все отчёты шапки (выбор отчётов в каталоге их НЕ сужает — как aa не сужается группой), пары людей группы
+      и условий строки ЦА, «без владельцев»; постоянный — ≥ {{ FBIN[1] + 1 }} периодов; ритм — тот же. -#}
+  arp AS (
+    SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,
+      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, e.dmax AS dmax,
+      {#- ритм пары (как в каталоге): маски дней / недель / месяцев не зависят от грануляции -#}
+      multiIf(bitCount(bitAnd(toUInt64(ifNull(e.msk_d, 0)), 1073741823)) >= 12, 4, bitCount(bitAnd(toUInt64(ifNull(e.msk_w, 0)), 255)) >= 6, 3,
+        bitCount(bitAnd(toUInt64(ifNull(e.msk_m, 0)), 7)) >= 2, 2, bitAnd(toUInt64(ifNull(e.msk_m, 0)), 7) != 0, 1, 0) AS rc
+    FROM prod_proteus.pa_pair e
+    WHERE e.dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %})
+      AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
+      AND lower(toString(e.login)) IN ({{ CSET }})
+  ),
+  ark AS (
+    {#- ключ строки размножается, как kx каталога: 0 = ИТОГО, 2 = каждый владелец отчёта, 3 = коллекция -#}
+    SELECT kd, k0, login, groupBitOr(m0) AS msk, sum(v_cur) AS v_cur, max(dmax) AS dmax
+    FROM (
+      SELECT arrayJoin(arrayConcat(
+          [(toUInt8(0), '')],
+          arrayMap(o -> (toUInt8(2), o), {{ owns('mm.') }}),
+          arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
+        )) AS kk, kk.1 AS kd, kk.2 AS k0,
+        p.login AS login, p.msk AS m0, p.v_cur AS v_cur, p.dmax AS dmax
+      FROM arp p
+      INNER JOIN prod_proteus.pa_dash_meta mm ON mm.dashboard_id = p.did
+    )
+    GROUP BY kd, k0, login
+  ),
+  ara AS (
+    SELECT kd, k0, {{ armets() }}, '' AS rhythm, toUInt64(0) AS ca_u
+    FROM ark GROUP BY kd, k0
+    UNION ALL
+    SELECT toUInt8(1) AS kd, toString(did) AS k0, {{ armets() }},
+      arrayStringConcat([toString(countIf(rc = 4)), toString(countIf(rc = 3)), toString(countIf(rc = 2)), toString(countIf(rc = 1))], ',') AS rhythm,
+      {#- все зрители — люди группы (ЦА по условиям): «ЦА заходили» = пользователи -#}
+      countIf(bitAnd(msk, {{ CUR }}) != 0) AS ca_u
+    FROM arp GROUP BY did
+  ),
+  {% endif %}
 {% if custom %}
   evo AS (
     {#- ЦА по условиям: зрители текущего периода ВНЕ ЦА (те же пары, «без владельцев» и срез области, что у evd) —
@@ -333,7 +391,7 @@ WITH
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
-      AND lower(toString(e.login)) NOT IN ({{ caset() }})
+      AND lower(toString(e.login)) NOT IN ({{ CSET }})
     GROUP BY e.login
     HAVING bitAnd(msk, {{ CUR }}) != 0
   ),
@@ -407,7 +465,7 @@ WITH
       AND e.log_dttm >= least(toDateTime({{ g.sf }}({{ MD }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] }}({{ g.n - 1 }})), toDateTime(toStartOfDay({{ MD }}) - toIntervalDay(29)))
       AND ({{ kx('e.log_dttm') }} < {{ g.n }} OR {{ kd('e.log_dttm') }} < 30)
       {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
-      {%- if custom %} AND lower(toString(e.login)) IN ({{ caset() }}){% endif %}
+      {%- if custom %} AND lower(toString(e.login)) IN ({{ CSET }}){% endif %}
       {%- if excv == '1' %} AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1){% endif %}
     GROUP BY gg, bk
     {%- else %}
@@ -539,6 +597,25 @@ FROM (
   FROM aav x
   {%- if caorg or caspec or castrm or cahq or cait or cahead != '' or caadg %}
   WHERE x.vl IN (SELECT lg FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) WHERE {{ condca() }}){% endif %}
+  {% endif %}
+  {% if auon %}
+  UNION ALL
+  {# Вкладки «Отчёты» / «Коллекции» / «Владельцы» и ИТОГО каталога по группе из его «Аудитории» (формат — шапка, секция ar).
+     ЦА отчёта — люди группы и строки ЦА, без его владельцев при «Без владельцев» (как каталог при ЦА по условиям). #}
+  SELECT 'ar' AS section, s_g AS g, arrayStringConcat(arraySort(groupArray(s_line)), '\n') AS k, '' AS parent, toInt64(count()) AS n
+  FROM (
+    SELECT multiIf(kd = 1, concat('r', toString(intDiv(ifNull(toInt32OrNull(k0), toInt32(0)), 1000))), kd = 2, 'owner', kd = 3, 'collection', 'total') AS s_g,
+      multiIf(
+        kd = 1, concat(k0, '|', toString(users), '|', toString(views), '|', toString(regular_users), '|', toString(last_view_days), '|', rhythm, '|',
+          toString((SELECT count() FROM cset){% if excv == '1' %} - ifNull(oc.n_own, 0){% endif %}), '|0|', toString(ca_u)),
+        kd = 0, concat(toString(users), '|', toString(views), '|', toString(regular_users), '|', toString(last_view_days)),
+        concat({{ cz('k0') }}, '|', toString(users), '|', toString(views), '|', toString(regular_users), '|', toString(last_view_days))) AS s_line
+    FROM ara
+    {%- if excv == '1' %}
+    LEFT JOIN (SELECT dashboard_id, toInt64(count()) AS n_own FROM (SELECT dashboard_id, lower(toString(arrayJoin(owners_string))) AS ow FROM prod_proteus.pa_dash_meta)
+      WHERE ow IN ({{ CSET }}) GROUP BY dashboard_id) oc ON oc.dashboard_id = if(kd = 1, ifNull(toInt32OrNull(k0), toInt32(0)), toInt32(0)){% endif %}
+  )
+  GROUP BY s_g
   {% endif %}
   {% if custom %}
   UNION ALL

@@ -52,7 +52,7 @@ var CFG = {
   // Опция эмитит СВОЮ колонку ТОЛЬКО при отличии от умолчания (val при откл.).
   switches: [
     { key: 'published', label: 'Только опубликованные', short: 'Опубликованные', def: true, emit: 'pub_f', val: '0', off: 'включая неопубликованные',
-      hint: 'Считать только опубликованные отчёты. Выключите, чтобы видеть и черновики.' },
+      hint: 'Считать только опубликованные отчёты. Выключи, чтобы видеть и черновики.' },
     { key: 'actual', label: 'Только актуальные', short: 'Актуальные', def: true, emit: 'act_f', val: '0', off: 'включая неактуальные',
       hint: 'Считать только отчёты, помеченные актуальными.' },
     { key: 'excludeOwners', label: 'Исключить владельцев из просмотров', short: 'Без владельцев', def: true, emit: 'exc_f', val: '0', off: 'с просмотрами владельцев',
@@ -290,18 +290,17 @@ function tipHtml(o) {
 }
 function tip(o) { return ' data-tip="' + esc(tipHtml(o)) + '"'; }
 // Свежесть: «данные на ДД.ММ» по последнему дню витрины (строка md). Зелёная точка — это вчера
-// (витрина в срок), жёлтая — отстаёт (в подсказке — на сколько), серая — дата не пришла.
+// (витрина в срок), жёлтая — отстаёт (на сколько — текстом рядом), серая — дата не пришла.
 function freshHtml(md, N) {
   var t = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(md || ''));
   if (!t) return '<span class="' + N + '-fresh"><i class="na"></i>данные <b>—</b></span>';
   var now = new Date(), y = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   var lag = Math.round((Date.UTC(y.getFullYear(), y.getMonth(), y.getDate()) - Date.UTC(+t[1], +t[2] - 1, +t[3])) / 86400000);
   var ok = lag <= 0;
-  return '<span class="' + N + '-fresh"' + tip({ title: 'Свежесть данных', text: ok
-      ? 'Последний день в данных — вчера, ' + t[3] + '.' + t[2] + '.' + t[1] + '. Витрина обновлена в срок.'
-      : 'Последний день в данных — ' + t[3] + '.' + t[2] + '.' + t[1] + ', а должен быть вчерашний: витрина отстаёт на ' + lag + ' ' +
-        plural(lag, 'день', 'дня', 'дней') + '.' }) + '>' +
-    '<i class="' + (ok ? '' : 'late') + '"></i>данные на <b>' + t[3] + '.' + t[2] + '</b></span>';
+  // без подсказки (фидбек 2026-10-09: и так понятно, а рядом с «Как работать» она дёргалась); отставание — текстом
+  return '<span class="' + N + '-fresh">' +
+    '<i class="' + (ok ? '' : 'late') + '"></i>данные на <b>' + t[3] + '.' + t[2] + '</b>' +
+    (ok ? '' : ' · отстают на ' + lag + ' ' + plural(lag, 'день', 'дня', 'дней')) + '</span>';
 }
 // Что выбрано в условии: подпись кнопки.
 function picked(c, k) {
@@ -487,7 +486,7 @@ function valueRows(kind) {
   for (k in src) if (Object.prototype.hasOwnProperty.call(src, k) && (!q || dash(k).toLowerCase().indexOf(q) >= 0) && (f[kind][k] || d[kind].indexOf(k) >= 0)) opts.push({ v: k, n: f[kind][k] || 0, all: src[k] });
   opts.sort(function (a, b) { return (b.n - a.n) || (b.all - a.all); });
   for (var i = 0; i < opts.length && i < CFG.listMax; i++) h += rowHtml('data-cack', kind + '|' + opts[i].v, d[kind].indexOf(opts[i].v) >= 0, esc(dash(opts[i].v)), opts[i].n);
-  if (opts.length > CFG.listMax) h += '<div class="' + CFG.ns + '-empty">и ещё ' + nf(opts.length - CFG.listMax) + ' — уточните поиск</div>';
+  if (opts.length > CFG.listMax) h += '<div class="' + CFG.ns + '-empty">и ещё ' + nf(opts.length - CFG.listMax) + ' — уточни поиск</div>';
   return h || '<div class="' + CFG.ns + '-empty">' + (q ? 'Ничего не найдено' : 'Под выбранными условиями никого') + '</div>';
 }
 function headRows() {
@@ -515,7 +514,7 @@ function adgRows() {
   });
   for (i = 0; i < list.length && i < CFG.listMax; i++) out.push(rowHtml('data-cack', 'adg|' + list[i].name, d.adg.indexOf(list[i].name) >= 0, esc(list[i].name), cnt(list[i])));
   if (!out.length) return '<div class="' + CFG.ns + '-empty">' + (MODEL.adg.length ? 'Ничего не найдено' : 'Список групп пуст — нет таблицы pa_adg_size') + '</div>';
-  if (list.length > CFG.listMax) out.push('<div class="' + CFG.ns + '-empty">и ещё ' + nf(list.length - CFG.listMax) + ' — уточните поиск</div>');
+  if (list.length > CFG.listMax) out.push('<div class="' + CFG.ns + '-empty">и ещё ' + nf(list.length - CFG.listMax) + ' — уточни поиск</div>');
   return out.join('');
 }
 // Выбранные значения условия — чипами с × над списком (видно всё выбранное, даже если в списке не найти).
@@ -674,6 +673,15 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
       var pad = 6, gap = 8;
       var left = rect.left + rect.width / 2 - t.width / 2;
       var top = rect.top + rect.height + gap;
+      // iframe ещё не развернулся под подсказку (маркер tipMark ушёл, родитель не успел): не ставить её сверху —
+      // она прыгала вниз после разворота (фидбек 2026-10-09). Ждём resize невидимой; не дождались за 300 мс — как есть.
+      if (top + t.height > window.innerHeight - pad && state.sig === 'tip' && !state.tipLate) {
+        tip.style.opacity = '0';
+        clearTimeout(state.tipW);
+        state.tipW = setTimeout(function () { state.tipLate = true; renderTip(); state.tipLate = false; }, 300);
+        return;
+      }
+      clearTimeout(state.tipW);
       if (top + t.height > window.innerHeight - pad) top = rect.top - t.height - gap;
       left = Math.max(pad, Math.min(left, window.innerWidth - t.width - pad));
       top = Math.max(pad, Math.min(top, window.innerHeight - t.height - pad));
@@ -683,6 +691,7 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
     }
     function hideTip() {
       var tip = getTip();
+      clearTimeout(state.tipW);
       tip.style.opacity = '0';
       tip.style.display = 'none';
     }

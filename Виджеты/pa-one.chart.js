@@ -642,6 +642,9 @@ function buildModel() {
     } else if (sec === 'aa') {
       // разрезы вкладки «Аудитория» каталога по выбранной области — только переслать каталогу (paAudSend)
       (m.aa = m.aa || []).push({ g: String(r[F.g] == null ? '' : r[F.g]), k: String(r[F.k] == null ? '' : r[F.k]) });
+    } else if (sec === 'ar') {
+      // числа вкладок «Отчёты» / «Коллекции» / «Владельцы» каталога по группе из его «Аудитории» — только переслать (paAudSend)
+      (m.ar = m.ar || []).push({ g: String(r[F.g] == null ? '' : r[F.g]), k: String(r[F.k] == null ? '' : r[F.k]) });
     } else if (sec === 'lo') {
       loRows.push(r);               // «вне ЦА» поимённо (ЦА по условиям) — распаковка после цикла, как list
     } else if (sec === 'list') {
@@ -1623,7 +1626,7 @@ function pagerHtml(total) {
 }
 function emptyPeopleText() {
   if (isCa() && state.segSel === 'never' && MODEL.namesOmitted) {
-    return 'Имена не загружены: не заходивших из ЦА больше 20 000. Сузьте ЦА условиями в строке «Целевая аудитория» — список появится; числа по группам — в группировке.';
+    return 'Имена не загружены: не заходивших из ЦА больше 20 000. Сузь ЦА условиями в строке «Целевая аудитория» — список появится; числа по группам — в группировке.';
   }
   return isCa() ? 'Никто не подходит под выбранный сегмент, поиск и выбор.' : 'Никто не подходит под корзину частоты, поиск и настройки.';
 }
@@ -2117,7 +2120,7 @@ function segStripHtml() {
   var t = caTotals(), W = wide(), never = Math.max(0, t.ca - t.reach), seen = t.reach + t.out;
   var parts = [
     { key: 'reach', label: 'ЦА заходили', n: t.reach, c: CFG.colors.seg[0], text: 'Люди ЦА, открывавшие отчёты за период.' },
-    { key: 'never', label: 'ЦА не заходили', n: never, c: CFG.colors.seg[3], text: 'Люди ЦА без визитов за период' + (MODEL.namesOmitted ? ' (имена не загружены: их больше 20 000 — сузьте ЦА).' : ': и заходившие раньше, и ни разу.') },
+    { key: 'never', label: 'ЦА не заходили', n: never, c: CFG.colors.seg[3], text: 'Люди ЦА без визитов за период' + (MODEL.namesOmitted ? ' (имена не загружены: их больше 20 000 — сузь ЦА).' : ': и заходившие раньше, и ни разу.') },
     { key: 'out', label: 'Вне ЦА заходили', n: t.out, c: CFG.colors.seg[2], text: 'Заходили за период, но в ЦА не входят.' +
       (caModeNow() === 'cond' && MODEL.outList.length < t.out ? ' В списке — ' + nf(MODEL.outList.length) + ' самых активных.' : '') }
   ];
@@ -2468,7 +2471,7 @@ function cohortTableHtml(o) {
       title: d > 0 ? 'Выше медианы' : 'Ниже медианы',
       text: (d > 0 ? '+' : MINUS) + nf(Math.abs(d > 0 ? lo : hi), 0) + '…' +
         (Math.abs(d) === BANDS ? 'и дальше' : (d > 0 ? '+' : MINUS) + nf(Math.abs(d > 0 ? hi : lo), 0)) +
-        ' п.п. к ' + what + '. Наведите, чтобы увидеть только эти когорты.'
+        ' п.п. к ' + what + '. Наведи, чтобы увидеть только эти когорты.'
     };
   };
   var stops = '';
@@ -2608,7 +2611,7 @@ function cohortZoneHtml(ai) {
   if (state.cohView === 'curve') return h + retCurveSvg(retentionPoints(MODEL.coh), { title: 'Средняя кривая удержания' });
   return h + cohortTableHtml({
     rows: MODEL.coh, firstTip: ai.first, sizeNote: ai.size,
-    note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Наведите ступень шкалы, чтобы на таблице остались только её ячейки. ' +
+    note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Наведи ступень шкалы, чтобы на таблице остались только её ячейки. ' +
       'Серый курсив — месяц ещё не закрыт: значение дорастёт и в раскраске не участвует. Период полоски на когорты не действует.'
   });
 }
@@ -2695,7 +2698,7 @@ function newKpi(k, G, dl, dPct) {
       sub: 'доля аудитории: <b>' + pct(k.users ? k.new_u / k.users * 100 : 0) + '</b>' });
   }
   hint = { title: 'Новые', text: 'История событий начинается ' + (ds ? 'с ' + ds : 'недавно') + ': в первые 90 дней «впервые в данных» — это и давно не заходившие. ' +
-    (kt >= 0 ? 'Поэтому новые считаются только за часть периода — с ' + bucketTitle(tsDate(kt, MODEL.grain), MODEL.grain) + '.' : 'Для этого периода новых не отличить — возьмите период короче.') };
+    (kt >= 0 ? 'Поэтому новые считаются только за часть периода — с ' + bucketTitle(tsDate(kt, MODEL.grain), MODEL.grain) + '.' : 'Для этого периода новых не отличить — возьми период короче.') };
   if (kt < 0) {
     return kpiCard({ label: 'Новых', value: '—', hint: hint, delta: delta(null, { why: hint.text }), sub: 'история данных с <b>' + esc(ds) + '</b>' });
   }
@@ -2753,7 +2756,7 @@ function caKpi(G, dl) {
   if (cond) rows.splice(1, 0, { label: accGap(t) ? 'С доступом (в данных неполно)' : 'Из них с доступом', value: nf(t.acc) });
   return kpiCard({ label: 'Охват ЦА', value: W || cov == null ? '—' : pct(cov),
     hint: { title: 'Охват ЦА', text: 'Доля целевой аудитории, открывавшая отчёты за период.', rows: rows,
-      note: ['ЦА — ' + base + '. Меняется в строке «Целевая аудитория».'].concat(W ? ['Доступ почти у всей компании — процент не считаем: сузьте ЦА условиями.'] : []) },
+      note: ['ЦА — ' + base + '. Меняется в строке «Целевая аудитория».'].concat(W ? ['Доступ почти у всей компании — процент не считаем: сузь ЦА условиями.'] : []) },
     delta: W ? '<span class="' + CFG.ns + '-nocmp">доступ почти у всех</span>' : dl(cov - covP, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
     sub: '<b>' + nf(t.reach) + '</b> из ' + nf(t.ca) + (cond ? ' · по условиям' : '') });
 }
@@ -2797,7 +2800,7 @@ function obsHtml(what) {
 function buildHTML() {
   if (!MODEL.rows.length && !MODEL.ts.length && !MODEL.coh.length) {
     return buildCSS() + '<div class="' + CFG.ns + '-root"><div class="' + CFG.ns + '-empty"><b>' + esc(CFG.text.noData) + '</b>' +
-      'Эти отчёты за период никто не открывал — снимите часть условий в каталоге или в шапке.</div></div>';
+      'Эти отчёты за период никто не открывал — сними часть условий в каталоге или в шапке.</div></div>';
   }
   // v7.2: сверху — KPI области и «Что видно в данных» (меняются от клика в
   // каталоге), под ними карточка вкладок: заголовок с областью · поиск
@@ -2883,7 +2886,7 @@ function caCardHtml() {
   } else if (!gs.length) {
     title = 'Прав на эти отчёты в данных нет';
     chip = '<span class="' + N + '-sig-chip warn">ЦА пуста</span>';
-    text = 'Настройте ЦА условиями — она соберётся по структуре.';
+    text = 'Настрой ЦА условиями — она соберётся по структуре.';
   } else {
     title = 'Доступ через AD-группы';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
@@ -3372,8 +3375,8 @@ function dynamicsHtml(ts, grain) {
   if (state.viewsMode !== 'cov') { h += viewsChartSvg(ts, grain); return h; }
   // Охват ЦА (третий режим нижнего графика): сплошная — накоплено к дате, пунктир — заходили в этом периоде.
   var t = tc0;
-  h += !t.ca ? '<div class="' + CFG.ns + '-tbl-note">В целевой аудитории никого нет — проверьте условия в строке «Целевая аудитория».</div>'
-    : (wide() ? '<div class="' + CFG.ns + '-tbl-note">Доступ открыт почти всей компании — охват по такому знаменателю не показываем. Сузьте ЦА в строке «Целевая аудитория».</div>'
+  h += !t.ca ? '<div class="' + CFG.ns + '-tbl-note">В целевой аудитории никого нет — проверь условия в строке «Целевая аудитория».</div>'
+    : (wide() ? '<div class="' + CFG.ns + '-tbl-note">Доступ открыт почти всей компании — охват по такому знаменателю не показываем. Сузь ЦА в строке «Целевая аудитория».</div>'
       : covChartSvg(caSeries(), grain));
   return h;
 }
@@ -3485,7 +3488,10 @@ function paAudSend() {
   // отвечаем всегда (и без эха фильтров) — каталог по ответу отличает «панель старая» от «нет эха»
   var fl = MODEL.flt;
   paBcast({ type: 'PA_AUD', v: 2, noflt: !fl, key: fl ? paKey(['mode_param', 'sel_f'], function (c) { return fl[c] || []; }) : '', rows: MODEL.aa || null });
+  // обратно: группа из «Аудитории» каталога → числа его вкладок отчётов (секция ar), ключ — колонки группы из эха
+  paBcast({ type: 'PA_REP', v: 1, noflt: !fl, key: fl ? paKey(AUD_COLS, function (c) { return fl[c] || []; }) : '', rows: MODEL.ar || null });
 }
+var AUD_COLS = ['aud_org_f', 'aud_spec_f', 'aud_stream_f', 'aud_hq_f', 'aud_it_f', 'aud_head_f'];
 // Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
 function paBcast(msg) {
   try {
@@ -4117,12 +4123,12 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         };
         if (kind === 'copy') {
           copyText(toDelim(tb, '\t'), function (ok) {
-            say(ok ? 'Скопировано: ' + nf(nR) + ' ' + plural(nR, 'строка', 'строки', 'строк') : 'Браузер запретил доступ к буферу — попробуйте CSV');
+            say(ok ? 'Скопировано: ' + nf(nR) + ' ' + plural(nR, 'строка', 'строки', 'строк') : 'Браузер запретил доступ к буферу — попробуй CSV');
           });
         } else {
           var dt = new Date(), stamp = dt.getFullYear() + '-' + p2(dt.getMonth() + 1) + '-' + p2(dt.getDate());
           var okD = downloadCsv(toDelim(tb, ';'), 'kto-smotrit-' + (state.whoCut === 'none' ? 'lyudi' : state.whoCut) + '-' + stamp + '.csv');
-          say(okD ? 'CSV: ' + nf(nR) + ' ' + plural(nR, 'строка', 'строки', 'строк') + ' (не скачался — «Копировать»)' : 'Скачивание запрещено — используйте «Копировать»');
+          say(okD ? 'CSV: ' + nf(nR) + ' ' + plural(nR, 'строка', 'строки', 'строк') + ' (не скачался — «Копировать»)' : 'Скачивание запрещено — используй «Копировать»');
         }
         return;
       }
@@ -4396,7 +4402,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     // области считает этот датасет (секция aa) и шлёт их каталогу с ключом выбора (mode_param + sel_f из эха).
     paAudSend();
     if (state.onAudAsk) window.removeEventListener('message', state.onAudAsk);
-    state.onAudAsk = function (e) { if ((e.data || {}).type === 'PA_AUD_ASK') paAudSend(); };
+    state.onAudAsk = function (e) { var t = (e.data || {}).type; if (t === 'PA_AUD_ASK' || t === 'PA_REP_ASK') paAudSend(); };
     window.addEventListener('message', state.onAudAsk);
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.

@@ -155,6 +155,9 @@
   остальных строк — CSS (tbody:hover tr:not(:hover)); рамок у ячеек нет (владелец).
 - Закрепление: клик по tr[data-ck] (ГГГГ-М) → state.cohPin, render(); линия закреплённой — path[data-pin] цветом COH_PIN_C
   (#AA77FF), видна всегда; cohRow показывает её + наведённую. tr.pin не гаснет, полоска 3 px слева. Без кривой клик ничего не делает.
+- Мигание при проходе курсором (видео 09.10): зазоры border-spacing не принадлежат строке → tbody:hover гасил всё, cohRow(null).
+  Теперь border-spacing 0 + прозрачная рамка 1 px у th/td (background-clip padding-box); подпись кривой — 176 px. Проба:
+  elementFromPoint по таблице — 0 px мимо строк (было 11 по вертикали, 15 по горизонтали); точки над центрами колонок ±0,1 px.
 - Высота кривой cohCvH(): 0 при ряде < 600, иначе 64…136 по (ряд − 560) × 0,6 (state.rowH из syncOvr). Ячейки — padding 3.
 - Удалены: retCurveSvg, syncCohH, COH_H, state.cohView (переключатель «Таблица / Кривая»).
 

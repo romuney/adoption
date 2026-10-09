@@ -1308,10 +1308,10 @@ function buildCSS() {
     P + '-ct-wrap{overflow-x:auto;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell{opacity:.2;transition:opacity .1s;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell.band-hit{opacity:1;box-shadow:inset 0 0 0 1px rgba(31,31,31,.35);}',
-    P + '-cttable{border-collapse:separate;border-spacing:2px;width:100%;font-size:var(--fs-body);table-layout:fixed;}',
-    // кривая над таблицей: слева подпись в ширину колонок «Когорта» + «Пришло» (2 + 64 + 2 + 112 + 2), справа — колонки возрастов
-    P + '-ct-cv{display:flex;flex:0 0 auto;margin:0 2px 4px 0;}',
-    P + '-cv-l{flex:0 0 182px;display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px 8px 4px;box-sizing:border-box;font-size:var(--fs-cap);color:var(--muted);line-height:1.35;}',
+    P + '-cttable{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--fs-body);table-layout:fixed;}',
+    // кривая над таблицей: слева подпись в ширину колонок «Когорта» + «Пришло» (64 + 112), справа — колонки возрастов
+    P + '-ct-cv{display:flex;flex:0 0 auto;margin:0 0 4px;}',
+    P + '-cv-l{flex:0 0 176px;display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px 8px 4px;box-sizing:border-box;font-size:var(--fs-cap);color:var(--muted);line-height:1.35;}',
     P + '-cv-l b{font-size:var(--fs-body);font-weight:400;color:var(--ink2);}',
     P + '-cv-l .on{color:var(--ink);font-weight:700;}',
     P + '-cv-k{display:inline-block;width:14px;height:0;border-top:2px solid ' + CFG.colors.act + ';vertical-align:middle;margin-right:6px;}',
@@ -1326,6 +1326,10 @@ function buildCSS() {
     P + '-cv-pin{color:var(--ink);}',
     P + '-ct-wrap tbody tr:hover td.txt{font-weight:700;}',
     P + '-cttable th,' + P + '-cttable td{border:0;white-space:nowrap;}',
+    // ячейки стыкуются без зазора (border-spacing 0): в зазоре курсор был «ни над одной строкой» —
+    // подсветка, линия на кривой и подсказка мигали при проходе по таблице (видео владельца 09.10). Видимый промежуток
+    // 2 px — прозрачная рамка ячейки (фон — внутри неё), а рамка — часть строки.
+    P + '-cttable th,' + P + '-cttable tbody td{border:1px solid transparent;background-clip:padding-box;}',
     P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:center;padding:4px 2px;}',
     P + '-cttable th.txt{text-align:left;padding-left:4px;}',
     P + '-ct-med{display:block;font-size:9.5px;font-weight:400;color:var(--muted2);margin-top:1px;}',
@@ -2575,7 +2579,7 @@ function cohortTableHtml(o) {
 }
 
 // Кривая над таблицей когорт: x — центры колонок +1…+maxAge (таблица fixed: 64 + 112 px слева, остальные поровну,
-// border-spacing 2), y — доля когорты. Средняя — как retCurveSvg (числители и знаменатели складываются); линии строк
+// border-spacing 0 — промежутки рисует прозрачная рамка ячейки), y — доля когорты. Средняя — как retCurveSvg (числители и знаменатели складываются); линии строк
 // скрыты, наведение на строку таблицы показывает свою (cohRowOn, без render()). Точки и подписи — HTML поверх SVG:
 // SVG тянется без сохранения пропорций (preserveAspectRatio none), круги и текст в нём сплющились бы.
 // закреплённая кликом когорта (state.cohPin = 'ГГГГ-М') — её линия на кривой этим цветом, наведённая — чёрная

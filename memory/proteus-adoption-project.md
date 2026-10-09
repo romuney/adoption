@@ -185,3 +185,9 @@ Helicopter-нода (id 844437) → Greenplum-стейджинг → витри�
   с id 803089/803049/803057, поля null): «верно» или «замените 288 на N». Каркас kit/sbx (меню 53, без ряда шапки):
   окно 950 → ряд 662, 820/700 → 560, сниппет там советует 165 (= 141 + 24) — сходится с оценкой. Виджеты не трогали:
   корни pa-reports-body / pa-one уже 100 % + flex + ResizeObserver. Открыто: как выглядят графики панели на низком ряду.
+- 2026-10-09: ВЕРСИЯ — бой Superset 2.1.0. Главы playbook про CSS борда и песочницу (08, 10, kit/sbx, board-check) ещё
+  называют разметку «2.0.1» — проходка 09.10 перевела на 2.1.0 только путь SQL (02, 13). Сверено по исходникам
+  apache/superset 2.0.1 и 2.1.0 (ChartHolder, ResizableContainer, DashboardBuilder, Row, Chart): классы
+  .resizable-container, .dashboard--editing, .dashboard-chart-id-N, .grid-container, .chart-slice/.slice_container и поля
+  сетки (24 сверху/снизу, 32 справа) — одинаковые; в 2.1.0 стили переехали в emotion, классы те же. Правило высоты ряда
+  и оценка 288 от версии не зависят.

@@ -170,7 +170,11 @@ var CFG = {
     stackGap: 26,             // зазор между панелями графика (STACK_GAP)
     barGap: 8, barMax: 72, barMin: 3,   // бар: зазор px и клампы ширины
     dense: 16,                // больше N бакетов — плотная сетка
-    headroom: 1.3, headroomDense: 1.22   // воздух над марками под подписи
+    headroom: 1.3, headroomDense: 1.22,  // воздух над марками под подписи
+    // Ряд «каталог | панель» ноутбука (MacBook, разведка №2: окно 1629×806 → ряд 653) — ПОТОЛОК вкладок «Календарь»,
+    // «Путь ЦА», «Закрепляемость» (владелец 2026-10-09): до него они тянутся на всю панель, выше — остаются в этом
+    // размере (пусто внизу), ниже — ужимаются. Механика — --ovr: лишняя высота ряда уходит в нижний отступ тела вкладки.
+    refRow: 653
   },
   // Поимённый список: строк на странице; людей внутри раскрытой группы —
   // первые subShow, по «ещё» — до subMax. В ответе датасета — ВСЕ зрители области
@@ -1285,7 +1289,13 @@ function buildCSS() {
     // ── Закрепляемость (порт pa-cohorts) ──
     // большой экран (владелец 09.10): всё сверху с обычными отступами, график растёт до разумного предела, ниже — пусто
     // (по центру блоки «висели в воздухе»)
-    P + '-panel-b.coh-wrap{overflow:auto;}',
+    P + '-panel-b.coh-wrap{overflow:auto;display:flex;flex-direction:column;}',
+    P + '-panel-b.coh-wrap > *{flex:0 0 auto;}',
+    // таблица когорт тянется на высоту вкладки (строки делят её поровну; потолок строки — инлайн max-height обёртки)
+    P + '-panel-b.coh-wrap > ' + P + '-ct-wrap{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
+    P + '-ct-wrap > ' + P + '-cttable{flex:1 1 auto;}',
+    // потолок «размер ноутбука»: лишняя высота ряда сверх CFG.spacing.refRow — пустым отступом внизу (переменная --ovr у overlay)
+    P + '-panel-b.coh-wrap,' + P + '-panel-b.path-wrap,' + P + '-panel-b.cal-wrap{padding-bottom:calc(14px + var(--ovr, 0px));}',
     P + '-ct-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;row-gap:8px;padding-bottom:12px;}',
     P + '-ct-scale-wrap{display:flex;align-items:center;gap:8px;flex:0 0 auto;}',
     P + '-ct-end{font-size:var(--fs-cap);color:var(--muted2);font-weight:400;}',
@@ -1338,7 +1348,7 @@ function buildCSS() {
     P + '-who-mode-l{font-size:var(--fs-note);color:var(--muted);}',
     // Календарь посещений: месяцы — отдельными мини-календарями (Пн…Вс × недели), чтобы не слипались.
     P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:10px;}',
-    P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}',
+    P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}',   // воздух до месяцев (было впритык, 09.10)
     P + '-cal-chips{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap;}',
     P + '-cal-chip{border:1px solid var(--line2);border-radius:8px;padding:5px 10px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
     P + '-cal-chip b{display:block;color:var(--ink);font-size:var(--fs-lead);font-weight:700;font-variant-numeric:tabular-nums;}',
@@ -1346,12 +1356,12 @@ function buildCSS() {
     // между месяцами и от краёв чарта (space-evenly), на узкой сжимаются до 130 px (отступ 20 px — и между, и у краёв: gap + padding); уже этого — горизонтальная прокрутка ряда.
     // Месяцы забирают всю высоту вкладки: 6 строк недель у каждого (ровные ряды), клетка — от 20 px до потолка
     // сетки; дни недели — одной строкой кубиков под ними.
-    // месяцы растут с высотой панели, но не выше ~370 px (клетка ≈ 50 px) — дальше дни недели идут сразу под ними, пусто — внизу
-    P + '-cal-months{display:flex;flex:1 1 auto;max-height:370px;flex-wrap:nowrap;justify-content:space-evenly;gap:0 24px;padding:0 12px;box-sizing:border-box;}',
+    // месяцы растут с высотой панели до размера ноутбука (refRow), выше — пусто внизу (--ovr)
+    P + '-cal-months{display:flex;flex:1 1 auto;flex-wrap:nowrap;justify-content:space-evenly;gap:0 24px;padding:0 12px;box-sizing:border-box;}',
     P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:330px;display:flex;flex-direction:column;}',
     P + '-cal-mt{font-size:var(--fs-body);font-weight:400;color:var(--ink2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-cal-mt span{color:var(--muted);font-weight:400;}',
-    P + '-cal-g{flex:1 1 auto;max-height:340px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(6,minmax(20px,1fr));gap:3px;}',
+    P + '-cal-g{flex:1 1 auto;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(6,minmax(20px,1fr));gap:3px;}',
     P + '-cal-wd{font-size:var(--fs-cap);color:var(--muted);text-align:center;letter-spacing:.3px;padding-bottom:2px;}',
     P + '-cal-wd.we{color:var(--muted2);}',
     P + '-cal-c{min-height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;}',
@@ -2494,7 +2504,8 @@ function cohortTableHtml(o) {
   h += '</div><span class="' + CFG.ns + '-ct-cfg-n"' +
     tip({ text: 'Края шкалы — максимальные отклонения в этой таблице: вниз ' + MINUS + nf(spanDn, 0) + ' п.п., вверх +' + nf(spanUp, 0) + ' п.п. Крайняя ступень всегда подсвечивает самую далёкую ячейку.' }) +
     '>края ' + MINUS + nf(spanDn, 0) + ' / +' + nf(spanUp, 0) + ' п.п.</span></div></div>';
-  h += '<div class="' + CFG.ns + '-ct-wrap"><table class="' + CFG.ns + '-cttable"><colgroup>' +
+  // таблица тянется на высоту вкладки, но строка — не выше 46 px (при трёх когортах не превращается в плакат)
+  h += '<div class="' + CFG.ns + '-ct-wrap" style="max-height:' + (44 + rows.length * 46) + 'px"><table class="' + CFG.ns + '-cttable"><colgroup>' +
     '<col style="width:64px"><col style="width:112px">';
   for (a = 0; a < maxAge; a++) h += '<col>';
   h += '</colgroup><thead><tr>' +
@@ -2909,10 +2920,10 @@ function caCardHtml() {
 // Воронка (порт U.funnelSvg макета): центрированные бары сверху вниз, ширина ровно
 // пропорциональна значению (масштаб — по самому большому этапу), название НАД баром,
 // число слева, конверсия с предыдущего этапа справа, между барами — диагонали.
-// Высота ступени — не больше FN_ROW (растянутая на всю панель воронка читается как фон), а на низкой панели
+// Высота ступени — до FN_ROW (воронка тянется на вкладку до размера ноутбука, refRow; бар — не толще FN_BAR_MAX), а на низкой панели
 // воронка ужимается до FN_H — остатка вкладки под карточкой ЦА и подписями (меряется после монтажа, syncFnH),
 // но не ниже FN_ROW_MIN на ступень: ниже подпись налезает на бар.
-var FN_ROW = 74, FN_ROW_MIN = 36, FN_MAX_BAR = 460;
+var FN_ROW = 130, FN_ROW_MIN = 36, FN_MAX_BAR = 560, FN_BAR_MAX = 54;   // 74 / 460 → на всю панель ноутбука (09.10)
 var FN_H = state.fnH || 0;
 // Права в данных неполные: людей ЦА, открывших отчёты, больше, чем людей ЦА с правом (поимённо / AD-группа) —
 // значит, доступ выдан и иначе (роль Proteus и т. п.), ступень «Есть доступ» занижена (скрин владельца 2026-10-07).
@@ -2937,7 +2948,7 @@ function funnelSvg(steps, w) {
   var W = wide(), body = '';
   for (i = 0; i < n; i++) {
     var st = steps[i], y = i * rowH + 16;
-    var bh = Math.max(12, Math.min(FN_ROW - 26, rowH - 24));
+    var bh = Math.max(12, Math.min(FN_BAR_MAX, rowH - 24));
     var bw = st.value / max * maxBar;
     var prev = i > 0 ? steps[i - 1].value : null;
     var conv = prev != null ? (prev ? st.value / prev * 100 : 0) : null;
@@ -3740,6 +3751,13 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       FN_H = avail; state.fnH = avail;
       return true;
     }
+    // Лишняя высота ряда сверх ноутбука → --ovr (нижний отступ вкладок календаря, пути ЦА, закрепляемости).
+    function syncOvr() {
+      var o = Math.max(0, Math.round(overlay.clientHeight - CFG.spacing.refRow));
+      if (o === state.ovr && overlay.style.getPropertyValue('--ovr')) return false;
+      overlay.style.setProperty('--ovr', o + 'px'); state.ovr = o;
+      return true;
+    }
     function syncSvgWidth() {
       var svgs = overlay.querySelectorAll('svg[data-dyn-svg]');
       if (!svgs.length) return false;
@@ -3808,6 +3826,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var scr = overlay.firstChild ? scrSnap() : state.scr;
       ANIM = MODEL.sig !== state.animSig;     // новые данные → анимация только в этом рендере
       state.animSig = MODEL.sig;
+      syncOvr();
       overlay.innerHTML = buildHTML();
       var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch3 = syncCohH(), ch4 = syncFnH();
       if (ch1 || ch2 || ch3 || ch4) overlay.innerHTML = buildHTML();
@@ -4390,7 +4409,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     if (state.onTourRs) window.removeEventListener('resize', state.onTourRs);
     state.onTourRs = function () { if (state.tour) tourPos(true); };
     window.addEventListener('resize', state.onTourRs);
-    state.onWinResize = function () { var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(), fh = syncFnH(); if (w || hh || ch || fh) render(); if (state.tip) renderTip(); };
+    state.onWinResize = function () { syncOvr(); var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(), fh = syncFnH(); if (w || hh || ch || fh) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 
     // Сверка фильтров: плашка «Пересчитываем…/повторяю запрос», источник людской шины отвечает на «повтори».
@@ -4415,6 +4434,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         // реальной смене размеров графиков — без цикла render ↔ observer.
         if (state.roT) clearTimeout(state.roT);
         state.roT = setTimeout(function () {
+          syncOvr();
           var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(), fh = syncFnH();
           if (w || hh || ch || fh) render();
         }, 150);

@@ -7,7 +7,7 @@
 боевая система правится владельцем руками в UI Proteus по инструкциям из папок
 поставки.
 
-Общий гайд по бордам Proteus — romuney/TeamPulse, ветка claude/proteus-playbook, папка proteus-playbook/: SKILL.md — вход.
+Общий гайд по бордам Proteus — romuney/TeamPulse (main), папка proteus-playbook/: SKILL.md — вход.
 
 **Начни с `CONTEXT.md`** — полный контекст проекта на 2026-09-22 (§0 — v7): живой статус,
 архитектура, вердикты, грабли платформы и ClickHouse, правила владельца,

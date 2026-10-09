@@ -1229,6 +1229,7 @@ function buildCSS() {
     P + '-dynhead{display:flex;align-items:center;gap:12px;min-height:24px;flex-wrap:wrap;row-gap:4px;}',
     P + '-cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:400;}',
     P + '-legend{display:inline-flex;gap:4px;margin-left:auto;flex-wrap:wrap;}',
+    P + '-panel-h > ' + P + '-legend{flex:0 0 auto;flex-wrap:nowrap;font-weight:400;}',   // в заголовке карточки «Динамика»
     P + '-leg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--card);border-radius:999px;',
     '  padding:3px 10px 3px 8px;font-size:var(--fs-note);color:var(--ink2);cursor:pointer;font-family:inherit;font-weight:400;}',
     P + '-leg i{width:10px;height:9px;border-radius:3px;display:inline-block;}',
@@ -2741,7 +2742,7 @@ function buildHTML() {
       (isCa() ? segStripHtml() : freqStripHtml(busList())) + '<div class="' + N + '-list-zone">' + listZoneHtml() + '</div>';
     bodyCls = 'tbl-wrap'; title = 'Кто смотрит';
   } else if (view === 'dyn') {
-    body = dynamicsHtml(MODEL.ts, MODEL.grain, {});
+    body = dynamicsHtml(MODEL.ts, MODEL.grain);
     bodyCls = 'dyn-wrap'; title = 'Динамика';
   } else if (view === 'cal') {
     body = calendarHtml();
@@ -2772,9 +2773,10 @@ function buildHTML() {
       '</span>' +
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
-        : (view === 'dyn' ? 'клик по строке каталога выбирает отчёты'
+        : (view === 'dyn' ? 'пользователи по периодам · клик по строке каталога выбирает отчёты'
           : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке'
             : (view === 'path' ? 'кого считаем аудиторией и как она доходит до отчётов' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
+    (view === 'dyn' ? dynLegendHtml(MODEL.ts, MODEL.grain, {}) : '') +
     '</div>');
   h.push('<div class="' + N + '-panel-b ' + bodyCls + '">' + body + '</div>');
   h.push('</div>');
@@ -3203,9 +3205,11 @@ function histNote(all, short) {
 }
 
 // Динамика целиком: две панели, каждая со своим HTML-заголовком.
-function dynamicsHtml(ts, grain, opts) {
+// Легенда ступеней стека — в заголовке карточки «Динамика» справа (2026-10-09, владелец: вторая строка заголовка
+// «Пользователи по периодам» съедала место у графика; подпись ушла в подзаголовок карточки).
+function dynLegendHtml(ts, grain, opts) {
   var o = opts || {};
-  if (!ts.length) return '<div class="' + CFG.ns + '-tbl-note">Динамики за этот период в данных нет.</div>';
+  if (!ts.length) return '';
   var C = CFG.colors, off = state.legendOff;
   var newLabel = o.newLabel || 'Новые';
   var leg = [
@@ -3213,8 +3217,7 @@ function dynamicsHtml(ts, grain, opts) {
     { k: 'react', l: 'Вернувшиеся', c: C.react },
     { k: 'ret', l: 'Продолжающие', c: C.ret }
   ];
-  var h = '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">Пользователи по периодам</span>' +
-    '<div class="' + CFG.ns + '-legend" role="group" aria-label="Ступени стека">';
+  var h = '<div class="' + CFG.ns + '-legend" role="group" aria-label="Ступени стека">';
   // Определения — как в SQL pa_people (new_u / react_u): новый — первый заход в историю
   // (≈ год), вернувшийся — был раньше, но пропустил паузу (7 дней на днях, период на прочих),
   // продолжающий — остальные активные периода.
@@ -3237,8 +3240,11 @@ function dynamicsHtml(ts, grain, opts) {
   for (i = 0; i < ts.length; i++) if (ts[i].nohist) nh++;
   if (nh) h += '<span class="' + CFG.ns + '-leg ' + CFG.ns + '-leg-nh"' + tip({ title: 'Мало истории', text: histNote(nh === ts.length) }) + '>' +
     '<i style="background:' + CFG.colors.nohist + '"></i>Мало истории</span>';
-  h += '</div></div>';
-  h += usersChartSvg(ts, grain);
+  return h + '</div>';
+}
+function dynamicsHtml(ts, grain) {
+  if (!ts.length) return '<div class="' + CFG.ns + '-tbl-note">Динамики за этот период в данных нет.</div>';
+  var h = usersChartSvg(ts, grain);
   // Охват ЦА: «% от ЦА N» — в заголовке, пояснение линий — в подсказке (отдельная строка делала вкладку выше → прокрутка)
   var tc0 = caTotals(), gu0 = CFG.grains[grain] ? CFG.grains[grain].unit : 'периоде';
   h += '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap"' + (state.viewsMode === 'cov' ? tip({ title: 'Охват целевой аудитории',
@@ -3576,7 +3582,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var avail = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
       for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
-      avail -= CFG.spacing.stackGap * 3;
+      // зазоры flex-колонки — по факту (детей − 1) × gap: строка «Пользователи по периодам» ушла в заголовок (09.10)
+      avail -= Math.max(0, body.children.length - 1) * (parseFloat(cs.rowGap) || CFG.spacing.stackGap);
       avail = Math.max(200, Math.floor(avail));   // нижний порог графиков (360 → 300 → 200, 2026-10-09: ноутбук — без прокрутки)
       // допуск 4 px — только на рост: не хватает хоть пикселя — ужимаем (иначе полоса прокрутки)
       if (avail >= DYN_H && avail - DYN_H <= 4) return false;

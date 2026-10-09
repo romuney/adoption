@@ -1031,6 +1031,8 @@ function buildCSS() {
     P + '-who-bar ' + P + '-psearch input{width:170px;height:30px;}',
     P + '-who-bar ' + P + '-ibtn{width:30px;height:30px;}',
     P + '-who-tbl{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
+    // таблицы «Кто смотрит» не шире 1100: на широком экране от ФИО до сегмента было 1300–2600 px (ревью 09.10)
+    P + '-who-tbl ' + P + '-ptable{max-width:1100px;}',
     P + '-who-cnt b{color:var(--ink2);font-weight:400;}',
     P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:400;cursor:help;}',
 
@@ -1362,6 +1364,10 @@ function buildCSS() {
     P + '-sig-chip.dead{background:#f0f1f3;color:var(--muted);}',
     P + '-segstrip.ca ' + P + '-seg-part.never .sp-bar{background:repeating-linear-gradient(135deg,#dfe3e8 0 4px,#eef0f3 4px 8px)!important;}',
     P + '-panel-b.path-wrap{overflow:auto;display:flex;flex-direction:column;gap:12px;}',
+    // (после базового правила — иначе оно перебивает) широкая панель: карточка ЦА слева от воронки (воронка 560 px посередине 1500+ px пустоты, ревью 09.10)
+    '@media (min-width:1280px){' + P + '-panel-b.path-wrap{flex-direction:row;align-items:flex-start;gap:28px;}' +
+      P + '-panel-b.path-wrap > ' + P + '-scopebar{flex:0 0 380px;grid-template-columns:minmax(0,1fr);}' +
+      P + '-panel-b.path-wrap > ' + P + '-fn-box{flex:1 1 auto;min-width:0;}}',
     P + '-aud-sum{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:var(--fs-note);color:var(--muted);margin:2px 0 8px;}',
     P + '-aud-sum b{color:var(--ink);font-weight:700;}',
     P + '-aud-sum button{margin-left:auto;}',
@@ -1372,7 +1378,8 @@ function buildCSS() {
     P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:10px;}',
     P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}',   // воздух до календаря (было впритык, 09.10)
     P + '-cal-main{display:flex;flex:1 1 auto;min-height:0;gap:24px;}',
-    P + '-cal-left{flex:1 1 580px;min-width:0;display:flex;flex-direction:column;gap:12px;}',
+    // лента не шире 800 (клетка ≤ ~100 px: на широком экране клетки вытягивались в полоски 150–380 × 35, ревью 09.10)
+    P + '-cal-left{flex:1 1 580px;max-width:800px;min-width:0;display:flex;flex-direction:column;gap:12px;}',
     P + '-cal-rib{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:72px repeat(7,minmax(0,1fr));gap:3px;}',
     // подпись месяца — в своей строке недели: на низкой ленте среднее «в день» обрезается, название остаётся
     P + '-cal-ml{display:flex;flex-direction:column;padding-top:3px;font-size:var(--fs-cap);color:var(--muted);line-height:1.3;min-width:0;min-height:0;overflow:hidden;white-space:nowrap;}',
@@ -1403,7 +1410,7 @@ function buildCSS() {
     P + '-cal-wb .d{font-size:var(--fs-cap);color:var(--muted);line-height:1.3;margin-top:3px;font-variant-numeric:tabular-nums;}',
     P + '-cal-wb:hover .col i{filter:brightness(.9);}',
     // лента забирает лишнюю ширину, правая колонка — своя (раньше лента ≤ 580: на широкой панели справа было пусто, 09.10)
-    P + '-cal-side{flex:0 1 340px;min-width:220px;display:flex;flex-direction:column;gap:8px;}',
+    P + '-cal-side{flex:1 1 340px;min-width:220px;display:flex;flex-direction:column;gap:8px;}',
     '@media (max-width:760px){' + P + '-cal-main{flex-direction:column;}' + P + '-cal-side{max-width:none;}}',
     P + '-cal-chip{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border:1px solid var(--line2);border-radius:8px;padding:8px 12px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
     P + '-cal-chip b{color:var(--ink);font-size:var(--fs-lead);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}',
@@ -3779,6 +3786,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       // занято = блоки + зазоры, без автоотступов, которыми воронка встаёт посередине (иначе она не росла бы обратно)
       var used = (kids.length - 1) * (parseFloat(cs.rowGap) || 0);
       for (var ki = 0; ki < kids.length; ki++) used += kids[ki].getBoundingClientRect().height;
+      // широкая панель: карточка ЦА слева (flex-row) — по высоте мешает только сама колонка воронки
+      if (cs.flexDirection === 'row') { var fb = svg.closest('.' + CFG.ns + '-fn-box'); used = fb ? fb.getBoundingClientRect().height : used; }
       var avail = Math.floor(inner - (used - svg.getBoundingClientRect().height)) - 2;
       if (avail >= FN_H && avail - FN_H <= 4) return false;
       FN_H = avail; state.fnH = avail;

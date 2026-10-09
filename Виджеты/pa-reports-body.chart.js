@@ -776,7 +776,8 @@ function buildCSS() {
     P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
     P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:400;color:var(--ink);white-space:normal;min-width:0;}',
     // Таблица отчётов: ширины колонок заданы colgroup, ячейки не раздвигают таблицу; длинное название переносится.
-    P + '-ptable.fix{table-layout:fixed;}',
+    // таблица отчётов не шире 720 (название ≤ ~440): на широком экране от названия до «Польз.» было 700–1700 px (ревью 09.10)
+    P + '-ptable.fix{table-layout:fixed;max-width:720px;}',
     P + '-ptable.fix th,' + P + '-ptable.fix td{padding-left:4px;padding-right:6px;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.fix th.txt,' + P + '-ptable.fix td.txt{padding-left:12px;overflow-wrap:anywhere;}',
     // стрелка сортировки висит слева от подписи и места в колонке не занимает (2026-10-09: 12 px резерва в каждой

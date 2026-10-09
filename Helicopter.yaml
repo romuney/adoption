@@ -1,0 +1,202 @@
+title: Proteus Adoption
+paragraphs:
+  - title: Description
+    shebang: md
+    code: |
+      Добавь описание источника данных, который строит ноутбук
+
+      #### Sources
+
+      #### Target
+
+      #### Jira Links
+    isEnabled: true
+  - sid: 019da0df-b237-75aa-a349-06fed5882de2
+    title: Actuality
+    shebang: python_condition
+    code: |
+      tf.tables_wait([
+          'prod_sse.proteus_users',
+          'prod_sse.proteus_dashboards',
+          'prod_sse.proteus_logs',
+          'prod_sse.proteus_collection_dashboard',
+          'prod_v_sse_crossdata.mdm_employee_d',
+          'prod_v_sse_crossdata.event_physical_report'
+          ], gp_service='cross'
+      )
+    isEnabled: false
+    color: "#B074CC"
+  - sid: 019fc3ea-ee77-7360-890b-bdb564ec8b70
+    title: Untitled 3
+    shebang: python_condition
+    code: |-
+      tf.tables_wait([
+          'prod_v_sse_crossdata.mdm_employee_d',
+          'prod_v_sse_crossdata.event_physical_report'
+          ], gp_service='cross'
+      )
+    isEnabled: true
+  - sid: 019f3905-8e64-708e-b6c2-facbfcf525d1
+    title: Собираем логи
+    shebang: gp
+    code: "drop table if exists superset_proteus_logs;\ncreate table superset_proteus_logs as\n\nselect\n    l.log_dttm,\n    l.action,\n    l.json,\n    l.user_id,\n    u.username,\n    u.created_on as user_registration_date,\n    l.dashboard_id,\n    d.dashboard_title,\n    d.published,\n    l.system as system_nm,\n    count(l.log_id) as action_count\nfrom prod_v_sse.proteus_logs as l\nleft join prod_v_sse.proteus_users as u \n    on u.user_id = l.user_id \nleft join prod_v_sse.proteus_dashboards as d \n    on d.dashboard_id = l.dashboard_id \nwhere 1=1\n    and l.action = 'DashboardRestApi.get'\n    and l.log_dttm between current_date - interval '13 month' \n        and current_date\ngroup by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10;"
+    isEnabled: true
+  - sid: 019aa659-f8c6-7b2c-993c-6c0612c39bec
+    title: Массив коллекций
+    shebang: gp
+    code: |-
+      drop table if exists collection_array;
+      create table collection_array as
+
+      SELECT
+          dashboard_id,
+          array_agg(DISTINCT collection_name) AS collection_names
+      FROM (
+          -- Дочерняя коллекция (всегда)
+          SELECT
+              cd.dashboard_id,
+              cd.collection_name
+          FROM
+              prod_v_sse.proteus_collection_dashboard cd
+          WHERE
+              cd.date = CURRENT_DATE - INTERVAL '1 day'
+
+          UNION ALL
+
+          -- Родительская коллекция (если есть)
+          SELECT
+              cd.dashboard_id,
+              ce.parent_collection_name AS collection_name
+          FROM
+              prod_v_sse.proteus_collection_dashboard cd
+              INNER JOIN prod_v_sse.proteus_collection_enclosure ce
+                  ON cd.collection_id = ce.child_collection_id
+          WHERE
+              cd.date = CURRENT_DATE - INTERVAL '1 day'
+              AND ce.parent_collection_name IS NOT NULL
+      ) AS all_collection_names
+      GROUP BY
+          dashboard_id;
+    isEnabled: true
+  - sid: 019aa663-8e05-7a42-b7e6-bd1a66e6f306
+    title: Фильтр коллекицй
+    shebang: gp
+    code: |-
+      drop table if exists collections_filter;
+      create table collections_filter as
+
+      select distinct
+          unnest(collection_names) as collection_nm
+      from collection_array;
+    isEnabled: true
+  - sid: 019e8db5-9392-7917-adc9-66a551380a79
+    title: Пользователи
+    shebang: gp
+    code: "drop table if exists superset_proteus_users;\ncreate table superset_proteus_users as\n\nselect \n    user_id\n    ,system\n    , first_name\n    , last_name\n    , username\n    , active\n    , email\n    , created_on\nfrom prod_v_sse.proteus_users"
+    isEnabled: true
+  - sid: 019e8db5-9392-794a-895d-d44cbd8fd743
+    title: Владельцы
+    shebang: gp
+    code: "drop table if exists proteus_dashboards_owners;\ncreate table proteus_dashboards_owners as\nselect \n    o.dashboard_id\n   , string_agg(u.username, ',') as owners_string\nfrom prod_v_sse.proteus_dashboard_owner o\nleft join superset_proteus_users u \n    on o.user_id=u.user_id\nwhere\nactual_flg = 1\ngroup by\no.dashboard_id"
+    isEnabled: true
+  - sid: 019d96f5-1280-70b4-bc05-72c853bd32c1
+    title: Дашборды
+    shebang: gp
+    code: "drop table if exists proteus_dashboards;\ncreate table proteus_dashboards as\nwith dashboard_access_groups as (\n    select \n        dashboard_id,\n        array_agg(user_or_group_name order by user_or_group_name) as ad_groups\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'group'\n    group by dashboard_id\n),\ndashboard_access_users as (\n    select \n        dashboard_id,\n        array_agg(user_or_group_name order by user_or_group_name) as allowed_logins\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'user'\n    group by dashboard_id\n)\nselect \n    d.dashboard_id\n    ,d.system as system_nm\n    ,d.created_on\n    ,d.dashboard_title as dashboard_nm\n    ,d.created_by_fk as owner_id\n    ,d.published\n    ,coalesce(d.actual_flg,0) as actual_flg\n    ,d.slug\n    ,d.certified_by\n    ,u.username as owner_login\n    , pd.owners_string\n    ,dag.ad_groups as ad_groups_dash\n    ,dau.allowed_logins\n    ,case when (dense_rank() over(partition by /*system_nm,*/ d.actual_flg, d.published, d.created_by_fk order by d.created_on))=1 then 1 else 0 end as first_flg -- первое создание овнером отчёта\nfrom prod_v_sse.proteus_dashboards d\nleft join prod_v_sse.proteus_users u /*PROTEUS-781*/\n    on d.created_by_fk=u.user_id\n    and u.system=d.system\nleft join proteus_dashboards_owners pd\non pd.dashboard_id = d.dashboard_id\nleft join dashboard_access_groups dag\non dag.dashboard_id = d.dashboard_id\nleft join dashboard_access_users dau\non dau.dashboard_id = d.dashboard_id"
+    isEnabled: true
+  - sid: 019e8db5-9392-7959-abaf-1ccdad5ff7e4
+    title: Просмотры
+    shebang: gp
+    code: "drop table if exists superset_proteus_views_restapi;\ncreate table superset_proteus_views_restapi as\n\n/*в логах dashboard_id заполняется не всегда, поэтому парсим json и достаем оттуда id или короткое название (slug)*/\nwith pre as\n\n(\nselect \n    l.log_dttm\n    ,l.action\n    ,l.json\n    ,l.user_id \n    ,l.username\n    ,l.user_registration_date\n    ,l.dashboard_id \n    ,l.dashboard_title\n    ,l.published\n    ,l.system_nm \n    ,l.action_count\n    ,case when l.dashboard_id is null then l.json ::json->>'id_or_slug' end as event\n    from superset_proteus_logs l\nwhere 1=1\n    and action = 'DashboardRestApi.get'\n),\ndash_api as\n(\nselect pre.log_dttm\n    ,pre.action\n    ,pre.json\n    ,pre.user_id \n    ,pre.username\n    ,pre.user_registration_date\n    ,pre.dashboard_id \n    ,pre.dashboard_title\n    ,pre.published\n    ,pre.system_nm \n    ,pre.action_count\n    ,pre.event\n    ,case when pre.event ~ '^[0-9]*.?[0-9]*$' then pre.event ::int end AS id_dash /*если в поле id or slug в json цифры, это dashboard_id, иначе slug (название для короткого url)*/\nfrom pre\n),\ndash_slug as\n(\nselect \n    a.log_dttm\n    ,a.action\n    ,a.json\n    ,a.user_id \n    ,a.username\n    ,a.user_registration_date\n    ,a.dashboard_id \n    ,a.dashboard_title\n    ,a.published\n    ,a.system_nm \n    ,a.action_count\n    ,a.event\n    ,a.id_dash\n    ,coalesce(a.dashboard_id  ::int, d.dashboard_id ::int) as dashboard_id_new\n    ,d.dashboard_nm  \n    ,case when a.id_dash is null then a.event end as slug_dash\nfrom dash_api a\nleft join proteus_dashboards d\n    on a.id_dash=d.dashboard_id ::int\n    and a.system_nm=d.system_nm\n--left join superset_proteus_users u\n--    on a.user_id=u.user_id\n\n)\nselect distinct\n    s.log_dttm\n    ,s.action\n    ,s.json\n    ,s.user_id\n    ,s.username as login\n    ,coalesce(s.dashboard_id_new  ::int, d.dashboard_id  ::int) as dashboard_id\n    ,coalesce(s.dashboard_title, s.dashboard_nm, d.dashboard_nm) as dashboard_nm\n --   ,d.created_by_fk as owner_id\n--    ,u.username as owner_login\n--    ,d.created_on as created_dt\n    ,s.system_nm\n    ,s.action_count\n\nfrom dash_slug s\nleft join proteus_dashboards d\n--prod_v_sse.proteus_dashboards d\n    on s.slug_dash=d.slug\n    and d.system_nm=s.system_nm\n--    and d.system='superset'\n"
+    isEnabled: true
+  - sid: 019d96e1-0cf1-7823-9048-39ba819221c4
+    title: Витрина ad_login и ad_group
+    shebang: gp
+    code: "drop table if exists ad_login_groups;\ncreate table ad_login_groups as\n\nwith allowed_groups as (\n    select distinct user_or_group_name as ad_group\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'group'\n),\nad_items as (\n    select \n        guid,\n        account_name,\n        item_type\n    from prod_v_chrono_idm_tadam.ad_items_records_public\n    where is_deleted = false\n      and item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity', 'Person')\n),\nad_relations as (\n    select \n        child.account_name  as ad_login,\n        parent.account_name as ad_group\n    from prod_v_chrono_idm_tadam.ad_item_parent_relations_public aipr\n    inner join ad_items parent on aipr.parent = parent.guid\n    inner join ad_items child  on aipr.item   = child.guid\n    inner join allowed_groups ag on ag.ad_group = parent.account_name\n    where child.item_type = 'Person'\n      and parent.item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity')\n)\nselect \n    ad_login,\n    array_agg(distinct ad_group order by ad_group) as ad_groups\nfrom ad_relations\ngroup by ad_login;\n"
+    isEnabled: true
+  - sid: 019d96e6-dd17-779b-8ddd-3b613d8d57f6
+    title: HR атрибуты
+    shebang: gp
+    code: "drop table if exists mdm_employee_last_state;\ncreate table mdm_employee_last_state as\n\nselect \n     m.mdm_employee_rk\n   , m.ad_login\n   , m.emp_specialization_it_code\n   , m.emp_specialization_oper_code\n   , m.emp_specialization_desc\n   , m.emp_stream_desc\n   , m.company_fire_flg\n   , m.management_head_flg\n   , m.lvl3_mapped_management_unit_nm as lvl3_management_unit_nm\n   , m.lvl4_mapped_management_unit_nm as lvl4_management_unit_nm\n   , m.lvl5_mapped_management_unit_nm as lvl5_management_unit_nm\n   , m.lvl6_mapped_management_unit_nm as lvl6_management_unit_nm\n   , m.lvl7_mapped_management_unit_nm as lvl7_management_unit_nm\n   , su.user_id\n   , tm.current_head_lvl_segment\nfrom prod_v_sse_crossdata.mdm_employee_d m\ninner join superset_proteus_users su\non m.ad_login = su.username\nleft join usr_cross_data.bl_talent_management tm\non tm.mdm_employee_rk = m.mdm_employee_rk\nwhere m.last_state_flg = 1"
+    isEnabled: true
+  - sid: 019b2c3c-b20c-745e-9791-01fb861f67c8
+    title: Дашборды Х Просмотры
+    shebang: gp
+    code: "drop table if exists usr_cross_data.proteus_views;\ncreate table usr_cross_data.proteus_views as\n\n\nSELECT\n     s.log_dttm\n    ,s.action\n    ,s.json\n    ,s.user_id\n    ,s.login\n    ,s.dashboard_id\n    ,s.dashboard_nm\n    ,d.slug\n    ,d.certified_by\n    ,d.owner_id\n    ,d.owner_login\n    ,d.owners_string\n    ,d.created_on as created_dt\n    ,d.ad_groups_dash \n    ,d.allowed_logins\n    ,s.system_nm\n    ,d.published\n    ,coalesce(d.actual_flg,0) as actual_flg\n    , case when s.system_nm='proteus' then 'https://proteus.tcsbank.ru/superset/dashboard/' || s.dashboard_id ::text \n    else 'https://superset.tcsbank.ru/superset/dashboard/' || s.dashboard_id ::text  \n    end as dashboard_url\n    ,s.action_count\n    ,(select max(log_dttm) as max_date from superset_proteus_views_restapi) as max_date\n    ,md.mdm_employee_rk\n    ,md.emp_specialization_it_code\n    ,md.emp_specialization_oper_code\n    ,md.emp_specialization_desc\n    ,md.emp_stream_desc\n    ,md.company_fire_flg\n    ,md.management_head_flg\n    ,md.lvl3_management_unit_nm\n    ,md.lvl4_management_unit_nm\n    ,md.lvl5_management_unit_nm\n    ,md.lvl6_management_unit_nm\n    ,md.lvl7_management_unit_nm\n    , md.current_head_lvl_segment\n    ,ca.collection_names\n    , ag.ad_groups\nfrom superset_proteus_views_restapi s\nleft join proteus_dashboards d\n   on s.dashboard_id=d.dashboard_id\n   and s.system_nm=d.system_nm\nleft join mdm_employee_last_state md\n   on s.user_id = md.user_id\nleft join collection_array ca\n   on s.dashboard_id = ca.dashboard_id\nleft join  ad_login_groups ag\n   on s.login = ag.ad_login\n\nwhere s.system_nm = 'proteus';\n\nselect public.ulabs_actualize('usr_cross_data.proteus_views');\n\n\n\n\n"
+    isEnabled: true
+  - sid: 019daef1-9894-778a-8f76-bbbcadb24753
+    title: CrossData logins
+    shebang: gp
+    code: "drop table if exists ad_items_records;\ncreate table ad_items_records as\nselect guid \n      ,account_name \n      ,item_type\nfrom prod_v_chrono_idm_tadam.ad_items_records_public air \nwhere is_deleted = false \nand item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity','Person');\n\ndrop table if exists cross_data_logins;\ncreate table cross_data_logins as\nselect  \n    child.account_name as ad_logn\nfrom prod_v_chrono_idm_tadam.ad_item_parent_relations_public  aipr \ninner join ad_items_records parent on aipr.parent = parent.guid\ninner join ad_items_records child on aipr.item = child.guid \nwhere parent.account_name = 'helicopter_access_team_pd_cross'\n"
+    isEnabled: true
+  - sid: 019cfb31-e77c-7ccc-beb6-9fa566dc1ed8
+    title: Овнеры для Click
+    shebang: gp
+    code: "drop table if exists proteus_dashboards_owners_dist;\ncreate table proteus_dashboards_owners_dist as\nselect \n    distinct\n    u.username as owner_login_column\nfrom prod_v_sse.proteus_dashboard_owner o\nleft join superset_proteus_users u \n    on o.user_id=u.user_id;\n\ndrop table if exists proteus_dashboards_owners_filter;\ncreate table proteus_dashboards_owners_filter as\nselect \n1 as sort_column,\n'Да' as owner_column\n\nunion all\n\nselect \n2 as sort_column,\n'Нет' as owner_column"
+    isEnabled: true
+    color: "#FDC454"
+  - sid: 019db0a3-e1c1-7e6c-8f37-fd86db3ef012
+    title: Переключатель периодов
+    shebang: gp
+    code: "drop table if exists period_agg;\ncreate table period_agg as\n\nselect \n1 as sort_column,\n'30 дней' as period_column\n\nunion all\n\nselect \n2 as sort_column,\n'20 недель'\n\nunion all\n\nselect \n3 as sort_column,\n'12 месяцев'\n\nunion all\n\nselect \n4 as sort_column,\n'8 кварталов'\n\n"
+    isEnabled: true
+    color: "#FDC454"
+  - sid: 019db0a3-e1c1-7f31-a9e0-b363e597bfcc
+    title: Разрезы
+    shebang: gp
+    code: "drop table if exists proteus_group;\ncreate table proteus_group as\n\nselect \n1 as sort_column,\n'Стрим' as group_column\n\nunion all\n\nselect \n2 as group_column,\n'Специализация'\n\nunion all\n\nselect \n3 as group_column,\n'HQ|nonHQ'\n\nunion all\n\nselect \n4 as group_column,\n'IT|nonIT'\n\nunion all\n\nselect \n5 as group_column,\n'УС-3'\n\nunion all\n\nselect \n6 as group_column,\n'УС-4'\n\nunion all\n\nselect \n7 as group_column,\n'УС-5'\n\nunion all\n\nselect \n8 as group_column,\n'УС-6'\n\nunion all\n\nselect \n9 as group_column,\n'УС-7'\n\nunion all\n\nselect \n10 as group_column,\n'Сегментация (only Cross Data)'\n\n"
+    isEnabled: true
+    color: "#FDC454"
+  - sid: 019d96e3-2d2c-7442-838d-767a442891cd
+    title: Подневная
+    shebang: gp
+    code: "drop table if exists mdm_employee_daily;\ncreate table mdm_employee_daily as\n\nselect \n     m.business_dt\n    ,m.mdm_employee_rk\n   , m.ad_login\n   , m1.emp_specialization_it_code\n   , m1.emp_specialization_oper_code\n   , m1.emp_specialization_desc\n   , m1.emp_stream_desc\n   , m1.company_fire_flg\n   , m1.management_head_flg\n   , m1.lvl3_mapped_management_unit_nm as lvl3_management_unit_nm\n   , m1.lvl4_mapped_management_unit_nm as lvl4_management_unit_nm\n   , m1.lvl5_mapped_management_unit_nm as lvl5_management_unit_nm\n   , m1.lvl6_mapped_management_unit_nm as lvl6_management_unit_nm\n   , m1.lvl7_mapped_management_unit_nm as lvl7_management_unit_nm\n   , m1.active_type_nm\n   , m1.experience_group_nm\n   , tm.current_head_lvl_segment\n   , alg.ad_groups\n   , max(m.business_dt) over () as max_business_dt\nfrom prod_v_sse_crossdata.mdm_employee_d m\nleft join prod_v_sse_crossdata.mdm_employee_d m1\n on m.mdm_employee_rk = m1.mdm_employee_rk\n and m1.last_state_flg= 1 \nleft join usr_cross_data.bl_talent_management tm\non tm.mdm_employee_rk = m.mdm_employee_rk\nleft join ad_login_groups alg\non m.ad_login = alg.ad_login\nwhere m.business_dt >= current_date - interval '180 days'"
+    isEnabled: true
+  - sid: 019dafcb-be4a-777e-ad7d-9b46830e4b46
+    title: Уникальные AD-группы
+    shebang: gp
+    code: "drop table if exists uniq_ad_group;\ncreate table uniq_ad_group as\n\nselect \n        distinct user_or_group_name as ad_group\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'group'"
+    isEnabled: true
+  - sid: 019f6136-2f4f-75fb-b807-a1a275749307
+    title: Финальная таблица из event_physical_report
+    shebang: gp
+    code: "drop table if exists usr_cross_data.proteus_views_1;\ncreate table usr_cross_data.proteus_views_1 as\n\nSELECT\n     date_trunc('day',e.event_dttm) as log_dttm\n    ,e.event_nm as action\n    ,cast(null as varchar) as json\n    ,e.proteus_user_id as user_id\n    ,e.user_ad_login as login\n    ,e.physical_report_id as dashboard_id\n    ,e.physical_report_nm as dashboard_nm\n    ,e.physical_report_slug as slug\n    ,e.certifier_nm as certified_by\n    ,e.creator_id as owner_id\n    ,e.creator_ad_login as owner_login\n    ,e.owner_ad_login_list as owners_string\n    ,e.create_dttm as created_dt\n    ,e.proteus_ad_group_nm_list as ad_groups_dash \n    ,e.viewer_ad_login_list as allowed_logins\n    ,cast(null as varchar) as system_nm\n    ,e.publish_flg as published\n    ,coalesce(e.actual_flg, 0) as actual_flg\n    ,e.physical_report_link as dashboard_url\n    ,count(event_nm) as action_count\n    ,(select max(event_dttm) from prod_v_sse_crossdata.event_physical_report) as max_date\n    ,e.user_mdm_employee_rk as mdm_employee_rk\n    ,e.user_specialization_it_code as emp_specialization_it_code\n    ,e.user_specialization_oper_code as emp_specialization_oper_code\n    ,e.user_specialization_desc as emp_specialization_desc\n    ,e.user_stream_desc as emp_stream_desc\n    ,e.user_company_fire_flg as company_fire_flg\n    ,e.user_management_head_flg as management_head_flg\n    ,e.user_lvl3_mapped_management_unit_nm as lvl3_management_unit_nm\n    ,e.user_lvl4_mapped_management_unit_nm as lvl4_management_unit_nm\n    ,e.user_lvl5_mapped_management_unit_nm as lvl5_management_unit_nm\n    ,e.user_lvl6_mapped_management_unit_nm as lvl6_management_unit_nm\n    ,e.user_lvl7_mapped_management_unit_nm as lvl7_management_unit_nm\n    ,tm.current_head_lvl_segment as current_head_lvl_segment\n    ,e.proteus_collection_nm_list as collection_names\n    ,e.user_ad_group_nm_list as ad_groups\nfrom prod_v_sse_crossdata.event_physical_report e\nleft join usr_cross_data.bl_talent_management tm\non tm.mdm_employee_rk = e.user_mdm_employee_rk\nwhere 1=1\n    and event_nm = 'page.view'\n       and e.event_dttm between current_date - interval '13 months' and current_date\ngroup by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,  19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36\n"
+    isEnabled: true
+  - sid: 019d96eb-f0ca-710e-9e69-d3956f12fbb2
+    title: Click add tables
+    shebang: python_condition
+    code: "try:\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click(\n        'usr_cross_data.proteus_views_1'\n        ,'prod_proteus.proteus_adoption'\n        ,partition_by_columns='toYYYYMM(log_dttm)'\n        ,order_by_columns='(dashboard_id,log_dttm)'\n        ,array_type_cast=True)\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('period_agg', 'prod_proteus.proteus_period')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('proteus_dashboards_owners_dist', 'prod_proteus.proteus_dashboards_owners_dist')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('proteus_dashboards_owners_filter', 'prod_proteus.proteus_dashboards_owners_filter')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('proteus_group', 'prod_proteus.proteus_group')\n\nexcept Exception:\n    sys.exit(100);\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('cross_data_logins', 'prod_proteus.cross_data_logins')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('collections_filter', 'prod_proteus.collections_filter')\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('mdm_employee_daily', 'prod_proteus.mdm_employee_daily_proteus',array_type_cast=True)\n    \n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('uniq_ad_group', 'prod_proteus.uniq_ad_group')\n    \n\nexcept Exception:\n    sys.exit(100);"
+    isEnabled: true
+    color: "#1BA6CE"
+  - sid: 019c235f-cc71-76d6-a1a6-6262a820d61f
+    title: Обновить кеш борда
+    shebang: python_condition
+    code: |-
+      from proteus_py.dashboard.refresh import refresh_dashboard
+
+      refresh_dashboard(
+          user_login=Z_ENV_CREDENTIAL_LOGIN_R_KAZANTSEV,
+          user_password=Z_ENV_CREDENTIAL_PASS_R_KAZANTSEV,
+          dashboard_slug='proteus-adoption',
+          retries=2,
+      );
+
+      refresh_dashboard(
+          user_login=Z_ENV_CREDENTIAL_LOGIN_R_KAZANTSEV,
+          user_password=Z_ENV_CREDENTIAL_PASS_R_KAZANTSEV,
+          dashboard_permalink='https://proteus.tcsbank.ru/superset/dashboard/p/qo5vMPnO8Oa/',
+          retries=2,
+      )
+    isEnabled: true
+  - sid: 019f613a-5b32-7e30-b099-e13dab46400b
+    title: Untitled 1
+    shebang: gp
+    code: |-
+      select max(log_dttm) from usr_cross_data.proteus_views_1 limit 100
+    isEnabled: true
+  - sid: 019f6158-5e7f-774a-888a-391e0095db61
+    title: Untitled 2
+    shebang: gp
+    code: |-
+      select * from usr_cross_data.proteus_views limit 100
+    isEnabled: true

@@ -205,7 +205,7 @@ body:has(.dashboard-chart-id-803089 img.echarts-plugin[src*="UEEtVE9VUi1PTi0x"])
   right: 0;
   top: calc(50% + 24px);
   text-align: center;
-  font: 400 12px/1.4 Arial, Helvetica, sans-serif;   /* на бою только Arial: обычный или жирный (2026-10-09) */
+  font: 400 13px/1.4 Arial, Helvetica, sans-serif;   /* на бою только Arial: обычный или жирный (2026-10-09) */
   color: #8a909c;
   pointer-events: none;
   animation: pa-load-pulse 1.6s ease-in-out infinite;

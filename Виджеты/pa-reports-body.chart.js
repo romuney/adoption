@@ -138,7 +138,7 @@ var CFG = {
   fonts: {
     // ЕДИНЫЙ стек для ВСЕГО виджета, включая тултип в body.
     family: 'Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif',
-    val: 11, dense: 10, title: 13, title2: 12, legend: 12
+    val: 10, dense: 9, title: 12, title2: 11, legend: 11
   },
   spacing: {
     stackGap: 26,             // зазор между панелями графика (STACK_GAP)
@@ -687,8 +687,8 @@ function buildCSS() {
     '  --red:#f51f1f;--red-bg:#ffcccc;--red-tx:#d11414;',
     '  --act:#245FD4;--act-ink:#1B4AA8;--blue-bg:#EAF0FC;--act-line:#C3D4F5;',
     '  --new-bg:#F1E9FF;--new-tx:#6C36C9;',
-    '  --fs-micro:9.5px;--fs-cap:10.5px;--fs-note:11.5px;--fs-body:12.5px;',
-    '  --fs-lead:13.5px;--fs-hero:24px;',
+    '  --fs-micro:8.5px;--fs-cap:9.5px;--fs-note:10.5px;--fs-body:11.5px;',
+    '  --fs-lead:12.5px;--fs-hero:22px;',
     '  --shadow:0 1px 3px rgba(20,28,45,.06),0 4px 16px rgba(20,28,45,.04);',
     '  --chart-gap:' + CFG.spacing.stackGap + 'px;color-scheme:light;}',
     P + '-root *{box-sizing:border-box;font-family:inherit;}',
@@ -700,7 +700,7 @@ function buildCSS() {
     // ── Панели и сетки ──
     // Раунд 6: панель — белый блок на сером канвасе, без границы и тени.
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;}',
-    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;}',
+    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:10px;}',
     // Подзаголовок панели — одна строка всегда: текст меняется от кликов
     // («· только «1 день»»), перенос не должен раздвигать шапку и сдвигать
     // панель по вертикали (правка владельца 2026-09-18).
@@ -724,7 +724,7 @@ function buildCSS() {
     //    pa-area). Строка на сером холсте над карточкой, высота ФИКСИРОВАНА: клик
     //    добавляет/снимает пилюлю, вёрстка не двигается (правка владельца 2026-09-23). ──
     P + '-frow{display:flex;align-items:center;gap:8px;height:34px;margin:0 0 8px;padding:0 4px;min-width:0;flex:0 0 auto;overflow:hidden;}',
-    P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
+    P + '-frow-l{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
     P + '-frow-h{font-size:var(--fs-note);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:500;flex:0 1 auto;min-width:0;max-width:100%;cursor:default;}',
@@ -735,7 +735,7 @@ function buildCSS() {
     P + '-fpill.own{background:var(--blue-bg);border-color:var(--act-line);color:var(--act-ink);padding-right:5px;}',
     P + '-fpill.ppl{background:#f3ecff;border-color:#e2d4ff;color:#5a2fc2;padding-right:5px;}',
     P + '-fpill.ext{background:var(--card);color:var(--ink2);}',
-    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(27,74,168,.14);color:inherit;font:inherit;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
+    P + '-fpill button{width:16px;height:16px;border-radius:50%;border:0;padding:0;cursor:pointer;background:rgba(27,74,168,.14);color:inherit;font:inherit;font-size:10px;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;}',
     P + '-fpill button:hover{background:rgba(27,74,168,.3);}',
     P + '-frow-x{border:0;background:transparent;color:var(--act);font:inherit;font-size:var(--fs-note);cursor:pointer;padding:4px 6px;border-radius:6px;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-x:hover{background:var(--blue-bg);}',
@@ -753,7 +753,7 @@ function buildCSS() {
     // Плашка сверки фильтров — вне корня виджета: CSS-переменные корня до неё не доходят, цвета явные.
     P + '-selg{position:absolute;left:0;top:0;right:0;bottom:0;z-index:30;display:none;align-items:flex-start;justify-content:center;padding-top:96px;background:rgba(246,246,246,.6);}',
     P + '-selg.on{display:flex;}',
-    P + '-selg-box{display:flex;align-items:center;gap:10px;max-width:380px;background:#fff;border:1px solid #e7e9ee;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(24,33,50,.12);font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;}',
+    P + '-selg-box{display:flex;align-items:center;gap:10px;max-width:380px;background:#fff;border:1px solid #e7e9ee;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(24,33,50,.12);font-family:' + CFG.fonts.family + ';font-size:11.5px;color:#454b55;}',
     P + '-selg.late ' + P + '-selg-box{flex-direction:column;align-items:flex-start;gap:6px;border-color:#f0c36d;}',
     P + '-selg-box b{font-weight:600;color:#23272e;}',
     P + '-selg-box span{color:#8a909c;line-height:1.4;}',
@@ -761,13 +761,13 @@ function buildCSS() {
     P + '-selg-spin{width:14px;height:14px;border-radius:50%;border:2px solid #e7e9ee;border-top-color:#245FD4;animation:' + CFG.ns + '-spin .8s linear infinite;flex:0 0 auto;}',
     '@keyframes ' + CFG.ns + '-spin{to{transform:rotate(360deg)}}',
     P + '-thi{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:3px;border-radius:50%;flex:0 0 auto;'
-      + 'border:1px solid var(--muted2);color:var(--muted);font-family:inherit;font-size:9px;line-height:1;font-weight:600;font-style:normal;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
+      + 'border:1px solid var(--muted2);color:var(--muted);font-family:inherit;font-size:8.5px;line-height:1;font-weight:600;font-style:normal;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
     P + '-thi:hover{border-color:var(--act);color:var(--act);}',
     // Легенда «Ритма» в подсказке: пилюля + условие строкой, подсказка шире обычной.
     P + '-tip:has(' + P + '-leg){max-width:380px;padding:10px 12px;font-family:' + CFG.fonts.family + ';}',
     P + '-leg{display:flex;flex-direction:column;gap:7px;margin-top:9px;}',
-    P + '-leg-r{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:start;font-size:11.5px;line-height:1.35;color:#3a3f4a;}',
-    P + '-leg-r ' + P + '-sig-chip{justify-self:start;display:inline-block;font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px;white-space:nowrap;}',
+    P + '-leg-r{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:start;font-size:10.5px;line-height:1.35;color:#3a3f4a;}',
+    P + '-leg-r ' + P + '-sig-chip{justify-self:start;display:inline-block;font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;white-space:nowrap;}',
     // подсказка живёт в body, вне корня с переменными — цвета пилюль легенды те же, но явно
     P + '-leg-r ' + P + '-sig-chip.good{background:#bff2cd;color:#0a8f3c;}' + P + '-leg-r ' + P + '-sig-chip.note{background:#EAF0FC;color:#1B4AA8;}' +
       P + '-leg-r ' + P + '-sig-chip.neutral{background:#f3f4f6;color:#8a909c;}' + P + '-leg-r ' + P + '-sig-chip.dead{background:#ffcccc;color:#d11414;}',
@@ -793,7 +793,7 @@ function buildCSS() {
     P + '-pager .spacer{flex:1;}',
     P + '-pginfo{font-size:var(--fs-note);color:var(--muted);}',
     P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:500;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
-    P + '-pgbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;min-width:26px;height:24px;font-size:13px;line-height:1;color:var(--ink2);cursor:pointer;padding:0 7px;font-family:inherit;}',
+    P + '-pgbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;min-width:26px;height:24px;font-size:12px;line-height:1;color:var(--ink2);cursor:pointer;padding:0 7px;font-family:inherit;}',
     P + '-pgbtn:hover:not([disabled]){background:#fafbfc;border-color:#d8dce4;}',
     P + '-pgbtn[disabled]{opacity:.4;cursor:default;}',
     P + '-cellbar{display:block;width:100%;height:13px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
@@ -807,7 +807,7 @@ function buildCSS() {
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tab.has{color:var(--act-ink);}',
-    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:500;margin-left:5px;padding:0 4px;}',
+    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:8.5px;font-weight:500;margin-left:5px;padding:0 4px;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
     // ── Вкладка «Аудитория»: строка «Разрез» и выпадающий список ──
@@ -817,7 +817,7 @@ function buildCSS() {
     P + '-dd-trg{display:inline-flex;align-items:center;gap:6px;height:28px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:0 10px;font:inherit;font-size:var(--fs-note);color:var(--ink);cursor:pointer;}',
     P + '-dd-trg:hover{border-color:#d3d8e0;}',
     P + '-dd.open ' + P + '-dd-trg{border-color:var(--act);}',
-    P + '-dd-c{color:var(--muted);font-size:10px;}',
+    P + '-dd-c{color:var(--muted);font-size:9px;}',
     P + '-dd-body{position:absolute;top:32px;left:0;z-index:40;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.16);padding:4px;display:flex;flex-direction:column;}',
     P + '-dd-opt{border:0;background:transparent;text-align:left;font:inherit;font-size:var(--fs-note);color:var(--ink2);padding:6px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;}',
     P + '-dd-opt:hover{background:#f4f6f9;}',
@@ -834,42 +834,42 @@ function buildCSS() {
     P + '-trings{position:fixed;z-index:99991;border-radius:10px;box-shadow:0 0 0 2px #245FD4,0 0 0 6px rgba(43,108,255,.22);pointer-events:none;transition:left .2s,top .2s,width .2s,height .2s,opacity .2s;}',
     // первый кадр слоя (был скрыт) — без анимации, иначе затемнение «вырастает» из угла
     P + '-tnoa *{transition:none !important;}',
-    P + '-tcard{position:fixed;z-index:99992;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.28),0 2px 8px rgba(15,23,42,.12);padding:12px 16px 14px;color:#454b55;font-size:13px;line-height:1.5;font-weight:400;transition:left .2s,top .2s,opacity .15s;}',
+    P + '-tcard{position:fixed;z-index:99992;width:340px;max-width:calc(100vw - 24px);background:#fff;border-radius:12px;box-shadow:0 18px 50px rgba(15,23,42,.28),0 2px 8px rgba(15,23,42,.12);padding:12px 16px 14px;color:#454b55;font-size:12px;line-height:1.5;font-weight:400;transition:left .2s,top .2s,opacity .15s;}',
     P + '-tarr{position:absolute;display:none;width:10px;height:10px;background:#fff;transform:rotate(45deg);}',
     P + '-tarr.' + CFG.ns + '-ta-bottom{display:block;top:-5px;}',
     P + '-tarr.' + CFG.ns + '-ta-top{display:block;bottom:-5px;}',
     P + '-tarr.' + CFG.ns + '-ta-right{display:block;left:-5px;}',
     P + '-tarr.' + CFG.ns + '-ta-left{display:block;right:-5px;}',
     P + '-tch{display:flex;align-items:center;gap:8px;margin:0 -6px 4px 0;}',
-    P + '-tcs{font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#8a909c;font-weight:500;}',
-    P + '-tx{margin-left:auto;border:0;background:transparent;color:#8a909c;font:inherit;font-size:12px;cursor:pointer;padding:2px 6px;border-radius:6px;}',
+    P + '-tcs{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#8a909c;font-weight:500;}',
+    P + '-tx{margin-left:auto;border:0;background:transparent;color:#8a909c;font:inherit;font-size:11px;cursor:pointer;padding:2px 6px;border-radius:6px;}',
     P + '-tx:hover{background:#f3f4f6;color:#23272e;}',
-    P + '-tct{font-size:15px;font-weight:600;color:#23272e;margin:0 0 4px;}',
+    P + '-tct{font-size:14px;font-weight:600;color:#23272e;margin:0 0 4px;}',
     P + '-tcx b{font-weight:500;color:#23272e;}',
     P + '-tul{margin:6px 0 0;padding-left:18px;}',
     P + '-tul li{margin:0 0 6px;}',
     P + '-tcf{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}',
-    P + '-tbtn{height:30px;padding:0 12px;border:1px solid #e7e9ee;border-radius:8px;background:#fff;color:#454b55;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;}',
+    P + '-tbtn{height:30px;padding:0 12px;border:1px solid #e7e9ee;border-radius:8px;background:#fff;color:#454b55;font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;}',
     P + '-tbtn:first-child{margin-right:auto;}',
     P + '-tbtn.pri{background:#245FD4;border-color:#245FD4;color:#fff;}',
     P + '-tbtn.pri:hover{background:#1B4AA8;}',
-    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 8px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;white-space:nowrap;}',
+    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 8px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;white-space:nowrap;}',
     P + '-mine + ' + P + '-psearch{margin-left:0;}',          // кнопка прижата к поиску, вместе — справа
     P + '-mine:hover{border-color:var(--act);color:var(--act);}',
     P + '-mine.on{background:var(--blue-bg);border-color:var(--act);color:var(--act-ink);}',
     P + '-mine[disabled]{opacity:.45;cursor:default;}',
-    P + '-mine-n{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}',
+    P + '-mine-n{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;}',
     P + '-own-more{font-style:normal;color:var(--muted);cursor:help;}',
     P + '-rname{display:flex;align-items:flex-start;gap:6px;min-width:0;}',
     P + '-rname-t{flex:1 1 auto;min-width:0;}',
     P + '-rname ' + P + '-lnkbtn{flex:0 0 auto;}',
     P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin:-1px 0 0 -4px;padding:0;border:0;border-radius:6px;'
-      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.7;font:inherit;font-size:12px;font-weight:600;}',
+      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.7;font:inherit;font-size:11px;font-weight:600;}',
     P + '-urow:hover ' + P + '-lnkbtn{opacity:1;}',
     P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
     P + '-lnkbtn.ok{opacity:1;color:var(--green-tx, #0a8f3c);background:#e6f6ec;}',
     P + '-lnkbtn.err{opacity:1;color:#c8251f;background:#ffe9e9;}',
-    P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
+    P + '-sig-chip{display:inline-block;font-size:10px;font-weight:500;',
     '  border-radius:999px;padding:2px 9px;}',
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
@@ -877,13 +877,13 @@ function buildCSS() {
     // Ритм отчёта — те же пилюли, что сегменты людей в «Кто смотрит»:
     // Daily/Weekly — зелёная, Monthly — голубая, Rare — серая, Dead — красная.
     P + '-sig-chip.dead{background:var(--red-bg);color:var(--red-tx);}',
-    P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
+    P + '-rflag{display:inline-block;margin-right:5px;font-size:8.5px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.cert{background:var(--green-bg);color:var(--green-tx);}',
     P + '-rflag.new{background:var(--new-bg);color:var(--new-tx);}',
     P + '-barcell,' + P + '-bar-th{text-align:left !important;padding-left:10px !important;}',
 
     // ── Наблюдения ──
-    P + '-obs-b{padding:0 15px 14px;font-size:13px;color:var(--ink2);line-height:1.55;}',
+    P + '-obs-b{padding:0 15px 14px;font-size:12px;color:var(--ink2);line-height:1.55;}',
     P + '-obs-b ul{margin:8px 0 0;padding-left:20px;}',
     P + '-obs-b li{margin-bottom:5px;}',
     P + '-obs-b b{color:var(--ink);font-weight:500;}',
@@ -893,9 +893,9 @@ function buildCSS() {
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;}',
     P + '-tbl-note b{color:var(--ink2);font-weight:500;}',
     P + '-empty{background:var(--card);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:var(--fs-body);}',
-    P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
+    P + '-empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:8px;}',
     P + '-psearch{position:relative;flex:0 1 230px;min-width:150px;color:var(--muted);margin-left:auto;}',
-    P + '-psearch input{box-sizing:border-box;height:34px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 14px 0 32px;font-size:13px;color:var(--ink);width:100%;font-family:inherit;}',
+    P + '-psearch input{box-sizing:border-box;height:34px;border:1px solid var(--line);background:var(--card);border-radius:999px;padding:0 14px 0 32px;font-size:12px;color:var(--ink);width:100%;font-family:inherit;}',
     P + '-psearch input:focus{outline:none;border-color:var(--act);}',
     P + '-psearch svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;}',
 
@@ -906,15 +906,15 @@ function buildCSS() {
     '  border:1px solid #e7e9ee;border-radius:9px;padding:7px 10px;max-width:260px;',
     '  box-shadow:0 10px 30px rgba(24,33,50,.18),0 2px 6px rgba(24,33,50,.08);',
     '  transition:opacity .08s;}',
-    P + '-tip ' + P + '-t-h{display:block;font-size:10px;font-weight:500;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
-    P + '-tip ' + P + '-t-x{display:block;font-size:11.5px;color:#3a3f4a;line-height:1.4;}',
+    P + '-tip ' + P + '-t-h{display:block;font-size:9px;font-weight:500;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
+    P + '-tip ' + P + '-t-x{display:block;font-size:10.5px;color:#3a3f4a;line-height:1.4;}',
     P + '-tip ' + P + '-t-r{display:flex;align-items:center;gap:6px;margin-top:3px;min-width:118px;}',
     P + '-tip ' + P + '-t-m{display:inline-block;flex:0 0 auto;width:10px;height:9px;border-radius:3px;}',
     P + '-tip ' + P + '-t-m.' + CFG.ns + '-dash{height:0;width:14px;border-radius:0;border-top:2px dashed;background:none;}',
-    P + '-tip ' + P + '-t-l{font-size:11px;font-weight:500;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#23272e;}',
+    P + '-tip ' + P + '-t-l{font-size:10px;font-weight:500;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:11.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#23272e;}',
     P + '-tip ' + P + '-t-r.' + CFG.ns + '-bench ' + P + '-t-v{color:#8a909c;font-weight:500;}',
-    P + '-tip ' + P + '-t-n{display:block;font-size:10.5px;line-height:1.35;font-weight:400;color:#8a909c;margin-top:6px;padding-top:5px;border-top:1px solid #eef0f3;}',
+    P + '-tip ' + P + '-t-n{display:block;font-size:9.5px;line-height:1.35;font-weight:400;color:#8a909c;margin-top:6px;padding-top:5px;border-top:1px solid #eef0f3;}',
     '</style>'
   ].join('\n');
 }
@@ -1209,12 +1209,14 @@ function reportTableHtml() {
   // вернуть «Просм.» рядом с ЦА, «Охват ЦА» → «ЦА»). Ширины — по самому широкому заголовку со стрелкой.
   // Узкий каталог (режим правки борда, маленький экран): названию — не меньше 170 px; не влезает — прячем колонки
   // по одной: «Ритм», «Пост.», «Просм.» (2026-10-07: в режиме правки название рассыпалось по буквам).
-  var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 86 : 50) : 0;
-  var avail = (state.catW || 9999) - 40, need = 170 + 64 + ca3 + 66 + 56 + 80;
-  var showRh = need <= avail, showReg = need - 80 <= avail, showV = need - 80 - 56 <= avail;
+  // 2026-10-09: шрифт на ступень мельче (× 0,92); ширины — по замеру заголовка со стрелкой сортировки (+1),
+  // минимум названия 156: «Ритм» виден от 488 px (было 526), «Пост.» — от 418, «Просм.» — от 363
+  var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 80 : 42) : 0, wU = 61, wV = 64, wReg = 55, wRh = 70;
+  var avail = (state.catW || 9999) - 40, need = 156 + wU + ca3 + wV + wReg + wRh;
+  var showRh = need <= avail, showReg = need - wRh <= avail, showV = need - wRh - wReg <= avail;
   var h = '<table class="' + CFG.ns + '-ptable dense sortable fix"><colgroup><col>' +
-    '<col style="width:64px">' + (showV ? '<col style="width:66px">' : '') + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
-    (showReg ? '<col style="width:56px">' : '') + (showRh ? '<col style="width:80px">' : '') + '</colgroup><thead><tr>' +
+    '<col style="width:' + wU + 'px">' + (showV ? '<col style="width:' + wV + 'px">' : '') + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
+    (showReg ? '<col style="width:' + wReg + 'px">' : '') + (showRh ? '<col style="width:' + wRh + 'px">' : '') + '</colgroup><thead><tr>' +
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
     th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() } : null) +

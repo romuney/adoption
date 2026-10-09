@@ -107,8 +107,8 @@
   var catEl = document.querySelector('.dashboard-chart-id-803049 iframe') || document.querySelector('#chart-id-803049 iframe');
   if (catEl) {
     var cw0 = Math.round(catEl.getBoundingClientRect().width);
-    out.push('каталог (803049) шириной ' + cw0 + ' px: «Ритм» виден от 526, «Пост.» — от 446, «Просм.» — от 390'
-      + (cw0 < 526 ? '   ← «Ритм» спрятан: каталогу не хватает ' + (526 - cw0) + ' px (шире — ручкой ячейки в режиме правки или масштабом браузера)' : ''));
+    out.push('каталог (803049) шириной ' + cw0 + ' px: «Ритм» виден от 488, «Пост.» — от 418, «Просм.» — от 363'
+      + (cw0 < 488 ? '   ← «Ритм» спрятан: каталогу не хватает ' + (488 - cw0) + ' px (шире — ручкой ячейки в режиме правки или масштабом браузера)' : ''));
   }
 
   // ── 1. CSS борда: Superset 2.0–4.0 кладёт его в <style class="CssEditor-css"> в конце <head> (injectCustomCss) ──────

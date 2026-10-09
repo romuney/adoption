@@ -1318,10 +1318,9 @@ function buildCSS() {
     P + '-cv-a{position:relative;flex:1 1 auto;min-width:0;}',
     P + '-cv-pt{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:' + CFG.colors.act + ';box-shadow:0 0 0 2px #fff;cursor:help;}',
     P + '-cv-v{position:absolute;transform:translateX(-50%);font-size:10.5px;color:var(--muted);white-space:nowrap;pointer-events:none;}',
-    // строка под курсором — остальные гаснут (как ступень шкалы), подпись когорты жирная
+    // строка под курсором — остальные гаснут (как ступень шкалы), подпись когорты жирная; рамок у ячеек нет (владелец 09.10)
     P + '-ct-wrap tbody:hover tr:not(:hover) td{opacity:.38;}',
     P + '-ct-wrap tbody tr:hover td.txt{font-weight:700;}',
-    P + '-ct-wrap tbody tr:hover td' + P + '-ct-cell:not(.none){box-shadow:inset 0 0 0 1px rgba(31,31,31,.3);}',
     P + '-cttable th,' + P + '-cttable td{border:0;white-space:nowrap;}',
     P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:center;padding:4px 2px;}',
     P + '-cttable th.txt{text-align:left;padding-left:4px;}',

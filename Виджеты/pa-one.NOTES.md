@@ -152,7 +152,7 @@
   + область возрастов; таблица table-layout:fixed → колонки +1…+11 поровну, x точки = (a − 0,5) / 11. SVG без пропорций
   (preserveAspectRatio none, vector-effect non-scaling-stroke) — линии и заливка; точки и подписи — HTML (%, px).
 - Линии строк — path[data-cl] скрыты; tr[data-ci] под курсором → cohRow(i) в onOver/onOut (без render()). Гашение
-  остальных строк — CSS (tbody:hover tr:not(:hover)).
+  остальных строк — CSS (tbody:hover tr:not(:hover)); рамок у ячеек нет (владелец).
 - Высота кривой cohCvH(): 0 при ряде < 600, иначе 64…136 по (ряд − 560) × 0,6 (state.rowH из syncOvr). Ячейки — padding 3.
 - Удалены: retCurveSvg, syncCohH, COH_H, state.cohView (переключатель «Таблица / Кривая»).
 

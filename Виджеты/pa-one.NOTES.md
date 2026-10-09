@@ -153,6 +153,8 @@
   (preserveAspectRatio none, vector-effect non-scaling-stroke) — линии и заливка; точки и подписи — HTML (%, px).
 - Линии строк — path[data-cl] скрыты; tr[data-ci] под курсором → cohRow(i) в onOver/onOut (без render()). Гашение
   остальных строк — CSS (tbody:hover tr:not(:hover)); рамок у ячеек нет (владелец).
+- Закрепление: клик по tr[data-ck] (ГГГГ-М) → state.cohPin, render(); линия закреплённой — path[data-pin] цветом COH_PIN_C
+  (#AA77FF), видна всегда; cohRow показывает её + наведённую. tr.pin не гаснет, полоска 3 px слева. Без кривой клик ничего не делает.
 - Высота кривой cohCvH(): 0 при ряде < 600, иначе 64…136 по (ряд − 560) × 0,6 (state.rowH из syncOvr). Ячейки — padding 3.
 - Удалены: retCurveSvg, syncCohH, COH_H, state.cohView (переключатель «Таблица / Кривая»).
 

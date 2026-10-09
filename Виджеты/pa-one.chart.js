@@ -1319,7 +1319,11 @@ function buildCSS() {
     P + '-cv-pt{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:' + CFG.colors.act + ';box-shadow:0 0 0 2px #fff;cursor:help;}',
     P + '-cv-v{position:absolute;transform:translateX(-50%);font-size:10.5px;color:var(--muted);white-space:nowrap;pointer-events:none;}',
     // строка под курсором — остальные гаснут (как ступень шкалы), подпись когорты жирная; рамок у ячеек нет (владелец 09.10)
-    P + '-ct-wrap tbody:hover tr:not(:hover) td{opacity:.38;}',
+    P + '-ct-wrap tbody:hover tr:not(:hover):not(.pin) td{opacity:.38;}',
+    P + '-ct-wrap tbody tr.pin td.txt{font-weight:700;}',
+    P + '-ct-wrap tbody tr.pin td:first-child{box-shadow:inset 3px 0 0 ' + '#AA77FF' + ';}',
+    P + '-ct-wrap tbody tr[data-ck]{cursor:pointer;}',
+    P + '-cv-pin{color:var(--ink);}',
     P + '-ct-wrap tbody tr:hover td.txt{font-weight:700;}',
     P + '-cttable th,' + P + '-cttable td{border:0;white-space:nowrap;}',
     P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:center;padding:4px 2px;}',
@@ -2537,7 +2541,8 @@ function cohortTableHtml(o) {
     var row = rows[i], cm = row.month;
     var lbl = MONTHS[cm.m] + ' ' + String(cm.y).slice(2);
     var cnh = cohNoHist(cm);
-    h += '<tr data-ci="' + i + '"' + (cnh ? ' class="' + CFG.ns + '-ct-nh"' : '') + '><td class="txt"' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, text: cnh ? histNote(false, true) + ' Удержание этой когорты завышено, в среднюю кривую она не входит.' : (o.firstTip || 'Месяц первого визита') }) + '>' + esc(lbl) + (cnh ? ' *' : '') + '</td>' +
+    var ck = cm.y + '-' + cm.m, pin = o.curve && state.cohPin === ck;
+    h += '<tr data-ci="' + i + '" data-ck="' + ck + '"' + (cnh || pin ? ' class="' + (cnh ? CFG.ns + '-ct-nh' : '') + (pin ? ' pin' : '') + '"' : '') + '><td class="txt"' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, text: cnh ? histNote(false, true) + ' Удержание этой когорты завышено, в среднюю кривую она не входит.' : (o.firstTip || 'Месяц первого визита') }) + '>' + esc(lbl) + (cnh ? ' *' : '') + '</td>' +
       '<td' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, rows: [{ label: 'Пришли впервые', value: nf(row.size), color: CFG.colors.act }] }) + '>' +
       '<div class="' + CFG.ns + '-ct-sz"><span class="' + CFG.ns + '-ct-bar"><i style="width:' +
       (100 * row.size / maxSize).toFixed(1) + '%"></i></span><b>' + nf(row.size) + '</b></div></td>';
@@ -2573,11 +2578,13 @@ function cohortTableHtml(o) {
 // border-spacing 2), y — доля когорты. Средняя — как retCurveSvg (числители и знаменатели складываются); линии строк
 // скрыты, наведение на строку таблицы показывает свою (cohRowOn, без render()). Точки и подписи — HTML поверх SVG:
 // SVG тянется без сохранения пропорций (preserveAspectRatio none), круги и текст в нём сплющились бы.
+// закреплённая кликом когорта (state.cohPin = 'ГГГГ-М') — её линия на кривой этим цветом, наведённая — чёрная
+var COH_PIN_C = '#AA77FF';
 // высота кривой — от ряда: 136 px на ноутбуке (ряд refRow), на низком ряду до 64 — место под строки таблицы
 // (ряд ниже 600 — кривой нет: таблица важнее, иначе прокручивается внутри)
 function cohCvH() { var r = Math.min(state.rowH || CFG.spacing.refRow, CFG.spacing.refRow); return r < 600 ? 0 : Math.max(64, Math.min(136, Math.round((r - 560) * 0.6))); }
 function cohCurveHtml(rows, grid, maxAge, pctOf) {
-  var N = CFG.ns, C = CFG.colors, pts = retentionPoints(rows), i, a;
+  var N = CFG.ns, C = CFG.colors, pts = retentionPoints(rows), i, a, pinLab = '';
   if (!pts.length || !cohCvH()) return '';
   var mx = 0;
   for (i = 0; i < pts.length; i++) mx = Math.max(mx, pts[i].pct);
@@ -2600,7 +2607,10 @@ function cohCurveHtml(rows, grid, maxAge, pctOf) {
   for (i = 0; i < rows.length; i++) {
     var rp = [];
     for (a = 1; a <= maxAge; a++) { var c = grid[i][a]; if (c && !c.partial) rp.push([a, pctOf(rows[i], c)]); }
-    if (rp.length) svg += '<path data-cl="' + i + '" d="' + path(rp) + '" fill="none" stroke="#23272e" stroke-width="2" vector-effect="non-scaling-stroke" style="display:none"/>';
+    var isPin = state.cohPin === rows[i].month.y + '-' + rows[i].month.m;
+    if (rp.length) svg += '<path data-cl="' + i + '"' + (isPin ? ' data-pin="1"' : '') + ' d="' + path(rp) + '" fill="none" stroke="' + (isPin ? COH_PIN_C : '#23272e') +
+      '" stroke-width="2" vector-effect="non-scaling-stroke"' + (isPin ? '' : ' style="display:none"') + '/>';
+    if (isPin) pinLab = MONTHS[rows[i].month.m] + ' ' + String(rows[i].month.y).slice(2) + (rp.length ? '' : ': закрытых месяцев нет');
   }
   var dots = '';
   for (i = 0; i < pts.length; i++) {
@@ -2612,7 +2622,9 @@ function cohCurveHtml(rows, grid, maxAge, pctOf) {
       '<span class="' + N + '-cv-v" style="left:' + lx + ';top:' + r1(ly - 17) + 'px">' + esc(pct(pts[i].pct, 0)) + '</span>';
   }
   return '<div class="' + N + '-ct-cv" style="height:' + H + 'px">' +
-    '<div class="' + N + '-cv-l"><b><i class="' + N + '-cv-k"></i>Средняя по когортам</b><span class="' + N + '-cv-row">наведи строку — её линия</span></div>' +
+    '<div class="' + N + '-cv-l"><b><i class="' + N + '-cv-k"></i>Средняя по когортам</b>' +
+      (pinLab ? '<span class="' + N + '-cv-pin"><i class="' + N + '-cv-k" style="border-color:' + COH_PIN_C + '"></i>' + esc(pinLab) + ' · клик снимет</span>' : '') +
+      '<span class="' + N + '-cv-row">' + (pinLab ? 'наведи другую — сравнить' : 'наведи строку — её линия; клик — закрепить') + '</span></div>' +
     '<div class="' + N + '-cv-a"><svg viewBox="0 0 1000 ' + H + '" preserveAspectRatio="none" width="100%" height="' + H + '" style="display:block;overflow:hidden">' + svg + '</svg>' + dots + '</div></div>';
 }
 
@@ -3892,10 +3904,13 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     // Строка таблицы когорт под курсором → её линия на кривой над таблицей (точечная правка, БЕЗ render()).
     function cohRow(i) {
       var ls = overlay.querySelectorAll('[data-cl]'), lab = overlay.querySelector('.' + CFG.ns + '-cv-row');
-      for (var k = 0; k < ls.length; k++) ls[k].style.display = ls[k].getAttribute('data-cl') === i ? '' : 'none';
+      var pinned = overlay.querySelector('[data-cl][data-pin]'), pinRow = overlay.querySelector('tr.pin');
+      if (pinRow && pinRow.getAttribute('data-ci') === i) i = null;   // закреплённая уже на кривой
+      for (var k = 0; k < ls.length; k++) ls[k].style.display = ls[k].getAttribute('data-cl') === i || ls[k] === pinned ? '' : 'none';
       if (!lab) return;
       var tr = i == null ? null : overlay.querySelector('tr[data-ci="' + i + '"] td');
-      lab.textContent = tr ? '━ ' + tr.textContent + (overlay.querySelector('[data-cl="' + i + '"]') ? '' : ': закрытых месяцев нет') : 'наведи строку — её линия';
+      lab.textContent = tr ? '━ ' + tr.textContent + (overlay.querySelector('[data-cl="' + i + '"]') ? '' : ': закрытых месяцев нет')
+        : (pinRow ? 'наведи другую — сравнить' : 'наведи строку — её линия; клик — закрепить');
       lab.className = CFG.ns + '-cv-row' + (tr ? ' on' : '');
     }
     function onOver(e) {
@@ -4046,6 +4061,14 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     }
     function onClick(e) {
       if (textPicked(e.target)) return;
+      // Клик по строке когорт — закрепить её линию на кривой (повторный — снять).
+      var ckr = trigger(e.target, 'data-ck');
+      if (ckr && overlay.querySelector('[class*="-ct-cv"]')) {
+        var ckv = ckr.getAttribute('data-ck');
+        state.cohPin = state.cohPin === ckv ? null : ckv;
+        render();
+        return;
+      }
       // Клик мимо открытого дропдауна закрывает его (паттерн полки):
       // всё внутри .dd считается «внутри».
       var ddNode = trigger(e.target, 'data-ddtoggle');

@@ -776,8 +776,8 @@ function buildCSS() {
     P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
     P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:400;color:var(--ink);white-space:normal;min-width:0;}',
     // Таблица отчётов: ширины колонок заданы colgroup, ячейки не раздвигают таблицу; длинное название переносится.
-    // таблица отчётов не шире 720 (название ≤ ~440): на широком экране от названия до «Польз.» было 700–1700 px (ревью 09.10)
-    P + '-ptable.fix{table-layout:fixed;max-width:720px;}',
+    // ширина таблицы отчётов — инлайн max-width (название ≤ ~440, метрики шире на широком каталоге — reportTableHtml)
+    P + '-ptable.fix{table-layout:fixed;}',
     P + '-ptable.fix th,' + P + '-ptable.fix td{padding-left:4px;padding-right:6px;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.fix th.txt,' + P + '-ptable.fix td.txt{padding-left:12px;overflow-wrap:anywhere;}',
     // стрелка сортировки висит слева от подписи и места в колонке не занимает (2026-10-09: 12 px резерва в каждой
@@ -1236,7 +1236,12 @@ function reportTableHtml() {
   var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 80 : 44) : 0, wU = 55, wV = 55, wReg = 48, wRh = 62;
   var avail = (state.catW || 9999) - 40, need = 110 + wU + ca3 + wV + wReg + wRh;
   var showRh = true, showReg = need <= avail, showV = need - wReg <= avail;
-  var h = '<table class="' + CFG.ns + '-ptable dense sortable fix"><colgroup><col>' +
+  // Широкий каталог (большой монитор): колонки метрик шире — до ×1,6, а не кучкой справа (владелец 09.10);
+  // название растёт до ~440 px, таблица — не шире названия 460 + метрики (дальше — пусто справа).
+  var sumM = wU + (showV ? wV : 0) + ca3 + (showReg ? wReg : 0) + wRh, kM = Math.min(1.6, Math.max(1, (avail - 300) / sumM));
+  if (kM > 1) { wU = Math.round(wU * kM); wV = Math.round(wV * kM); ca3 = Math.round(ca3 * kM); wReg = Math.round(wReg * kM); wRh = Math.round(wRh * kM); }
+  var tMax = Math.round(460 + sumM * kM + 40);
+  var h = '<table class="' + CFG.ns + '-ptable dense sortable fix" style="max-width:' + tMax + 'px"><colgroup><col>' +
     '<col style="width:' + wU + 'px">' + (showV ? '<col style="width:' + wV + 'px">' : '') + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
     (showReg ? '<col style="width:' + wReg + 'px">' : '') + (showRh ? '<col style="width:' + wRh + 'px">' : '') + '</colgroup><thead><tr>' +
     '<th class="txt' + (sortRank(sc, 'col', 'dashboard_nm') ? ' on' : '') + '" data-sort="dashboard_nm"' + tip({ note: SORT_NOTE }) + '>Отчёт<span class="' + CFG.ns + '-sa">' +

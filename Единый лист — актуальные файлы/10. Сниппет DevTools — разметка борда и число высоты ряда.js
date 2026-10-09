@@ -103,12 +103,12 @@
   out.push('масштаб: devicePixelRatio ' + (Math.round(dpr * 100) / 100) + ' (Retina при 100 % — 2, обычный экран — 1) · окно браузера '
     + window.outerWidth + ' px снаружи / ' + window.innerWidth + ' внутри ≈ ' + Math.round(oz * 100) + ' %'
     + (oz > 1.04 ? '   ← похоже, масштаб браузера больше 100 %: Cmd+0 вернёт 100 %' : ''));
-  // Proteus Adoption: колонки каталога прячутся по ширине (pa-reports-body: название ≥ 170 + колонки + поля 40)
+  // Proteus Adoption: колонки каталога прячутся по ширине (pa-reports-body: название ≥ 140 + колонки + поля 40; «Ритм» — никогда)
   var catEl = document.querySelector('.dashboard-chart-id-803049 iframe') || document.querySelector('#chart-id-803049 iframe');
   if (catEl) {
     var cw0 = Math.round(catEl.getBoundingClientRect().width);
-    out.push('каталог (803049) шириной ' + cw0 + ' px: «Ритм» виден от 488, «Пост.» — от 418, «Просм.» — от 363'
-      + (cw0 < 488 ? '   ← «Ритм» спрятан: каталогу не хватает ' + (488 - cw0) + ' px (шире — ручкой ячейки в режиме правки или масштабом браузера)' : ''));
+    out.push('каталог (803049) шириной ' + cw0 + ' px: «Ритм» — всегда; все колонки — от 465, «Пост.» прячется уже 465, «Просм.» — уже 412'
+      + (cw0 < 465 ? '   ← спрятано: ' + (cw0 < 412 ? '«Пост.» и «Просм.»' : '«Пост.»') + ' (каталогу не хватает ' + (465 - cw0) + ' px до всех колонок)' : ''));
   }
 
   // ── 1. CSS борда: Superset 2.0–4.0 кладёт его в <style class="CssEditor-css"> в конце <head> (injectCustomCss) ──────

@@ -137,7 +137,7 @@ var CFG = {
   },
   fonts: {
     // ЕДИНЫЙ стек для ВСЕГО виджета, включая тултип в body.
-    family: 'Inter,-apple-system,"Segoe UI",Roboto,Arial,sans-serif',
+    family: 'Arial,Helvetica,sans-serif',
     val: 10, dense: 9, title: 12, title2: 11, legend: 11
   },
   spacing: {
@@ -695,18 +695,18 @@ function buildCSS() {
 
     // ── Область в заголовке панели ──
     P + '-area{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42%;}',
-    P + '-area b{color:var(--ink2);font-weight:500;}',
+    P + '-area b{color:var(--ink2);font-weight:400;}',
 
     // ── Панели и сетки ──
     // Раунд 6: панель — белый блок на сером канвасе, без границы и тени.
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;}',
-    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:13.5px;display:flex;align-items:center;gap:10px;}',
+    P + '-panel-h{padding:14px 16px;font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:10px;}',
     // Подзаголовок панели — одна строка всегда: текст меняется от кликов
     // («· только «1 день»»), перенос не должен раздвигать шапку и сдвигать
     // панель по вертикали (правка владельца 2026-09-18).
     P + '-panel-h .sub{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-h-txt{display:flex;flex-direction:column;gap:2px;min-width:0;}',
-    P + '-h-txt .sub b{color:var(--ink2);font-weight:500;}',
+    P + '-h-txt .sub b{color:var(--ink2);font-weight:400;}',
     P + '-panel-h .sub-tabs{margin:0 0 0 auto;flex:0 0 auto;}',
     P + '-lnk{border:0;background:transparent;padding:0;font:inherit;color:var(--act);cursor:pointer;}',
     P + '-lnk:hover{text-decoration:underline;}',
@@ -724,10 +724,10 @@ function buildCSS() {
     //    pa-area). Строка на сером холсте над карточкой, высота ФИКСИРОВАНА: клик
     //    добавляет/снимает пилюлю, вёрстка не двигается (правка владельца 2026-09-23). ──
     P + '-frow{display:flex;align-items:center;gap:8px;height:34px;margin:0 0 8px;padding:0 4px;min-width:0;flex:0 0 auto;overflow:hidden;}',
-    P + '-frow-l{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
+    P + '-frow-l{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:400;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
     P + '-frow-h{font-size:var(--fs-note);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
-    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:500;flex:0 1 auto;min-width:0;max-width:100%;cursor:default;}',
+    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:400;flex:0 1 auto;min-width:0;max-width:100%;cursor:default;}',
     // Две пилюли делят строку поровну (длинное имя — «…»); три и больше — одна сводная.
     P + '-fpill.two{max-width:calc(50% - 3px);}',
     P + '-fpill .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:0 1 auto;}',
@@ -744,7 +744,7 @@ function buildCSS() {
     //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
     //    «таблицы по-разному отформатированы») ──
     P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);font-variant-numeric:tabular-nums;}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:9px 8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:right;padding:9px 8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
     P + '-ptable th.txt{text-align:left;padding-left:12px;}',
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
@@ -755,30 +755,30 @@ function buildCSS() {
     P + '-selg.on{display:flex;}',
     P + '-selg-box{display:flex;align-items:center;gap:10px;max-width:380px;background:#fff;border:1px solid #e7e9ee;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(24,33,50,.12);font-family:' + CFG.fonts.family + ';font-size:11.5px;color:#454b55;}',
     P + '-selg.late ' + P + '-selg-box{flex-direction:column;align-items:flex-start;gap:6px;border-color:#f0c36d;}',
-    P + '-selg-box b{font-weight:600;color:#23272e;}',
+    P + '-selg-box b{font-weight:700;color:#23272e;}',
     P + '-selg-box span{color:#8a909c;line-height:1.4;}',
-    P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:500;padding:6px 12px;cursor:pointer;}',
+    P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:400;padding:6px 12px;cursor:pointer;}',
     P + '-selg-spin{width:14px;height:14px;border-radius:50%;border:2px solid #e7e9ee;border-top-color:#245FD4;animation:' + CFG.ns + '-spin .8s linear infinite;flex:0 0 auto;}',
     '@keyframes ' + CFG.ns + '-spin{to{transform:rotate(360deg)}}',
     P + '-thi{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:3px;border-radius:50%;flex:0 0 auto;'
-      + 'border:1px solid var(--muted2);color:var(--muted);font-family:inherit;font-size:8.5px;line-height:1;font-weight:600;font-style:normal;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
+      + 'border:1px solid var(--muted2);color:var(--muted);font-family:inherit;font-size:8.5px;line-height:1;font-weight:700;font-style:normal;text-transform:none;letter-spacing:0;cursor:help;vertical-align:1px;}',
     P + '-thi:hover{border-color:var(--act);color:var(--act);}',
     // Легенда «Ритма» в подсказке: пилюля + условие строкой, подсказка шире обычной.
     P + '-tip:has(' + P + '-leg){max-width:380px;padding:10px 12px;font-family:' + CFG.fonts.family + ';}',
     P + '-leg{display:flex;flex-direction:column;gap:7px;margin-top:9px;}',
     P + '-leg-r{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:start;font-size:10.5px;line-height:1.35;color:#3a3f4a;}',
-    P + '-leg-r ' + P + '-sig-chip{justify-self:start;display:inline-block;font-size:10px;font-weight:500;padding:2px 8px;border-radius:999px;white-space:nowrap;}',
+    P + '-leg-r ' + P + '-sig-chip{justify-self:start;display:inline-block;font-size:10px;font-weight:400;padding:2px 8px;border-radius:999px;white-space:nowrap;}',
     // подсказка живёт в body, вне корня с переменными — цвета пилюль легенды те же, но явно
     P + '-leg-r ' + P + '-sig-chip.good{background:#bff2cd;color:#0a8f3c;}' + P + '-leg-r ' + P + '-sig-chip.note{background:#EAF0FC;color:#1B4AA8;}' +
       P + '-leg-r ' + P + '-sig-chip.neutral{background:#f3f4f6;color:#8a909c;}' + P + '-leg-r ' + P + '-sig-chip.dead{background:#ffcccc;color:#d11414;}',
-    P + '-tip ' + P + '-t-x b{font-weight:600;color:#23272e;}',
+    P + '-tip ' + P + '-t-x b{font-weight:700;color:#23272e;}',
     P + '-ptable td{text-align:right;padding:6px 8px;height:44px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
-    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:500;color:var(--ink);white-space:normal;min-width:0;}',
+    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:400;color:var(--ink);white-space:normal;min-width:0;}',
     // Таблица отчётов: ширины колонок заданы colgroup, ячейки не раздвигают таблицу; длинное название переносится.
     P + '-ptable.fix{table-layout:fixed;}',
     P + '-ptable.fix th,' + P + '-ptable.fix td{padding-left:4px;padding-right:6px;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.fix th.txt,' + P + '-ptable.fix td.txt{padding-left:12px;overflow-wrap:anywhere;}',
-    P + '-ptable td.lead{font-weight:500;color:var(--ink);}',
+    P + '-ptable td.lead{font-weight:400;color:var(--ink);}',
     P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
     P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
@@ -788,11 +788,11 @@ function buildCSS() {
     P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
     P + '-ptable tr.' + CFG.ns + '-aud-oth td{color:var(--muted);height:34px;border-bottom:2px solid var(--line);}',
     P + '-ptable tr.' + CFG.ns + '-aud-oth td.txt{font-weight:400;color:var(--muted);}',
-    P + '-ptable tr.tot td{font-weight:500;color:var(--ink);border-bottom:2px solid var(--line);}',
+    P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
     P + '-pginfo{font-size:var(--fs-note);color:var(--muted);}',
-    P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:500;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
+    P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:400;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
     P + '-pgbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;min-width:26px;height:24px;font-size:12px;line-height:1;color:var(--ink2);cursor:pointer;padding:0 7px;font-family:inherit;}',
     P + '-pgbtn:hover:not([disabled]){background:#fafbfc;border-color:#d8dce4;}',
     P + '-pgbtn[disabled]{opacity:.4;cursor:default;}',
@@ -803,11 +803,11 @@ function buildCSS() {
     // ── Подшапка разрезов ──
     P + '-cutbar{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:0 16px 12px;}',
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
-    P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
+    P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:400;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
     P + '-sub-tab.has{color:var(--act-ink);}',
-    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:8.5px;font-weight:500;margin-left:5px;padding:0 4px;}',
+    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:8.5px;font-weight:400;margin-left:5px;padding:0 4px;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
     // ── Вкладка «Аудитория»: строка «Разрез» и выпадающий список ──
@@ -821,7 +821,7 @@ function buildCSS() {
     P + '-dd-body{position:absolute;top:32px;left:0;z-index:40;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.16);padding:4px;display:flex;flex-direction:column;}',
     P + '-dd-opt{border:0;background:transparent;text-align:left;font:inherit;font-size:var(--fs-note);color:var(--ink2);padding:6px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;}',
     P + '-dd-opt:hover{background:#f4f6f9;}',
-    P + '-dd-opt.on{color:var(--act-ink);background:var(--blue-bg);font-weight:500;}',
+    P + '-dd-opt.on{color:var(--act-ink);background:var(--blue-bg);font-weight:400;}',
     P + '-dd-opt.sub{padding-left:22px;}',
     P + '-dd-sep{height:1px;background:var(--line2);margin:4px 6px;}',
 
@@ -841,19 +841,19 @@ function buildCSS() {
     P + '-tarr.' + CFG.ns + '-ta-right{display:block;left:-5px;}',
     P + '-tarr.' + CFG.ns + '-ta-left{display:block;right:-5px;}',
     P + '-tch{display:flex;align-items:center;gap:8px;margin:0 -6px 4px 0;}',
-    P + '-tcs{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#8a909c;font-weight:500;}',
+    P + '-tcs{font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:#8a909c;font-weight:400;}',
     P + '-tx{margin-left:auto;border:0;background:transparent;color:#8a909c;font:inherit;font-size:11px;cursor:pointer;padding:2px 6px;border-radius:6px;}',
     P + '-tx:hover{background:#f3f4f6;color:#23272e;}',
-    P + '-tct{font-size:14px;font-weight:600;color:#23272e;margin:0 0 4px;}',
-    P + '-tcx b{font-weight:500;color:#23272e;}',
+    P + '-tct{font-size:14px;font-weight:700;color:#23272e;margin:0 0 4px;}',
+    P + '-tcx b{font-weight:400;color:#23272e;}',
     P + '-tul{margin:6px 0 0;padding-left:18px;}',
     P + '-tul li{margin:0 0 6px;}',
     P + '-tcf{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}',
-    P + '-tbtn{height:30px;padding:0 12px;border:1px solid #e7e9ee;border-radius:8px;background:#fff;color:#454b55;font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;}',
+    P + '-tbtn{height:30px;padding:0 12px;border:1px solid #e7e9ee;border-radius:8px;background:#fff;color:#454b55;font:inherit;font-size:11.5px;font-weight:400;cursor:pointer;}',
     P + '-tbtn:first-child{margin-right:auto;}',
     P + '-tbtn.pri{background:#245FD4;border-color:#245FD4;color:#fff;}',
     P + '-tbtn.pri:hover{background:#1B4AA8;}',
-    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 8px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;white-space:nowrap;}',
+    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 8px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:11.5px;font-weight:400;cursor:pointer;white-space:nowrap;}',
     P + '-mine + ' + P + '-psearch{margin-left:0;}',          // кнопка прижата к поиску, вместе — справа
     P + '-mine:hover{border-color:var(--act);color:var(--act);}',
     P + '-mine.on{background:var(--blue-bg);border-color:var(--act);color:var(--act-ink);}',
@@ -864,12 +864,12 @@ function buildCSS() {
     P + '-rname-t{flex:1 1 auto;min-width:0;}',
     P + '-rname ' + P + '-lnkbtn{flex:0 0 auto;}',
     P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin:-1px 0 0 -4px;padding:0;border:0;border-radius:6px;'
-      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.7;font:inherit;font-size:11px;font-weight:600;}',
+      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.7;font:inherit;font-size:11px;font-weight:700;}',
     P + '-urow:hover ' + P + '-lnkbtn{opacity:1;}',
     P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
     P + '-lnkbtn.ok{opacity:1;color:var(--green-tx, #0a8f3c);background:#e6f6ec;}',
     P + '-lnkbtn.err{opacity:1;color:#c8251f;background:#ffe9e9;}',
-    P + '-sig-chip{display:inline-block;font-size:10px;font-weight:500;',
+    P + '-sig-chip{display:inline-block;font-size:10px;font-weight:400;',
     '  border-radius:999px;padding:2px 9px;}',
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
@@ -877,7 +877,7 @@ function buildCSS() {
     // Ритм отчёта — те же пилюли, что сегменты людей в «Кто смотрит»:
     // Daily/Weekly — зелёная, Monthly — голубая, Rare — серая, Dead — красная.
     P + '-sig-chip.dead{background:var(--red-bg);color:var(--red-tx);}',
-    P + '-rflag{display:inline-block;margin-right:5px;font-size:8.5px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
+    P + '-rflag{display:inline-block;margin-right:5px;font-size:8.5px;font-weight:400;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.cert{background:var(--green-bg);color:var(--green-tx);}',
     P + '-rflag.new{background:var(--new-bg);color:var(--new-tx);}',
     P + '-barcell,' + P + '-bar-th{text-align:left !important;padding-left:10px !important;}',
@@ -886,12 +886,12 @@ function buildCSS() {
     P + '-obs-b{padding:0 15px 14px;font-size:12px;color:var(--ink2);line-height:1.55;}',
     P + '-obs-b ul{margin:8px 0 0;padding-left:20px;}',
     P + '-obs-b li{margin-bottom:5px;}',
-    P + '-obs-b b{color:var(--ink);font-weight:500;}',
+    P + '-obs-b b{color:var(--ink);font-weight:400;}',
 
 
     // ── Прочее ──
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;}',
-    P + '-tbl-note b{color:var(--ink2);font-weight:500;}',
+    P + '-tbl-note b{color:var(--ink2);font-weight:400;}',
     P + '-empty{background:var(--card);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:var(--fs-body);}',
     P + '-empty b{display:block;color:var(--ink);font-size:14px;margin-bottom:8px;}',
     P + '-psearch{position:relative;flex:0 1 230px;min-width:150px;color:var(--muted);margin-left:auto;}',
@@ -906,14 +906,14 @@ function buildCSS() {
     '  border:1px solid #e7e9ee;border-radius:9px;padding:7px 10px;max-width:260px;',
     '  box-shadow:0 10px 30px rgba(24,33,50,.18),0 2px 6px rgba(24,33,50,.08);',
     '  transition:opacity .08s;}',
-    P + '-tip ' + P + '-t-h{display:block;font-size:9px;font-weight:500;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
+    P + '-tip ' + P + '-t-h{display:block;font-size:9px;font-weight:400;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
     P + '-tip ' + P + '-t-x{display:block;font-size:10.5px;color:#3a3f4a;line-height:1.4;}',
     P + '-tip ' + P + '-t-r{display:flex;align-items:center;gap:6px;margin-top:3px;min-width:118px;}',
     P + '-tip ' + P + '-t-m{display:inline-block;flex:0 0 auto;width:10px;height:9px;border-radius:3px;}',
     P + '-tip ' + P + '-t-m.' + CFG.ns + '-dash{height:0;width:14px;border-radius:0;border-top:2px dashed;background:none;}',
-    P + '-tip ' + P + '-t-l{font-size:10px;font-weight:500;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:11.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#23272e;}',
-    P + '-tip ' + P + '-t-r.' + CFG.ns + '-bench ' + P + '-t-v{color:#8a909c;font-weight:500;}',
+    P + '-tip ' + P + '-t-l{font-size:10px;font-weight:400;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:11.5px;font-weight:400;font-variant-numeric:tabular-nums;color:#23272e;}',
+    P + '-tip ' + P + '-t-r.' + CFG.ns + '-bench ' + P + '-t-v{color:#8a909c;font-weight:400;}',
     P + '-tip ' + P + '-t-n{display:block;font-size:9.5px;line-height:1.35;font-weight:400;color:#8a909c;margin-top:6px;padding-top:5px;border-top:1px solid #eef0f3;}',
     '</style>'
   ].join('\n');
@@ -1207,13 +1207,13 @@ function reportTableHtml() {
   // Колонки фиксированной ширины (table-layout:fixed), название забирает остаток и переносится:
   // таблица не шире каталога — без горизонтальной прокрутки на ноутбуке (правка владельца 2026-10-02:
   // вернуть «Просм.» рядом с ЦА, «Охват ЦА» → «ЦА»). Ширины — по самому широкому заголовку со стрелкой.
-  // Узкий каталог (режим правки борда, маленький экран): названию — не меньше 170 px; не влезает — прячем колонки
-  // по одной: «Ритм», «Пост.», «Просм.» (2026-10-07: в режиме правки название рассыпалось по буквам).
-  // 2026-10-09: шрифт на ступень мельче (× 0,92); ширины — по замеру заголовка со стрелкой сортировки (+1),
-  // минимум названия 156: «Ритм» виден от 488 px (было 526), «Пост.» — от 418, «Просм.» — от 363
-  var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 80 : 42) : 0, wU = 61, wV = 64, wReg = 55, wRh = 70;
-  var avail = (state.catW || 9999) - 40, need = 156 + wU + ca3 + wV + wReg + wRh;
-  var showRh = need <= avail, showReg = need - wRh <= avail, showV = need - wRh - wReg <= avail;
+  // Узкий каталог (режим правки борда, маленький экран): названию — не меньше 140 px; не влезает — прячем колонки
+  // по одной: «Пост.», затем «Просм.» (2026-10-07: в режиме правки название рассыпалось по буквам).
+  // «Ритм» НЕ прячется никогда (владелец 2026-10-09). Шрифт — Arial на ступень мельче; ширины — по замеру заголовка
+  // со стрелкой сортировки в Arial (+1): все колонки от 465 px каталога, без «Пост.» — от 412, без «Просм.» — уже.
+  var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 80 : 40) : 0, wU = 60, wV = 63, wReg = 53, wRh = 69;
+  var avail = (state.catW || 9999) - 40, need = 140 + wU + ca3 + wV + wReg + wRh;
+  var showRh = true, showReg = need <= avail, showV = need - wReg <= avail;
   var h = '<table class="' + CFG.ns + '-ptable dense sortable fix"><colgroup><col>' +
     '<col style="width:' + wU + 'px">' + (showV ? '<col style="width:' + wV + 'px">' : '') + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
     (showReg ? '<col style="width:' + wReg + 'px">' : '') + (showRh ? '<col style="width:' + wRh + 'px">' : '') + '</colgroup><thead><tr>' +

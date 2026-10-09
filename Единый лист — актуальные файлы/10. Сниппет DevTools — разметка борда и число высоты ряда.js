@@ -97,6 +97,19 @@
   var RULES = sheetsRules(), EDIT = !!document.querySelector('.dashboard--editing');
   out.push('окно ' + window.innerWidth + '×' + window.innerHeight + ', страница прокручена на ' + n(window.scrollY)
     + (EDIT ? ' · РЕЖИМ ПРАВКИ: в нём раскладка другая — выйдите из него и запустите ещё раз' : ''));
+  // Масштаб браузера (Cmd + / Cmd −, у Chrome — свой на каждый сайт): всё на листе крупнее, ячейки в CSS-пикселях уже.
+  // devicePixelRatio = масштаб экрана × масштаб браузера (Retina — 2 при 100 %); outer / inner — без панелей сбоку.
+  var dpr = window.devicePixelRatio || 1, oz = window.outerWidth && window.innerWidth ? window.outerWidth / window.innerWidth : 1;
+  out.push('масштаб: devicePixelRatio ' + (Math.round(dpr * 100) / 100) + ' (Retina при 100 % — 2, обычный экран — 1) · окно браузера '
+    + window.outerWidth + ' px снаружи / ' + window.innerWidth + ' внутри ≈ ' + Math.round(oz * 100) + ' %'
+    + (oz > 1.04 ? '   ← похоже, масштаб браузера больше 100 %: Cmd+0 вернёт 100 %' : ''));
+  // Proteus Adoption: колонки каталога прячутся по ширине (pa-reports-body: название ≥ 170 + колонки + поля 40)
+  var catEl = document.querySelector('.dashboard-chart-id-803049 iframe') || document.querySelector('#chart-id-803049 iframe');
+  if (catEl) {
+    var cw0 = Math.round(catEl.getBoundingClientRect().width);
+    out.push('каталог (803049) шириной ' + cw0 + ' px: «Ритм» виден от 526, «Пост.» — от 446, «Просм.» — от 390'
+      + (cw0 < 526 ? '   ← «Ритм» спрятан: каталогу не хватает ' + (526 - cw0) + ' px (шире — ручкой ячейки в режиме правки или масштабом браузера)' : ''));
+  }
 
   // ── 1. CSS борда: Superset 2.0–4.0 кладёт его в <style class="CssEditor-css"> в конце <head> (injectCustomCss) ──────
   var ed = document.querySelector('style.CssEditor-css');

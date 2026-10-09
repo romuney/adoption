@@ -1279,11 +1279,9 @@ function buildCSS() {
     P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
 
     // ── Закрепляемость (порт pa-cohorts) ──
-    P + '-panel-b.coh-wrap{overflow:auto;display:flex;flex-direction:column;}',
-    // большой экран (2026-10-09): таблица не тянется, а встаёт посередине свободного места под заголовком и легендой
-    P + '-panel-b.coh-wrap > *{flex:0 0 auto;}',
-    P + '-panel-b.coh-wrap > ' + P + '-ct-wrap{margin-top:auto;}',
-    P + '-panel-b.coh-wrap > ' + P + '-ct-wrap + ' + P + '-tbl-note{margin-bottom:auto;}',
+    // большой экран (владелец 09.10): всё сверху с обычными отступами, график растёт до разумного предела, ниже — пусто
+    // (по центру блоки «висели в воздухе»)
+    P + '-panel-b.coh-wrap{overflow:auto;}',
     P + '-ct-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;row-gap:8px;padding-bottom:12px;}',
     P + '-ct-scale-wrap{display:flex;align-items:center;gap:8px;flex:0 0 auto;}',
     P + '-ct-end{font-size:var(--fs-cap);color:var(--muted2);font-weight:400;}',
@@ -1323,7 +1321,7 @@ function buildCSS() {
     P + '-as-h{color:#a08556;}',
     P + '-as-x b{color:var(--ink2);font-weight:400;}',
     P + '-sig-chip.warn{background:#fff0d6;color:#8a5a00;}',
-    P + '-fn-box{flex:0 0 auto;margin:auto 0;}',   // воронка посередине свободного места под карточкой ЦА (09.10)
+    P + '-fn-box{flex:0 0 auto;}',
     P + '-cap2{font-size:var(--fs-cap);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400;}',
     P + '-warn{font-size:var(--fs-note);line-height:1.45;color:#7a5200;background:#fff6e6;border-radius:8px;padding:8px 10px;}',
     P + '-sig-chip.dead{background:#f0f1f3;color:var(--muted);}',
@@ -1344,11 +1342,12 @@ function buildCSS() {
     // между месяцами и от краёв чарта (space-evenly), на узкой сжимаются до 130 px (отступ 20 px — и между, и у краёв: gap + padding); уже этого — горизонтальная прокрутка ряда.
     // Месяцы забирают всю высоту вкладки: 6 строк недель у каждого (ровные ряды), клетка — от 20 px до потолка
     // сетки; дни недели — одной строкой кубиков под ними.
-    P + '-cal-months{display:flex;flex:1 1 auto;flex-wrap:nowrap;justify-content:space-evenly;gap:0 24px;padding:0 12px;box-sizing:border-box;}',
-    P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:330px;display:flex;flex-direction:column;justify-content:center;}',   // сетка упёрлась в потолок — месяц посередине между легендой и днями недели (09.10)
+    // месяцы растут с высотой панели, но не выше ~370 px (клетка ≈ 50 px) — дальше дни недели идут сразу под ними, пусто — внизу
+    P + '-cal-months{display:flex;flex:1 1 auto;max-height:370px;flex-wrap:nowrap;justify-content:space-evenly;gap:0 24px;padding:0 12px;box-sizing:border-box;}',
+    P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:330px;display:flex;flex-direction:column;}',
     P + '-cal-mt{font-size:var(--fs-body);font-weight:400;color:var(--ink2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-cal-mt span{color:var(--muted);font-weight:400;}',
-    P + '-cal-g{flex:1 1 auto;max-height:310px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(6,minmax(20px,1fr));gap:3px;}',
+    P + '-cal-g{flex:1 1 auto;max-height:340px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(6,minmax(20px,1fr));gap:3px;}',
     P + '-cal-wd{font-size:var(--fs-cap);color:var(--muted);text-align:center;letter-spacing:.3px;padding-bottom:2px;}',
     P + '-cal-wd.we{color:var(--muted2);}',
     P + '-cal-c{min-height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;}',

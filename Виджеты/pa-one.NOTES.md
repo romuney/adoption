@@ -147,6 +147,9 @@
   предела: cal-months flex:1 max-height 370, cal-g max 340; fn-box без автоотступов (FN_ROW 74 — потолок); coh-wrap
   обычный блок. syncFnH по-прежнему считает занятое суммой блоков.
 
+## Поля графиков динамики (2026-10-09, ночь-16)
+- padL = padR = 6 у usersChartSvg / viewsChartSvg / covChartSvg (справа было 26), svgBarWidth — SVG_W − 14.
+
 ## Закрепляемость — кривая над таблицей (2026-10-09, ночь-15)
 - cohCurveHtml (в cohortTableHtml при o.curve): блок -ct-cv = подпись 182 px (2+64+2+112+2 — колонки «Когорта», «Пришло»)
   + область возрастов; таблица table-layout:fixed → колонки +1…+11 поровну, x точки = (a − 0,5) / 11. SVG без пропорций

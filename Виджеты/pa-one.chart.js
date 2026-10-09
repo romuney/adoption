@@ -3195,7 +3195,7 @@ function svgHeadroom(max, n) {
   return max > 0 ? max * (n > CFG.spacing.dense ? CFG.spacing.headroomDense : CFG.spacing.headroom) : 1;
 }
 function svgBarWidth(n) {
-  var inner = Math.max(40, SVG_W - 34);
+  var inner = Math.max(40, SVG_W - 14);   // поля 6 + 6 (как у графиков динамики)
   return Math.max(CFG.spacing.barMin, Math.min(CFG.spacing.barMax, inner / n - CFG.spacing.barGap));
 }
 function labelStep(n) { return n > 14 ? Math.ceil(n / 12) : 1; }
@@ -3229,7 +3229,7 @@ function usersChartSvg(ts, grain) {
   var maxU = 0, i;
   for (i = 0; i < n; i++) if (stackAct(ts[i]) > maxU) maxU = stackAct(ts[i]);
   var topU = svgHeadroom(maxU, n);
-  var padL = 6, padR = 26, inner = SVG_W - padL - padR;
+  var padL = 6, padR = 6, inner = SVG_W - padL - padR;
   var step = inner / n;
   var bw = svgBarWidth(n);
   var top = 14, axH = 32;
@@ -3285,7 +3285,7 @@ function viewsChartSvg(ts, grain) {
   var maxV = 0, i;
   for (i = 0; i < n; i++) if (viewsOf(ts[i]) > maxV) maxV = viewsOf(ts[i]);
   var topV = svgHeadroom(maxV, n);
-  var padL = 6, padR = 26, inner = SVG_W - padL - padR;
+  var padL = 6, padR = 6, inner = SVG_W - padL - padR;
   var step = inner / n;
   var top = 14, axH = 32;
   var pH = DYN_H ? Math.max(40, Math.round(DYN_H * 0.4) - top - axH) : 112;
@@ -3459,7 +3459,7 @@ function covChartSvg(ts, grain) {
   var maxV = 0;
   for (i = 0; i < n; i++) if (ts[i].covCum > maxV) maxV = ts[i].covCum;
   var topV = Math.max(5, maxV * 1.2);
-  var padL = 6, padR = 26, inner = SVG_W - padL - padR, step = inner / n;
+  var padL = 6, padR = 6, inner = SVG_W - padL - padR, step = inner / n;
   var top = 14, axH = 32;
   var pH = DYN_H ? Math.max(40, Math.round(DYN_H * 0.4) - top - axH) : 112;
   var H = top + pH + axH;

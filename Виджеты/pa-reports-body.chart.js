@@ -1319,7 +1319,7 @@ function tourSteps() {
   add({ remote: 'one:obs', pad: 3, title: 'Что видно в данных',
     html: 'Заметные изменения: факт попадает сюда, только если отклонение больше порога. Считается правилами по тем же числам, без ИИ.' });
   add({ remote: 'one:tabs', pad: 3, title: 'Вкладки панели',
-    html: '<b>Динамика</b> по периодам, <b>календарь</b> заходов, <b>путь ЦА</b> — от доступа до регулярных заходов, <b>кто смотрит</b> — люди и группы, <b>закрепляемость</b> — возвращаются ли новые.' });
+    html: '<b>Динамика</b> по периодам, <b>календарь</b> заходов, <b>путь ЦА</b> — от доступа до регулярных заходов, <b>кто смотрит</b> — люди и группы, <b>закрепляемость</b> — возвращаются ли новые. Показатели и «Что видно» — на «Динамике», остальные вкладки — на всю панель.' });
   add({ remote: 'head:help', pad: 4, title: 'Тур всегда под рукой', html: 'Кнопка «Как работать» в шапке покажет этот тур ещё раз.' });
   if (out.length) out[out.length - 1].last = true;
   return out;
@@ -2204,8 +2204,19 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       if (cw && Math.abs(cw - (state.catW || 0)) > 4) { state.catW = cw; overlay.innerHTML = buildHTML(); }
       overlay.scrollTop = st;
       overlay.scrollLeft = sl;
+      catScrPut();
       renderTip();
       tourSync();
+    }
+    // Прокрутка СПИСКА строк (-tscroll) тоже переживает пересборку и перезапуск скрипта (2026-10-09, ноутбук: ряд
+    // ниже 20 строк, у списка своя прокрутка — клик по строке внизу уводил список к первой строке). Тот же список
+    // (разрез, страница, сортировка, поиск) — прокрутка возвращается; другой — список сверху.
+    function catSig() {
+      return JSON.stringify([state.mode, state.page || 0, state.repSort, state.repQuery || '', state.aud && state.aud.dim]);
+    }
+    function catScrPut() {
+      var z = overlay.querySelector('.' + CFG.ns + '-tscroll'), m = state.catScr;
+      if (z && m && m.sig === catSig()) { z.scrollTop = m.top; z.scrollLeft = m.left; }
     }
 
     // Имена атрибутов — ЧАСТЬ КОНТРАКТА, а не стиль: `data-tip`, `data-kind`,
@@ -2553,6 +2564,11 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     // браузер не шлёт), окно потеряло фокус, список прокрутили под курсором.
     state.tipOff = function () { if (state.tip) { state.tip = null; hideTip(); } };
     overlay.addEventListener('scroll', function () { state.tipOff(); }, { passive: true });
+    // scroll не всплывает — ловим прокрутку списка на погружении
+    overlay.addEventListener('scroll', function (e) {
+      var t = e.target;
+      if (t && t.classList && t.classList.contains(CFG.ns + '-tscroll')) state.catScr = { sig: catSig(), top: t.scrollTop, left: t.scrollLeft };
+    }, { passive: true, capture: true });
     if (!state.tipGuard) {
       state.tipGuard = true;
       document.addEventListener('mouseout', function (e) { if (!e.relatedTarget && state.tipOff) state.tipOff(); });

@@ -220,7 +220,7 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
 var state = __S[CFG.ns];
 // Состояние из прошлой версии виджета (та же вкладка браузера): добиваем ключи.
 (function () {
-  var d = { gOpen: {}, gMore: {}, gSort: { key: 'users', dir: -1 }, pSort: { key: 'days', dir: -1 }, page: 0, toast: '', whoFull: false };
+  var d = { gOpen: {}, gMore: {}, gSort: { key: 'users', dir: -1 }, pSort: { key: 'days', dir: -1 }, page: 0, toast: '' };
   for (var k in d) if (Object.prototype.hasOwnProperty.call(d, k) && state[k] == null) state[k] = d[k];
   if (state.freqSel && !/^[1-4]$/.test(String(state.freqSel))) state.freqSel = null;   // было 5 корзин
   var pk = state.picks || (state.picks = {});
@@ -1102,6 +1102,11 @@ function buildCSS() {
     //    pa-area). Строка на сером холсте над карточкой, высота ФИКСИРОВАНА: клик
     //    добавляет/снимает пилюлю, вёрстка не двигается (правка владельца 2026-09-23). ──
     P + '-frow{display:flex;align-items:center;gap:8px;height:34px;margin:0 0 8px;padding:0 4px;min-width:0;flex:0 0 auto;overflow:hidden;}',
+    // верхняя строка панели: пилюли (frow, ужимается) + вкладки (28 + 3 + 3 = 34 — высота строки фильтров каталога)
+    P + '-topbar{display:flex;align-items:center;gap:12px;height:34px;margin:0 0 8px;min-width:0;flex:0 0 auto;}',
+    P + '-topbar > ' + P + '-frow{flex:1 1 0;margin:0;}',
+    P + '-topbar > ' + P + '-vtabs{flex:0 0 auto;flex-wrap:nowrap;margin-left:auto;}',
+    '@media (max-width:760px){' + P + '-vtabs ' + P + '-sub-tab{padding:0 8px;}}',   // iframe = ячейка: узкая панель — место пилюлям
     P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
     P + '-frow-h{font-size:var(--fs-note);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
@@ -2218,8 +2223,6 @@ function groupsNow() {
 }
 var FILTER_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:0 0 auto"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg>';
 var COPY_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>';
-var EXPAND_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>';
-var SHRINK_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/></svg>';
 function listZoneHtml() {
   var views = groupsNow(), known = false;
   for (var v = 0; v < views.length; v++) if (views[v].key === state.whoCut) known = true;
@@ -2239,9 +2242,6 @@ function listZoneHtml() {
       '<button class="' + N + '-btn ' + N + '-ibtn" data-wexp="copy" type="button" aria-label="Копировать"' + tip({ title: 'Копировать', text: grouped
         ? 'Все группы всех уровней с итогами — в буфер обмена; вставка в Excel разложит по колонкам.'
         : 'Все люди списка с учётом поиска, корзины и настроек (не только страница) — в буфер обмена; вставка в Excel разложит по колонкам.' }) + '>' + COPY_SVG + '</button>' +
-            '<button class="' + N + '-btn ' + N + '-ibtn' + (state.whoFull ? ' on' : '') + '" data-wfull="1" type="button" aria-pressed="' + !!state.whoFull + '" aria-label="' + (state.whoFull ? 'Вернуть KPI' : 'Список на весь чарт') + '"' +
-        tip({ title: state.whoFull ? 'Вернуть KPI и «Что видно»' : 'Список на весь чарт', text: state.whoFull ? 'Вернуть панель в обычный вид.' : 'Скрыть KPI и «Что видно в данных» — список с корзинами и настройками займёт весь правый чарт.' }) +
-        '>' + (state.whoFull ? SHRINK_SVG : EXPAND_SVG) + '</button>' +
     '</div>' +
     '<span class="' + N + '-toast" role="status">' + esc(state.toast || '') + '</span>' +
     '</div>' +
@@ -2757,9 +2757,11 @@ function buildHTML() {
   for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key, cnt: CFG.views[t].key === 'who' ? whoFilterCount() : 0 });
   var h = [];
   h.push('<div class="' + N + '-root">');
-  h.push(areaFilterRowHtml(ai));
-  // «Кто смотрит» на весь чарт: KPI и «Что видно» скрыты, список с корзинами занимает всё.
-  if (MODEL.kpi && !(view === 'who' && state.whoFull)) h.push('<div class="' + N + '-top">' + kpisHtml() + obsHtml(ai.mut ? 'Proteus' : ai.what) + '</div>');
+  // Верхняя строка (вровень с «Выбранными фильтрами» каталога, 2026-10-09): слева — свои пилюли панели, справа —
+  // вкладки. KPI и «Что видно» — только на «Динамике»; остальные вкладки занимают всю панель под строкой.
+  h.push('<div class="' + N + '-topbar">' + areaFilterRowHtml(ai) +
+    '<div class="' + N + '-sub-tabs ' + N + '-vtabs" role="tablist">' + tabsHtml('view', tabs) + '</div></div>');
+  if (MODEL.kpi && view === 'dyn') h.push('<div class="' + N + '-top">' + kpisHtml() + obsHtml(ai.mut ? 'Proteus' : ai.what) + '</div>');
   h.push('<div class="' + N + '-panel">');
   h.push('<div class="' + N + '-panel-h">' +
     '<div class="' + N + '-h-txt"><span class="' + N + '-h-ttl" title="' + esc(title + ' · ' + (ai.mut ? 'весь Proteus' : ai.pill) + (caModeNow() === 'cond' ? ' · ЦА: ' + caCondText() : '')) + '">' + esc(title) + ' · <span class="' + N + '-h-area"' + tip({ title: 'Область', text: ai.text }) + '>' +
@@ -2773,7 +2775,6 @@ function buildHTML() {
         : (view === 'dyn' ? 'клик по строке каталога выбирает отчёты'
           : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке'
             : (view === 'path' ? 'кого считаем аудиторией и как она доходит до отчётов' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
-    '<div class="' + N + '-sub-tabs" role="tablist">' + tabsHtml('view', tabs) + '</div>' +
     '</div>');
   h.push('<div class="' + N + '-panel-b ' + bodyCls + '">' + body + '</div>');
   h.push('</div>');
@@ -3101,7 +3102,7 @@ function usersChartSvg(ts, grain) {
   var step = inner / n;
   var bw = svgBarWidth(n);
   var top = 14, axH = 32;
-  var pH = DYN_H ? Math.max(120, Math.round(DYN_H * 0.6) - top - axH) : 164;
+  var pH = DYN_H ? Math.max(64, Math.round(DYN_H * 0.6) - top - axH) : 164;   // пороги 64 + 40 (+ поля 2 × 46) = 196 ≤ DYN_H
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
   var fsVal = dense ? CFG.fonts.dense : CFG.fonts.val;
@@ -3155,7 +3156,7 @@ function viewsChartSvg(ts, grain) {
   var padL = 6, padR = 26, inner = SVG_W - padL - padR;
   var step = inner / n;
   var top = 14, axH = 32;
-  var pH = DYN_H ? Math.max(80, Math.round(DYN_H * 0.4) - top - axH) : 112;
+  var pH = DYN_H ? Math.max(40, Math.round(DYN_H * 0.4) - top - axH) : 112;
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
   var fsVal = dense ? CFG.fonts.dense : CFG.fonts.val;
@@ -3282,7 +3283,7 @@ function covChartSvg(ts, grain) {
   var topV = Math.max(5, maxV * 1.2);
   var padL = 6, padR = 26, inner = SVG_W - padL - padR, step = inner / n;
   var top = 14, axH = 32;
-  var pH = DYN_H ? Math.max(80, Math.round(DYN_H * 0.4) - top - axH) : 112;
+  var pH = DYN_H ? Math.max(40, Math.round(DYN_H * 0.4) - top - axH) : 112;
   var H = top + pH + axH;
   var fsVal = n > CFG.spacing.dense ? CFG.fonts.dense : CFG.fonts.val;
   var y2 = function (v) { return top + pH - (v / topV) * pH; };
@@ -3576,7 +3577,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
       for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
       avail -= CFG.spacing.stackGap * 3;
-      avail = Math.max(300, Math.floor(avail));   // нижний порог высоты графиков (был 360 — на низкой панели давал прокрутку)
+      avail = Math.max(200, Math.floor(avail));   // нижний порог графиков (360 → 300 → 200, 2026-10-09: ноутбук — без прокрутки)
       // допуск 4 px — только на рост: не хватает хоть пикселя — ужимаем (иначе полоса прокрутки)
       if (avail >= DYN_H && avail - DYN_H <= 4) return false;
       DYN_H = avail; state.dynH = avail;
@@ -3590,7 +3591,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var avail = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
       for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
-      avail = Math.max(240, Math.floor(avail - 8));
+      avail = Math.max(160, Math.floor(avail - 8));   // 240 → 160 (2026-10-09): кривая ужимается, а не уходит под прокрутку
       if (Math.abs(avail - COH_H) <= 4) return false;
       COH_H = avail; state.cohH = avail;
       return true;
@@ -3968,8 +3969,6 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         return;
       }
       // Выгрузка: копирование в буфер (TSV) / файл CSV — из модели, все строки.
-      var wf = trigger(e.target, 'data-wfull');
-      if (wf) { state.whoFull = !state.whoFull; state.tip = null; hideTip(); render(); return; }
       var wx = trigger(e.target, 'data-wexp');
       if (wx) {
         var kind = wx.getAttribute('data-wexp'), tb = exportRows(), nR = tb.rows.length;
@@ -4226,6 +4225,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       if (d.op === 'off') { state.tour = null; tourPos(); return; }
       if (state.dd) { state.dd = null; render(); }
       if (state.tip) { state.tip = null; hideTip(); }
+      // KPI и «Что видно» — только на «Динамике» (2026-10-09): тур начинается с неё, иначе их шаги пропали бы
+      if (d.op === 'dim' && d.ask && state.view && state.view !== 'dyn') { state.view = 'dyn'; render(); }
       var key = d.op === 'show' && String(d.key || '').indexOf(TOUR_FROM + ':') === 0 ? String(d.key).slice(TOUR_FROM.length + 1) : '';
       var el = key ? tourTarget(key) : null;
       state.tour = { key: key, pad: d.pad };

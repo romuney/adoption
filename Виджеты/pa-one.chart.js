@@ -1140,7 +1140,8 @@ function buildCSS() {
     P + '-ptable th.txt{text-align:left;padding-left:12px;}',
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
-    P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
+    P + '-sa{display:inline-block;min-width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);white-space:nowrap;}',
+    P + '-sa sup{font-size:8px;font-weight:700;line-height:0;margin-left:1px;}',   // номер уровня сортировки (Shift+клик, 09.10)
     P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
     P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:400;color:var(--ink);white-space:normal;min-width:0;}',
     P + '-ptable td.lead{font-weight:400;color:var(--ink);}',
@@ -1521,14 +1522,51 @@ function personKey(p, key) {
   if (key === 'last') { var d = daysAgo(p); return d == null ? null : -d; }
   return p[key];
 }
+// ---- Сортировка в несколько уровней (владелец 2026-10-09; одинаково в каталоге и панели) ----
+// Клик по заголовку — сортировка по одной колонке (повторный — обратный порядок, лишние уровни сбрасываются).
+// Shift+клик — добавить колонку следующим уровнем (до SORT_MAX), Shift+клик по уже выбранной — сменить её порядок.
+// sc — { <k>: колонка, dir: ±1, then: [{ c, dir }] }; k — имя поля колонки ('col' в каталоге, 'key' в панели).
+var SORT_MAX = 3;
+function sortLevels(sc, k) {
+  var out = [{ c: sc[k], dir: sc.dir }], th = sc.then || [];
+  for (var i = 0; i < th.length; i++) out.push({ c: th[i].c, dir: th[i].dir });
+  return out;
+}
+function sortClick(sc, k, col, shift, defDir) {
+  var th = sc.then || [], i;
+  if (!shift) {
+    if (sc[k] === col) sc.dir = -sc.dir; else { sc[k] = col; sc.dir = defDir; }
+    sc.then = [];
+    return;
+  }
+  if (sc[k] === col) { sc.dir = -sc.dir; return; }
+  for (i = 0; i < th.length; i++) if (th[i].c === col) { th[i].dir = -th[i].dir; sc.then = th; return; }
+  if (th.length < SORT_MAX - 1) th.push({ c: col, dir: defDir });
+  sc.then = th;
+}
+function sortRank(sc, k, col) {          // 0 — колонка не сортирует, 1… — номер уровня
+  if (sc[k] === col) return 1;
+  var th = sc.then || [];
+  for (var i = 0; i < th.length; i++) if (th[i].c === col) return i + 2;
+  return 0;
+}
+function sortMark(sc, k, col) {          // стрелка (и номер уровня, когда уровней больше одного)
+  var n = sortRank(sc, k, col);
+  if (!n) return '';
+  var dir = n === 1 ? sc.dir : sc.then[n - 2].dir;
+  return (dir < 0 ? '▼' : '▲') + (sc.then && sc.then.length ? '<sup>' + n + '</sup>' : '');
+}
+var SORT_NOTE = 'Клик — сортировка · Shift+клик — добавить колонку следующим уровнем';
 function sortPeople(list) {
-  var sc = state.pSort, out = list.slice();
+  var lv = sortLevels(state.pSort, 'key'), out = list.slice();
   out.sort(function (a, b) {
-    var va = personKey(a, sc.key), vb = personKey(b, sc.key);
-    var ea = va == null || va === '', eb = vb == null || vb === '';
-    if (ea !== eb) return ea ? 1 : -1;          // пустые — всегда вниз (RETRO 29)
-    var r = ea ? 0 : (va > vb ? 1 : (va < vb ? -1 : 0)) * sc.dir;
-    return r || (b.days - a.days) || (b.views - a.views) || (a.login < b.login ? -1 : (a.login > b.login ? 1 : 0));
+    for (var li = 0; li < lv.length; li++) {
+      var va = personKey(a, lv[li].c), vb = personKey(b, lv[li].c);
+      var ea = va == null || va === '', eb = vb == null || vb === '';
+      if (ea !== eb) return ea ? 1 : -1;          // пустые — всегда вниз (RETRO 29), на любом уровне
+      if (!ea && va !== vb) return (va > vb ? 1 : -1) * lv[li].dir;
+    }
+    return (b.days - a.days) || (b.views - a.views) || (a.login < b.login ? -1 : (a.login > b.login ? 1 : 0));
   });
   return out;
 }
@@ -1558,10 +1596,10 @@ function grainCfg() { return CFG.grains[MODEL.grain] || CFG.grains.d; }  // гр
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 function actLabel() { return 'Активных ' + grainCfg().units; }
 function sortTh(attr, col, sc, cls) {
-  var on = sc.key === col.key;
+  var on = sortRank(sc, 'key', col.key) > 0;
   return '<th class="srt' + (col.txt ? ' txt' : '') + (on ? ' on' : '') + (cls ? ' ' + cls : '') + '" ' + attr + '="' + esc(col.key) + '"' +
-    (col.hint ? tip({ title: col.label, text: col.hint + '. Клик — сортировка.' }) : '') + '>' +
-    esc(col.label) + '<i class="' + CFG.ns + '-sa">' + (on ? (sc.dir < 0 ? '▼' : '▲') : '') + '</i></th>';
+    tip(col.hint ? { title: col.label, text: col.hint + '.', note: SORT_NOTE } : { note: SORT_NOTE }) + '>' +
+    esc(col.label) + '<i class="' + CFG.ns + '-sa">' + sortMark(sc, 'key', col.key) + '</i></th>';
 }
 function pagerHtml(total) {
   var PS = CFG.pageSize, pages = Math.max(1, Math.ceil(total / PS));
@@ -1812,15 +1850,18 @@ function gColsNow() {
   return out;
 }
 function sortNodes(nodes) {
-  var sc = state.gSort;
+  var lv = sortLevels(state.gSort, 'key');
   return nodes.slice().sort(function (a, b) {
     if (!!a.noBus !== !!b.noBus) return a.noBus ? 1 : -1;   // строка «—» — всегда внизу
-    var va = sc.key === 'name' ? a.name.toLowerCase() : a.m[sc.key];
-    var vb = sc.key === 'name' ? b.name.toLowerCase() : b.m[sc.key];
-    var ea = va == null, eb = vb == null;
-    if (ea !== eb) return ea ? 1 : -1;          // пустые — вниз (RETRO 29)
-    var r = ea ? 0 : (va > vb ? 1 : (va < vb ? -1 : 0)) * sc.dir;
-    return r || b.m.users - a.m.users || (a.name < b.name ? -1 : 1);
+    for (var li = 0; li < lv.length; li++) {
+      var k = lv[li].c;
+      var va = k === 'name' ? a.name.toLowerCase() : a.m[k];
+      var vb = k === 'name' ? b.name.toLowerCase() : b.m[k];
+      var ea = va == null, eb = vb == null;
+      if (ea !== eb) return ea ? 1 : -1;          // пустые — вниз (RETRO 29)
+      if (!ea && va !== vb) return (va > vb ? 1 : -1) * lv[li].dir;
+    }
+    return b.m.users - a.m.users || (a.name < b.name ? -1 : 1);
   });
 }
 // Ячейка «Доля»: полоса фиксированной ширины + число в поле фиксированной ширины
@@ -3990,8 +4031,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         var sk = gs.getAttribute(isG ? 'data-gsort' : 'data-psort');
         var sc = isG ? state.gSort : state.pSort;
         var txtKey = sk === 'name' || sk === 'fio' || sk === 'org' || sk === 'exp';
-        if (sc.key === sk) sc.dir *= -1;
-        else { sc.key = sk; sc.dir = txtKey ? 1 : -1; }
+        sortClick(sc, 'key', sk, e.shiftKey, txtKey ? 1 : -1);
         state.page = 0;              // пересорт — на первую страницу
         render();
         return;

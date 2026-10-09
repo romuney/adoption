@@ -748,7 +748,8 @@ function buildCSS() {
     P + '-ptable th.txt{text-align:left;padding-left:12px;}',
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
-    P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
+    P + '-sa{display:inline-block;min-width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);white-space:nowrap;}',
+    P + '-sa sup{font-size:8px;font-weight:700;line-height:0;margin-left:1px;}',   // номер уровня сортировки (Shift+клик, 09.10)
     // Значок «i» — один вид на всём борде (как -info в KPI чартов области и аудитории).
     // Плашка сверки фильтров — вне корня виджета: CSS-переменные корня до неё не доходят, цвета явные.
     P + '-selg{position:absolute;left:0;top:0;right:0;bottom:0;z-index:30;display:none;align-items:flex-start;justify-content:center;padding-top:96px;background:rgba(246,246,246,.6);}',
@@ -1181,21 +1182,25 @@ function reportTableHtml() {
     var kp = byId[id].kpi;
     rows.push({ id: id, m: m, k: kp, vpu: kp.users ? kp.views / kp.users : 0, rs: kp.users ? kp.regular_users / kp.users * 100 : 0, cov: covOf(kp), nev: neverOf(kp) });
   }
-  var sc = state.repSort;
+  var sc = state.repSort, lv = sortLevels(sc, 'col');
+  // «Пост.» в колонке — ДОЛЯ, сортируем по доле (по абсолюту порядок выглядел случайным).
+  var val = function (x, col, coarse) {
+    if (col === 'dashboard_nm') return String(x.m.dash_nm || '');
+    if (col === 'vpu') return x.vpu;
+    if (col === 'cov') return x.cov == null || x.k.ca_wide ? -1 : x.cov;
+    if (col === 'never') return x.nev == null ? -1 : x.nev;
+    if (col === 'regular_users') return x.rs;
+    // чаще → выше; при равном ритме — у кого он твёрже. Есть следующий уровень (Shift+клик) — только сам ритм:
+    // внутри «Daily» строки идут по следующей колонке, а не по твёрдости
+    if (col === 'rhythm') return x.k.rh.rank + (coarse ? 0 : x.k.rh.share);
+    return x.k[col] != null ? x.k[col] : 0;
+  };
   rows.sort(function (a, b) {
-    // «Пост.» в колонке — ДОЛЯ, сортируем по доле (по абсолюту порядок выглядел случайным).
-    var val = function (x) {
-      if (sc.col === 'dashboard_nm') return String(x.m.dash_nm || '');
-      if (sc.col === 'vpu') return x.vpu;
-      if (sc.col === 'cov') return x.cov == null || x.k.ca_wide ? -1 : x.cov;
-      if (sc.col === 'never') return x.nev == null ? -1 : x.nev;
-      if (sc.col === 'regular_users') return x.rs;
-      if (sc.col === 'rhythm') return x.k.rh.rank + x.k.rh.share;   // чаще → выше; при равном ритме — у кого он твёрже
-      return x.k[sc.col] != null ? x.k[sc.col] : 0;
-    };
-    var va = val(a), vb = val(b);
-    var r = va > vb ? 1 : (va < vb ? -1 : 0);
-    return r * sc.dir || (b.k.users - a.k.users);
+    for (var li = 0; li < lv.length; li++) {
+      var co = li < lv.length - 1, va = val(a, lv[li].c, co), vb = val(b, lv[li].c, co);
+      if (va !== vb) return (va > vb ? 1 : -1) * lv[li].dir;
+    }
+    return b.k.users - a.k.users;
   });
   if (!rows.length) {
     return { html: '<div class="' + CFG.ns + '-empty"><b>Ничего не найдено</b>Снимите часть фильтров или очистите поиск.</div>', total: 0 };
@@ -1211,9 +1216,10 @@ function reportTableHtml() {
   var pageRows = rows.slice(pg * PS, pg * PS + PS);
   var picked = pickList('report');
   var th = function (col, label, hint) {
-    return '<th' + (hint ? tip(hint) : '') + ' data-sort="' + col + '"' +
-      (sc.col === col ? ' class="on"' : '') + '><span class="' + CFG.ns + '-thl">' +
-      '<span class="' + CFG.ns + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span>' + esc(label) + '</span></th>';
+    var hh = hint ? { title: hint.title, text: hint.text, note: [hint.note, SORT_NOTE] } : { note: SORT_NOTE };
+    return '<th' + tip(hh) + ' data-sort="' + col + '"' +
+      (sortRank(sc, 'col', col) ? ' class="on"' : '') + '><span class="' + CFG.ns + '-thl">' +
+      '<span class="' + CFG.ns + '-sa">' + sortMark(sc, 'col', col) + '</span>' + esc(label) + '</span></th>';
   };
   // Колонки фиксированной ширины (table-layout:fixed), название забирает остаток и переносится:
   // таблица не шире каталога — без горизонтальной прокрутки на ноутбуке (правка владельца 2026-10-02:
@@ -1229,8 +1235,8 @@ function reportTableHtml() {
   var h = '<table class="' + CFG.ns + '-ptable dense sortable fix"><colgroup><col>' +
     '<col style="width:' + wU + 'px">' + (showV ? '<col style="width:' + wV + 'px">' : '') + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
     (showReg ? '<col style="width:' + wReg + 'px">' : '') + (showRh ? '<col style="width:' + wRh + 'px">' : '') + '</colgroup><thead><tr>' +
-    '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
-      (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
+    '<th class="txt' + (sortRank(sc, 'col', 'dashboard_nm') ? ' on' : '') + '" data-sort="dashboard_nm"' + tip({ note: SORT_NOTE }) + '>Отчёт<span class="' + CFG.ns + '-sa">' +
+      sortMark(sc, 'col', 'dashboard_nm') + '</span></th>' +
     // Подсказки колонок (редактура 2026-10-09): заголовок — что это, одна фраза — смысл, оговорки — сноской.
     th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() }
       : { title: 'Пользователи', text: 'Разные люди, открывшие отчёт за период.' }) +
@@ -1325,7 +1331,7 @@ function tourSteps() {
   add({ sel: P + '-cat tbody tr[role=button]', pad: 2, lock: true, title: 'Выбрать строку',
     html: '<b>Клик</b> — выбрать: панель справа покажет только это. <b>Shift+клик</b> — несколько. Повторный клик снимает. Значок ссылки в строке владельца копирует ссылку на отчёт.' });
   add({ sel: P + '-cat thead th', all: true, pad: 2, lock: true, title: 'Колонки',
-    html: '<b>Польз.</b> — разные люди, открывшие отчёт; <b>Просм.</b> — открытия; <b>ЦА</b> — охват целевой аудитории; <b>Пост.</b> — доля постоянных; <b>Ритм</b> — как пользуются за 3 месяца (значок «i»). Клик по заголовку — сортировка.' });
+    html: '<b>Польз.</b> — разные люди, открывшие отчёт; <b>Просм.</b> — открытия; <b>ЦА</b> — охват целевой аудитории; <b>Пост.</b> — доля постоянных; <b>Ритм</b> — как пользуются за 3 месяца (значок «i»). Клик по заголовку — сортировка, <b>Shift+клик</b> — ещё одна колонка следующим уровнем.' });
   add({ sel: P + '-frow', pad: 2, lock: true, title: 'Выбранные фильтры',
     html: 'Всё, что выбрано в каталоге, — пилюлями: × снимает одно значение. Так видно, по чему сейчас считает панель справа.' });
   add({ remote: 'one:kpi', pad: 4, title: 'Показатели',
@@ -1367,6 +1373,41 @@ function mineBtnHtml() {
 }
 // Под названием отчёта: автор первым, за ним владельцы — «автор +N» (все — в подсказке). Старый SQL без автора —
 // первый владелец.
+// ---- Сортировка в несколько уровней (владелец 2026-10-09; одинаково в каталоге и панели) ----
+// Клик по заголовку — сортировка по одной колонке (повторный — обратный порядок, лишние уровни сбрасываются).
+// Shift+клик — добавить колонку следующим уровнем (до SORT_MAX), Shift+клик по уже выбранной — сменить её порядок.
+// sc — { <k>: колонка, dir: ±1, then: [{ c, dir }] }; k — имя поля колонки ('col' в каталоге, 'key' в панели).
+var SORT_MAX = 3;
+function sortLevels(sc, k) {
+  var out = [{ c: sc[k], dir: sc.dir }], th = sc.then || [];
+  for (var i = 0; i < th.length; i++) out.push({ c: th[i].c, dir: th[i].dir });
+  return out;
+}
+function sortClick(sc, k, col, shift, defDir) {
+  var th = sc.then || [], i;
+  if (!shift) {
+    if (sc[k] === col) sc.dir = -sc.dir; else { sc[k] = col; sc.dir = defDir; }
+    sc.then = [];
+    return;
+  }
+  if (sc[k] === col) { sc.dir = -sc.dir; return; }
+  for (i = 0; i < th.length; i++) if (th[i].c === col) { th[i].dir = -th[i].dir; sc.then = th; return; }
+  if (th.length < SORT_MAX - 1) th.push({ c: col, dir: defDir });
+  sc.then = th;
+}
+function sortRank(sc, k, col) {          // 0 — колонка не сортирует, 1… — номер уровня
+  if (sc[k] === col) return 1;
+  var th = sc.then || [];
+  for (var i = 0; i < th.length; i++) if (th[i].c === col) return i + 2;
+  return 0;
+}
+function sortMark(sc, k, col) {          // стрелка (и номер уровня, когда уровней больше одного)
+  var n = sortRank(sc, k, col);
+  if (!n) return '';
+  var dir = n === 1 ? sc.dir : sc.then[n - 2].dir;
+  return (dir < 0 ? '▼' : '▲') + (sc.then && sc.then.length ? '<sup>' + n + '</sup>' : '');
+}
+var SORT_NOTE = 'Клик — сортировка · Shift+клик — добавить колонку следующим уровнем';
 function ownersHtml(m) {
   var o = m.people || m.owners || [];
   if (o.length < 2) return esc(o[0] || '—');
@@ -1480,11 +1521,14 @@ function audRows() {
     out.push({ key: k, label: lab, sub: dim.d === 'o' ? a.parent : '', users: a.users, staff: a.staff, views: a.views, regular: a.regular,
       cov: a.staff ? a.users / a.staff * 100 : null, reg: a.users ? a.regular / a.users * 100 : 0 });
   }
-  var sc = state.aud.sort;
+  var lv = sortLevels(state.aud.sort, 'col');
+  var v = function (r, col) { return col === 'name' ? r.label.toLowerCase() : (r[col] == null ? -1 : r[col]); };
   out.sort(function (x, y) {
-    var v = function (r) { return sc.col === 'name' ? r.label.toLowerCase() : (r[sc.col] == null ? -1 : r[sc.col]); };
-    var a = v(x), b = v(y), r = a > b ? 1 : (a < b ? -1 : 0);
-    return r * sc.dir || (y.users - x.users) || (y.staff - x.staff);
+    for (var li = 0; li < lv.length; li++) {
+      var a = v(x, lv[li].c), b = v(y, lv[li].c);
+      if (a !== b) return (a > b ? 1 : -1) * lv[li].dir;
+    }
+    return (y.users - x.users) || (y.staff - x.staff);
   });
   return out;
 }
@@ -1560,8 +1604,9 @@ function audTableHtml() {
   if (state.page < 0) state.page = 0;
   var pageRows = rows.slice((state.page || 0) * PS, (state.page || 0) * PS + PS), picked = state.aud.picks[dim.d] || [];
   var th = function (col, label, hint, cls) {
-    return '<th' + (cls ? ' class="' + cls + (sc.col === col ? ' on' : '') + '"' : (sc.col === col ? ' class="on"' : '')) + (hint ? tip(hint) : '') +
-      ' data-asort="' + col + '">' + esc(label) + '<span class="' + N + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>';
+    var on = sortRank(sc, 'col', col) ? ' on' : '', hh = hint ? { title: hint.title, text: hint.text, note: [hint.note, SORT_NOTE] } : { note: SORT_NOTE };
+    return '<th' + (cls ? ' class="' + cls + on + '"' : (on ? ' class="on"' : '')) + tip(hh) +
+      ' data-asort="' + col + '">' + esc(label) + '<span class="' + N + '-sa">' + sortMark(sc, 'col', col) + '</span></th>';
   };
   var tu = t.all || t;    // ИТОГО — все зрители: сходится с «Польз.» каталога и панелью; охват — по сотрудникам
   var h = '<table class="' + N + '-ptable dense sortable"><thead><tr>' +
@@ -2408,7 +2453,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       var ast = trigger(e.target, 'data-asort');
       if (ast) {
         var acol = ast.getAttribute('data-asort'), as = state.aud.sort;
-        if (as.col === acol) as.dir *= -1; else state.aud.sort = { col: acol, dir: acol === 'name' ? 1 : -1 };
+        sortClick(as, 'col', acol, e.shiftKey, acol === 'name' ? 1 : -1);
         state.page = 0;
         var bodyA = overlay.querySelector('.' + CFG.ns + '-cat .' + CFG.ns + '-panel-b');
         if (bodyA) bodyA.innerHTML = catalogTableHtml();
@@ -2435,8 +2480,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       var th = trigger(e.target, 'data-nosort') ? null : trigger(e.target, 'data-sort');
       if (th) {
         var col = th.getAttribute('data-sort');
-        if (state.repSort.col === col) state.repSort.dir *= -1;
-        else state.repSort = { col: col, dir: col === 'dashboard_nm' ? 1 : -1 };
+        sortClick(state.repSort, 'col', col, e.shiftKey, col === 'dashboard_nm' ? 1 : -1);
         state.page = 0;              // пересорт — назад на первую страницу
         var bodyCat = overlay.querySelector('.' + CFG.ns + '-cat .' + CFG.ns + '-panel-b');
         if (bodyCat) bodyCat.innerHTML = catalogTableHtml();

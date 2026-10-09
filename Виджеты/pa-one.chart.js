@@ -984,7 +984,7 @@ function buildCSS() {
     P + '-sub-tab:hover{color:var(--ink2);}',
     P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:8.5px;font-weight:400;margin-left:5px;padding:0 4px;}',
     P + '-sub-cnt.ppl{background:#f3ecff;color:#5a2fc2;}',
-    P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
+    P + '-sub-tab.active{background:var(--card);color:var(--ink);font-weight:700;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
 
@@ -1008,7 +1008,7 @@ function buildCSS() {
     '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-seg-part:hover .sp-l{color:var(--ink2);}',
     P + '-seg-part.off{opacity:.42;}',
-    P + '-seg-part.on .sp-l{color:var(--ink);font-weight:400;}',
+    P + '-seg-part.on .sp-l{color:var(--ink);font-weight:700;}',
     P + '-seg-part.on .sp-bar{box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--ink2);}',
 
     // ── Тулбар «Кто смотрит» ──
@@ -1044,7 +1044,7 @@ function buildCSS() {
     '  text-align:left;padding:6px 9px;font-size:11px;font-weight:400;color:var(--ink2);',
     '  cursor:pointer;font-family:inherit;white-space:nowrap;}',
     P + '-dd-opt:hover{background:#f4f6f9;color:var(--ink);}',
-    P + '-dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:400;}',
+    P + '-dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:700;}',
     // Подпункт (уровень УС под «Оргструктурой»): отступ слева — видно, что это часть дерева.
     P + '-dd-opt.sub{padding-left:26px;}',
 
@@ -1142,6 +1142,9 @@ function buildCSS() {
     P + '-ptable tbody tr[role=button]:hover td{background:#fafbfc;}',
     P + '-ptable tbody tr.sel td{background:var(--blue-bg);}',
     P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    // выбранная строка — название жирным (2026-10-09: на Arial только обычный / жирный, без акцента выбор терялся)
+    P + '-ptable tbody tr.sel td:first-child{font-weight:700;}',
+    P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
     P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
@@ -1158,7 +1161,7 @@ function buildCSS() {
     P + '-ptable tr.grp-h:hover td{background:#eef2f7;}',
     P + '-ptable tr.grp-h{cursor:pointer;}',
     P + '-ptable tr.grp-h.sel td{background:var(--blue-bg);}',
-    P + '-ptable tr.grp-h.sel .gh-name{color:var(--act-ink);}',
+    P + '-ptable tr.grp-h.sel .gh-name{color:var(--act-ink);font-weight:700;}',
     P + '-ptable tr.grp-h.grp-dim .gh-name{color:var(--muted);font-weight:400;}',
     // ── Сводная таблица групп и поимённый список (v7.3) ──
     P + '-ptable.gt td{font-variant-numeric:tabular-nums;}',

@@ -333,7 +333,7 @@ function buildCSS() {
     P + '-strip-seg{display:inline-flex;align-items:center;gap:2px;background:' + C.bgAlt + ';border-radius:9px;padding:2px;flex:0 0 auto;}',
     P + '-strip-seg button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 12px;font:inherit;font-size:11px;'
       + 'font-weight:400;color:' + C.mut + ';cursor:pointer;white-space:nowrap;}',
-    P + '-strip-seg button.on{background:#fff;color:' + C.ink + ';box-shadow:0 1px 2px rgba(20,28,45,.12);}',
+    P + '-strip-seg button.on{background:#fff;color:' + C.ink + ';box-shadow:0 1px 2px rgba(20,28,45,.12);font-weight:700;}',   // активное — жирным (09.10)
     P + '-sep{width:1px;height:20px;background:' + C.line + ';margin:0 4px;flex:0 0 auto;}',
     P + '-lbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:' + C.mut + ';font-weight:400;flex:0 0 auto;}',
     P + '-togs{display:inline-flex;gap:6px;flex:0 1 auto;min-width:0;}',
@@ -365,7 +365,7 @@ function buildCSS() {
     P + '-cf.on{background:' + C.blueBg + ';border-color:' + C.actLine + ';}',
     P + '-cf-l{color:' + C.ink2 + ';flex:0 0 auto;white-space:nowrap;}',
     P + '-cf-v{color:' + C.ink + ';font-weight:400;min-width:0;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
-    P + '-cf.on ' + P + '-cf-v{color:' + C.actInk + ';}',
+    P + '-cf.on ' + P + '-cf-v{color:' + C.actInk + ';font-weight:700;}',
     P + '-cf-car{color:' + C.mut + ';font-size:9px;flex:0 0 auto;}',
     P + '-cf.on{padding-right:4px;}',
     P + '-cf.on ' + P + '-cf-l{color:' + C.actInk + ';font-weight:400;}',
@@ -416,7 +416,7 @@ function buildCSS() {
     P + '-row i{font-style:normal;color:' + C.mut + ';font-size:10.5px;font-variant-numeric:tabular-nums;flex:0 0 auto;}',
     P + '-row.z{color:' + C.mut2 + ';}',
     P + '-row.z i{color:#c4c8cf;}',
-    P + '-row.on{background:' + C.blueBg + ';}',
+    P + '-row.on{background:' + C.blueBg + ';font-weight:700;}',
     P + '-row.d1{padding-left:22px;}' + P + '-row.d2{padding-left:40px;}' + P + '-row.d3{padding-left:58px;}' + P + '-row.d4{padding-left:76px;}',
     P + '-car{flex:0 0 20px;height:22px;border:0;background:transparent;cursor:pointer;color:' + C.mut + ';font-size:10px;border-radius:5px;padding:0;}',
     P + '-car:hover{background:#eef1f5;color:' + C.ink + ';}',

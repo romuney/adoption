@@ -786,6 +786,9 @@ function buildCSS() {
     P + '-ptable tbody tr[role=button]:hover td{background:#fafbfc;}',
     P + '-ptable tbody tr.sel td{background:var(--blue-bg);}',
     P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    // выбранная строка — название жирным (2026-10-09: на Arial только обычный / жирный, без акцента выбор терялся)
+    P + '-ptable tbody tr.sel td:first-child{font-weight:700;}',
+    P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
     P + '-ptable tr.' + CFG.ns + '-aud-oth td{color:var(--muted);height:34px;border-bottom:2px solid var(--line);}',
     P + '-ptable tr.' + CFG.ns + '-aud-oth td.txt{font-weight:400;color:var(--muted);}',
     P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
@@ -805,7 +808,7 @@ function buildCSS() {
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
     P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:400;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
-    P + '-sub-tab.active{background:var(--card);color:var(--ink);}',
+    P + '-sub-tab.active{background:var(--card);color:var(--ink);font-weight:700;}',
     P + '-sub-tab.has{color:var(--act-ink);}',
     P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:8.5px;font-weight:400;margin-left:5px;padding:0 4px;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
@@ -821,7 +824,7 @@ function buildCSS() {
     P + '-dd-body{position:absolute;top:32px;left:0;z-index:40;min-width:200px;background:var(--card);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.16);padding:4px;display:flex;flex-direction:column;}',
     P + '-dd-opt{border:0;background:transparent;text-align:left;font:inherit;font-size:var(--fs-note);color:var(--ink2);padding:6px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;}',
     P + '-dd-opt:hover{background:#f4f6f9;}',
-    P + '-dd-opt.on{color:var(--act-ink);background:var(--blue-bg);font-weight:400;}',
+    P + '-dd-opt.on{color:var(--act-ink);background:var(--blue-bg);font-weight:700;}',
     P + '-dd-opt.sub{padding-left:22px;}',
     P + '-dd-sep{height:1px;background:var(--line2);margin:4px 6px;}',
 
@@ -856,7 +859,7 @@ function buildCSS() {
     P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 8px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:11.5px;font-weight:400;cursor:pointer;white-space:nowrap;}',
     P + '-mine + ' + P + '-psearch{margin-left:0;}',          // кнопка прижата к поиску, вместе — справа
     P + '-mine:hover{border-color:var(--act);color:var(--act);}',
-    P + '-mine.on{background:var(--blue-bg);border-color:var(--act);color:var(--act-ink);}',
+    P + '-mine.on{background:var(--blue-bg);border-color:var(--act);color:var(--act-ink);font-weight:700;}',
     P + '-mine[disabled]{opacity:.45;cursor:default;}',
     P + '-mine-n{font-size:10px;color:var(--muted);font-variant-numeric:tabular-nums;}',
     P + '-own-more{font-style:normal;color:var(--muted);cursor:help;}',

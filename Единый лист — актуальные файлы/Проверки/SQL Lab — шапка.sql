@@ -4,8 +4,8 @@
 -- Ждём: ~460 строк на синтетике (на бою — по числу сочетаний атрибутов штата), одна строка md с датой вчера.
 WITH
   st AS (
-    SELECT toString(login) AS lg, [if(match(toString(ifNull(lvl3_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(lvl3_management_unit_nm, ''))), if(match(toString(ifNull(lvl4_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(lvl4_management_unit_nm, ''))), if(match(toString(ifNull(lvl5_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(lvl5_management_unit_nm, ''))),
-        if(match(toString(ifNull(lvl6_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(lvl6_management_unit_nm, ''))), if(match(toString(ifNull(lvl7_management_unit_nm, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(lvl7_management_unit_nm, '')))] AS lv,
+    SELECT toString(login) AS lg, [if(match(toString(ifNull(lvl3_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl3_management_unit_nm, ''))), if(match(toString(ifNull(lvl4_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl4_management_unit_nm, ''))), if(match(toString(ifNull(lvl5_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl5_management_unit_nm, ''))),
+        if(match(toString(ifNull(lvl6_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl6_management_unit_nm, ''))), if(match(toString(ifNull(lvl7_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl7_management_unit_nm, '')))] AS lv,
       if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
       arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(emp_specialization_desc, '')) AS spec, toString(ifNull(emp_stream_desc, '')) AS stream,
@@ -25,7 +25,7 @@ SELECT 'd' AS section, dg AS g, lower(hex(toUInt32(cityHash64(dv) % 4294967296))
 FROM (SELECT DISTINCT arrayJoin([('spec', spec), ('stream', stream), ('hq', hq), ('it', it)]) AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
 UNION ALL
 SELECT 'adg' AS section, '' AS g, toString(z.ad_group) AS k, '' AS parent, toInt64(0) AS n FROM prod_proteus.pa_adg_size z
-WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^[\\s\\p{P}]*$')
+WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^(?:\\s|\\p{P})*$')
 UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL

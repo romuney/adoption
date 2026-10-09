@@ -16,7 +16,7 @@
       section = 'd' — словарь: g = spec | stream | hq | it, k = id, parent = значение;
       section = 'adg' — AD-группы прав Proteus: k = группа (только имя: численности и составов нет — пересечение считает сервер после «Применить»);
       section = 'total' — n = сотрудников. -#}
-{% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
+{% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
 {% macro hid(x) %}lower(hex(toUInt32(cityHash64({{ x }}) % 4294967296))){% endmacro %}
 WITH
   st AS (
@@ -46,7 +46,7 @@ UNION ALL
 {# AD-группы — только имена для выбора (без численности: владелец 2026-09-30); пустые/«-» — выкинуты #}
 {# алиас таблицы обязателен: «AS n» ниже иначе подменяет колонку n в WHERE (все группы отсеивались) #}
 SELECT 'adg' AS section, '' AS g, toString(z.ad_group) AS k, '' AS parent, toInt64(0) AS n FROM prod_proteus.pa_adg_size z
-WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^[\\s\\p{P}]*$')
+WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^(?:\\s|\\p{P})*$')
 UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL

@@ -31,7 +31,8 @@
 {{- out|where_in -}}
 {%- endmacro %}
 {#- Массив-литерал для has/hasAny: where_in даёт кортеж ('a', 'b') или скаляр ('a'), а hasAny ждёт массив. -#}
-{% macro qa(values) -%}[{{ q(values)[1:-1] }}]{%- endmacro %}
+{#- Значение со «]» в литерале […] сбивает лексер sqlparse 0.4.3 (имя T-SQL до первой «]» — Code 36, 09.10): тогда array(…). -#}
+{% macro qa(values) -%}{%- if ']' in values|map('string')|join('') -%}array({{ q(values)[1:-1] }}){%- else -%}[{{ q(values)[1:-1] }}]{%- endif -%}{%- endmacro %}
 {#- Компактная кириллица (та же таблица — в чарте, unz): отрезок из кириллицы и пробелов берётся в `…`, буквы внутри —
     однобайтные (CYR → TGT); служебные знаки вне отрезков экранируются: ~~ (тильда), ~p (|), ~c (^), ~b (`);
     табуляция и переводы строк — пробел. Буква кириллицы в JSON Superset: 6 байт → 1. -#}
@@ -90,7 +91,7 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
     out — только зрители вне ЦА; never — людей не сужает (каталог показывает «не заходили из ЦА» по отчётам). -#}
 {% set segv = filter_values('seg_f')|first|default('', true) %}{% set segv = segv if WITH_CA and segv in ['reach', 'never', 'out'] else '' %}
 {#- Нормализация уровня УС — как в панели (заглушки «-», «…» = пусто, путь обрывается на них). -#}
-{% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
+{% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
 {#- Логины ЦА «по условиям»: те же условия и тот же нормализованный путь, что в SQL панели. -#}
 {% macro caset() -%}
 SELECT lg FROM (
@@ -276,8 +277,9 @@ WITH
   )
 SELECT CAST(section AS String) AS section, CAST(g AS String) AS g, CAST(k AS String) AS k, CAST(parent AS String) AS parent, CAST(n AS Int64) AS n
 FROM (
-  {# Строки agg — упаковкой: отчёты порциями по 1000 (по id), группы — строкой на разрез, ИТОГО — отдельно. #}
-  SELECT s_sec AS section, s_g AS g, arrayStringConcat(groupArray(s_line), '\n') AS k, '{{ grain }}' AS parent, toInt64(count()) AS n
+  {# Строки agg — упаковкой: отчёты порциями по 1000 (по id), группы — строкой на разрез, ИТОГО — отдельно. Строки в k — arraySort:
+     порядок groupArray у ClickHouse не задан, без сортировки один и тот же ответ отличался бы от прогона к прогону (09.10). #}
+  SELECT s_sec AS section, s_g AS g, arrayStringConcat(arraySort(groupArray(s_line)), '\n') AS k, '{{ grain }}' AS parent, toInt64(count()) AS n
   FROM (
     SELECT CAST(CASE WHEN kd = 0 THEN 'total' WHEN kd = 1 THEN 'rep' ELSE 'grp' END AS String) AS s_sec,
       multiIf(kd = 1, toString(intDiv(ifNull(toInt32OrNull(k0), toInt32(0)), 1000)), kd = 2, 'owner', kd = 3, 'collection', '') AS s_g,
@@ -310,7 +312,7 @@ FROM (
   UNION ALL
   {# Аудитория: строка на разрез. #}
   SELECT 'aud' AS section, ad AS g,
-    arrayStringConcat(groupArray(concat({{ cz('ak0') }}, '|', {{ cz('ap') }}, '|', toString(users), '|', toString(views), '|', toString(regular), '|', toString(staff))), '\n') AS k,
+    arrayStringConcat(arraySort(groupArray(concat({{ cz('ak0') }}, '|', {{ cz('ap') }}, '|', toString(users), '|', toString(views), '|', toString(regular), '|', toString(staff)))), '\n') AS k,
     '' AS parent, toInt64(count()) AS n
   FROM ak
   GROUP BY ad

@@ -35,7 +35,7 @@
 {% set HAS_ORG = true %}{#- false — если в pa_emp_attrs ещё нет lvl5…lvl7 (тот же параграф): оргструктура будет до УС-4 -#}
 {#- Уровень УС: заглушки оргструктуры («-», «—», «…», пробелы — только знаки препинания) = пусто;
     путь «УС-3 › …» обрывается на них, как на пустом уровне (иначе «-» становится отдельным подразделением). -#}
-{% macro ou(col) %}if(match(toString(ifNull(a.{{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(a.{{ col }}, ''))){% endmacro %}
+{% macro ou(col) %}if(match(toString(ifNull(a.{{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(a.{{ col }}, ''))){% endmacro %}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay', 'gap': 7}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday', 'gap': 1}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth', 'gap': 1}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter', 'gap': 1}} %}
 {% set grain = filter_values('period_param')|first|default('d', true) %}
 {% set grain = grain if grain in GRAINS else 'd' %}
@@ -55,7 +55,8 @@
 {%- for v in values -%}{%- set _ = out.append(v|string|replace('\\', '\\\\')) -%}{%- endfor -%}
 {{- out|where_in -}}
 {%- endmacro %}
-{% macro qa(values) -%}[{{ q(values)[1:-1] }}]{%- endmacro %}
+{#- Значение со «]» в литерале […] сбивает лексер sqlparse 0.4.3 (имя T-SQL до первой «]» — Code 36, 09.10): тогда array(…). -#}
+{% macro qa(values) -%}{%- if ']' in values|map('string')|join('') -%}array({{ q(values)[1:-1] }}){%- else -%}[{{ q(values)[1:-1] }}]{%- endif -%}{%- endmacro %}
 {#- Даты — ОДИН скалярный подзапрос на весь запрос: одинаковые скаляры ClickHouse считает один раз, а разные
     ((SELECT md …), (SELECT kt …), (SELECT ds …)) — каждый своим сканом pa_pair. -#}
 {% set MD = "tupleElement((SELECT h FROM maxd), 1)" %}{% set DS = "tupleElement((SELECT h FROM maxd), 2)" %}{% set KT = "tupleElement((SELECT h FROM maxd), 3)" %}{% set KTD = "tupleElement((SELECT h FROM maxd), 4)" %}
@@ -128,7 +129,7 @@ concat({{ fx('p.login') }}, '|', {% if HAS_FIO %}{{ cz("toString(ifNull(a.fio, '
 {% set auon = auorg or auspec or austrm or auhq or auit or auhead|length == 1 %}
 {% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' or caadg or auon %}
 {#- Нормализованный уровень УС строки штата (заглушки «-», «…» = пусто). -#}
-{% macro ous(col) %}if(match(toString(ifNull(s.{{ col }}, '')), '^[\\s\\p{P}]*$'), '', toString(ifNull(s.{{ col }}, ''))){% endmacro %}
+{% macro ous(col) %}if(match(toString(ifNull(s.{{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.{{ col }}, ''))){% endmacro %}
 {#- Атрибуты строки штата pa_staff (алиас s): путь op, спец, стрим, рук, HQ, IT — для условий ЦА и свёртки h. -#}
 {% macro sattrs() -%}
 lower(toString(s.login)) AS lg,

@@ -36,10 +36,13 @@
 /* Шапка чарта (пустой заголовок + меню «…» в режиме правки) места не занимает: меню остаётся поверх.
    В Proteus (Superset 2.1.0) у шапки НЕТ класса .chart-header (был в 2.0.1) — только data-test="slice-header" и
    margin-bottom 4 px: без второго селектора iframe начинался на 4 px ниже верха ячейки (разведка 09.10: «сверху 4»). */
-.dashboard-component-chart-holder:has(.react_sanbbox) .header-title { display: none !important; }
-.dashboard-component-chart-holder:has(.react_sanbbox) .chart-slice { position: relative !important; }
+.dashboard-component-chart-holder:has(.react_sanbbox) .header-title,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057) .header-title { display: none !important; }   /* и на загрузке: заглушка той же высоты, что чарт */
+.dashboard-component-chart-holder:has(.react_sanbbox) .chart-slice,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057) .chart-slice { position: relative !important; }
 .dashboard-component-chart-holder:has(.react_sanbbox) .chart-header,
-.dashboard-component-chart-holder:has(.react_sanbbox) [data-test="slice-header"] {
+.dashboard-component-chart-holder:has(.react_sanbbox) [data-test="slice-header"],
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057) [data-test="slice-header"] {
   position: absolute !important;
   top: 0 !important;
   right: 0 !important;
@@ -181,20 +184,27 @@ body:has(.dashboard-chart-id-803089 img.echarts-plugin[src*="UEEtVE9VUi1PTi0x"])
   background: #fff !important;
   border-radius: 12px !important;
 }
-/* ячейка тянется на всю высоту и до отрисовки (правила растяжки выше срабатывают, когда чарт уже есть) */
-.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) {
+/* ячейка тянется на всю высоту и до отрисовки (правила растяжки выше срабатывают, когда чарт уже есть).
+   Класс dashboard-chart-id-N — на САМОМ холдере, поэтому :is(…), а не :has(…): :has ищет только внутри, и до 09.10
+   эти правила не срабатывали — заглушка держала высоту из раскладки и не тянулась за рядом. Пока данных нет, Proteus
+   пишет высоту пикселями ещё в трёх местах: min-height у .chart-container, height у .slice_container и инлайн-высоту
+   подложки загрузки (первый div в .dashboard-chart) — снимаем все три. */
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) {
   height: 100% !important;
   display: flex !important;
   flex-direction: column !important;
 }
-.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .chart-slice,
-.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .dashboard-chart,
-.dashboard-component-chart-holder:has(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .chart-container {
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .chart-slice,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .dashboard-chart,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .chart-container,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .slice_container {
   display: flex !important;
   flex-direction: column !important;
   flex: 1 1 auto !important;
   min-height: 0 !important;
 }
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .slice_container { height: auto !important; }
+.dashboard-component-chart-holder:is(.dashboard-chart-id-803089, .dashboard-chart-id-803049, .dashboard-chart-id-803057):not(:has(iframe)) .dashboard-chart > div:not(.chart-container) { height: 100% !important; width: 100% !important; }
 /* подпись под значком загрузки Proteus (своего кольца нет — значок Proteus уже стоит в центре ячейки) */
 .dashboard-chart-id-803089:not(:has(iframe)) .chart-container::after,
 .dashboard-chart-id-803049:not(:has(iframe)) .chart-container::after,

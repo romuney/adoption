@@ -744,7 +744,7 @@ function buildCSS() {
     //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
     //    «таблицы по-разному отформатированы») ──
     P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);font-variant-numeric:tabular-nums;}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:right;padding:9px 8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:right;padding:9px 6px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
     P + '-ptable th.txt{text-align:left;padding-left:12px;}',
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
@@ -772,12 +772,16 @@ function buildCSS() {
     P + '-leg-r ' + P + '-sig-chip.good{background:#bff2cd;color:#0a8f3c;}' + P + '-leg-r ' + P + '-sig-chip.note{background:#EAF0FC;color:#1B4AA8;}' +
       P + '-leg-r ' + P + '-sig-chip.neutral{background:#f3f4f6;color:#8a909c;}' + P + '-leg-r ' + P + '-sig-chip.dead{background:#ffcccc;color:#d11414;}',
     P + '-tip ' + P + '-t-x b{font-weight:700;color:#23272e;}',
-    P + '-ptable td{text-align:right;padding:6px 8px;height:44px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
+    P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
     P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:400;color:var(--ink);white-space:normal;min-width:0;}',
     // Таблица отчётов: ширины колонок заданы colgroup, ячейки не раздвигают таблицу; длинное название переносится.
     P + '-ptable.fix{table-layout:fixed;}',
     P + '-ptable.fix th,' + P + '-ptable.fix td{padding-left:4px;padding-right:6px;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.fix th.txt,' + P + '-ptable.fix td.txt{padding-left:12px;overflow-wrap:anywhere;}',
+    // стрелка сортировки висит слева от подписи и места в колонке не занимает (2026-10-09: 12 px резерва в каждой
+    // колонке не давали уместить пять метрик в узкий каталог); у названия — как была, после текста
+    P + '-thl{position:relative;display:inline-block;}',
+    P + '-ptable.fix th ' + P + '-thl ' + P + '-sa{position:absolute;right:100%;top:0;width:auto;margin:0 2px 0 0;}',
     P + '-ptable td.lead{font-weight:400;color:var(--ink);}',
     P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
@@ -785,10 +789,13 @@ function buildCSS() {
     P + '-ptable tbody tr[role=button]{cursor:pointer;}',
     P + '-ptable tbody tr[role=button]:hover td{background:#fafbfc;}',
     P + '-ptable tbody tr.sel td{background:var(--blue-bg);}',
-    P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    // полоска выбора — отдельным слоем внутри ячейки: тень inset при слитых границах заходила на линию над строкой (09.10)
+    P + '-ptable tbody tr.sel td:first-child{position:relative;}',
+    P + '-ptable tbody tr.sel td:first-child::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--act);}',
     // выбранная строка — название жирным (2026-10-09: на Arial только обычный / жирный, без акцента выбор терялся)
     P + '-ptable tbody tr.sel td:first-child{font-weight:700;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
+    P + '-ptable tbody tr.sel td:first-child ' + P + '-gh-sub{font-weight:400;}',
     P + '-ptable tr.' + CFG.ns + '-aud-oth td{color:var(--muted);height:34px;border-bottom:2px solid var(--line);}',
     P + '-ptable tr.' + CFG.ns + '-aud-oth td.txt{font-weight:400;color:var(--muted);}',
     P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
@@ -856,24 +863,25 @@ function buildCSS() {
     P + '-tbtn:first-child{margin-right:auto;}',
     P + '-tbtn.pri{background:#245FD4;border-color:#245FD4;color:#fff;}',
     P + '-tbtn.pri:hover{background:#1B4AA8;}',
-    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 8px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;font-weight:400;cursor:pointer;white-space:nowrap;}',
+    P + '-mine{display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;height:32px;margin:0 -4px 0 auto;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink2);font:inherit;font-size:12.5px;font-weight:400;cursor:pointer;white-space:nowrap;}',
     P + '-mine + ' + P + '-psearch{margin-left:0;}',          // кнопка прижата к поиску, вместе — справа
     P + '-mine:hover{border-color:var(--act);color:var(--act);}',
     P + '-mine.on{background:var(--blue-bg);border-color:var(--act);color:var(--act-ink);font-weight:700;}',
     P + '-mine[disabled]{opacity:.45;cursor:default;}',
     P + '-mine-n{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}',
     P + '-own-more{font-style:normal;color:var(--muted);cursor:help;}',
-    P + '-rname{display:flex;align-items:flex-start;gap:6px;min-width:0;}',
-    P + '-rname-t{flex:1 1 auto;min-width:0;}',
-    P + '-rname ' + P + '-lnkbtn{flex:0 0 auto;}',
-    P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:22px;height:20px;margin:-1px 0 0 -4px;padding:0;border:0;border-radius:6px;'
-      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-4px;opacity:.7;font:inherit;font-size:12px;font-weight:700;}',
+    P + '-rname-t{min-width:0;}',
+    P + '-rname-n{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;}',
+    P + '-ptable tbody tr.sel ' + P + '-rname-n{display:block;-webkit-line-clamp:unset;}',   // выбранная — название целиком
+    P + '-lnkbtn{display:inline-flex;align-items:center;justify-content:center;width:16px;height:14px;margin:0 3px 0 -2px;padding:0;border:0;border-radius:4px;'
+      + 'background:transparent;color:var(--muted);cursor:pointer;vertical-align:-2px;opacity:.7;font:inherit;font-size:12px;font-weight:700;}',
+    P + '-lnkbtn svg{width:11px;height:11px;}',
     P + '-urow:hover ' + P + '-lnkbtn{opacity:1;}',
     P + '-lnkbtn:hover,' + P + '-lnkbtn:focus-visible{opacity:1;background:#e9eef4;color:var(--act);outline:none;}',
     P + '-lnkbtn.ok{opacity:1;color:var(--green-tx, #0a8f3c);background:#e6f6ec;}',
     P + '-lnkbtn.err{opacity:1;color:#c8251f;background:#ffe9e9;}',
     P + '-sig-chip{display:inline-block;font-size:11px;font-weight:400;',
-    '  border-radius:999px;padding:2px 9px;}',
+    '  border-radius:999px;padding:2px 6px;}',   // поля 9 → 6: колонка «Ритм» уже на 6 px (09.10)
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
     P + '-sig-chip.neutral{background:#f3f4f6;color:var(--muted);}',
@@ -1204,32 +1212,34 @@ function reportTableHtml() {
   var picked = pickList('report');
   var th = function (col, label, hint) {
     return '<th' + (hint ? tip(hint) : '') + ' data-sort="' + col + '"' +
-      (sc.col === col ? ' class="on"' : '') + '>' + esc(label) +
-      '<span class="' + CFG.ns + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>';
+      (sc.col === col ? ' class="on"' : '') + '><span class="' + CFG.ns + '-thl">' +
+      '<span class="' + CFG.ns + '-sa">' + (sc.col === col ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span>' + esc(label) + '</span></th>';
   };
   // Колонки фиксированной ширины (table-layout:fixed), название забирает остаток и переносится:
   // таблица не шире каталога — без горизонтальной прокрутки на ноутбуке (правка владельца 2026-10-02:
   // вернуть «Просм.» рядом с ЦА, «Охват ЦА» → «ЦА»). Ширины — по самому широкому заголовку со стрелкой.
   // Узкий каталог (режим правки борда, маленький экран): названию — не меньше 140 px; не влезает — прячем колонки
   // по одной: «Пост.», затем «Просм.» (2026-10-07: в режиме правки название рассыпалось по буквам).
-  // «Ритм» НЕ прячется никогда (владелец 2026-10-09). Шрифт — Arial, кегли прежние (уменьшение отменено 09.10);
-  // ширины — по замеру заголовка со стрелкой сортировки в Arial (+1): все колонки от 478 px каталога, без «Пост.» —
-  // от 422, без «Просм.» — уже.
-  var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 86 : 40) : 0, wU = 64, wV = 67, wReg = 56, wRh = 71;
-  var avail = (state.catW || 9999) - 40, need = 140 + wU + ca3 + wV + wReg + wRh;
+  // «Ритм» НЕ прячется никогда (владелец 2026-10-09). Ширины — по замеру в Arial (заголовок без стрелки — она висит
+  // слева, — и самое широкое значение: «12 345», «100%», пилюля «Monthly»); название — от края ячейки, не короче
+  // 110 px (длинное — 3 строки и «…»): все пять колонок от 414 px каталога, без «Пост.» — от 366, без «Просм.» — уже.
+  var ca3 = MODEL.hasCa ? (segNow() === 'never' ? 80 : 44) : 0, wU = 55, wV = 55, wReg = 48, wRh = 62;
+  var avail = (state.catW || 9999) - 40, need = 110 + wU + ca3 + wV + wReg + wRh;
   var showRh = true, showReg = need <= avail, showV = need - wReg <= avail;
   var h = '<table class="' + CFG.ns + '-ptable dense sortable fix"><colgroup><col>' +
     '<col style="width:' + wU + 'px">' + (showV ? '<col style="width:' + wV + 'px">' : '') + (ca3 ? '<col style="width:' + ca3 + 'px">' : '') +
     (showReg ? '<col style="width:' + wReg + 'px">' : '') + (showRh ? '<col style="width:' + wRh + 'px">' : '') + '</colgroup><thead><tr>' +
     '<th class="txt' + (sc.col === 'dashboard_nm' ? ' on' : '') + '" data-sort="dashboard_nm">Отчёт<span class="' + CFG.ns + '-sa">' +
       (sc.col === 'dashboard_nm' ? (sc.dir < 0 ? '▼' : '▲') : '') + '</span></th>' +
-    th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() } : null) +
-    (showV ? th('views', 'Просм.', { text: 'Просмотры отчёта за период' + (segNow() ? ' — тех же зрителей, что в первой колонке' : '') }) : '') + (MODEL.hasCa && segNow() === 'never'
-      ? th('never', 'Не заходили', { title: 'ЦА не заходили', text: 'Люди ЦА отчёта без визитов за период: ЦА минус заходившие из неё. Сортировка — по убыванию: где больше всего не дошедших. «—» — доступ почти у всей компании или прав нет.' })
+    // Подсказки колонок (редактура 2026-10-09): заголовок — что это, одна фраза — смысл, оговорки — сноской.
+    th('users', segNow() === 'out' ? 'Вне ЦА' : (segNow() === 'reach' ? 'Из ЦА' : 'Польз.'), segNow() ? { text: segText() }
+      : { title: 'Пользователи', text: 'Разные люди, открывшие отчёт за период.' }) +
+    (showV ? th('views', 'Просм.', { title: 'Просмотры', text: 'Сколько раз отчёт открывали за период.' + (segNow() ? ' Только зрители из первой колонки.' : '') }) : '') + (MODEL.hasCa && segNow() === 'never'
+      ? th('never', 'Не заходили', { title: 'ЦА не заходили', text: 'Люди из ЦА отчёта, ни разу не открывшие его за период.', note: 'Сортировка — по убыванию. «—» — доступ почти у всех или прав нет.' })
       : MODEL.hasCa
-      ? th('cov', 'ЦА', { title: 'Охват целевой аудитории', text: 'Зрители за период, входящие в ЦА отчёта, от размера ЦА (по правам: AD-группы + поимённо; или по условиям строки «Целевая аудитория»). Совпадает с «Дошли / ЦА» в панели. «—» — доступ почти у всей компании (ЦА ≥ 30% сотрудников) или прав нет.' })
+      ? th('cov', 'ЦА', { title: 'Охват ЦА', text: 'Доля целевой аудитории отчёта, открывавшая его за период.', note: '«—» — доступ почти у всей компании или прав нет.' })
       : '') +
-    (showReg ? th('regular_users', 'Пост.', { text: 'Доля постоянных: заходили в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период (корзины частоты 3 и 4)' }) : '') +
+    (showReg ? th('regular_users', 'Пост.', { title: 'Постоянные', text: 'Доля зрителей, заходивших в отчёт ' + (CFG.grains[curGrain()] || CFG.grains.d).reg + '+ разных ' + (CFG.grains[curGrain()] || CFG.grains.d).units + ' за период.' }) : '') +
     // «Ритм»: сортировка по клику на заголовок, правило — в легенде по значку ⓘ (не сортирует).
     (showRh ? th('rhythm', 'Ритм').replace('</th>', '<i class="' + CFG.ns + '-thi" data-nosort="1"' + tip(rhythmLegendHtml()) + ' aria-label="Как считается ритм">i</i></th>') : '') +
     '</tr></thead><tbody>';
@@ -1237,25 +1247,23 @@ function reportTableHtml() {
     var x = pageRows[r], sel = indexOfId(picked, x.id) >= 0;
     h += '<tr class="' + CFG.ns + '-urow' + (sel ? ' sel' : '') + '" data-rep="' + x.id +
       '" tabindex="0" role="button" aria-pressed="' + sel + '"' +
+      // Подсказка строки — только то, чего нет в колонках (владелец 09.10: «много всего»): полное название (в строке
+      // оно режется на 3-й строке), размер ЦА и сколько из неё заходили, дата создания.
       tip({
         title: x.m.dash_nm,
         rows: [
-          { label: 'Пользователи', value: nf(x.k.users), color: CFG.colors.ret },
-          { label: 'Постоянные', value: nf(x.k.regular_users) + ' · ' + pct(x.rs, 0) },
-          { label: 'Просмотров на пользователя', value: nf(x.vpu, 1) },
-          MODEL.hasCa ? { label: 'ЦА', value: x.k.ca_n ? nf(x.k.ca_n) + (x.k.ca_wide ? ' · почти вся компания' : '') : 'прав нет' } : null,
-          MODEL.hasCa && x.k.ca_users != null ? { label: 'Из них заходили', value: nf(x.k.ca_users) } : null
+          MODEL.hasCa ? { label: 'Целевая аудитория', value: x.k.ca_n ? (x.k.ca_wide ? 'почти вся компания' : nf(x.k.ca_n) + ' чел.') : 'прав нет' } : null,
+          MODEL.hasCa && x.k.ca_n && !x.k.ca_wide && x.k.ca_users != null ? { label: 'Из них заходили', value: nf(x.k.ca_users) } : null
         ],
         note: x.m.created_dt ? 'создан ' + fmtDate(x.m.created_dt) : null
       }) + '>' +
-      // Скрепка слева, текст — отдельным блоком справа: вторая строка длинного
-      // названия и строка владельца выровнены по первой, а не уходят под иконку.
-      '<td class="txt"><div class="' + CFG.ns + '-rname">' +
-        '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' + tip(linkTip(x.id)) + '>' + LINK_SVG + '</button>' +
-        '<div class="' + CFG.ns + '-rname-t">' + esc(x.m.dash_nm) +
+      // Название — с левого края ячейки, не длиннее 3 строк (у выбранной — целиком); ссылка на отчёт — маленькой
+      // иконкой в начале строки владельца (2026-10-09: иконка слева отнимала у названия 26 px на каждой строке).
+      '<td class="txt"><div class="' + CFG.ns + '-rname-t"><span class="' + CFG.ns + '-rname-n">' + esc(x.m.dash_nm) + '</span>' +
         '<span class="' + CFG.ns + '-unit-sub">' +
+          '<button type="button" class="' + CFG.ns + '-lnkbtn" data-replink="' + x.id + '" aria-label="Скопировать ссылку на отчёт"' + tip(linkTip(x.id)) + '>' + LINK_SVG + '</button>' +
           (isFresh(x.m.created_dt) ? '<i class="' + CFG.ns + '-rflag new"' + tip({ text: 'Создан меньше 90 дней назад' }) + '>новый</i>' : '') +
-          ownersHtml(x.m) + '</span></div></div></td>' +
+          ownersHtml(x.m) + '</span></div></td>' +
       '<td class="lead">' + nf(x.k.users) + '</td>' +
       (showV ? '<td>' + compact(x.k.views) + '</td>' : '') +
       (MODEL.hasCa ? (segNow() === 'never' ? neverCellHtml(x) : (segNow() === 'out' ? '<td><span class="mut">—</span></td>' : covCellHtml(x))) : '') +
@@ -1315,7 +1323,7 @@ function tourSteps() {
   add({ sel: P + '-psearch', pad: 3, lock: true, title: 'Поиск',
     html: 'По названию, ID или владельцу отчёта. У каждой вкладки свой поиск.' });
   add({ sel: P + '-cat tbody tr[role=button]', pad: 2, lock: true, title: 'Выбрать строку',
-    html: '<b>Клик</b> — выбрать: панель справа покажет только это. <b>Shift+клик</b> — несколько. Повторный клик снимает. Скрепка слева копирует ссылку на отчёт.' });
+    html: '<b>Клик</b> — выбрать: панель справа покажет только это. <b>Shift+клик</b> — несколько. Повторный клик снимает. Значок ссылки в строке владельца копирует ссылку на отчёт.' });
   add({ sel: P + '-cat thead th', all: true, pad: 2, lock: true, title: 'Колонки',
     html: '<b>Польз.</b> — разные люди, открывшие отчёт; <b>Просм.</b> — открытия; <b>ЦА</b> — охват целевой аудитории; <b>Пост.</b> — доля постоянных; <b>Ритм</b> — как пользуются за 3 месяца (значок «i»). Клик по заголовку — сортировка.' });
   add({ sel: P + '-frow', pad: 2, lock: true, title: 'Выбранные фильтры',
@@ -2371,7 +2379,16 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       else list = idx >= 0 && list.length === 1 ? [] : [String(val)];
       state.aud.picks[d] = list;
     }
+    // Выделили текст в строке (логин, название, ФИО — чтобы скопировать) — это не выбор строки: клик не переключает
+    // и не пересобирает таблицу, иначе выделение пропадает (владелец 2026-10-09).
+    function textPicked(t) {
+      var sel = window.getSelection ? window.getSelection() : null;
+      if (!sel || sel.isCollapsed || !String(sel).trim()) return false;
+      var row = t && t.closest ? t.closest('tr') : null;
+      return !!row && row.contains(sel.anchorNode);
+    }
     function onClick(e) {
+      if (textPicked(e.target)) return;
       // Дропдаун разреза аудитории: клик мимо закрывает.
       var ddT = trigger(e.target, 'data-ddtoggle'), ddO = trigger(e.target, 'data-ddopt');
       if (state.dd && !ddT && !ddO) { state.dd = null; render(); return; }

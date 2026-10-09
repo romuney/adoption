@@ -996,15 +996,17 @@ function buildCSS() {
 
     // ── Сигаретка частоты (app.css .segstrip.freq) ──
     // padding-top: кольцо выбранной корзины выступает на 3 px — без запаса его резал верх тела.
-    P + '-segstrip{display:flex;gap:6px;margin-bottom:18px;padding-top:5px;min-width:0;flex:0 0 auto;}',
+    // «Кто смотрит» компактнее (2026-10-09, ноутбук: таблице оставалось 8 строк): полоса — бар + одна строка подписи
+    P + '-segstrip{display:flex;gap:6px;margin-bottom:10px;padding-top:3px;min-width:0;flex:0 0 auto;}',
     P + '-seg-part{flex:1 1 0;min-width:66px;border:0;background:transparent;padding:0;',
-    '  cursor:pointer;font-family:inherit;text-align:left;display:flex;',
-    '  flex-direction:column;gap:3px;transition:opacity .15s;}',
-    P + '-seg-part .sp-bar{display:block;height:10px;border-radius:2px;}',
+    '  cursor:pointer;font-family:inherit;text-align:left;display:flex;flex-wrap:wrap;align-items:baseline;',
+    '  column-gap:6px;row-gap:3px;transition:opacity .15s;overflow:hidden;}',
+    P + '-seg-part .sp-bar{display:block;height:10px;border-radius:2px;flex:0 0 100%;}',
     P + '-seg-part .sp-v{font-size:var(--fs-body);font-weight:700;color:var(--ink);',
     '  font-variant-numeric:tabular-nums;line-height:1.1;}',
     P + '-seg-part .sp-p{font-style:normal;font-weight:400;color:var(--muted);}',
-    P + '-seg-part .sp-l{font-size:var(--fs-cap);color:var(--muted);font-weight:400;',
+    P + '-seg-part .sp-v{white-space:nowrap;}',
+    P + '-seg-part .sp-l{font-size:var(--fs-cap);color:var(--muted);font-weight:400;flex:1 1 0;min-width:0;',
     '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-seg-part:hover .sp-l{color:var(--ink2);}',
     P + '-seg-part.off{opacity:.42;}',
@@ -1013,12 +1015,14 @@ function buildCSS() {
 
     // ── Тулбар «Кто смотрит» ──
     P + '-who-bar{position:relative;display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;',
-    '  margin-bottom:12px;}',
+    '  margin-bottom:8px;}',
+    P + '-who-bar ' + P + '-dd-trg{height:30px;}',
     P + '-who-cnt{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;}',
     P + '-bar-g{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0;}',
     P + '-bar-g.r{margin-left:auto;gap:6px;}',
     P + '-bar-sep{width:1px;height:18px;background:var(--line);margin:0 2px;}',
-    P + '-who-bar ' + P + '-psearch input{width:200px;height:34px;}',
+    P + '-who-bar ' + P + '-psearch input{width:170px;height:30px;}',
+    P + '-who-bar ' + P + '-ibtn{width:30px;height:30px;}',
     P + '-who-tbl{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
     P + '-who-cnt b{color:var(--ink2);font-weight:400;}',
     P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:400;cursor:help;}',
@@ -1106,6 +1110,11 @@ function buildCSS() {
     P + '-topbar{display:flex;align-items:center;gap:12px;height:34px;margin:0 0 8px;min-width:0;flex:0 0 auto;}',
     P + '-topbar > ' + P + '-frow{flex:1 1 0;margin:0;}',
     P + '-topbar > ' + P + '-vtabs{flex:0 0 auto;flex-wrap:nowrap;margin-left:auto;}',
+    // на сером фоне листа серая подложка вкладок сливалась (владелец 09.10): подложка — белая, как карточки, активная —
+    // голубая с акцентным текстом (тот же язык, что у выбранной строки и «Мои»)
+    P + '-topbar > ' + P + '-vtabs{background:var(--card);box-shadow:0 1px 2px rgba(20,28,45,.06);}',
+    P + '-topbar > ' + P + '-vtabs ' + P + '-sub-tab:hover{color:var(--ink);background:#f4f6f9;}',
+    P + '-topbar > ' + P + '-vtabs ' + P + '-sub-tab.active{background:var(--blue-bg);color:var(--act-ink);}',
     '@media (max-width:760px){' + P + '-vtabs ' + P + '-sub-tab{padding:0 8px;}}',   // iframe = ячейка: узкая панель — место пилюлям
     P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:400;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
@@ -1127,12 +1136,12 @@ function buildCSS() {
     //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
     //    «таблицы по-разному отформатированы») ──
     P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);font-variant-numeric:tabular-nums;}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:right;padding:9px 8px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:right;padding:9px 6px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
     P + '-ptable th.txt{text-align:left;padding-left:12px;}',
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
     P + '-sa{display:inline-block;width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);}',
-    P + '-ptable td{text-align:right;padding:6px 8px;height:44px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
+    P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
     P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:400;color:var(--ink);white-space:normal;min-width:0;}',
     P + '-ptable td.lead{font-weight:400;color:var(--ink);}',
     P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
@@ -1141,10 +1150,13 @@ function buildCSS() {
     P + '-ptable tbody tr[role=button]{cursor:pointer;}',
     P + '-ptable tbody tr[role=button]:hover td{background:#fafbfc;}',
     P + '-ptable tbody tr.sel td{background:var(--blue-bg);}',
-    P + '-ptable tbody tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--act);}',
+    // полоска выбора — отдельным слоем внутри ячейки: тень inset при слитых границах заходила на линию над строкой (09.10)
+    P + '-ptable tbody tr.sel td:first-child{position:relative;}',
+    P + '-ptable tbody tr.sel td:first-child::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--act);}',
     // выбранная строка — название жирным (2026-10-09: на Arial только обычный / жирный, без акцента выбор терялся)
     P + '-ptable tbody tr.sel td:first-child{font-weight:700;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
+    P + '-ptable tbody tr.sel td:first-child ' + P + '-gh-sub{font-weight:400;}',
     P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
@@ -1156,7 +1168,7 @@ function buildCSS() {
     P + '-cellbar{display:block;width:100%;height:13px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
     P + '-cellbar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
     // ── /ТАБЛИЦЫ ──
-    P + '-ptable tr.grp-h td{padding:7px 8px;font-weight:400;color:var(--ink2);background:var(--card);text-align:right;}',
+    P + '-ptable tr.grp-h td{padding:4px 8px;height:32px;font-weight:400;color:var(--ink2);background:var(--card);text-align:right;}',
     P + '-ptable tr.grp-h td.gname{text-align:left;color:var(--ink);}',
     P + '-ptable tr.grp-h:hover td{background:#eef2f7;}',
     P + '-ptable tr.grp-h{cursor:pointer;}',
@@ -1173,8 +1185,9 @@ function buildCSS() {
     P + '-gh-sp{display:inline-block;width:26px;}',
     // Запас под каретку 28 px (−6/+4 поля) с зазором: иначе длинное имя упирается в край, блок
     // не помещается в ячейку, и её text-overflow заменяет его ЦЕЛИКОМ на «…» (имя и «УС-N»).
-    P + '-gtx{display:inline-block;vertical-align:middle;max-width:calc(100% - 34px);overflow:hidden;text-overflow:ellipsis;}',
-    P + '-gtx .gh-name{display:block;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-gtx{display:inline-block;vertical-align:middle;max-width:calc(100% - 34px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
+    P + '-gtx .gh-name{display:inline;}',
+    P + '-gh-sub{color:var(--muted);font-size:var(--fs-cap);}',   // уровень и состав — в той же строке (09.10)
     P + '-ptable td.shr ' + P + '-cellbar{display:inline-block;width:40px;height:8px;vertical-align:middle;flex:0 0 40px;}',
     P + '-ptable.sub td{height:auto;}',
     // Скролл «Кто смотрит»: зона списка — flex-колонка, таблица скроллится внутри,
@@ -1232,7 +1245,8 @@ function buildCSS() {
     P + '-dynhead{display:flex;align-items:center;gap:12px;min-height:24px;flex-wrap:wrap;row-gap:4px;}',
     P + '-cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:400;}',
     P + '-legend{display:inline-flex;gap:4px;margin-left:auto;flex-wrap:wrap;}',
-    P + '-panel-h > ' + P + '-legend{flex:0 0 auto;flex-wrap:nowrap;font-weight:400;}',   // в заголовке карточки «Динамика»
+    P + '-panel-h > ' + P + '-legend{flex:0 0 auto;flex-wrap:nowrap;font-weight:400;}',
+    P + '-panel-h > ' + P + '-hmode{flex:0 0 auto;flex-wrap:nowrap;font-weight:400;margin-left:auto;}',   // в заголовке карточки «Динамика»
     P + '-leg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--card);border-radius:999px;',
     '  padding:3px 10px 3px 8px;font-size:var(--fs-note);color:var(--ink2);cursor:pointer;font-family:inherit;font-weight:400;}',
     P + '-leg i{width:10px;height:9px;border-radius:3px;display:inline-block;}',
@@ -1265,7 +1279,11 @@ function buildCSS() {
     P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
 
     // ── Закрепляемость (порт pa-cohorts) ──
-    P + '-panel-b.coh-wrap{overflow:auto;}',
+    P + '-panel-b.coh-wrap{overflow:auto;display:flex;flex-direction:column;}',
+    // большой экран (2026-10-09): таблица не тянется, а встаёт посередине свободного места под заголовком и легендой
+    P + '-panel-b.coh-wrap > *{flex:0 0 auto;}',
+    P + '-panel-b.coh-wrap > ' + P + '-ct-wrap{margin-top:auto;}',
+    P + '-panel-b.coh-wrap > ' + P + '-ct-wrap + ' + P + '-tbl-note{margin-bottom:auto;}',
     P + '-ct-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;row-gap:8px;padding-bottom:12px;}',
     P + '-ct-scale-wrap{display:flex;align-items:center;gap:8px;flex:0 0 auto;}',
     P + '-ct-end{font-size:var(--fs-cap);color:var(--muted2);font-weight:400;}',
@@ -1286,7 +1304,8 @@ function buildCSS() {
     P + '-cttable td.txt{font-weight:400;color:var(--ink);padding-left:4px;}',
     P + '-ct-sz{display:flex;align-items:center;gap:8px;padding-right:14px;}',
     P + '-ct-bar{flex:1;height:12px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
-    P + '-ct-bar i{display:block;height:100%;border-radius:2px;background:' + CFG.colors.ret + ';min-width:2px;}',
+    // «Пришло» — голубым из шкалы когорт (DIV_HIGH #62CDFF, приглушённый), а не синим стека «Динамики» (владелец 09.10)
+    P + '-ct-bar i{display:block;height:100%;border-radius:2px;background:#74C9F2;min-width:2px;}',
     P + '-ct-sz b{font-weight:400;color:var(--ink2);font-variant-numeric:tabular-nums;}',
     P + '-ct-cell{text-align:center;padding:7px 3px;border-radius:6px;font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
     P + '-ct-cell.none{background:transparent !important;cursor:default;}',
@@ -1304,7 +1323,7 @@ function buildCSS() {
     P + '-as-h{color:#a08556;}',
     P + '-as-x b{color:var(--ink2);font-weight:400;}',
     P + '-sig-chip.warn{background:#fff0d6;color:#8a5a00;}',
-    P + '-fn-box{flex:0 0 auto;}',
+    P + '-fn-box{flex:0 0 auto;margin:auto 0;}',   // воронка посередине свободного места под карточкой ЦА (09.10)
     P + '-cap2{font-size:var(--fs-cap);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400;}',
     P + '-warn{font-size:var(--fs-note);line-height:1.45;color:#7a5200;background:#fff6e6;border-radius:8px;padding:8px 10px;}',
     P + '-sig-chip.dead{background:#f0f1f3;color:var(--muted);}',
@@ -1326,7 +1345,7 @@ function buildCSS() {
     // Месяцы забирают всю высоту вкладки: 6 строк недель у каждого (ровные ряды), клетка — от 20 px до потолка
     // сетки; дни недели — одной строкой кубиков под ними.
     P + '-cal-months{display:flex;flex:1 1 auto;flex-wrap:nowrap;justify-content:space-evenly;gap:0 24px;padding:0 12px;box-sizing:border-box;}',
-    P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:330px;display:flex;flex-direction:column;}',
+    P + '-cal-mon{flex:1 1 0;min-width:130px;max-width:330px;display:flex;flex-direction:column;justify-content:center;}',   // сетка упёрлась в потолок — месяц посередине между легендой и днями недели (09.10)
     P + '-cal-mt{font-size:var(--fs-body);font-weight:400;color:var(--ink2);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-cal-mt span{color:var(--muted);font-weight:400;}',
     P + '-cal-g{flex:1 1 auto;max-height:310px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:auto repeat(6,minmax(20px,1fr));gap:3px;}',
@@ -1859,8 +1878,8 @@ function groupRowHtml(nd, cols, hasKids, open, lc) {
     (hasKids
       ? '<button type="button" class="' + CFG.ns + '-gh-caret" data-gtog="' + esc(nd.id) + '" aria-expanded="' + open + '" aria-label="' + (open ? 'Свернуть ' : 'Раскрыть ') + esc(nd.name) + '">' + (open ? '▾' : '▸') + '</button>'
       : '<span class="' + CFG.ns + '-gh-sp"></span>') +
-    '<span class="' + CFG.ns + '-gtx"><span class="' + CFG.ns + '-gh-name gh-name">' + esc(nd.name) + '</span>' +
-    (sub ? '<span class="' + CFG.ns + '-unit-sub">' + esc(sub) + '</span>' : '') + '</span></td>';
+    '<span class="' + CFG.ns + '-gtx" title="' + esc(nd.name + (sub ? ' · ' + sub : '')) + '"><span class="' + CFG.ns + '-gh-name gh-name">' + esc(nd.name) + '</span>' +
+    (sub ? '<span class="' + CFG.ns + '-gh-sub"> · ' + esc(sub) + '</span>' : '') + '</span></td>';
   for (var c = 0; c < cols.length; c++) h += gCellHtml(cols[c].key, m);
   if (local) h += '<td class="loc">' + (cN ? nf(cN) : '<span class="mut">0</span>') + '</td>';
   return h + '</tr>';
@@ -2089,8 +2108,8 @@ function freqStripHtml(shown) {
       ' data-freq="' + bk + '" style="flex:' + w.toFixed(2) + ' 1 0"' +
       tip({
         title: MODEL.labels[i] + ' из ' + n,
-        text: 'Сколько РАЗНЫХ периодов человек заходил. Клик оставит в списке только эту корзину' +
-          (on ? '; повторный клик снимет фильтр' : '') + '; каталог слева сузит сервер',
+        text: 'Люди, заходившие столько разных ' + (CFG.grains[MODEL.grain] ? CFG.grains[MODEL.grain].units : 'дней') + ' за период.',
+        note: on ? 'Клик — снять фильтр.' : 'Клик — оставить в списке только их; каталог слева сузится.',
         rows: [{ label: 'В списке', value: nf(cnt), color: CFG.colors.freq[i] },
           { label: 'Доля списка', value: pct(cnt / tot * 100) },
           { label: 'Всего пользователей', value: nf(areaCnt) }]
@@ -2193,7 +2212,7 @@ function whoCountHtml() {
     var nRoot = rootNodes(cut).length;
     cnt = orgLevelOf(cut)
       ? nf(nRoot) + ' ' + plural(nRoot, 'подразделение', 'подразделения', 'подразделений') + ' УС-' + orgLevelOf(cut)
-      : nf(nRoot) + ' ' + plural(nRoot, 'группа', 'группы', 'групп') + (cut === 'org' ? ' верхнего уровня' : '');
+      : nf(nRoot) + ' ' + plural(nRoot, 'группа', 'группы', 'групп');   // «верхнего уровня» переносил тулбар на 2-ю строку (09.10)
   } else {
     var n = shownList().length;
     cnt = nf(n) + ' ' + plural(n, 'человек', 'человека', 'человек') + (!isCa() && MODEL.total > n ? ' из ' + nf(MODEL.total) : '');
@@ -2656,7 +2675,7 @@ function kpisHtml() {
   var mM = closedMonth(1), mP = closedMonth(2);
   return '<div class="' + CFG.ns + '-kpis">' +
     kpiCard({ label: 'Пользователей', value: nf(k.users),
-      hint: { title: 'Пользователи ' + G.label, text: 'Сколько разных людей открыли отчёты за период (при выборе в каталоге — выбранные отчёты). Пользователь — тот, кто хотя бы раз открыл отчёт; человек считается один раз, даже если открыл несколько отчётов.' },
+      hint: { title: 'Пользователи ' + G.label, text: 'Разные люди, открывшие отчёты за период.', note: 'Человек считается один раз, сколько бы ни открывал. Выбор в каталоге — только выбранные отчёты.' },
       delta: dl(dPct(k.users, k.users_prev), { vs: G.vs, unit: '%' }),
       sub: loc ? 'из <b>' + nf(all.users) + '</b> всего' : (G.prev ? 'предыдущий: <b>' + nf(k.users_prev) + '</b>' : 'ушли из прошлого периода: <b>' + nf(k.sleeping) + '</b>') }) +
     kpiCard({ label: 'Просмотров', value: compact(k.views),
@@ -2686,9 +2705,8 @@ function caKpi(G, dl) {
     { label: 'Не заходили', value: nf(Math.max(0, t.ca - t.reach)) }, { label: 'Заходили вне ЦА', value: nf(t.out) }];
   if (cond) rows.splice(1, 0, { label: accGap(t) ? 'С доступом (в данных неполно)' : 'Из них с доступом', value: nf(t.acc) });
   return kpiCard({ label: 'Охват ЦА', value: W || cov == null ? '—' : pct(cov),
-    hint: { title: 'Охват целевой аудитории', text: 'Доля ЦА, открывавшая отчёты за период. ЦА ' + base +
-      '. Меняется в строке «Целевая аудитория» над листом. База — действующие сотрудники с AD-логином.' +
-      (W ? ' Сейчас доступ открыт почти всей компании — процент не показываем: сузьте ЦА условиями.' : ''), rows: rows },
+    hint: { title: 'Охват ЦА', text: 'Доля целевой аудитории, открывавшая отчёты за период.', rows: rows,
+      note: ['ЦА — ' + base + '. Меняется в строке «Целевая аудитория».'].concat(W ? ['Доступ почти у всей компании — процент не считаем: сузьте ЦА условиями.'] : []) },
     delta: W ? '<span class="' + CFG.ns + '-nocmp">доступ почти у всех</span>' : dl(cov - covP, { vs: G.vs, unit: ' п.п.', dead: 0.3 }),
     sub: '<b>' + nf(t.reach) + '</b> из ' + nf(t.ca) + (cond ? ' · по условиям' : '') });
 }
@@ -2696,7 +2714,7 @@ function caKpi(G, dl) {
 // Карусель наблюдений фиксированной высоты: один факт, листание ‹ ›,
 // текст целиком — в подсказке. Высота не меняется — вкладки не прыгают.
 // Откуда факты: правила в коде чарта по числам карточек выше, без ИИ (вопрос пользователей 2026-10-02).
-var OBS_TIP = tip({ title: 'Как собраны эти факты', text: 'Без ИИ: правила в коде отчёта. Каждый факт посчитан из тех же чисел, что на карточках выше (текущий период против прошлого, доли постоянных и новых); в список попадает, только если изменение больше порога — порог указан в подсказке факта.' });
+var OBS_TIP = tip({ title: 'Как собраны эти факты', text: 'Правилами в коде отчёта, без ИИ: из тех же чисел, что на карточках выше.', note: 'Факт попадает сюда, только если изменение больше порога — порог в подсказке факта.' });
 function obsHtml(what) {
   var list = obsList(MODEL.kpi, CFG.grains[MODEL.grain] || CFG.grains.d, what);
   var N = CFG.ns;
@@ -2740,9 +2758,7 @@ function buildHTML() {
   var body, bodyCls, title;
   if (view === 'who') {
     // Разбивка полосы и таблицы: по частоте (корзины, как было) или по ЦА (дошли / не заходили / вне ЦА).
-    body = '<div class="' + N + '-who-mode"><span class="' + N + '-who-mode-l">Разбивка:</span><div class="' + N + '-sub-tabs tiny" role="tablist">' +
-      tabsHtml('whoMode', [{ key: 'freq', label: 'По частоте', on: !isCa() }, { key: 'ca', label: 'По целевой аудитории', on: isCa() }]) + '</div></div>' +
-      (isCa() ? segStripHtml() : freqStripHtml(busList())) + '<div class="' + N + '-list-zone">' + listZoneHtml() + '</div>';
+    body = (isCa() ? segStripHtml() : freqStripHtml(busList())) + '<div class="' + N + '-list-zone">' + listZoneHtml() + '</div>';
     bodyCls = 'tbl-wrap'; title = 'Кто смотрит';
   } else if (view === 'dyn') {
     body = dynamicsHtml(MODEL.ts, MODEL.grain);
@@ -2770,9 +2786,8 @@ function buildHTML() {
   h.push('<div class="' + N + '-panel-h">' +
     '<div class="' + N + '-h-txt"><span class="' + N + '-h-ttl" title="' + esc(title + ' · ' + (ai.mut ? 'весь Proteus' : ai.pill) + (caModeNow() === 'cond' ? ' · ЦА: ' + caCondText() : '')) + '">' + esc(title) + ' · <span class="' + N + '-h-area"' + tip({ title: 'Область', text: ai.text }) + '>' +
       esc(ai.mut ? 'весь Proteus' : ai.pill) + '</span>' +
-      (caModeNow() === 'cond' ? ' · <span class="' + N + '-h-area"' + tip({ title: 'Целевая аудитория по условиям', text: caCondParts(MODEL.audApplied || caEmpty()).length
-        ? 'Все числа панели — только по людям ЦА: ' + caCondText() + '. Группа выбрана в каталоге (вкладка «Аудитория») — там и снимается; условия строки «Целевая аудитория» — в шапке.'
-        : 'Все числа панели и каталога — только по людям ЦА: ' + caCondText() + '. Изменить или сбросить — в строке «Целевая аудитория».' }) + '>ЦА: ' + esc(caCondText()) + '</span>' : '') +
+      (caModeNow() === 'cond' ? ' · <span class="' + N + '-h-area"' + tip({ title: 'ЦА по условиям', text: 'Все числа панели — только по этим людям: ' + caCondText() + '.',
+        note: caCondParts(MODEL.audApplied || caEmpty()).length ? 'Группа выбрана в каталоге (вкладка «Аудитория») — там и снимается.' : 'Изменить — в строке «Целевая аудитория» над листом.' }) + '>ЦА: ' + esc(caCondText()) + '</span>' : '') +
       '</span>' +
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
@@ -2780,6 +2795,9 @@ function buildHTML() {
           : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке'
             : (view === 'path' ? 'кого считаем аудиторией и как она доходит до отчётов' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
     (view === 'dyn' ? dynLegendHtml(MODEL.ts, MODEL.grain, {}) : '') +
+    // «Кто смотрит»: разбивка — в заголовке карточки справа (своя строка съедала место у таблицы, 09.10)
+    (view === 'who' ? '<div class="' + N + '-sub-tabs tiny ' + N + '-hmode" role="tablist" aria-label="Разбивка">' +
+      tabsHtml('whoMode', [{ key: 'freq', label: 'По частоте', on: !isCa() }, { key: 'ca', label: 'По целевой аудитории', on: isCa() }]) + '</div>' : '') +
     '</div>');
   h.push('<div class="' + N + '-panel-b ' + bodyCls + '">' + body + '</div>');
   h.push('</div>');
@@ -2798,20 +2816,19 @@ function caCardHtml() {
   if (cond) {
     title = 'Собрана по условиям';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
-    text = 'Все сотрудники с AD-логином, где ' + caCondText(c) + '. ' + (accGap(t)
-      ? 'Права в данных неполные: с доступом поимённо или через AD-группу — <b>' + ppl(t.acc) + '</b>, а открывали отчёты <b>' +
-        ppl(t.reach) + '</b> (доступ выдан и иначе — например, ролью Proteus), поэтому ступени «Есть доступ» в воронке нет. '
-      : 'Доступ к отчётам есть у <b>' + ppl(t.acc) + '</b> — ступень «Есть доступ». ') +
-      'Эта же ЦА — фильтр каталога слева.'
+    // редактура 09.10: коротко — кто это, сколько с доступом, где менять
+    text = 'Сотрудники, где ' + esc(caCondText(c)) + '. ' + (accGap(t)
+      ? 'Права в данных неполные — ступени «Есть доступ» в воронке нет.'
+      : 'Доступ к отчётам — у <b>' + ppl(t.acc) + '</b>.') + ' По ней же считает каталог слева.'
   } else if (W) {
     title = 'Доступ роздан почти всей компании';
     chip = '<span class="' + N + '-sig-chip warn">охват не считаем</span>';
-    text = 'Права выданы через ' + (gTxt || 'широкую группу') + ' — это <b>' + ppl(t.ca) + '</b>, ' + pct(t.ca / (MODEL.staff || 1) * 100, 0) +
-      ' сотрудников: такой знаменатель не описывает, для кого делали отчёт. Настройте ЦА условиями — и доли вернутся.';
+    text = 'Права выданы через ' + (gTxt || 'широкую группу') + ': <b>' + ppl(t.ca) + '</b>, ' + pct(t.ca / (MODEL.staff || 1) * 100, 0) +
+      ' сотрудников. Для охвата такая ЦА слишком широкая.';
   } else if (!gs.length && MODEL.acl.users) {
     title = 'Поимённый список доступа';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
-    text = 'Права выданы поимённо (' + nf(MODEL.acl.users) + '). Самый точный вид ЦА: охват и «не заходили» считаются без допущений.';
+    text = 'Права выданы поимённо: <b>' + ppl(MODEL.acl.users) + '</b>. Охват считается точно.';
   } else if (!gs.length) {
     title = 'Прав на эти отчёты в данных нет';
     chip = '<span class="' + N + '-sig-chip warn">ЦА пуста</span>';
@@ -2820,7 +2837,7 @@ function caCardHtml() {
     title = 'Доступ через AD-группы';
     chip = '<span class="' + N + '-sig-chip note">' + ppl(t.ca) + '</span>';
     text = 'Права выданы ' + plural(gs.length, 'группе', 'группам', 'группам') + ' ' + gTxt +
-      (MODEL.acl.users ? ' плюс ' + nf(MODEL.acl.users) + ' поимённо' : '') + '. Считаем их целевой аудиторией, пока не настроены условия.';
+      (MODEL.acl.users ? ' и ' + nf(MODEL.acl.users) + ' поимённо' : '') + '. Пока условия не заданы, ЦА — это они.';
   }
   // Компактно (правка владельца: с ЦА по условиям не влезала воронка): слева — что за ЦА и сколько,
   // справа — пояснение и где её менять, одним абзацем.
@@ -2831,8 +2848,8 @@ function caCardHtml() {
     '</div>' +
     '<div class="' + N + '-sb-col ' + N + '-sb-set">' +
       '<div class="' + N + '-as-x">' + text + ' <span class="' + N + '-as-h">' + (cond
-        ? 'Изменить или сбросить — в строке «Целевая аудитория» над листом.'
-        : 'Собрать ЦА по структуре — в строке «Целевая аудитория» над листом.') + '</span></div>' +
+        ? 'Изменить — в строке «Целевая аудитория».'
+        : 'Задать ЦА условиями — в строке «Целевая аудитория».') + '</span></div>' +
     '</div></div>';
 }
 // Воронка (порт U.funnelSvg макета): центрированные бары сверху вниз, ширина ровно
@@ -2898,10 +2915,8 @@ function funnelHtml() {
   var t = caTotals(), N = CFG.ns;
   return '<div class="' + N + '-dynhead"><span class="' + N + '-cap">Путь целевой аудитории · от выданного доступа до регулярного использования</span></div>' +
     funnelSvg(funnelSteps(), SVG_W) +
-    '<div class="' + N + '-tbl-note">Каждый следующий этап — подмножество предыдущего. ' +
-    (caModeNow() === 'cond' && !accGap(caTotals()) ? 'Ступень <b>«Есть доступ»</b> отделяет «не раздали права» от «раздали, но не ходят». ' : '') +
-    'Ни разу за период: <b>' + nf(Math.max(0, t.ca - t.reach)) + '</b> · разовые: <b>' + nf(t.once) + '</b> · заходили вне ЦА: <b>' + nf(t.out) + '</b>. ' +
-    '<b>Когда</b> этапы набирались — на вкладке «Динамика».</div>';
+    '<div class="' + N + '-tbl-note">Каждый этап — часть предыдущего. Ни разу за период: <b>' + nf(Math.max(0, t.ca - t.reach)) +
+    '</b> · разовые: <b>' + nf(t.once) + '</b> · вне ЦА: <b>' + nf(t.out) + '</b>. Когда набирались — на «Динамике».</div>';
 }
 function pathHtml() {
   return caCardHtml() + '<div class="' + CFG.ns + '-fn-box">' + funnelHtml() + '</div>';
@@ -3614,7 +3629,9 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var cs = getComputedStyle(body), kids = body.children;
       if (!kids.length) return false;
       var inner = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-      var used = kids[kids.length - 1].getBoundingClientRect().bottom - kids[0].getBoundingClientRect().top;
+      // занято = блоки + зазоры, без автоотступов, которыми воронка встаёт посередине (иначе она не росла бы обратно)
+      var used = (kids.length - 1) * (parseFloat(cs.rowGap) || 0);
+      for (var ki = 0; ki < kids.length; ki++) used += kids[ki].getBoundingClientRect().height;
       var avail = Math.floor(inner - (used - svg.getBoundingClientRect().height)) - 2;
       if (avail >= FN_H && avail - FN_H <= 4) return false;
       FN_H = avail; state.fnH = avail;
@@ -3868,7 +3885,16 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       state.picks[cut] = list;
     }
 
+    // Выделили текст в строке (логин, название, ФИО — чтобы скопировать) — это не выбор строки: клик не переключает
+    // и не пересобирает таблицу, иначе выделение пропадает (владелец 2026-10-09).
+    function textPicked(t) {
+      var sel = window.getSelection ? window.getSelection() : null;
+      if (!sel || sel.isCollapsed || !String(sel).trim()) return false;
+      var row = t && t.closest ? t.closest('tr') : null;
+      return !!row && row.contains(sel.anchorNode);
+    }
     function onClick(e) {
+      if (textPicked(e.target)) return;
       // Клик мимо открытого дропдауна закрывает его (паттерн полки):
       // всё внутри .dd считается «внутри».
       var ddNode = trigger(e.target, 'data-ddtoggle');

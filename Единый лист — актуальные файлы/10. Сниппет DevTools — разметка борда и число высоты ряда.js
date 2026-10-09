@@ -42,9 +42,19 @@
     var c = (typeof e.className === 'string' ? e.className : (e.getAttribute('class') || '')).trim();
     return e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (c ? '.' + c.split(/\s+/).join('.') : '');
   }
-  function box(e) {                     // координаты от начала страницы (с учётом прокрутки)
-    var r = e.getBoundingClientRect();
-    return { l: r.left, t: r.top + window.scrollY, r: r.right, b: r.bottom + window.scrollY, w: r.width, h: r.height };
+  // Proteus 2.1 (adoption 09.10): страница прокручивается не окном, а блоком под меню (overflow auto) — его прокрутку
+  // тоже прибавляем, иначе «верх ряда» зависит от того, куда прокрутили
+  function scroller(e) {                // ближайший блок прокрутки (overflow не visible; sticky липнет к нему), null — окно
+    for (var p = e && e.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+      var o = getComputedStyle(p).overflowY;
+      if (o === 'auto' || o === 'scroll' || o === 'overlay' || o === 'hidden') return p;
+    }
+    return null;
+  }
+  function sY(e) { var sc = scroller(e); return window.scrollY + (sc ? sc.scrollTop : 0); }
+  function box(e) {                     // координаты от начала страницы (с учётом прокрутки окна и блока)
+    var r = e.getBoundingClientRect(), y = sY(e);
+    return { l: r.left, t: r.top + y, r: r.right, b: r.bottom + y, w: r.width, h: r.height };
   }
   // «замер   (цель — N)»; расхождение больше 1 px — в итог
   function want(what, got, exp, note) {
@@ -262,7 +272,7 @@
   var vhVis = vhAll.length > 1 ? vhAll[1] : 0, atMin = vhRule && vref.b.h > window.innerHeight - vhTop + VH_TOL;
   out.push('ряд чартов' + (vref !== ref ? ' (' + vref.id + ', его высоту задаёт правило)' : '') + ': верх ' + n(vref.b.t)
     + ' px от начала страницы, высота ' + n(vref.b.h) + (rc && rc.style.height ? ' (в раскладке ' + rc.style.height + ')' : '')
-    + ', от низа ряда до низа окна ' + n(window.innerHeight - (vref.b.b - window.scrollY))
+    + ', от низа ряда до низа окна ' + n(window.innerHeight - vref.el.getBoundingClientRect().bottom)
     + (EXPECT.bottom === null || EXPECT.bottom === undefined || EDIT ? '' : '   (цель — ' + EXPECT.bottom
       + (atMin ? '; ряд на нижнем пределе ' + vhMin + ' px' + (vhVis ? ' (не выше «окно − ' + vhVis + '»)' : '')
         + ' — окно для ряда с шапкой низкое, страница прокручивается, так задумано' : '') + ')'));
@@ -274,12 +284,13 @@
     var sr = all[q].getBoundingClientRect(), st = parseFloat(cs.top);
     if (sr.height < 1 || sr.width < window.innerWidth / 2 || isNaN(st) || st > 4) continue;   // липнет к верху окна
     if (cs.position === 'fixed' && sr.top > 4) continue;
-    var sb = cs.position === 'sticky' ? st + sr.height : sr.bottom;   // sticky: где окажется низ, когда прилипнет
+    var scp = cs.position === 'sticky' ? scroller(all[q]) : null;    // sticky липнет к верху своего прокручиваемого блока
+    var sb = cs.position === 'sticky' ? (scp ? scp.getBoundingClientRect().top : 0) + st + sr.height : sr.bottom;
     if (sb > stick && sb < window.innerHeight / 2) { stick = sb; stickEl = all[q]; }
   }
   if (vhVis) {
     var visNeed = n(stick) + 16 + (EXPECT.bottom || 0);
-    out.push('липкая шапка при прокрутке: ' + (stickEl ? n(stick) + ' px (' + name(stickEl).slice(0, 80) + ')' : 'не нашёл')
+    out.push('липкая шапка при прокрутке кончается в ' + (stickEl ? n(stick) + ' px от верха окна (' + name(stickEl).slice(0, 80) + ')' : '… не нашёл')
       + ' · в ' + CSS_NAME + ' «100vh - ' + vhVis + 'px» '
       + (!stickEl || Math.abs(vhVis - visNeed) <= VH_TOL ? '— верно' : '— замените на «100vh - ' + visNeed + 'px» (шапка ' + n(stick) + ' + 16 над рядом + ' + (EXPECT.bottom || 0) + ' под ним)'));
     if (stickEl && Math.abs(vhVis - visNeed) > VH_TOL) miss.push('видимое под шапкой: ' + vhVis + ' → ' + visNeed);

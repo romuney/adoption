@@ -147,6 +147,15 @@
   предела: cal-months flex:1 max-height 370, cal-g max 340; fn-box без автоотступов (FN_ROW 74 — потолок); coh-wrap
   обычный блок. syncFnH по-прежнему считает занятое суммой блоков.
 
+## Закрепляемость — кривая над таблицей (2026-10-09, ночь-15)
+- cohCurveHtml (в cohortTableHtml при o.curve): блок -ct-cv = подпись 182 px (2+64+2+112+2 — колонки «Когорта», «Пришло»)
+  + область возрастов; таблица table-layout:fixed → колонки +1…+11 поровну, x точки = (a − 0,5) / 11. SVG без пропорций
+  (preserveAspectRatio none, vector-effect non-scaling-stroke) — линии и заливка; точки и подписи — HTML (%, px).
+- Линии строк — path[data-cl] скрыты; tr[data-ci] под курсором → cohRow(i) в onOver/onOut (без render()). Гашение
+  остальных строк — CSS (tbody:hover tr:not(:hover)).
+- Высота кривой cohCvH(): 0 при ряде < 600, иначе 64…136 по (ряд − 560) × 0,6 (state.rowH из syncOvr). Ячейки — padding 3.
+- Удалены: retCurveSvg, syncCohH, COH_H, state.cohView (переключатель «Таблица / Кривая»).
+
 ## Календарь — лента недель (2026-10-09, ночь-14)
 - calendarHtml: t0 — понедельник недели первого дня окна, nW недель до воскресенья недели даты свежести; сетка -cal-rib
   (72px подпись месяца + 7 × 1fr, строки minmax(18px, 1fr)) тянется флексом; -cal-wbs — столбики дней недели в тех же

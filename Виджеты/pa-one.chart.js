@@ -216,7 +216,6 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   calM: 'u',
   whoMode: 'freq',           // «Кто смотрит»: freq — по частоте (корзины) | ca — по ЦА (дошли / не заходили / вне ЦА)
   segSel: null,              // режим ЦА: выбранный сегмент полосы (reach | never | out)                 // календарь: u — пользователи | v — просмотры
-  cohView: 'table',          // закрепляемость: table | curve
   ctBase: 'col',             // цвет когорт: медиана столбца | таблицы
   // Людская шина (→ каталог слева): выбор по разрезам, семантика как в
   // каталоге — клик переключает, Shift накапливает, повторный по единственной снимает.
@@ -1309,7 +1308,20 @@ function buildCSS() {
     P + '-ct-wrap{overflow-x:auto;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell{opacity:.2;transition:opacity .1s;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell.band-hit{opacity:1;box-shadow:inset 0 0 0 1px rgba(31,31,31,.35);}',
-    P + '-cttable{border-collapse:separate;border-spacing:2px;width:100%;font-size:var(--fs-body);}',
+    P + '-cttable{border-collapse:separate;border-spacing:2px;width:100%;font-size:var(--fs-body);table-layout:fixed;}',
+    // кривая над таблицей: слева подпись в ширину колонок «Когорта» + «Пришло» (2 + 64 + 2 + 112 + 2), справа — колонки возрастов
+    P + '-ct-cv{display:flex;flex:0 0 auto;margin:0 2px 4px 0;}',
+    P + '-cv-l{flex:0 0 182px;display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px 8px 4px;box-sizing:border-box;font-size:var(--fs-cap);color:var(--muted);line-height:1.35;}',
+    P + '-cv-l b{font-size:var(--fs-body);font-weight:400;color:var(--ink2);}',
+    P + '-cv-l .on{color:var(--ink);font-weight:700;}',
+    P + '-cv-k{display:inline-block;width:14px;height:0;border-top:2px solid ' + CFG.colors.act + ';vertical-align:middle;margin-right:6px;}',
+    P + '-cv-a{position:relative;flex:1 1 auto;min-width:0;}',
+    P + '-cv-pt{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:' + CFG.colors.act + ';box-shadow:0 0 0 2px #fff;cursor:help;}',
+    P + '-cv-v{position:absolute;transform:translateX(-50%);font-size:10.5px;color:var(--muted);white-space:nowrap;pointer-events:none;}',
+    // строка под курсором — остальные гаснут (как ступень шкалы), подпись когорты жирная
+    P + '-ct-wrap tbody:hover tr:not(:hover) td{opacity:.38;}',
+    P + '-ct-wrap tbody tr:hover td.txt{font-weight:700;}',
+    P + '-ct-wrap tbody tr:hover td' + P + '-ct-cell:not(.none){box-shadow:inset 0 0 0 1px rgba(31,31,31,.3);}',
     P + '-cttable th,' + P + '-cttable td{border:0;white-space:nowrap;}',
     P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:center;padding:4px 2px;}',
     P + '-cttable th.txt{text-align:left;padding-left:4px;}',
@@ -1320,7 +1332,7 @@ function buildCSS() {
     // «Пришло» — голубым из шкалы когорт (DIV_HIGH #62CDFF, приглушённый), а не синим стека «Динамики» (владелец 09.10)
     P + '-ct-bar i{display:block;height:100%;border-radius:2px;background:#74C9F2;min-width:2px;}',
     P + '-ct-sz b{font-weight:400;color:var(--ink2);font-variant-numeric:tabular-nums;}',
-    P + '-ct-cell{text-align:center;padding:7px 3px;border-radius:6px;font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
+    P + '-ct-cell{text-align:center;padding:3px;border-radius:6px;font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
     P + '-ct-cell.none{background:transparent !important;cursor:default;}',
     P + '-ct-cell.part{background:#f1f3f6 !important;font-style:italic;color:var(--muted);}',
     P + '-panel-h ' + P + '-under{padding:0;margin-left:auto;}',
@@ -2503,6 +2515,7 @@ function cohortTableHtml(o) {
   h += '</div><span class="' + CFG.ns + '-ct-cfg-n"' +
     tip({ text: 'Края шкалы — максимальные отклонения в этой таблице: вниз ' + MINUS + nf(spanDn, 0) + ' п.п., вверх +' + nf(spanUp, 0) + ' п.п. Крайняя ступень всегда подсвечивает самую далёкую ячейку.' }) +
     '>края ' + MINUS + nf(spanDn, 0) + ' / +' + nf(spanUp, 0) + ' п.п.</span></div></div>';
+  if (o.curve) h += cohCurveHtml(rows, grid, maxAge, pctOf);
   // таблица тянется на высоту вкладки, но строка — не выше 46 px (при трёх когортах не превращается в плакат)
   h += '<div class="' + CFG.ns + '-ct-wrap" style="max-height:' + (44 + rows.length * 46) + 'px"><table class="' + CFG.ns + '-cttable"><colgroup>' +
     '<col style="width:64px"><col style="width:112px">';
@@ -2525,7 +2538,7 @@ function cohortTableHtml(o) {
     var row = rows[i], cm = row.month;
     var lbl = MONTHS[cm.m] + ' ' + String(cm.y).slice(2);
     var cnh = cohNoHist(cm);
-    h += '<tr' + (cnh ? ' class="' + CFG.ns + '-ct-nh"' : '') + '><td class="txt"' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, text: cnh ? histNote(false, true) + ' Удержание этой когорты завышено, в среднюю кривую она не входит.' : (o.firstTip || 'Месяц первого визита') }) + '>' + esc(lbl) + (cnh ? ' *' : '') + '</td>' +
+    h += '<tr data-ci="' + i + '"' + (cnh ? ' class="' + CFG.ns + '-ct-nh"' : '') + '><td class="txt"' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, text: cnh ? histNote(false, true) + ' Удержание этой когорты завышено, в среднюю кривую она не входит.' : (o.firstTip || 'Месяц первого визита') }) + '>' + esc(lbl) + (cnh ? ' *' : '') + '</td>' +
       '<td' + tip({ title: MONTHS_FULL[cm.m] + ' ' + cm.y, rows: [{ label: 'Пришли впервые', value: nf(row.size), color: CFG.colors.act }] }) + '>' +
       '<div class="' + CFG.ns + '-ct-sz"><span class="' + CFG.ns + '-ct-bar"><i style="width:' +
       (100 * row.size / maxSize).toFixed(1) + '%"></i></span><b>' + nf(row.size) + '</b></div></td>';
@@ -2557,71 +2570,63 @@ function cohortTableHtml(o) {
   return h;
 }
 
-// Кривая удержания (порт pa-cohorts): средняя по когортам — числители и
-// знаменатели складываются, проценты не усредняются.
-function retCurveSvg(points, opts) {
-  var o = opts || {}, C = CFG.colors;
-  if (!points.length) return '<div class="' + CFG.ns + '-tbl-note">Закрытых когорт для кривой мало.</div>';
-  var n = points.length;
-  // Поля по бокам — под подписи крайних точек («30%», «+1 мес» не режутся краем);
-  // высота — остаток вкладки (COH_H); шкала от нуля до максимума с воздухом (не до 100%:
-  // кривая 20–30% иначе прижималась к верху тонкой полоской).
-  var padL = 28, padR = 28, top = 34, bottom = 30, H = COH_H || 280;
-  var step = (SVG_W - padL - padR) / Math.max(1, n - 1);
+// Кривая над таблицей когорт: x — центры колонок +1…+maxAge (таблица fixed: 64 + 112 px слева, остальные поровну,
+// border-spacing 2), y — доля когорты. Средняя — как retCurveSvg (числители и знаменатели складываются); линии строк
+// скрыты, наведение на строку таблицы показывает свою (cohRowOn, без render()). Точки и подписи — HTML поверх SVG:
+// SVG тянется без сохранения пропорций (preserveAspectRatio none), круги и текст в нём сплющились бы.
+// высота кривой — от ряда: 136 px на ноутбуке (ряд refRow), на низком ряду до 64 — место под строки таблицы
+// (ряд ниже 600 — кривой нет: таблица важнее, иначе прокручивается внутри)
+function cohCvH() { var r = Math.min(state.rowH || CFG.spacing.refRow, CFG.spacing.refRow); return r < 600 ? 0 : Math.max(64, Math.min(136, Math.round((r - 560) * 0.6))); }
+function cohCurveHtml(rows, grid, maxAge, pctOf) {
+  var N = CFG.ns, C = CFG.colors, pts = retentionPoints(rows), i, a;
+  if (!pts.length || !cohCvH()) return '';
   var mx = 0;
-  for (var q = 0; q < n; q++) if (points[q].pct > mx) mx = points[q].pct;
-  var yMax = Math.min(100, Math.max(10, Math.ceil(mx * 1.25 / 10) * 10));
-  var yOf = function (v) { return top + (1 - v / yMax) * (H - top - bottom); };
-  var xOf = function (i2) { return padL + i2 * step; };
-  var ls = labelStep(n);
-  var pts = [], i;
-  for (i = 0; i < n; i++) pts.push([xOf(i), yOf(points[i].pct)]);
-  var s = 'M' + r1(pts[0][0]) + ' ' + r1(pts[0][1]);
-  for (i = 1; i < n; i++) {
-    var dx = (pts[i][0] - pts[i - 1][0]) / 2;
-    s += 'C' + r1(pts[i - 1][0] + dx) + ' ' + r1(pts[i - 1][1]) + ' ' + r1(pts[i][0] - dx) + ' ' + r1(pts[i][1]) + ' ' + r1(pts[i][0]) + ' ' + r1(pts[i][1]);
+  for (i = 0; i < pts.length; i++) mx = Math.max(mx, pts[i].pct);
+  // шкала — от нуля до средней с запасом (до 100% кривая 50–70% сплющивалась); линия строки выше — обрезается краем
+  var yMax = Math.min(100, Math.max(10, Math.ceil(mx * 1.2 / 10) * 10)), top = 20, bot = 6, H = cohCvH();
+  var yOf = function (v) { return top + (1 - Math.min(v, yMax) / yMax) * (H - top - bot); };
+  var xOf = function (ag) { return (ag - 0.5) / maxAge * 1000; };
+  var path = function (ps) {
+    var d = '';
+    for (var k = 0; k < ps.length; k++) d += (k ? 'L' : 'M') + r1(xOf(ps[k][0])) + ' ' + r1(yOf(ps[k][1]));
+    return d;
+  };
+  var svg = '';
+  for (var gy = 0; gy <= yMax; gy += yMax / 2) svg += '<line x1="0" x2="1000" y1="' + r1(yOf(gy)) + '" y2="' + r1(yOf(gy)) + '" stroke="' + C.split + '" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>';
+  var mp = [];
+  for (i = 0; i < pts.length; i++) mp.push([pts[i].age, pts[i].pct]);
+  var md = path(mp);
+  svg += '<path d="' + md + 'L' + r1(xOf(mp[mp.length - 1][0])) + ' ' + r1(yOf(0)) + 'L' + r1(xOf(mp[0][0])) + ' ' + r1(yOf(0)) + 'Z" fill="rgba(36,95,212,.08)"/>';
+  svg += '<path d="' + md + '" fill="none" stroke="' + C.act + '" stroke-width="2" vector-effect="non-scaling-stroke"/>';
+  for (i = 0; i < rows.length; i++) {
+    var rp = [];
+    for (a = 1; a <= maxAge; a++) { var c = grid[i][a]; if (c && !c.partial) rp.push([a, pctOf(rows[i], c)]); }
+    if (rp.length) svg += '<path data-cl="' + i + '" d="' + path(rp) + '" fill="none" stroke="#23272e" stroke-width="2" vector-effect="non-scaling-stroke" style="display:none"/>';
   }
-  var body = '<text x="' + padL + '" y="16" font-size="' + CFG.fonts.title + '" font-weight="700" fill="' + C.txt + '">' +
-    esc(o.title || 'Средняя кривая удержания по всем когортам') + '</text>';
-  for (var gy = 0; gy <= yMax; gy += yMax / 4) {
-    var yy = r1(yOf(gy));
-    body += '<line x1="' + padL + '" y1="' + yy + '" x2="' + (SVG_W - padR) + '" y2="' + yy + '" stroke="' + C.split + '" stroke-dasharray="3 3"/>';
+  var dots = '';
+  for (i = 0; i < pts.length; i++) {
+    var lx = ((pts[i].age - 0.5) / maxAge * 100).toFixed(2) + '%', ly = yOf(pts[i].pct);
+    dots += '<span class="' + N + '-cv-pt" style="left:' + lx + ';top:' + r1(ly) + 'px"' + tip({
+        title: 'Через ' + pts[i].age + ' ' + plural(pts[i].age, 'месяц', 'месяца', 'месяцев'),
+        rows: [{ label: 'Возвращаются', value: pct(pts[i].pct), color: C.act }, { label: 'Когорт в расчёте', value: nf(pts[i].cohorts), dash: true, color: C.bench }],
+        note: 'Средняя по закрытым когортам: доля, активная через N месяцев после первого визита' }) + '></span>' +
+      '<span class="' + N + '-cv-v" style="left:' + lx + ';top:' + r1(ly - 17) + 'px">' + esc(pct(pts[i].pct, 0)) + '</span>';
   }
-  var cid = revealClip(H);
-  body += cid.defs + '<path clip-path="url(#' + cid.id + ')" d="' + s + 'L' + r1(pts[n - 1][0]) + ' ' + r1(yOf(0)) + 'L' + r1(pts[0][0]) + ' ' + r1(yOf(0)) + 'Z" fill="rgba(36,95,212,.08)"/>';
-  body += '<path class="ln" pathLength="1" stroke-dasharray="1" d="' + s + '" fill="none" stroke="' + C.act + '" stroke-width="2"/>';
-  for (i = 0; i < n; i++) {
-    body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, n - 1)) + '\" cx="' + r1(pts[i][0]) + '" cy="' + r1(pts[i][1]) + '" r="3.5" fill="' + C.act + '" stroke="#fff" stroke-width="2"' +
-      tip({
-        title: 'Через ' + points[i].age + ' ' + plural(points[i].age, 'месяц', 'месяца', 'месяцев'),
-        rows: [{ label: 'Возвращаются', value: pct(points[i].pct), color: C.act },
-          { label: 'Когорт в расчёте', value: nf(points[i].cohorts), dash: true, color: C.bench }],
-        note: 'Доля когорты, активной через N месяцев после первого визита'
-      }) + '/>';
-    if (i % ls === 0 || i === n - 1) {
-      body += '<text class="fade" x="' + r1(pts[i][0]) + '" y="' + r1(pts[i][1] - 10) + '" font-size="' + CFG.fonts.val + '" text-anchor="middle" fill="' + C.label +
-        '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(pct(points[i].pct, 0)) + '</text>';
-      body += '<text x="' + r1(pts[i][0]) + '" y="' + (H - 12) + '" font-size="11" text-anchor="middle" fill="' + C.axis + '">+' + points[i].age + ' мес</text>';
-    }
-  }
-  return '<svg viewBox="0 0 ' + SVG_W + ' ' + H + '" width="100%" data-dyn-svg="1" data-coh-curve="1" style="height:auto;display:block" font-family="' + CFG.fonts.family +
-    '" role="img" aria-label="Кривая удержания">' + body + '</svg>';
+  return '<div class="' + N + '-ct-cv" style="height:' + H + 'px">' +
+    '<div class="' + N + '-cv-l"><b><i class="' + N + '-cv-k"></i>Средняя по когортам</b><span class="' + N + '-cv-row">наведи строку — её линия</span></div>' +
+    '<div class="' + N + '-cv-a"><svg viewBox="0 0 1000 ' + H + '" preserveAspectRatio="none" width="100%" height="' + H + '" style="display:block;overflow:hidden">' + svg + '</svg>' + dots + '</div></div>';
 }
 
 function cohortZoneHtml(ai) {
   if (!MODEL.coh.length) {
     return '<div class="' + CFG.ns + '-tbl-note">Когорт за последние 12 месяцев нет.</div>';
   }
-  var h = '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">Когорты первого визита</span>' +
-    '<div class="' + CFG.ns + '-sub-tabs tiny" role="tablist" style="margin-left:auto">' +
-    tabsHtml('cohView', [
-      { key: 'table', label: 'Таблица', on: state.cohView !== 'curve' },
-      { key: 'curve', label: 'Кривая', on: state.cohView === 'curve' }
-    ]) + '</div></div>';
-  if (state.cohView === 'curve') return h + retCurveSvg(retentionPoints(MODEL.coh), { title: 'Средняя кривая удержания' });
+  // Таблица и кривая — вместе (владелец 09.10): средняя кривая над таблицей, точки — над своими колонками +1…+11;
+  // наведение на строку — её линия поверх средней. Переключатель «Таблица / Кривая» убран.
+  var h = '<div class="' + CFG.ns + '-dynhead"><span class="' + CFG.ns + '-cap">Когорты первого визита</span></div>';
   return h + cohortTableHtml({
-    rows: MODEL.coh, firstTip: ai.first, sizeNote: ai.size,
-    note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Наведи ступень шкалы, чтобы на таблице остались только её ячейки. ' +
+    rows: MODEL.coh, firstTip: ai.first, sizeNote: ai.size, curve: true,
+    note: 'В ячейке — доля когорты, вернувшаяся через N месяцев. Наведи строку — её линия появится на кривой над таблицей; наведи ступень шкалы — на таблице останутся только её ячейки. ' +
       'Серый курсив — месяц ещё не закрыт: значение дорастёт и в раскраске не участвует. Период полоски на когорты не действует.'
   });
 }
@@ -3168,8 +3173,6 @@ function revealClip(h) {
     (ANIM ? '<animate attributeName="width" from="0" to="' + SVG_W + '" dur="0.76s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines=".4 0 .2 1"/>' : '') +
     '</rect></clipPath></defs>' };
 }
-// Высота кривой удержания: остаток тела вкладки «Закрепляемость» (как у «Динамики»).
-var COH_H = state.cohH || 0;
 function r1(v) { return Math.round(v * 10) / 10; }
 function svgHeadroom(max, n) {
   // без округления вверх: при малых числах (один выбранный человек — столбики по 1) ceil(1,3) = 2 съедал полвысоты
@@ -3748,19 +3751,6 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       DYN_H = avail; state.dynH = avail;
       return true;
     }
-    // Кривая удержания тянется на высоту тела вкладки (минус заголовок «Когорты…»).
-    function syncCohH() {
-      var body = overlay.querySelector('.' + CFG.ns + '-panel-b.coh-wrap');
-      if (!body || !body.querySelector('svg[data-coh-curve]')) return false;
-      var cs = getComputedStyle(body);
-      var avail = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-      var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
-      for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
-      avail = Math.max(160, Math.floor(avail - 8));   // 240 → 160 (2026-10-09): кривая ужимается, а не уходит под прокрутку
-      if (Math.abs(avail - COH_H) <= 4) return false;
-      COH_H = avail; state.cohH = avail;
-      return true;
-    }
     // Воронка «Путь ЦА» — в остаток вкладки: высота тела минус всё, что в нём не воронка (карточка ЦА, подписи,
     // зазоры). Не влезает и в минимум ступеней — тогда прокрутка тела.
     function syncFnH() {
@@ -3780,6 +3770,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     // Лишняя высота ряда сверх ноутбука → --ovr (нижний отступ вкладок календаря, пути ЦА, закрепляемости).
     function syncOvr() {
       var o = Math.max(0, Math.round(overlay.clientHeight - CFG.spacing.refRow));
+      state.rowH = overlay.clientHeight;   // высота ряда — для кривой когорт (cohCvH)
       if (o === state.ovr && overlay.style.getPropertyValue('--ovr')) return false;
       overlay.style.setProperty('--ovr', o + 'px'); state.ovr = o;
       return true;
@@ -3854,8 +3845,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       state.animSig = MODEL.sig;
       syncOvr();
       overlay.innerHTML = buildHTML();
-      var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch3 = syncCohH(), ch4 = syncFnH();
-      if (ch1 || ch2 || ch3 || ch4) overlay.innerHTML = buildHTML();
+      var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch4 = syncFnH();
+      if (ch1 || ch2 || ch4) overlay.innerHTML = buildHTML();
       if (ANIM) animateIn(overlay);
       ANIM = false;
       fitDd();
@@ -3899,9 +3890,20 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       return null;
     }
 
+    // Строка таблицы когорт под курсором → её линия на кривой над таблицей (точечная правка, БЕЗ render()).
+    function cohRow(i) {
+      var ls = overlay.querySelectorAll('[data-cl]'), lab = overlay.querySelector('.' + CFG.ns + '-cv-row');
+      for (var k = 0; k < ls.length; k++) ls[k].style.display = ls[k].getAttribute('data-cl') === i ? '' : 'none';
+      if (!lab) return;
+      var tr = i == null ? null : overlay.querySelector('tr[data-ci="' + i + '"] td');
+      lab.textContent = tr ? '━ ' + tr.textContent + (overlay.querySelector('[data-cl="' + i + '"]') ? '' : ': закрытых месяцев нет') : 'наведи строку — её линия';
+      lab.className = CFG.ns + '-cv-row' + (tr ? ' on' : '');
+    }
     function onOver(e) {
       var stb = trigger(e.target, 'data-ctband');
       if (stb) bandHighlight(stb);
+      var ctr = trigger(e.target, 'data-ci');
+      if (ctr) cohRow(ctr.getAttribute('data-ci'));
       var el = trigger(e.target, 'data-tip');
       if (!el) return;
       // Кнопка с раскрытым меню подсказку не показывает: меню и так перед глазами,
@@ -3931,6 +3933,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     function onOut(e) {
       var stb = trigger(e.target, 'data-ctband');
       if (stb) bandClear();
+      var ctr = trigger(e.target, 'data-ci');
+      if (ctr && !(e.relatedTarget && ctr.contains(e.relatedTarget))) cohRow(null);
       var el = trigger(e.target, 'data-tip');
       if (!el) return;
       // Переход курсора на ДОЧЕРНИЙ узел той же цели тултип не гасит,
@@ -4225,7 +4229,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         }
         return;
       }
-      // Вкладки панели и переключалки: data-view="view:who" | "cohView:curve" |
+      // Вкладки панели и переключалки: data-view="view:who" | "calM:v" |
       // "viewsMode:per" — префикс = ключ состояния.
       // Полоса ЦА: клик по сегменту оставляет в списке только его (повторный — снимает). Каталог НЕ сужает
       // (владелец 2026-09-30: сегмент — чтобы увидеть людей, а не фильтр).
@@ -4435,7 +4439,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     if (state.onTourRs) window.removeEventListener('resize', state.onTourRs);
     state.onTourRs = function () { if (state.tour) tourPos(true); };
     window.addEventListener('resize', state.onTourRs);
-    state.onWinResize = function () { syncOvr(); var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(), fh = syncFnH(); if (w || hh || ch || fh) render(); if (state.tip) renderTip(); };
+    state.onWinResize = function () { syncOvr(); var w = syncSvgWidth(), hh = syncDynH(), fh = syncFnH(); if (w || hh || fh) render(); if (state.tip) renderTip(); };
     window.addEventListener('resize', state.onWinResize);
 
     // Сверка фильтров: плашка «Пересчитываем…/повторяю запрос», источник людской шины отвечает на «повтори».
@@ -4461,8 +4465,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         if (state.roT) clearTimeout(state.roT);
         state.roT = setTimeout(function () {
           syncOvr();
-          var w = syncSvgWidth(), hh = syncDynH(), ch = syncCohH(), fh = syncFnH();
-          if (w || hh || ch || fh) render();
+          var w = syncSvgWidth(), hh = syncDynH(), fh = syncFnH();
+          if (w || hh || fh) render();
         }, 150);
       });
       ro.observe(host);

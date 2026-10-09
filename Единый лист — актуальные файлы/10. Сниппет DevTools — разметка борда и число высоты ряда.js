@@ -254,13 +254,36 @@
     if (vhHits) vref = cells[y];
   }
   var rc = vref.el.closest('.resizable-container'), need = n(vref.b.t) + (EXPECT.bottom || 0);
-  // нижний предел высоты из правила (max(560px, …)): ряд на нём — окно для ряда низкое, зазор снизу меньше цели, так задумано
-  var vhMin = +((/max\(\s*(\d+)px/.exec(vhRule || '') || [])[1] || 0), atMin = vhMin > 0 && vref.b.h <= vhMin + 1;
+  // нижний предел (adoption 09.10): max(100vh − TOP, min(MIN, 100vh − VIS)) — MIN px, но не больше видимого под липкой
+  // шапкой (окно − VIS). Ряд выше «окно − TOP» — работает предел: страница прокручивается, зазор снизу — после прокрутки
+  var vhAll = [], vre = /100vh\s*-\s*(\d+)px|-(\d+)px\s*\+\s*100vh/g, vm;
+  while (vhRule && (vm = vre.exec(vhRule))) vhAll.push(+(vm[1] || vm[2]));
+  var vhMin = +((/min\(\s*(\d+)px/.exec(vhRule || '') || /max\(\s*(\d+)px/.exec(vhRule || '') || [])[1] || 0);
+  var vhVis = vhAll.length > 1 ? vhAll[1] : 0, atMin = vhRule && vref.b.h > window.innerHeight - vhTop + VH_TOL;
   out.push('ряд чартов' + (vref !== ref ? ' (' + vref.id + ', его высоту задаёт правило)' : '') + ': верх ' + n(vref.b.t)
     + ' px от начала страницы, высота ' + n(vref.b.h) + (rc && rc.style.height ? ' (в раскладке ' + rc.style.height + ')' : '')
     + ', от низа ряда до низа окна ' + n(window.innerHeight - (vref.b.b - window.scrollY))
     + (EXPECT.bottom === null || EXPECT.bottom === undefined || EDIT ? '' : '   (цель — ' + EXPECT.bottom
-      + (atMin ? '; ряд на нижнем пределе ' + vhMin + ' px — окно для него низкое, так задумано' : '') + ')'));
+      + (atMin ? '; ряд на нижнем пределе ' + vhMin + ' px' + (vhVis ? ' (не выше «окно − ' + vhVis + '»)' : '')
+        + ' — окно для ряда с шапкой низкое, страница прокручивается, так задумано' : '') + ')'));
+  // липкая шапка борда: что остаётся вверху экрана при прокрутке (position sticky / fixed у верхнего края)
+  var stick = 0, stickEl = null, all = document.querySelectorAll('body *');
+  for (var q = 0; q < all.length; q++) {
+    var cs = getComputedStyle(all[q]);
+    if ((cs.position !== 'sticky' && cs.position !== 'fixed') || cs.display === 'none' || cs.visibility === 'hidden') continue;
+    var sr = all[q].getBoundingClientRect(), st = parseFloat(cs.top);
+    if (sr.height < 1 || sr.width < window.innerWidth / 2 || isNaN(st) || st > 4) continue;   // липнет к верху окна
+    if (cs.position === 'fixed' && sr.top > 4) continue;
+    var sb = cs.position === 'sticky' ? st + sr.height : sr.bottom;   // sticky: где окажется низ, когда прилипнет
+    if (sb > stick && sb < window.innerHeight / 2) { stick = sb; stickEl = all[q]; }
+  }
+  if (vhVis) {
+    var visNeed = n(stick) + 16 + (EXPECT.bottom || 0);
+    out.push('липкая шапка при прокрутке: ' + (stickEl ? n(stick) + ' px (' + name(stickEl).slice(0, 80) + ')' : 'не нашёл')
+      + ' · в ' + CSS_NAME + ' «100vh - ' + vhVis + 'px» '
+      + (!stickEl || Math.abs(vhVis - visNeed) <= VH_TOL ? '— верно' : '— замените на «100vh - ' + visNeed + 'px» (шапка ' + n(stick) + ' + 16 над рядом + ' + (EXPECT.bottom || 0) + ' под ним)'));
+    if (stickEl && Math.abs(vhVis - visNeed) > VH_TOL) miss.push('видимое под шапкой: ' + vhVis + ' → ' + visNeed);
+  }
   if (vhRule && !vhHits && !EDIT) {
     out.push('  ! правило «высота по экрану» не задевает ни одну нашу ячейку (селектор: ' + vhSel.replace(/\s+/g, ' ').slice(0, 120)
       + ') — у форка другие классы или в правиле другие id; число ниже — по опорной ячейке');

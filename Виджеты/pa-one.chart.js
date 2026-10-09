@@ -1308,10 +1308,10 @@ function buildCSS() {
     P + '-ct-wrap{overflow-x:auto;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell{opacity:.2;transition:opacity .1s;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell.band-hit{opacity:1;box-shadow:inset 0 0 0 1px rgba(31,31,31,.35);}',
-    P + '-cttable{border-collapse:separate;border-spacing:0;width:100%;font-size:var(--fs-body);table-layout:fixed;}',
-    // кривая над таблицей: слева подпись в ширину колонок «Когорта» + «Пришло» (64 + 112), справа — колонки возрастов
-    P + '-ct-cv{display:flex;flex:0 0 auto;margin:0 0 4px;}',
-    P + '-cv-l{flex:0 0 176px;display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px 8px 4px;box-sizing:border-box;font-size:var(--fs-cap);color:var(--muted);line-height:1.35;}',
+    P + '-cttable{border-collapse:separate;border-spacing:0;padding:1px;width:100%;font-size:var(--fs-body);table-layout:fixed;}',
+    // кривая над таблицей: слева подпись в ширину колонок «Когорта» + «Пришло» (1 + 66 + 114), справа — колонки возрастов
+    P + '-ct-cv{display:flex;flex:0 0 auto;margin:0 1px 4px 0;}',
+    P + '-cv-l{flex:0 0 181px;display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px 8px 4px;box-sizing:border-box;font-size:var(--fs-cap);color:var(--muted);line-height:1.35;}',
     P + '-cv-l b{font-size:var(--fs-body);font-weight:400;color:var(--ink2);}',
     P + '-cv-l .on{color:var(--ink);font-weight:700;}',
     P + '-cv-k{display:inline-block;width:14px;height:0;border-top:2px solid ' + CFG.colors.act + ';vertical-align:middle;margin-right:6px;}',
@@ -1328,8 +1328,9 @@ function buildCSS() {
     P + '-cttable th,' + P + '-cttable td{border:0;white-space:nowrap;}',
     // ячейки стыкуются без зазора (border-spacing 0): в зазоре курсор был «ни над одной строкой» —
     // подсветка, линия на кривой и подсказка мигали при проходе по таблице (видео владельца 09.10). Видимый промежуток
-    // 2 px — прозрачная рамка ячейки (фон — внутри неё), а рамка — часть строки.
-    P + '-cttable th,' + P + '-cttable tbody td{border:1px solid transparent;background-clip:padding-box;}',
+    // 2 px — прозрачная рамка ячейки (фон — внутри неё), а рамка — часть строки; padding 1 у таблицы — край 2 px, как был.
+    // !important: цвет ячейки — инлайн-шорткат background, он сбрасывает background-clip на border-box
+    P + '-cttable th,' + P + '-cttable tbody td{border:1px solid transparent;background-clip:padding-box !important;}',
     P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:center;padding:4px 2px;}',
     P + '-cttable th.txt{text-align:left;padding-left:4px;}',
     P + '-ct-med{display:block;font-size:9.5px;font-weight:400;color:var(--muted2);margin-top:1px;}',
@@ -1339,7 +1340,7 @@ function buildCSS() {
     // «Пришло» — голубым из шкалы когорт (DIV_HIGH #62CDFF, приглушённый), а не синим стека «Динамики» (владелец 09.10)
     P + '-ct-bar i{display:block;height:100%;border-radius:2px;background:#74C9F2;min-width:2px;}',
     P + '-ct-sz b{font-weight:400;color:var(--ink2);font-variant-numeric:tabular-nums;}',
-    P + '-ct-cell{text-align:center;padding:3px;border-radius:6px;font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
+    P + '-ct-cell{text-align:center;padding:3px;border-radius:7px;font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
     P + '-ct-cell.none{background:transparent !important;cursor:default;}',
     P + '-ct-cell.part{background:#f1f3f6 !important;font-style:italic;color:var(--muted);}',
     P + '-panel-h ' + P + '-under{padding:0;margin-left:auto;}',
@@ -2525,7 +2526,7 @@ function cohortTableHtml(o) {
   if (o.curve) h += cohCurveHtml(rows, grid, maxAge, pctOf);
   // таблица тянется на высоту вкладки, но строка — не выше 46 px (при трёх когортах не превращается в плакат)
   h += '<div class="' + CFG.ns + '-ct-wrap" style="max-height:' + (44 + rows.length * 46) + 'px"><table class="' + CFG.ns + '-cttable"><colgroup>' +
-    '<col style="width:64px"><col style="width:112px">';
+    '<col style="width:66px"><col style="width:114px">';   // 64 / 112 + прозрачная рамка 1 + 1 (вид — как при border-spacing 2)
   for (a = 0; a < maxAge; a++) h += '<col>';
   h += '</colgroup><thead><tr>' +
     '<th class="txt"' + tip({ text: o.firstTip || 'Месяц первого визита' }) + '>Когорта<span class="' + CFG.ns + '-ct-med">&nbsp;</span></th>' +

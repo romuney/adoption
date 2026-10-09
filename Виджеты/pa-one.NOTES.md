@@ -149,6 +149,7 @@
 
 ## Поля графиков динамики (2026-10-09, ночь-16)
 - padL = padR = 6 у usersChartSvg / viewsChartSvg / covChartSvg (справа было 26), svgBarWidth — SVG_W − 14.
+- Календарь: -cal-left flex 1 1 580px (растёт), -cal-side 0 1 340px — пусто справа было до 320 px на панели 1300.
 
 ## Закрепляемость — кривая над таблицей (2026-10-09, ночь-15)
 - cohCurveHtml (в cohortTableHtml при o.curve): блок -ct-cv = подпись 182 px (2+64+2+112+2 — колонки «Когорта», «Пришло»)

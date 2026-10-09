@@ -1372,7 +1372,7 @@ function buildCSS() {
     P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:10px;}',
     P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}',   // воздух до календаря (было впритык, 09.10)
     P + '-cal-main{display:flex;flex:1 1 auto;min-height:0;gap:24px;}',
-    P + '-cal-left{flex:0 1 580px;min-width:0;display:flex;flex-direction:column;gap:12px;}',
+    P + '-cal-left{flex:1 1 580px;min-width:0;display:flex;flex-direction:column;gap:12px;}',
     P + '-cal-rib{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:72px repeat(7,minmax(0,1fr));gap:3px;}',
     // подпись месяца — в своей строке недели: на низкой ленте среднее «в день» обрезается, название остаётся
     P + '-cal-ml{display:flex;flex-direction:column;padding-top:3px;font-size:var(--fs-cap);color:var(--muted);line-height:1.3;min-width:0;min-height:0;overflow:hidden;white-space:nowrap;}',
@@ -1402,7 +1402,8 @@ function buildCSS() {
     P + '-cal-wb .col em{position:absolute;left:-4px;right:-4px;height:0;border-top:2px solid #5f6673;}',
     P + '-cal-wb .d{font-size:var(--fs-cap);color:var(--muted);line-height:1.3;margin-top:3px;font-variant-numeric:tabular-nums;}',
     P + '-cal-wb:hover .col i{filter:brightness(.9);}',
-    P + '-cal-side{flex:1 1 240px;min-width:220px;max-width:360px;display:flex;flex-direction:column;gap:8px;}',
+    // лента забирает лишнюю ширину, правая колонка — своя (раньше лента ≤ 580: на широкой панели справа было пусто, 09.10)
+    P + '-cal-side{flex:0 1 340px;min-width:220px;display:flex;flex-direction:column;gap:8px;}',
     '@media (max-width:760px){' + P + '-cal-main{flex-direction:column;}' + P + '-cal-side{max-width:none;}}',
     P + '-cal-chip{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border:1px solid var(--line2);border-radius:8px;padding:8px 12px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
     P + '-cal-chip b{color:var(--ink);font-size:var(--fs-lead);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}',

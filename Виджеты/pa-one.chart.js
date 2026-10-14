@@ -1171,6 +1171,12 @@ function buildCSS() {
     P + '-ptable tbody tr.sel td:first-child{font-weight:700;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-gh-sub{font-weight:400;}',
+    // Название строки — «полужирный» в Arial (владелец 14.10): у Arial только обычный и жирный, ступень между ними —
+    // обводка 0,25 px цветом текста; почти чёрный #111318. Логин, пометки, числа — без обводки; выбранная строка — жирная, без неё.
+    P + '-ptable td.txt:first-child{color:#111318;-webkit-text-stroke:.25px currentColor;}',
+    P + '-ptable td.txt:first-child *{-webkit-text-stroke:0;}',
+    P + '-ptable tr:not(.sel):not(.grp-dim) td.txt:first-child :is(' + P + '-rname-t,' + P + '-rname-n,' + P + '-gtx,' + P + '-gh-name){-webkit-text-stroke:inherit;}',
+    P + '-ptable tbody tr.sel td:first-child{-webkit-text-stroke:0;}',
     P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',

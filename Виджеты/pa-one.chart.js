@@ -163,7 +163,7 @@ var CFG = {
   },
   fonts: {
     // ЕДИНЫЙ стек для ВСЕГО виджета, включая тултип в body.
-    family: 'Arial,Helvetica,sans-serif',
+    family: 'Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif',
     val: 11, dense: 10, title: 13, title2: 12, legend: 12
   },
   spacing: {
@@ -400,7 +400,7 @@ function calAxisSvg(ts, grain, xOf, y0) {
     out += '<text x="' + x + '" y="' + (y0 + 12) + '" font-size="10.5" text-anchor="middle" font-weight="' + (L.bold ? 600 : 400) +
       '" fill="' + (L.bold ? '#3a3f4a' : CFG.colors.axis) + '">' + esc(L.main) + '</text>';
     if (L.sub) {
-      out += '<text x="' + x + '" y="' + (y0 + 25) + '" font-size="9.5" text-anchor="middle" font-weight="700" fill="#8a909c">' + esc(L.sub) + '</text>';
+      out += '<text x="' + x + '" y="' + (y0 + 25) + '" font-size="9.5" text-anchor="middle" font-weight="600" fill="#8a909c">' + esc(L.sub) + '</text>';
     }
   }
   return out;
@@ -933,15 +933,19 @@ function buildCSS() {
     P + '-top{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;flex:0 0 auto;}',
     P + '-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;}',
     P + '-kpi{background:var(--card);border-radius:12px;padding:12px 14px;min-width:0;}',
-    P + '-k-label{font-size:var(--fs-note);color:var(--muted);font-weight:400;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-k-val{font-size:24px;font-weight:700;letter-spacing:-.4px;line-height:1.15;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums;}',
+    P + '-k-label{font-size:var(--fs-note);color:var(--muted);font-weight:500;display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    // текст подписи сжимается с «…», ⓘ остаётся (14.10: «MAU · август 2026» выталкивал значок за край узкой карточки)
+    P + '-k-lt{min-width:0;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-k-val{font-size:24px;font-weight:600;letter-spacing:-.4px;line-height:1.15;color:var(--ink);margin-top:4px;font-variant-numeric:tabular-nums;white-space:nowrap;}',
+    // узкая панель (ячейка ≤ 760, экран ~980): число одной строкой — поля карточки 10 (14.10: системный шрифт шире Arial, «5 182» рвался по тонкому пробелу)
+    '@media (max-width:760px){' + P + '-kpi{padding:12px 10px;}}',
     P + '-k-row{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;min-height:20px;}',
     P + '-k-sub{font-size:var(--fs-note);color:var(--muted);}',
-    P + '-k-sub b{color:var(--ink2);font-weight:400;}',
+    P + '-k-sub b{color:var(--ink2);font-weight:500;}',
     P + '-info{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;flex:0 0 auto;'
-      + 'border:1px solid var(--muted2);color:var(--muted);font-size:9px;line-height:1;font-weight:700;font-style:normal;cursor:help;}',
+      + 'border:1px solid var(--muted2);color:var(--muted);font-size:9px;line-height:1;font-weight:600;font-style:normal;cursor:help;}',
     P + '-info:hover{border-color:var(--act);color:var(--act);}',
-    P + '-delta{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-note);font-weight:400;border-radius:999px;padding:2px 8px;}',
+    P + '-delta{display:inline-flex;align-items:center;gap:4px;font-size:var(--fs-note);font-weight:500;border-radius:999px;padding:2px 8px;}',
     P + '-d-vs{font-weight:400;font-size:10.5px;opacity:.8;}',
     P + '-up{background:var(--green-bg);color:var(--green-tx);}',
     P + '-down{background:var(--red-bg);color:var(--red-tx);}',
@@ -953,12 +957,12 @@ function buildCSS() {
     P + '-obs.sev-mid{background:linear-gradient(100deg,#fff6e6 0%,#fdf9f2 45%,#fff 100%);}',
     P + '-obs.sev-good{background:linear-gradient(100deg,#eaf8ef 0%,#f5faf7 45%,#fff 100%);}',
     P + '-obs-ico{width:20px;height:20px;border-radius:6px;background:rgba(255,255,255,.8);display:inline-flex;align-items:center;justify-content:center;'
-      + 'font-size:12px;font-weight:700;color:var(--green-tx);flex:0 0 auto;}',
+      + 'font-size:12px;font-weight:600;color:var(--green-tx);flex:0 0 auto;}',
     P + '-obs.sev-high ' + P + '-obs-ico{color:var(--red-tx);}',
     P + '-obs.sev-mid ' + P + '-obs-ico{color:#9a6500;}',
-    P + '-obs-t{font-size:var(--fs-body);font-weight:400;color:var(--ink2);flex:0 0 auto;}',
+    P + '-obs-t{font-size:var(--fs-body);font-weight:500;color:var(--ink2);flex:0 0 auto;}',
     P + '-obs-lead{font-size:var(--fs-body);color:var(--ink2);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:help;}',
-    P + '-obs-tog{border:0;background:rgba(255,255,255,.75);height:26px;padding:0 10px;border-radius:8px;cursor:pointer;color:var(--act);font:inherit;font-size:var(--fs-note);font-weight:400;flex:0 0 auto;margin-left:auto;}',
+    P + '-obs-tog{border:0;background:rgba(255,255,255,.75);height:26px;padding:0 10px;border-radius:8px;cursor:pointer;color:var(--act);font:inherit;font-size:var(--fs-note);font-weight:500;flex:0 0 auto;margin-left:auto;}',
     P + '-obs-tog:hover{background:#fff;}',
     // Раскрытый список фактов растёт ВНИЗ (не карусель вправо): каждый факт — строка
     // с меткой важности, заголовком и пояснением; графики под ним ужимаются по высоте.
@@ -967,16 +971,16 @@ function buildCSS() {
     P + '-obs-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto;transform:translateY(-1px);background:var(--green-tx);}',
     P + '-obs-dot.sev-high{background:var(--red-tx);}',
     P + '-obs-dot.sev-mid{background:#d69a00;}',
-    P + '-obs-li b{font-weight:400;color:var(--ink);}',
+    P + '-obs-li b{font-weight:500;color:var(--ink);}',
     P + '-obs-li span{color:var(--muted);}',
 
     // ── Панель ──
     P + '-panel{background:var(--card);border-radius:12px;overflow:hidden;flex:1;min-height:0;display:flex;flex-direction:column;}',
-    P + '-panel-h{padding:14px 16px;font-weight:700;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;flex:0 0 auto;}',   // вкладки не уезжают от длины заголовка
+    P + '-panel-h{padding:14px 16px;font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:10px;flex-wrap:nowrap;flex:0 0 auto;}',   // вкладки не уезжают от длины заголовка
     P + '-panel-h .sub{font-size:var(--fs-note);color:var(--muted);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-h-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 0;}',
     P + '-h-ttl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-h-txt .sub b{color:var(--ink2);font-weight:400;}',
+    P + '-h-txt .sub b{color:var(--ink2);font-weight:500;}',
     P + '-panel-h .sub-tabs{margin:0 0 0 auto;flex:0 0 auto;}',
     P + '-panel-b{padding:14px 16px;flex:1;min-height:0;}',
     P + '-panel-b.tbl-wrap{padding-top:0;padding-bottom:0;display:flex;flex-direction:column;}',
@@ -987,11 +991,11 @@ function buildCSS() {
 
     // ── Вкладки панели ──
     P + '-sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:12px;padding:3px;margin:0;flex-wrap:wrap;}',
-    P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:400;font-family:inherit;}',
+    P + '-sub-tab{box-sizing:border-box;height:28px;display:inline-flex;align-items:center;line-height:1;border:0;background:transparent;padding:0 12px;border-radius:9px;font-size:var(--fs-note);color:var(--muted);cursor:pointer;font-weight:500;font-family:inherit;}',
     P + '-sub-tab:hover{color:var(--ink2);}',
-    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:400;margin-left:5px;padding:0 4px;}',
+    P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:500;margin-left:5px;padding:0 4px;}',
     P + '-sub-cnt.ppl{background:#f3ecff;color:#5a2fc2;}',
-    P + '-sub-tab.active{background:var(--card);color:var(--ink);font-weight:700;}',
+    P + '-sub-tab.active{background:var(--card);color:var(--ink);font-weight:600;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
 
@@ -1009,7 +1013,7 @@ function buildCSS() {
     '  cursor:pointer;font-family:inherit;text-align:left;display:flex;flex-wrap:wrap;align-items:baseline;',
     '  column-gap:6px;row-gap:3px;transition:opacity .15s;overflow:hidden;}',
     P + '-seg-part .sp-bar{display:block;height:10px;border-radius:2px;flex:0 0 100%;}',
-    P + '-seg-part .sp-v{font-size:var(--fs-body);font-weight:700;color:var(--ink);',
+    P + '-seg-part .sp-v{font-size:var(--fs-body);font-weight:600;color:var(--ink);',
     '  font-variant-numeric:tabular-nums;line-height:1.1;}',
     P + '-seg-part .sp-p{font-style:normal;font-weight:400;color:var(--muted);}',
     P + '-seg-part .sp-v{white-space:nowrap;}',
@@ -1017,7 +1021,7 @@ function buildCSS() {
     '  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
     P + '-seg-part:hover .sp-l{color:var(--ink2);}',
     P + '-seg-part.off{opacity:.42;}',
-    P + '-seg-part.on .sp-l{color:var(--ink);font-weight:700;}',
+    P + '-seg-part.on .sp-l{color:var(--ink);font-weight:600;}',
     P + '-seg-part.on .sp-bar{box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--ink2);}',
 
     // ── Тулбар «Кто смотрит» ──
@@ -1033,14 +1037,14 @@ function buildCSS() {
     P + '-who-tbl{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
     // таблицы «Кто смотрит» не шире 1100: на широком экране от ФИО до сегмента было 1300–2600 px (ревью 09.10)
     P + '-who-tbl ' + P + '-ptable{max-width:1100px;}',
-    P + '-who-cnt b{color:var(--ink2);font-weight:400;}',
-    P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:400;cursor:help;}',
+    P + '-who-cnt b{color:var(--ink2);font-weight:500;}',
+    P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:500;cursor:help;}',
 
     // ── Дропдауны (app.css .dd) ──
     P + '-dd{position:relative;min-width:0;}',
     // Все контролы тулбаров — высота 34 px, как поиск (эталон — поиск каталога).
     P + '-dd-trg{display:flex;align-items:center;gap:6px;width:100%;height:34px;border:1px solid var(--line);',
-    '  background:var(--card);border-radius:9px;padding:0 12px;font-size:12px;font-weight:400;',
+    '  background:var(--card);border-radius:9px;padding:0 12px;font-size:12px;font-weight:500;',
     '  color:var(--ink2);cursor:pointer;font-family:inherit;}',
     P + '-dd-trg:hover{border-color:#d8dce4;}',
     P + '-dd.open ' + P + '-dd-trg{border-color:var(--act);}',
@@ -1057,7 +1061,7 @@ function buildCSS() {
     '  text-align:left;padding:6px 9px;font-size:12px;font-weight:400;color:var(--ink2);',
     '  cursor:pointer;font-family:inherit;white-space:nowrap;}',
     P + '-dd-opt:hover{background:#f4f6f9;color:var(--ink);}',
-    P + '-dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:700;}',
+    P + '-dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:600;}',
     // Подпункт (уровень УС под «Оргструктурой»): отступ слева — видно, что это часть дерева.
     P + '-dd-opt.sub{padding-left:26px;}',
 
@@ -1072,7 +1076,7 @@ function buildCSS() {
     P + '-who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px;}',
     P + '-who-opts-pop>*{flex-shrink:0;}',          // тело с прокруткой (fitDd) не сминает строки
     P + '-who-opts-pop ' + P + '-psearch input{width:100%;height:30px;}',
-    P + '-wo-h{font-size:11px;font-weight:400;color:var(--muted);',
+    P + '-wo-h{font-size:11px;font-weight:500;color:var(--muted);',
     '  text-transform:uppercase;letter-spacing:.4px;}',
     P + '-wo-ex{max-height:224px;overflow:auto;}',
     P + '-wo-note{font-size:11px;color:var(--muted);line-height:1.35;margin-top:-4px;}',
@@ -1100,7 +1104,7 @@ function buildCSS() {
 
     // ── Кнопки ──
     P + '-btn{display:inline-flex;align-items:center;gap:6px;height:34px;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:0 12px;',
-    '  font-size:12px;font-weight:400;color:var(--ink2);cursor:pointer;font-family:inherit;}',
+    '  font-size:12px;font-weight:500;color:var(--ink2);cursor:pointer;font-family:inherit;}',
     P + '-btn:hover{background:#fafbfc;border-color:#d8dce4;}',
     P + '-btn.ghost{border-color:transparent;color:var(--blue);}',
     P + '-btn.ghost:hover{background:var(--blue-bg);}',
@@ -1125,10 +1129,10 @@ function buildCSS() {
     P + '-topbar > ' + P + '-vtabs ' + P + '-sub-tab:hover{color:var(--ink);background:#f4f6f9;}',
     P + '-topbar > ' + P + '-vtabs ' + P + '-sub-tab.active{background:var(--blue-bg);color:var(--act-ink);}',
     '@media (max-width:760px){' + P + '-vtabs ' + P + '-sub-tab{padding:0 8px;}}',   // iframe = ячейка: узкая панель — место пилюлям
-    P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:400;flex:0 0 auto;white-space:nowrap;}',
+    P + '-frow-l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;flex:0 0 auto;white-space:nowrap;}',
     P + '-frow-p{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 auto;overflow:hidden;white-space:nowrap;}',
     P + '-frow-h{font-size:var(--fs-note);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
-    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:400;flex:0 1 auto;min-width:0;max-width:100%;cursor:default;}',
+    P + '-fpill{display:inline-flex;align-items:center;gap:6px;height:24px;border-radius:999px;border:1px solid var(--line);padding:0 10px;font-size:var(--fs-note);font-weight:500;flex:0 1 auto;min-width:0;max-width:100%;cursor:default;}',
     // Две пилюли делят строку поровну (длинное имя — «…»); три и больше — одна сводная.
     P + '-fpill.two{max-width:calc(50% - 3px);}',
     P + '-fpill .v{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:0 1 auto;}',
@@ -1145,15 +1149,15 @@ function buildCSS() {
     //    в pa-reports-body.chart.js и pa-area.chart.js — правка владельца 2026-09-23:
     //    «таблицы по-разному отформатированы») ──
     P + '-ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body);font-variant-numeric:tabular-nums;}',
-    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:right;padding:9px 6px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
+    P + '-ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:right;padding:9px 6px;position:sticky;top:0;z-index:3;background:var(--card);border-bottom:1px solid var(--line);white-space:nowrap;}',
     P + '-ptable th.txt{text-align:left;padding-left:12px;}',
     P + '-ptable th[data-sort],' + P + '-ptable th.srt{cursor:pointer;user-select:none;}',
     P + '-ptable th[data-sort]:hover,' + P + '-ptable th.srt:hover,' + P + '-ptable th.on{color:var(--ink2);}',
     P + '-sa{display:inline-block;min-width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);white-space:nowrap;}',
-    P + '-sa sup{font-size:8px;font-weight:700;line-height:0;margin-left:1px;}',   // номер уровня сортировки (Shift+клик, 09.10)
+    P + '-sa sup{font-size:8px;font-weight:600;line-height:0;margin-left:1px;}',   // номер уровня сортировки (Shift+клик, 09.10)
     P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
-    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:400;color:var(--ink);white-space:normal;min-width:0;}',
-    P + '-ptable td.lead{font-weight:400;color:var(--ink);}',
+    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:600;color:var(--ink);white-space:normal;min-width:0;}',
+    P + '-ptable td.lead{font-weight:500;color:var(--ink);}',
     P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
     P + '-unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);font-weight:400;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}',
@@ -1163,15 +1167,15 @@ function buildCSS() {
     // полоска выбора — отдельным слоем внутри ячейки: тень inset при слитых границах заходила на линию над строкой (09.10)
     P + '-ptable tbody tr.sel td:first-child{position:relative;}',
     P + '-ptable tbody tr.sel td:first-child::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--act);}',
-    // выбранная строка — название жирным (2026-10-09: на Arial только обычный / жирный, без акцента выбор терялся)
-    P + '-ptable tbody tr.sel td:first-child{font-weight:700;}',
+    // выбранная строка — название 600, как у всех названий (14.10); выбор держат фон и полоска слева
+    P + '-ptable tbody tr.sel td:first-child{font-weight:600;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-gh-sub{font-weight:400;}',
-    P + '-ptable tr.tot td{font-weight:400;color:var(--ink);border-bottom:2px solid var(--line);}',
+    P + '-ptable tr.tot td{font-weight:500;color:var(--ink);border-bottom:2px solid var(--line);}',
     P + '-pager{display:flex;align-items:center;gap:10px;padding:8px 10px;border-top:1px solid var(--line2);flex:0 0 auto;}',
     P + '-pager .spacer{flex:1;}',
     P + '-pginfo{font-size:var(--fs-note);color:var(--muted);}',
-    P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:400;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
+    P + '-pgnum{font-size:var(--fs-note);color:var(--ink2);font-weight:500;min-width:46px;text-align:center;font-variant-numeric:tabular-nums;}',
     P + '-pgbtn{border:1px solid var(--line);background:var(--card);border-radius:6px;min-width:26px;height:24px;font-size:13px;line-height:1;color:var(--ink2);cursor:pointer;padding:0 7px;font-family:inherit;}',
     P + '-pgbtn:hover:not([disabled]){background:#fafbfc;border-color:#d8dce4;}',
     P + '-pgbtn[disabled]{opacity:.4;cursor:default;}',
@@ -1183,7 +1187,7 @@ function buildCSS() {
     P + '-ptable tr.grp-h:hover td{background:#eef2f7;}',
     P + '-ptable tr.grp-h{cursor:pointer;}',
     P + '-ptable tr.grp-h.sel td{background:var(--blue-bg);}',
-    P + '-ptable tr.grp-h.sel .gh-name{color:var(--act-ink);font-weight:700;}',
+    P + '-ptable tr.grp-h.sel .gh-name{color:var(--act-ink);font-weight:600;}',
     P + '-ptable tr.grp-h.grp-dim .gh-name{color:var(--muted);font-weight:400;}',
     // ── Сводная таблица групп и поимённый список (v7.3) ──
     P + '-ptable.gt td{font-variant-numeric:tabular-nums;}',
@@ -1204,22 +1208,22 @@ function buildCSS() {
     // шапка таблицы закреплена (sticky), тулбар и пагинатор на месте.
     P + '-panel-b.tbl-wrap{overflow:hidden;}',
     P + '-list-zone{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
-    P + '-dnum{font-weight:400;}',
+    P + '-dnum{font-weight:500;}',
     P + '-dnum.up{color:var(--green-tx);}',
     P + '-dnum.down{color:var(--red-tx);}',
     P + '-dnum.flat{color:var(--muted);}',
-    P + '-ptable td.loc{color:var(--act-ink);font-weight:400;}',
+    P + '-ptable td.loc{color:var(--act-ink);font-weight:500;}',
     P + '-ptable tr.nest>td{padding:2px 8px 10px;background:#fbfbfc;white-space:normal;text-align:left;}',
     P + '-ptable.sub{width:100%;table-layout:fixed;border-collapse:collapse;font-size:var(--fs-note);}',
     P + '-ptable.sub td.pn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-ptable.sub td{padding:5px 8px;border-bottom:1px solid var(--line2);color:var(--ink2);}',
     P + '-ptable.sub td.txt{font-weight:400;}',
     // Шапка людей группы НЕ липкая (общее правило ptable th — sticky): иначе при прокрутке ложится на шапку таблицы.
-    P + '-ptable.sub thead th{position:static;z-index:auto;padding:4px 8px 3px;font-size:10px;font-weight:400;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;text-align:right;border-bottom:1px solid var(--line2);background:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help;}',
+    P + '-ptable.sub thead th{position:static;z-index:auto;padding:4px 8px 3px;font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;text-align:right;border-bottom:1px solid var(--line2);background:transparent;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:help;}',
     P + '-ptable.sub thead th.txt{text-align:left;}',
     P + '-ptable.sub tr:last-child td{border-bottom:0;}',
     P + '-empty-td{text-align:center !important;padding:14px !important;color:var(--muted) !important;}',
-    P + '-bar-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:400;}',
+    P + '-bar-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;}',
     P + '-exp{display:inline-flex;align-items:center;gap:6px;}',
     P + '-toast{position:absolute;right:2px;top:calc(100% - 4px);z-index:5;font-size:var(--fs-note);color:var(--green-tx);background:var(--card);padding:0 4px;max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
     P + '-toast:empty{display:none;}',
@@ -1228,11 +1232,11 @@ function buildCSS() {
     P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;',
     '  font-size:12px;width:28px;height:28px;margin:-6px 4px -6px -6px;padding:0;border-radius:7px;font-family:inherit;line-height:1;vertical-align:middle;}',
     P + '-gh-caret:hover{color:var(--ink);background:#eef1f5;}',
-    P + '-gh-name{font:inherit;font-weight:400;color:var(--ink);}',
-    P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:400;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
+    P + '-gh-name{font:inherit;font-weight:600;color:var(--ink);}',
+    P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
     P + '-rflag.fired{background:#f1f3f6;color:#6b7280;}',   // «увол.» — нейтрально: не говорим, сам ушёл или уволили
-    P + '-sig-chip{display:inline-block;font-size:11px;font-weight:400;',
+    P + '-sig-chip{display:inline-block;font-size:11px;font-weight:500;',
     '  border-radius:999px;padding:2px 9px;}',
     P + '-sig-chip.good{background:var(--green-bg);color:var(--green-tx);}',
     P + '-sig-chip.note{background:var(--blue-bg);color:var(--act-ink);}',
@@ -1242,9 +1246,9 @@ function buildCSS() {
     P + '-selg.on{display:flex;}',
     P + '-selg-box{display:flex;align-items:center;gap:10px;max-width:380px;background:#fff;border:1px solid #e7e9ee;border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(24,33,50,.12);font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;}',
     P + '-selg.late ' + P + '-selg-box{flex-direction:column;align-items:flex-start;gap:6px;border-color:#f0c36d;}',
-    P + '-selg-box b{font-weight:700;color:#23272e;}',
+    P + '-selg-box b{font-weight:600;color:#23272e;}',
     P + '-selg-box span{color:#8a909c;line-height:1.4;}',
-    P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:400;padding:6px 12px;cursor:pointer;}',
+    P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:500;padding:6px 12px;cursor:pointer;}',
     P + '-selg-spin{width:14px;height:14px;border-radius:50%;border:2px solid #e7e9ee;border-top-color:#245FD4;animation:' + CFG.ns + '-spin .8s linear infinite;flex:0 0 auto;}',
     '@keyframes ' + CFG.ns + '-spin{to{transform:rotate(360deg)}}',
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;flex:0 0 auto;}',
@@ -1253,12 +1257,12 @@ function buildCSS() {
 
     // ── Динамика: каптионы и легенда стека ──
     P + '-dynhead{display:flex;align-items:center;gap:12px;min-height:24px;flex-wrap:wrap;row-gap:4px;}',
-    P + '-cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:400;}',
+    P + '-cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:500;}',
     P + '-legend{display:inline-flex;gap:4px;margin-left:auto;flex-wrap:wrap;}',
     P + '-panel-h > ' + P + '-legend{flex:0 0 auto;flex-wrap:nowrap;font-weight:400;}',
     P + '-panel-h > ' + P + '-hmode{flex:0 0 auto;flex-wrap:nowrap;font-weight:400;margin-left:auto;}',   // в заголовке карточки «Динамика»
     P + '-leg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);background:var(--card);border-radius:999px;',
-    '  padding:3px 10px 3px 8px;font-size:var(--fs-note);color:var(--ink2);cursor:pointer;font-family:inherit;font-weight:400;}',
+    '  padding:3px 10px 3px 8px;font-size:var(--fs-note);color:var(--ink2);cursor:pointer;font-family:inherit;font-weight:500;}',
     P + '-leg i{width:10px;height:9px;border-radius:3px;display:inline-block;}',
     P + '-leg:hover{border-color:#d8dce4;background:#fafbfc;}',
     P + '-leg.off{opacity:.42;}',
@@ -1270,21 +1274,21 @@ function buildCSS() {
     '  border:1px solid #e7e9ee;border-radius:9px;padding:7px 10px;max-width:260px;',
     '  box-shadow:0 10px 30px rgba(24,33,50,.18),0 2px 6px rgba(24,33,50,.08);',
     '  transition:opacity .08s;}',
-    P + '-tip ' + P + '-t-h{display:block;font-size:10px;font-weight:400;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
+    P + '-tip ' + P + '-t-h{display:block;font-size:10px;font-weight:500;letter-spacing:.3px;text-transform:uppercase;color:#8a909c;margin-bottom:5px;}',
     P + '-tip ' + P + '-t-x{display:block;font-size:11.5px;color:#3a3f4a;line-height:1.4;}',
     P + '-tip ' + P + '-t-r{display:flex;align-items:center;gap:6px;margin-top:3px;min-width:118px;}',
     P + '-tip ' + P + '-t-m{display:inline-block;flex:0 0 auto;width:10px;height:9px;border-radius:3px;}',
     P + '-tip ' + P + '-t-m.' + CFG.ns + '-dash{height:0;width:14px;border-radius:0;border-top:2px dashed;background:none;}',
-    P + '-tip ' + P + '-t-l{font-size:11px;font-weight:400;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:12.5px;font-weight:400;font-variant-numeric:tabular-nums;color:#23272e;}',
-    P + '-tip ' + P + '-t-r.' + CFG.ns + '-bench ' + P + '-t-v{color:#8a909c;font-weight:400;}',
+    P + '-tip ' + P + '-t-l{font-size:11px;font-weight:500;color:#8a909c;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+    P + '-tip ' + P + '-t-v{margin:0 0 0 auto;font-size:12.5px;font-weight:500;font-variant-numeric:tabular-nums;color:#23272e;}',
+    P + '-tip ' + P + '-t-r.' + CFG.ns + '-bench ' + P + '-t-v{color:#8a909c;font-weight:500;}',
     P + '-tip ' + P + '-t-n{display:block;font-size:10.5px;line-height:1.35;font-weight:400;color:#8a909c;margin-top:6px;padding-top:5px;border-top:1px solid #eef0f3;}',
 
     // ── «Что видно в данных» ──
     P + '-obs-b{padding:0 15px 14px;font-size:13px;color:var(--ink2);line-height:1.55;}',
     P + '-obs-b ul{margin:8px 0 0;padding-left:20px;}',
     P + '-obs-b li{margin-bottom:5px;}',
-    P + '-obs-b b{color:var(--ink);font-weight:400;}',
+    P + '-obs-b b{color:var(--ink);font-weight:500;}',
     P + '-empty{background:var(--card);border-radius:12px;padding:28px;text-align:center;color:var(--muted);font-size:var(--fs-body);}',
     P + '-empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:8px;}',
 
@@ -1300,13 +1304,13 @@ function buildCSS() {
     P + '-panel-b.coh-wrap,' + P + '-panel-b.path-wrap,' + P + '-panel-b.cal-wrap{padding-bottom:calc(14px + var(--ovr, 0px));}',
     P + '-ct-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;row-gap:8px;padding-bottom:12px;}',
     P + '-ct-scale-wrap{display:flex;align-items:center;gap:8px;flex:0 0 auto;}',
-    P + '-ct-end{font-size:var(--fs-cap);color:var(--muted2);font-weight:400;}',
+    P + '-ct-end{font-size:var(--fs-cap);color:var(--muted2);font-weight:500;}',
     P + '-ct-scale{display:inline-flex;gap:2px;flex:0 0 auto;}',
     P + '-ct-st{width:26px;height:14px;border:0;padding:0;cursor:pointer;border-radius:2px;transition:transform .1s;}',
     P + '-ct-st:hover,' + P + '-ct-st:focus-visible{transform:scaleY(1.45);}',
     P + '-ct-cfg{display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:3px;}',
-    P + '-ct-cfg-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:400;}',
-    P + '-ct-cfg-n{font-size:var(--fs-cap);color:var(--muted2);font-weight:400;cursor:help;}',
+    P + '-ct-cfg-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:500;}',
+    P + '-ct-cfg-n{font-size:var(--fs-cap);color:var(--muted2);font-weight:500;cursor:help;}',
     P + '-ct-wrap{overflow-x:auto;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell{opacity:.2;transition:opacity .1s;}',
     P + '-ct-wrap.band-on td' + P + '-ct-cell.band-hit{opacity:1;box-shadow:inset 0 0 0 1px rgba(31,31,31,.35);}',
@@ -1315,34 +1319,36 @@ function buildCSS() {
     P + '-ct-cv{display:flex;flex:0 0 auto;margin:0 1px 4px 0;}',
     P + '-cv-l{flex:0 0 181px;display:flex;flex-direction:column;justify-content:flex-end;padding:0 8px 8px 4px;box-sizing:border-box;font-size:var(--fs-cap);color:var(--muted);line-height:1.35;}',
     P + '-cv-l b{font-size:var(--fs-body);font-weight:400;color:var(--ink2);}',
-    P + '-cv-l .on{color:var(--ink);font-weight:700;}',
+    P + '-cv-l .on{color:var(--ink);font-weight:600;}',
     P + '-cv-k{display:inline-block;width:14px;height:0;border-top:2px solid ' + CFG.colors.act + ';vertical-align:middle;margin-right:6px;}',
     P + '-cv-a{position:relative;flex:1 1 auto;min-width:0;}',
     P + '-cv-pt{position:absolute;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:' + CFG.colors.act + ';box-shadow:0 0 0 2px #fff;cursor:help;}',
     P + '-cv-v{position:absolute;transform:translateX(-50%);font-size:10.5px;color:var(--muted);white-space:nowrap;pointer-events:none;}',
     // строка под курсором — остальные гаснут (как ступень шкалы), подпись когорты жирная; рамок у ячеек нет (владелец 09.10)
     P + '-ct-wrap tbody:hover tr:not(:hover):not(.pin) td{opacity:.38;}',
-    P + '-ct-wrap tbody tr.pin td.txt{font-weight:700;}',
+    P + '-ct-wrap tbody tr.pin td.txt{font-weight:600;}',
     P + '-ct-wrap tbody tr.pin td:first-child{box-shadow:inset 3px 0 0 ' + '#AA77FF' + ';}',
     P + '-ct-wrap tbody tr[data-ck]{cursor:pointer;}',
     P + '-cv-pin{color:var(--ink);}',
-    P + '-ct-wrap tbody tr:hover td.txt{font-weight:700;}',
+    P + '-ct-wrap tbody tr:hover td.txt{font-weight:600;}',
     P + '-cttable th,' + P + '-cttable td{border:0;white-space:nowrap;}',
     // ячейки стыкуются без зазора (border-spacing 0): в зазоре курсор был «ни над одной строкой» —
     // подсветка, линия на кривой и подсказка мигали при проходе по таблице (видео владельца 09.10). Видимый промежуток
     // 2 px — прозрачная рамка ячейки (фон — внутри неё), а рамка — часть строки; padding 1 у таблицы — край 2 px, как был.
     // !important: цвет ячейки — инлайн-шорткат background, он сбрасывает background-clip на border-box
     P + '-cttable th,' + P + '-cttable tbody td{border:1px solid transparent;background-clip:padding-box !important;}',
-    P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:400;text-align:center;padding:4px 2px;}',
+    P + '-cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:500;text-align:center;padding:4px 2px;}',
     P + '-cttable th.txt{text-align:left;padding-left:4px;}',
-    P + '-ct-med{display:block;font-size:9.5px;font-weight:400;color:var(--muted2);margin-top:1px;}',
-    P + '-cttable td.txt{font-weight:400;color:var(--ink);padding-left:4px;}',
+    P + '-ct-med{display:block;font-size:9.5px;font-weight:500;color:var(--muted2);margin-top:1px;}',
+    P + '-cttable td.txt{font-weight:500;color:var(--ink);padding-left:4px;}',
     P + '-ct-sz{display:flex;align-items:center;gap:8px;padding-right:14px;}',
     P + '-ct-bar{flex:1;height:12px;background:#f1f3f6;border-radius:2px;overflow:hidden;}',
     // «Пришло» — голубым из шкалы когорт (DIV_HIGH #62CDFF, приглушённый), а не синим стека «Динамики» (владелец 09.10)
     P + '-ct-bar i{display:block;height:100%;border-radius:2px;background:#74C9F2;min-width:2px;}',
-    P + '-ct-sz b{font-weight:400;color:var(--ink2);font-variant-numeric:tabular-nums;}',
+    P + '-ct-sz b{font-weight:500;color:var(--ink2);font-variant-numeric:tabular-nums;}',
     P + '-ct-cell{text-align:center;padding:3px;border-radius:7px;font-weight:400;color:var(--ink);font-variant-numeric:tabular-nums;cursor:help;}',
+    // узкая панель (≤ 760, экран ~980): 11 колонок по ~36 px — «100%» и «М 44%» без полей, иначе слипаются (14.10, системный шрифт)
+    '@media (max-width:760px){' + P + '-ct-cell{padding:3px 0;letter-spacing:-.2px;}' + P + '-cttable th{padding:4px 0;letter-spacing:0;}}',
     P + '-ct-cell.none{background:transparent !important;cursor:default;}',
     P + '-ct-cell.part{background:#f1f3f6 !important;font-style:italic;color:var(--muted);}',
     P + '-panel-h ' + P + '-under{padding:0;margin-left:auto;}',
@@ -1352,14 +1358,14 @@ function buildCSS() {
       + 'background:linear-gradient(100deg,#fffaf1 0,#fff 55%);padding:10px 14px;flex:0 0 auto;}',
     P + '-sb-col{min-width:0;display:flex;flex-direction:column;gap:4px;}',
     P + '-sb-set{border-left:1px solid #f3e6cc;padding-left:16px;}',
-    P + '-as-t{font-size:var(--fs-body);font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.35;}',
+    P + '-as-t{font-size:var(--fs-body);font-weight:600;color:var(--ink);display:flex;align-items:center;gap:8px;flex-wrap:wrap;line-height:1.35;}',
     P + '-as-t ' + P + '-sig-chip{flex:0 0 auto;}',
     P + '-as-x{font-size:var(--fs-note);color:var(--muted);line-height:1.45;}',
     P + '-as-h{color:#a08556;}',
-    P + '-as-x b{color:var(--ink2);font-weight:400;}',
+    P + '-as-x b{color:var(--ink2);font-weight:500;}',
     P + '-sig-chip.warn{background:#fff0d6;color:#8a5a00;}',
     P + '-fn-box{flex:0 0 auto;}',
-    P + '-cap2{font-size:var(--fs-cap);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:400;}',
+    P + '-cap2{font-size:var(--fs-cap);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500;}',
     P + '-warn{font-size:var(--fs-note);line-height:1.45;color:#7a5200;background:#fff6e6;border-radius:8px;padding:8px 10px;}',
     P + '-sig-chip.dead{background:#f0f1f3;color:var(--muted);}',
     P + '-segstrip.ca ' + P + '-seg-part.never .sp-bar{background:repeating-linear-gradient(135deg,#dfe3e8 0 4px,#eef0f3 4px 8px)!important;}',
@@ -1369,7 +1375,7 @@ function buildCSS() {
       P + '-panel-b.path-wrap > ' + P + '-scopebar{flex:0 0 380px;grid-template-columns:minmax(0,1fr);}' +
       P + '-panel-b.path-wrap > ' + P + '-fn-box{flex:1 1 auto;min-width:0;}}',
     P + '-aud-sum{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:var(--fs-note);color:var(--muted);margin:2px 0 8px;}',
-    P + '-aud-sum b{color:var(--ink);font-weight:700;}',
+    P + '-aud-sum b{color:var(--ink);font-weight:600;}',
     P + '-aud-sum button{margin-left:auto;}',
     P + '-who-mode{display:flex;align-items:center;gap:8px;margin:0 0 10px;}',
     P + '-who-mode-l{font-size:var(--fs-note);color:var(--muted);}',
@@ -1387,7 +1393,7 @@ function buildCSS() {
     P + '-cal-wd{font-size:var(--fs-cap);color:var(--muted);text-align:center;letter-spacing:.3px;padding-bottom:2px;}',
     P + '-cal-wd.we{color:var(--muted2);}',
     P + '-cal-c{min-height:14px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;white-space:nowrap;overflow:hidden;}',
-    P + '-cal-c.m1{font-weight:700;}',
+    P + '-cal-c.m1{font-weight:600;}',
     P + '-cal-gap{grid-column:1 / -1;}',   // полоса-разрыв между месяцами (строка 4–8 px)
     P + '-cal-c.hi{color:#fff;}',
     P + '-cal-c.out{background:transparent;color:var(--muted2);cursor:default;}',
@@ -1402,7 +1408,7 @@ function buildCSS() {
     P + '-cal-wbs{flex:0 1 118px;min-height:84px;display:grid;grid-template-columns:72px repeat(7,minmax(0,1fr));gap:3px;}',
     P + '-cal-wbs > ' + P + '-cal-ml{justify-content:flex-end;padding:0 0 18px;white-space:normal;}',
     P + '-cal-wb{display:flex;flex-direction:column;align-items:center;min-height:0;cursor:help;}',
-    P + '-cal-wb .v{position:absolute;left:-12px;right:-12px;text-align:center;font-size:11.5px;font-weight:700;color:var(--ink);line-height:1.2;font-variant-numeric:tabular-nums;}',
+    P + '-cal-wb .v{position:absolute;left:-12px;right:-12px;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.2;font-variant-numeric:tabular-nums;}',
     P + '-cal-wb .col{position:relative;flex:1 1 auto;width:64%;max-width:46px;margin-top:18px;border-bottom:1px solid #d4d7de;}',
     P + '-cal-wb .col i{position:absolute;left:0;right:0;bottom:0;background:#8AAAEC;border-radius:3px 3px 0 0;}',
     P + '-cal-wb.pk .col i{background:#245FD4;}',
@@ -1413,11 +1419,11 @@ function buildCSS() {
     P + '-cal-side{flex:1 1 340px;min-width:220px;display:flex;flex-direction:column;gap:8px;}',
     '@media (max-width:760px){' + P + '-cal-main{flex-direction:column;}' + P + '-cal-side{max-width:none;}}',
     P + '-cal-chip{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border:1px solid var(--line2);border-radius:8px;padding:8px 12px;font-size:var(--fs-note);color:var(--muted);line-height:1.3;}',
-    P + '-cal-chip b{color:var(--ink);font-size:var(--fs-lead);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;}',
+    P + '-cal-chip b{color:var(--ink);font-size:var(--fs-lead);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;}',
     P + '-cal-note{font-size:var(--fs-note);color:var(--muted);line-height:1.45;}',
-    P + '-cal-note b{color:var(--ink);font-weight:400;}',
+    P + '-cal-note b{color:var(--ink);font-weight:500;}',
     P + '-cal-see{background:#f8f9fb;border-radius:8px;padding:7px 12px;font-size:var(--fs-note);line-height:1.45;color:var(--ink2);}',
-    P + '-cal-see b{font-weight:400;color:var(--ink);}',
+    P + '-cal-see b{font-weight:500;color:var(--ink);}',
     '</style>'
   ].join('\n');
 }
@@ -2718,7 +2724,7 @@ function areaFilterRowHtml(ai) {
 }
 function kpiCard(o) {
   return '<div class="' + CFG.ns + '-kpi">' +
-    '<div class="' + CFG.ns + '-k-label">' + esc(o.label) +
+    '<div class="' + CFG.ns + '-k-label"><span class="' + CFG.ns + '-k-lt">' + esc(o.label) + '</span>' +
       (o.hint ? '<span class="' + CFG.ns + '-info"' + tip(o.hint) + ' aria-hidden="true">i</span>' : '') + '</div>' +
     '<div class="' + CFG.ns + '-k-val">' + o.value + '</div>' +
     '<div class="' + CFG.ns + '-k-row">' + (o.delta || '') + '</div>' +
@@ -2984,16 +2990,16 @@ function funnelSvg(steps, w) {
     var rows = [{ label: 'Человек', value: nf(st.value), color: color }];
     if (conv != null) rows.push({ label: 'С предыдущего этапа', value: pct(conv, 0) });
     if (i > 0 && !W) rows.push({ label: 'От целевой аудитории', value: pct(steps[0].value ? st.value / steps[0].value * 100 : 0, 0), dash: true, color: CFG.colors.bench });
-    body += '<text x="' + r1(cx) + '" y="' + r1(y - 5) + '" font-size="11" font-weight="700" text-anchor="middle" fill="#8a909c">' + esc(st.name) + '</text>';
+    body += '<text x="' + r1(cx) + '" y="' + r1(y - 5) + '" font-size="11" font-weight="600" text-anchor="middle" fill="#8a909c">' + esc(st.name) + '</text>';
     body += '<g' + tip({ title: st.name, rows: rows, note: st.note || null }) + '>' +
       '<rect x="0" y="' + r1(y - 14) + '" width="' + r1(w) + '" height="' + r1(bh + 18) + '" fill="transparent"/>' +
       (bw > 0.5
         ? '<g class="bar" data-d="' + (i * 45) + '"><rect x="' + r1(cx - bw / 2) + '" y="' + r1(y) + '" width="' + r1(bw) + '" height="' + r1(bh) + '" rx="2" fill="' + color + '"/></g>'
         : '<line x1="' + r1(cx - 9) + '" y1="' + r1(y + bh / 2) + '" x2="' + r1(cx + 9) + '" y2="' + r1(y + bh / 2) + '" stroke="#d4d7de" stroke-width="2"/>') +
       '</g>';
-    body += '<text class="fade" x="' + r1(cx - bw / 2 - 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5" font-weight="700" text-anchor="end" fill="#1f1f1f">' + esc(nf(st.value)) + '</text>';
+    body += '<text class="fade" x="' + r1(cx - bw / 2 - 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5" font-weight="600" text-anchor="end" fill="#1f1f1f">' + esc(nf(st.value)) + '</text>';
     if (conv != null) {
-      body += '<text class="fade" x="' + r1(cx + bw / 2 + 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5" font-weight="400" text-anchor="start" fill="#8a909c">' + pct(conv, 0) + '</text>';
+      body += '<text class="fade" x="' + r1(cx + bw / 2 + 8) + '" y="' + r1(y + bh * 0.68) + '" font-size="11.5" font-weight="500" text-anchor="start" fill="#8a909c">' + pct(conv, 0) + '</text>';
     }
     if (i < n - 1) {
       var nb = steps[i + 1].value / max * maxBar, ny = (i + 1) * rowH + 16;

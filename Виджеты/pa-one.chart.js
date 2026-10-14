@@ -1156,7 +1156,7 @@ function buildCSS() {
     P + '-sa{display:inline-block;min-width:9px;margin-left:3px;font-style:normal;font-size:8px;color:var(--act);white-space:nowrap;}',
     P + '-sa sup{font-size:8px;font-weight:600;line-height:0;margin-left:1px;}',   // номер уровня сортировки (Shift+клик, 09.10)
     P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
-    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:600;color:var(--ink);white-space:normal;min-width:0;}',
+    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:500;color:var(--ink);white-space:normal;min-width:0;}',
     P + '-ptable td.lead{font-weight:500;color:var(--ink);}',
     P + '-ptable td.txt:not(:first-child){font-weight:400;color:var(--ink2);}',
     P + '-ptable td .mut{color:var(--muted);font-weight:400;}',
@@ -1167,7 +1167,7 @@ function buildCSS() {
     // полоска выбора — отдельным слоем внутри ячейки: тень inset при слитых границах заходила на линию над строкой (09.10)
     P + '-ptable tbody tr.sel td:first-child{position:relative;}',
     P + '-ptable tbody tr.sel td:first-child::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--act);}',
-    // выбранная строка — название 600, как у всех названий (14.10); выбор держат фон и полоска слева
+    // выбранная строка — название 600 (у остальных 500, 14.10) + фон и полоска слева
     P + '-ptable tbody tr.sel td:first-child{font-weight:600;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-gh-sub{font-weight:400;}',
@@ -1232,7 +1232,7 @@ function buildCSS() {
     P + '-gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;',
     '  font-size:12px;width:28px;height:28px;margin:-6px 4px -6px -6px;padding:0;border-radius:7px;font-family:inherit;line-height:1;vertical-align:middle;}',
     P + '-gh-caret:hover{color:var(--ink);background:#eef1f5;}',
-    P + '-gh-name{font:inherit;font-weight:600;color:var(--ink);}',
+    P + '-gh-name{font:inherit;font-weight:500;color:var(--ink);}',
     P + '-rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:500;border-radius:4px;padding:1px 5px;vertical-align:1px;}',
     P + '-rflag.head{background:#f3ecff;color:#6b3fd4;}',
     P + '-rflag.fired{background:#f1f3f6;color:#6b7280;}',   // «увол.» — нейтрально: не говорим, сам ушёл или уволили

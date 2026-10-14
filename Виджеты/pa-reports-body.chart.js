@@ -774,7 +774,7 @@ function buildCSS() {
       P + '-leg-r ' + P + '-sig-chip.neutral{background:#f3f4f6;color:#8a909c;}' + P + '-leg-r ' + P + '-sig-chip.dead{background:#ffcccc;color:#d11414;}',
     P + '-tip ' + P + '-t-x b{font-weight:600;color:#23272e;}',
     P + '-ptable td{text-align:right;padding:4px 6px;height:38px;box-sizing:border-box;font-weight:400;color:var(--ink2);border-bottom:1px solid var(--line2);white-space:nowrap;vertical-align:middle;}',
-    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:600;color:var(--ink);white-space:normal;min-width:0;}',
+    P + '-ptable td.txt{text-align:left;padding-left:12px;font-weight:500;color:var(--ink);white-space:normal;min-width:0;}',
     // Таблица отчётов: ширины колонок заданы colgroup, ячейки не раздвигают таблицу; длинное название переносится.
     // ширина таблицы отчётов — инлайн max-width (название ≤ ~440, метрики шире на широком каталоге — reportTableHtml)
     P + '-ptable.fix{table-layout:fixed;}',
@@ -794,7 +794,7 @@ function buildCSS() {
     // полоска выбора — отдельным слоем внутри ячейки: тень inset при слитых границах заходила на линию над строкой (09.10)
     P + '-ptable tbody tr.sel td:first-child{position:relative;}',
     P + '-ptable tbody tr.sel td:first-child::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--act);}',
-    // выбранная строка — название 600, как у всех названий (14.10); выбор держат фон и полоска слева
+    // выбранная строка — название 600 (у остальных 500, 14.10) + фон и полоска слева
     P + '-ptable tbody tr.sel td:first-child{font-weight:600;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-rflag{font-weight:400;}',
     P + '-ptable tbody tr.sel td:first-child ' + P + '-gh-sub{font-weight:400;}',

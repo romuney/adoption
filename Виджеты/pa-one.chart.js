@@ -1383,12 +1383,17 @@ function buildCSS() {
     // колонках; справа — карточки и «Что видно». Лента забирает высоту вкладки (до потолка refRow), клетки — почти квадраты.
     P + '-panel-b.cal-wrap{overflow:auto;display:flex;flex-direction:column;gap:10px;}',
     P + '-cal-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}',   // воздух до календаря (было впритык, 09.10)
+    // лента сжимается, но не ниже своих строк по 20 px: нижний предел — явный min-height ленты и cal-main (считается в
+    // calHtml; «auto» у сетки с 1fr тянет каждую строку до высоты подписи месяца). На низком ряду (ноутбук 14", 14.10)
+    // вкладка прокручивается, а не наезжает сама на себя: было min-height:0 — строки уходили под столбики, месяцы резались
     P + '-cal-main{display:flex;flex:1 1 auto;min-height:0;gap:24px;}',
     // лента не шире 800 (клетка ≤ ~100 px: на широком экране клетки вытягивались в полоски 150–380 × 35, ревью 09.10)
     P + '-cal-left{flex:1 1 580px;max-width:800px;min-width:0;display:flex;flex-direction:column;gap:12px;}',
     P + '-cal-rib{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:72px repeat(7,minmax(0,1fr));gap:3px;}',
     // подпись месяца — в своей строке недели: на низкой ленте среднее «в день» обрезается, название остаётся
-    P + '-cal-ml{display:flex;flex-direction:column;padding-top:3px;font-size:var(--fs-cap);color:var(--muted);line-height:1.3;min-width:0;min-height:0;overflow:hidden;white-space:nowrap;}',
+    P + '-cal-ml{display:flex;flex-direction:column;flex-wrap:wrap;align-content:flex-start;padding-top:3px;font-size:var(--fs-cap);color:var(--muted);line-height:1.3;min-width:0;min-height:0;overflow:hidden;white-space:nowrap;}',
+    // строка не влезает по высоте — уходит в соседнюю колонку за край (wrap) и не видна: «в день» не режется пополам (14.10)
+    P + '-cal-ml > *{width:100%;overflow:hidden;text-overflow:ellipsis;}',
     P + '-cal-ml b{font-size:var(--fs-body);font-weight:400;color:var(--ink2);}',
     P + '-cal-wd{font-size:var(--fs-cap);color:var(--muted);text-align:center;letter-spacing:.3px;padding-bottom:2px;}',
     P + '-cal-wd.we{color:var(--muted2);}',
@@ -1406,7 +1411,7 @@ function buildCSS() {
     P + '-cal-lg .sp{width:12px;}',
     // столбики дней недели — в колонках ленты: число сверху, столбик растёт вверх от оси, черта — предыдущие 30 дней
     P + '-cal-wbs{flex:0 1 118px;min-height:84px;display:grid;grid-template-columns:72px repeat(7,minmax(0,1fr));gap:3px;}',
-    P + '-cal-wbs > ' + P + '-cal-ml{justify-content:flex-end;padding:0 0 18px;white-space:normal;}',
+    P + '-cal-wbs > ' + P + '-cal-ml{justify-content:flex-end;flex-wrap:nowrap;padding:0 0 18px;white-space:normal;}',
     P + '-cal-wb{display:flex;flex-direction:column;align-items:center;min-height:0;cursor:help;}',
     P + '-cal-wb .v{position:absolute;left:-12px;right:-12px;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink);line-height:1.2;font-variant-numeric:tabular-nums;}',
     P + '-cal-wb .col{position:relative;flex:1 1 auto;width:64%;max-width:46px;margin-top:18px;border-bottom:1px solid #d4d7de;}',
@@ -3099,7 +3104,7 @@ function calendarHtml() {
         lastM = parts[pi];
       }
       rib += '<span class="' + N + '-cal-ml">' + mLab + '</span>' + cells;
-      rowsT.push('minmax(14px,1fr)');
+      rowsT.push('minmax(20px,1fr)');   // 20 — название месяца (body 12,5 × 1,3 + 3) целиком
     }
   }
   // Дни недели: среднее за день — последние 30 дней и предыдущие 30 (черта)
@@ -3148,8 +3153,11 @@ function calendarHtml() {
       { key: 'u', label: 'Пользователи', on: !isV }, { key: 'v', label: 'Просмотры', on: isV }]) + '</div>' + '<div class="' + N + '-cal-lg">меньше' + CAL_C.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + 'больше' +
     '<span class="sp"></span><i style="box-shadow:0 0 0 2px #23272e;background:' + CAL_C[4] + '"></i>последний день данных' +
     (isV ? '<span class="sp"></span><i style="border:1px dashed #dde0e6"></i>просмотров по дням нет (старше 30 дней)' : '') + '</div></div>';
-  h += '<div class="' + N + '-cal-main"><div class="' + N + '-cal-left">' +
-    '<div class="' + N + '-cal-rib" style="grid-template-rows:' + rowsT.join(' ') + '">' + rib + '</div>' +
+  // нижний предел ленты: строка дней недели 16 + недели по 20 + разрывы по 4 + промежутки 3; под ней — столбики 84 и зазор 12
+  var ribMin = 16 + (rowsT.length - 1) * 3;
+  for (i = 1; i < rowsT.length; i++) ribMin += rowsT[i].indexOf('4px') > 0 ? 4 : 20;
+  h += '<div class="' + N + '-cal-main" style="min-height:' + (ribMin + 84 + 12) + 'px"><div class="' + N + '-cal-left">' +
+    '<div class="' + N + '-cal-rib" style="min-height:' + ribMin + 'px;grid-template-rows:' + rowsT.join(' ') + '">' + rib + '</div>' +
     '<div class="' + N + '-cal-wbs">' + wh + '</div></div>';
   h += '<div class="' + N + '-cal-side">' +
       '<div class="' + N + '-cal-chip"' + tip({ title: 'Пик недели', text: 'День недели с наибольшим средним за день в последние 30 дней.' }) + '><span>Пик недели</span><b>' + WD_S[pk] + ' · ' + compact(Math.round(avg[pk])) + '</b></div>' +

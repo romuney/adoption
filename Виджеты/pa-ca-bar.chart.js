@@ -220,7 +220,7 @@ function maskOf(c) {
 }
 
 // ---------- БЛОК 4: ФОРМАТИРОВАНИЕ И ЦВЕТ ----------
-var THIN = ' ';
+var THIN = '\u2009';  // тонкий пробел U+2009 escape-записью: литерал при копировании становится обычным пробелом
 function nf(v) {
   if (v == null || !isFinite(v)) return '—';
   return (v < 0 ? '−' : '') + Math.abs(Math.round(v)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, THIN);

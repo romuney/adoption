@@ -170,6 +170,9 @@ var CFG = {
     stackGap: 26,             // зазор между панелями графика (STACK_GAP)
     barGap: 8, barMax: 72, barMin: 3,   // бар: зазор px и клампы ширины
     dense: 16,                // больше N бакетов — плотная сетка
+    // длинный свой период (больше long шагов — та же граница LONG_MAX, что в SQL): столбики без подписей, ось по месяцам,
+    // обзор всего периода с окном и приближение протягиванием; zoomMin — меньше стольких шагов окно не сужается
+    long: 32, zoomMin: 7, ovH: 40,
     headroom: 1.3, headroomDense: 1.22,  // воздух над марками под подписи
     // Ряд «каталог | панель» ноутбука — ПОТОЛОК вкладок «Календарь» (800 = MIN ряда в CSS 9: на ноутбуке шапку листа
     // прокручивают, и ряд упирается в 800 — фото владельца 09.10; 653 было без прокрутки)
@@ -212,6 +215,7 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   dd: null,                  // открытый дропдаун: 'whoCut' | 'whoOpts'
   legendOff: { new: false, react: false, ret: false },
   viewsMode: 'total',        // просмотры: total | per
+  dynZoom: null,             // приближение «Динамики» длинного своего периода: { key, n, a, b } — индексы ряда (старые слева)
   dynEl: null, dynI: -1,     // следящий тултип динамики
   calM: 'u',
   whoMode: 'freq',           // «Кто смотрит»: freq — по частоте (корзины) | ca — по ЦА (дошли / не заходили / вне ЦА)
@@ -396,6 +400,7 @@ function calAxisSvg(ts, grain, xOf, y0) {
   var hs = ts.length > 1 ? (xOf(1) - xOf(0)) / 2 : 12;
   var out = ts.length ? '<line x1="' + r1(xOf(0) - hs) + '" y1="' + (y0 + 0.5) + '" x2="' + r1(xOf(ts.length - 1) + hs) + '" y2="' + (y0 + 0.5) +
     '" stroke="' + CFG.colors.axisLine + '" stroke-width="1"/>' : '';
+  if (ts.length > CFG.spacing.long) return out + calAxisLong(ts, grain, xOf, y0, hs);
   for (var i = 0; i < ts.length; i++) {
     var L = calLabel(ts, i, grain), x = r1(xOf(i));
     out += '<text x="' + x + '" y="' + (y0 + 12) + '" font-size="10.5" text-anchor="middle" font-weight="' + (L.bold ? 600 : 400) +
@@ -405,6 +410,33 @@ function calAxisSvg(ts, grain, xOf, y0) {
     }
   }
   return out;
+}
+// Ось длинного ряда (свой период больше CFG.spacing.long шагов): метка на начале месяца (у месяцев — квартала, если
+// тесно), январь — с годом жирно; первая неполная — если до следующей хватает места. Точная дата — в подсказке.
+function calAxisLong(ts, grain, xOf, y0, hs) {
+  var out = '', lastX = -1e9, gap = 34, i, marks = [];
+  var colW = hs * 2, mStep = grain === 'm' && colW < 26 ? 3 : 1;
+  for (i = 0; i < ts.length; i++) {
+    var t = tsDate(ts[i].k, grain), pv = i ? tsDate(ts[i - 1].k, grain) : null;
+    if (grain === 'm' ? t.m % mStep === 0 || !i : !i || pv.m !== t.m) marks.push({ i: i, t: t, first: !i && (grain === 'm' ? t.m % mStep !== 0 : true) });
+  }
+  for (var j = 0; j < marks.length; j++) {
+    var mk = marks[j], x = grain === 'm' ? xOf(mk.i) : xOf(mk.i) - hs;
+    if (mk.first && j + 1 < marks.length && (grain === 'm' ? xOf(marks[j + 1].i) : xOf(marks[j + 1].i) - hs) - x < gap + 10) continue;
+    if (x - lastX < gap) continue;
+    lastX = x;
+    var yr = mk.t.m === 0 || mk.first;
+    out += '<line x1="' + r1(x) + '" y1="' + (y0 + 1) + '" x2="' + r1(x) + '" y2="' + (y0 + 5) + '" stroke="' + CFG.colors.axisLine + '" stroke-width="1"/>' +
+      '<text x="' + r1(Math.max(x, 2)) + '" y="' + (y0 + 16) + '" font-size="10.5" text-anchor="' + (grain === 'm' ? 'middle' : 'start') + '" font-weight="' + (mk.t.m === 0 ? 700 : 400) +
+      '" fill="' + (mk.t.m === 0 ? '#3a3f4a' : CFG.colors.axis) + '">' + esc(MONTHS[mk.t.m] + (yr ? ' ' + mk.t.y : '')) + '</text>';
+  }
+  return out;
+}
+// Короткая дата шага для подписи пика: «8 апр», «нед. с 6 апр», «апр 2026».
+function stepShort(k, grain) {
+  var t = tsDate(k, grain);
+  if (grain === 'm') return MONTHS[t.m] + ' ' + t.y;
+  return (grain === 'w' ? 'нед. с ' : '') + t.d + ' ' + CP_MS[t.m];
 }
 function bucketTitle(t, grain) {
   if (!t) return '';
@@ -436,7 +468,8 @@ function freqLabels(grain) {
 // маска текущего окна | маска предыдущего | возраст первого визита | просмотров | дней с визита (−1 — нет) |
 // флаги (1 рук · 2 MAU · 4 MAU пред. · 8 в этом году · 16 сотрудник · 32 доступ · 64 в ЦА) | код HQ | код IT.
 // Коды — номера в словаре (секция d). Активных периодов, корзину и «новый» считаем из масок.
-// Маски окна — до 30 бит (текущее и предыдущее окна приходят раздельно): подсчёт единиц — побитово (SWAR).
+// Маски окна — до 32 бит (текущее и предыдущее окна приходят раздельно): подсчёт единиц — побитово (SWAR).
+// У длинного своего периода (CPER.long) в этих полях — число активных шагов: маска не влезла бы ни в UInt64, ни в число JS.
 function bits(v) {
   v = +v || 0;
   if (v >= 0 && v < 4294967296) {
@@ -481,7 +514,8 @@ function parseListPack(txt, path, out, m) {
     var f = lines[i].split('|');
     if (f.length < 13 || !f[0]) continue;
     var cur = int(f[5]), prev = int(f[6]), fk = f[7] === '' ? null : int(f[7]), fl = int(f[10]), last = f[9] === '' ? null : int(f[9]);
-    var days = bits(cur), bin = Math.max(1, binOf(days, FB)), seg = segOf(bin);
+    // длинный свой период: в полях не маски, а число активных шагов текущего и прошлого окна
+    var lg = CPER && CPER.long, days = lg ? cur : bits(cur), dPrev = lg ? prev : bits(prev), bin = Math.max(1, binOf(days, FB)), seg = segOf(bin);
     out.push({
       login: f[0], fio: unz(f[1]), lvl3: ps[0] || '', lvl4: ps[1] || '', org: path,
       spec: dv('spec', f[2]), stream: dv('stream', f[3]), exp: dv('exp', f[4]), is_head: fl & 1,
@@ -491,7 +525,7 @@ function parseListPack(txt, path, out, m) {
       nw: fk != null && fk < n && fk <= kt ? 1 : 0, m1: (fl >> 1) & 1, m2: (fl >> 2) & 1,
       // ЦА: yr — заходил в этом году, stf — действующий сотрудник, acc — доступ к области, ca — в ЦА
       yr: !!((fl >> 3) & 1), stf: !!((fl >> 4) & 1), fired: !((fl >> 4) & 1), acc: !!((fl >> 5) & 1), ca: !!((fl >> 6) & 1),
-      cur: cur, prev: prev, fk: fk, daysPrev: bits(prev), binPrev: binOf(bits(prev), FB),
+      cur: cur, prev: prev, fk: fk, daysPrev: dPrev, binPrev: binOf(dPrev, FB),
       hq: dv('hq', f[11]), it: dv('it', f[12])
     });
   }
@@ -626,9 +660,9 @@ function buildModel() {
       L = linesOf(r);
       for (j = 0; j < L.length; j++) { f = L[j].split('|'); m.cal[int(f[0])] = { users: int(f[1]), new_u: int(f[2]), views: int(f[3]) }; }
     } else if (sec === 'ts') {
-      // динамика: «возраст|users|new_u|react_u|views»
+      // динамика: «возраст|users|new_u|react_u|views»; у длинного своего периода ещё «|людей ЦА|из них впервые в окне» (caSeries)
       L = linesOf(r);
-      for (j = 0; j < L.length; j++) { f = L[j].split('|'); m.ts.push({ k: int(f[0]), users: int(f[1]), new_u: int(f[2]), react_u: int(f[3]), views: int(f[4]) }); }
+      for (j = 0; j < L.length; j++) { f = L[j].split('|'); m.ts.push({ k: int(f[0]), users: int(f[1]), new_u: int(f[2]), react_u: int(f[3]), views: int(f[4]), ca: int(f[5]), caf: int(f[6]) }); }
     } else if (sec === 'ctx') {
       // группы (строка на разрез g): «ключ|родитель|users|users_prev|views|views_prev|new_u|regular|sleeping»;
       // только группы с людьми ТЕКУЩЕГО периода
@@ -688,7 +722,7 @@ function buildModel() {
   for (i = 0; i < m.ts.length; i++) byK[m.ts[i].k] = m.ts[i];
   var full = [];
   for (var kb = nB - 1; kb >= 0; kb--) {
-    var p = byK[kb] || { k: kb, users: 0, new_u: 0, react_u: 0, views: 0 };
+    var p = byK[kb] || { k: kb, users: 0, new_u: 0, react_u: 0, views: 0, ca: 0, caf: 0 };
     // Продолжающих колонки нет: остаток стека, ниже нуля не бывает.
     p.ret = Math.max(0, p.users - p.new_u - p.react_u);
     p.nohist = p.k > m.hist.kt;  // начало истории: столбик одной серой ступенью, без деления на новых
@@ -733,8 +767,8 @@ var CP_MS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл
 function cperOf(fl) {
   var v = fl && fl.period_param;
   v = v && typeof v === 'object' && v.length ? String(v[0]) : (typeof v === 'string' ? v : '');
-  var m = /^c\|(\d{4})-(\d{2})-(\d{2})\|([dwm])\|(\d{1,2})$/.exec(v);
-  if (!m || +m[5] < 1 || +m[5] > 32) return null;
+  var m = /^c\|(\d{4})-(\d{2})-(\d{2})\|([dwm])\|(\d{1,3})$/.exec(v);
+  if (!m || +m[5] < 1 || +m[5] > 400) return null;
   var n = +m[5], g = m[4], t = Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000), a, pa;
   if (g === 'd') { a = t - n + 1; pa = a - n; }
   else if (g === 'w') { var mo = t - (new Date(t * 86400000).getUTCDay() + 6) % 7; a = mo - 7 * (n - 1); pa = a - 7 * n; }
@@ -743,7 +777,8 @@ function cperOf(fl) {
     a = Math.round(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() - (n - 1), 1) / 86400000);
     pa = Math.round(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() - (2 * n - 1), 1) / 86400000);
   }
-  return { g: g, n: n, t: t, a: a, pa: pa, pb: a - 1 };
+  // long — больше CFG.spacing.long шагов: у людей в ответе не маски, а число активных шагов (SQL: LONG_MAX)
+  return { g: g, n: n, t: t, a: a, pa: pa, pb: a - 1, key: v, long: n > CFG.spacing.long };
 }
 // «28 сен – 18 окт», «3 – 9 авг»; год — если отрезок не в этом году или пересекает Новый год.
 function cperRange(a, b) {
@@ -1302,6 +1337,11 @@ function buildCSS() {
     P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:400;padding:6px 12px;cursor:pointer;}',
     P + '-selg-spin{width:14px;height:14px;border-radius:50%;border:2px solid #e7e9ee;border-top-color:#245FD4;animation:' + CFG.ns + '-spin .8s linear infinite;flex:0 0 auto;}',
     '@keyframes ' + CFG.ns + '-spin{to{transform:rotate(360deg)}}',
+    P + '-dynov{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;}',
+    P + '-dynov-c{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:var(--fs-note);color:var(--muted);line-height:1.4;}',
+    P + '-dynov-c b{color:var(--txt);font-weight:700;}',
+    P + '-dynov-c .' + CFG.ns + '-btn{height:26px;flex:0 0 auto;}',
+    P + '-dynov-c .' + CFG.ns + '-btn[disabled]{opacity:.45;cursor:default;}',
     P + '-tbl-note{margin-top:8px;font-size:var(--fs-note);color:var(--muted);line-height:1.5;flex:0 0 auto;}',
     P + '-leg-nh{cursor:help;}',
     P + '-ct-nh td{opacity:.55;}',
@@ -3297,15 +3337,17 @@ function stackAct(p) {
 // (легенда кликом гасит свою ступень), тултип — «следящий»: ОДНА хитзона
 // на всю панель с данными бакетов в data-bk, позиция на mousemove,
 // содержимое — только при смене колонки.
-function usersChartSvg(ts, grain) {
+function usersChartSvg(ts, grain, zw) {
   var C = CFG.colors, n = ts.length;
   var maxU = 0, i;
   for (i = 0; i < n; i++) if (stackAct(ts[i]) > maxU) maxU = stackAct(ts[i]);
   var topU = svgHeadroom(maxU, n);
   var padL = 6, padR = 6, inner = SVG_W - padL - padR;
-  var step = inner / n;
-  var bw = svgBarWidth(n);
-  var top = 14, axH = 32;
+  var step = inner / n, lng = n > CFG.spacing.long, pk = -1;
+  var bw = lng ? Math.max(1, step * 0.72) : svgBarWidth(n);
+  // длинный ряд: подпись — только у пика (у каждого столбика не влезает)
+  if (lng) for (i = 0; i < n; i++) if (pk < 0 || stackAct(ts[i]) > stackAct(ts[pk])) pk = i;
+  var top = lng ? 18 : 14, axH = 32;
   // пороги 64 + 40 (+ поля 2 × 46) = 196 ≤ DYN_H; по выбранным людям нижнего графика нет — верхний на всю высоту
   var pH = DYN_H ? Math.max(64, Math.round(DYN_H * (dynPeopleOn() ? 1 : 0.6)) - top - axH) : 164;
   var H = top + pH + axH;
@@ -3326,7 +3368,7 @@ function usersChartSvg(ts, grain) {
     var topmost = -1;
     for (var si = 0; si < segs.length; si++) if (segs[si].h > 0.5) topmost = si;
     var yy = top + pH;
-    body += '<g class="bar" data-d="' + Math.round(i * 12) + '\">';   // колонка растёт от оси (анимация)
+    body += '<g class="bar" data-d="' + Math.round(i * (lng ? 480 / n : 12)) + '\">';   // колонка растёт от оси (анимация)
     for (var sj = 0; sj < segs.length; sj++) {
       if (segs[sj].h <= 0.5) continue;    // пустых ступеней не рисуем вовсе
       var sy = yy - segs[sj].h;
@@ -3336,21 +3378,29 @@ function usersChartSvg(ts, grain) {
       yy = sy;
     }
     body += '</g>';
-    // Подпись значения — у КАЖДОГО столбика (макет: valueLabel без пропусков).
-    body += '<text class="fade" x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
+    // Подпись значения — у КАЖДОГО столбика (макет: valueLabel без пропусков); у длинного ряда — только пик.
+    if (!lng) body += '<text class="fade" x="' + r1(x + bw / 2) + '" y="' + r1(yTop - 7) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
       '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(p.nohist && !p.users ? '—' : compact(aU)) + '</text>';
+    else if (i === pk && aU > 0) body += peakLabel(x + bw / 2, yTop, 'пик ' + nf(aU) + ' · ' + stepShort(p.k, grain), fsVal, C.label);
     bk.push({ k: p.k, u: p.users, nu: p.new_u, re: p.react_u, rt: p.ret, v: p.views, nh: p.nohist ? 1 : 0 });
   }
   body += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
-  body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent" data-dyn="users" data-n="' + n +
+  body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent"' + (zw ? ' style="cursor:crosshair"' : '') + ' data-dyn="users" data-n="' + n +
     '" data-colw="' + r1(step) + '" data-grain="' + esc(grain) + '"' +
     '" data-bk="' + esc(JSON.stringify(bk)) + '"/>';
   return '<svg viewBox="0 0 ' + SVG_W + ' ' + r1(H) + '" width="100%" data-dyn-svg="1" style="height:auto;display:block" font-family="' + CFG.fonts.family +
     '" role="img" aria-label="Пользователи по периодам">' + body + '</svg>';
 }
 
+// Подпись пика длинного ряда: точка над столбиком и текст; у краёв — прижата внутрь.
+function peakLabel(cx, y, txt, fs, col) {
+  var a = cx < 90 ? 'start' : (cx > SVG_W - 90 ? 'end' : 'middle');
+  return '<circle class="fade" cx="' + r1(cx) + '" cy="' + r1(y - 3) + '" r="2" fill="' + col + '"/>' +
+    '<text class="fade" x="' + r1(cx) + '" y="' + r1(y - 8) + '" font-size="' + fs + '" font-weight="700" text-anchor="' + a + '" fill="' + col +
+    '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(txt) + '</text>';
+}
 // Нижняя панель: просмотры линией, переключалка «всего / на пользователя».
-function viewsChartSvg(ts, grain) {
+function viewsChartSvg(ts, grain, zw) {
   var C = CFG.colors, n = ts.length;
   var perUser = state.viewsMode === 'per';
   var viewsOf = function (p) { return perUser ? (p.users ? p.views / p.users : 0) : p.views; };
@@ -3359,8 +3409,9 @@ function viewsChartSvg(ts, grain) {
   for (i = 0; i < n; i++) if (viewsOf(ts[i]) > maxV) maxV = viewsOf(ts[i]);
   var topV = svgHeadroom(maxV, n);
   var padL = 6, padR = 6, inner = SVG_W - padL - padR;
-  var step = inner / n;
-  var top = 14, axH = 32;
+  var step = inner / n, lng = n > CFG.spacing.long, pk = -1;
+  if (lng) for (i = 0; i < n; i++) if (pk < 0 || viewsOf(ts[i]) > viewsOf(ts[pk])) pk = i;
+  var top = lng ? 18 : 14, axH = 32;
   var pH = DYN_H ? Math.max(40, Math.round(DYN_H * 0.4) - top - axH) : 112;
   var H = top + pH + axH;
   var dense = n > CFG.spacing.dense;
@@ -3373,8 +3424,9 @@ function viewsChartSvg(ts, grain) {
     var cy = y2(viewsOf(ts[i]));
     pts.push([cx, cy]);
     bk.push({ k: ts[i].k, u: ts[i].users, v: ts[i].views });
-    labels += '<text class="fade" x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
+    if (!lng) labels += '<text class="fade" x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
       '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(fmtV(ts[i])) + '</text>';
+    else if (i === pk && viewsOf(ts[i]) > 0) labels += peakLabel(cx, cy, 'пик ' + fmtV(ts[i]) + ' · ' + stepShort(ts[i].k, grain), fsVal, C.label);
   }
   labels += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
   for (i = 0; i < pts.length; i++) {
@@ -3383,15 +3435,17 @@ function viewsChartSvg(ts, grain) {
     cps.push([pts[i - 1][0] + dx, pts[i - 1][1], pts[i][0] - dx, pts[i][1]]);
   }
   var s = 'M' + r1(pts[0][0]) + ' ' + r1(pts[0][1]);
-  for (i = 1; i < pts.length; i++) s += 'C' + r1(cps[i][0]) + ' ' + r1(cps[i][1]) + ' ' + r1(cps[i][2]) + ' ' + r1(cps[i][3]) + ' ' + r1(pts[i][0]) + ' ' + r1(pts[i][1]);
+  // длинный ряд — ломаной: сглаживание на сотнях точек размазывает пики
+  if (lng) for (i = 1; i < pts.length; i++) s += 'L' + r1(pts[i][0]) + ' ' + r1(pts[i][1]);
+  else for (i = 1; i < pts.length; i++) s += 'C' + r1(cps[i][0]) + ' ' + r1(cps[i][1]) + ' ' + r1(cps[i][2]) + ' ' + r1(cps[i][3]) + ' ' + r1(pts[i][0]) + ' ' + r1(pts[i][1]);
   var cid = revealClip(H);
   var body = cid.defs + '<path clip-path="url(#' + cid.id + ')" d="' + s + 'L' + r1(pts[pts.length - 1][0]) + ' ' + (top + pH) + 'L' + r1(pts[0][0]) + ' ' + (top + pH) + 'Z" fill="rgba(91,100,120,.07)" stroke="none"/>' +
     '<path class="ln" pathLength="1" stroke-dasharray="1" d="' + s + '" fill="none" stroke="' + C.views + '" stroke-width="2"/>';
-  for (i = 0; i < pts.length; i++) {
+  for (i = 0; i < pts.length && !lng; i++) {
     body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, pts.length - 1)) + '\" cx="' + r1(pts[i][0]) + '" cy="' + r1(pts[i][1]) + '" r="2.6" fill="' + C.views + '" stroke="#fff" stroke-width="1.6"/>';
   }
   body += labels;
-  body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent" data-dyn="views" data-n="' + n +
+  body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent"' + (zw ? ' style="cursor:crosshair"' : '') + ' data-dyn="views" data-n="' + n +
     '" data-colw="' + r1(step) + '" data-grain="' + esc(grain) + '" data-pu="' + (perUser ? 1 : 0) +
     '" data-bk="' + esc(JSON.stringify(bk)) + '"/>';
   return '<svg viewBox="0 0 ' + SVG_W + ' ' + r1(H) + '" width="100%" data-dyn-svg="1" style="height:auto;display:block" font-family="' + CFG.fonts.family +
@@ -3479,10 +3533,77 @@ function peopleTs(ps, grain) {
   }
   return out;
 }
-function dynTs() { return dynPeopleOn() ? peopleTs(dynPeople(), MODEL.grain) : MODEL.ts; }
+function dynTs() { return dynPeopleOn() ? (CPER && CPER.long ? [] : peopleTs(dynPeople(), MODEL.grain)) : MODEL.ts; }
+// ---------- ДЛИННЫЙ СВОЙ ПЕРИОД: обзор и приближение (2026-10-21) ----------
+// Ряд длиннее CFG.spacing.long шагов (свой период «с начала года по дням» — ~300 столбиков): графики показывают окно
+// ряда (state.dynZoom, индексы слева направо), под ними — обзор всего периода с этим окном. Окно двигают и тянут за края
+// в обзоре, протягивание мышью по графику приближает отрезок, двойной клик и «Весь период» — снова весь. Окно живёт,
+// пока не сменился период (ключ — period_param) и длина ряда; данные не перезапрашиваются.
+function dynWin(n) {
+  var z = state.dynZoom;
+  if (!z || !CPER || z.key !== CPER.key || z.n !== n) return { a: 0, b: n - 1, all: true };
+  var a = Math.max(0, Math.min(z.a, n - 1)), b = Math.max(a, Math.min(z.b, n - 1));
+  return { a: a, b: b, all: a === 0 && b === n - 1 };
+}
+function dynSetWin(a, b, n) {
+  var w = CFG.spacing.zoomMin;
+  if (b - a + 1 < w) { var c = Math.round((a + b) / 2); a = c - Math.floor(w / 2); b = a + w - 1; }
+  if (a < 0) { b -= a; a = 0; }
+  if (b > n - 1) { a -= b - (n - 1); b = n - 1; }
+  a = Math.max(0, a);
+  state.dynZoom = a <= 0 && b >= n - 1 ? null : { key: CPER ? CPER.key : '', n: n, a: a, b: b };
+}
+// Обзор всего ряда: площадь пользователей, окно с ручками, подписи месяцев; ниже — что видно и «Весь период».
+function dynOverviewHtml(full, zw, grain) {
+  var N = CFG.ns, n = full.length, padL = 6, inner = SVG_W - 12, step = inner / n, ph = CFG.spacing.ovH, H = ph + 18, mx = 0, i;
+  for (i = 0; i < n; i++) if (full[i].users > mx) mx = full[i].users;
+  var y = function (v) { return 2 + ph - 4 - (mx ? v / mx * (ph - 6) : 0); };
+  var pts = [];
+  for (i = 0; i < n; i++) pts.push(r1(padL + i * step + step / 2) + ',' + r1(y(full[i].users)));
+  var x0 = padL + zw.a * step, x1 = padL + (zw.b + 1) * step;
+  var body = '<rect x="' + padL + '" y="1" width="' + r1(inner) + '" height="' + (ph - 1) + '" rx="6" fill="#f6f7f9"/>' +
+    '<polygon points="' + r1(padL + step / 2) + ',' + (ph - 2) + ' ' + pts.join(' ') + ' ' + r1(padL + (n - 0.5) * step) + ',' + (ph - 2) + '" fill="#dfe6f4"/>' +
+    '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#8a97b4" stroke-width="1"/>';
+  // вне окна — притушено; окно — рамка акцентом с ручками по краям
+  body += '<g data-dovw="1"><rect data-dov-l="1" x="' + padL + '" y="1" width="' + r1(Math.max(0, x0 - padL)) + '" height="' + (ph - 1) + '" fill="rgba(246,246,246,.72)"/>' +
+    '<rect data-dov-r="1" x="' + r1(x1) + '" y="1" width="' + r1(Math.max(0, padL + inner - x1)) + '" height="' + (ph - 1) + '" fill="rgba(246,246,246,.72)"/>' +
+    '<rect data-dov-f="1" x="' + r1(x0) + '" y="1" width="' + r1(x1 - x0) + '" height="' + (ph - 1) + '" rx="5" fill="transparent" stroke="' + CFG.colors.act + '" stroke-width="1.5" style="cursor:grab"/>' +
+    '<rect data-dovh="a" x="' + r1(x0 - 4) + '" y="' + r1(ph / 2 - 9) + '" width="8" height="18" rx="3" fill="#fff" stroke="' + CFG.colors.act + '" stroke-width="1.5" style="cursor:ew-resize"/>' +
+    '<rect data-dovh="b" x="' + r1(x1 - 4) + '" y="' + r1(ph / 2 - 9) + '" width="8" height="18" rx="3" fill="#fff" stroke="' + CFG.colors.act + '" stroke-width="1.5" style="cursor:ew-resize"/></g>';
+  body += calAxisLong(full, grain, function (j) { return padL + j * step + step / 2; }, ph, step / 2).replace(/font-size="10\.5"/g, 'font-size="9.5"');
+  var vis = cperRange(CPER.a, CPER.t), len = zw.b - zw.a + 1;
+  if (!zw.all) vis = cperRange(dnOfT(tsDate(full[zw.a].k, grain), grain, false), dnOfT(tsDate(full[zw.b].k, grain), grain, true));
+  var u = CFG.grains[grain] || {};
+  return '<div class="' + N + '-dynov">' +
+    '<svg viewBox="0 0 ' + SVG_W + ' ' + H + '" width="100%" data-dov="1" data-n="' + n + '" data-colw="' + r1(step) + '" data-a="' + zw.a + '" data-b="' + zw.b +
+    '" style="height:auto;display:block;user-select:none" font-family="' + CFG.fonts.family + '" role="img" aria-label="Обзор всего периода">' + body + '</svg>' +
+    '<div class="' + N + '-dynov-c"><span>' + (zw.all ? 'Обзор всего периода · <b>протяни мышью по графику</b> — приблизить отрезок'
+      : 'Видно <b>' + esc(vis) + '</b> (' + len + THIN + (u.us || '') + ') · окно в обзоре можно двигать и тянуть за края, двойной клик по графику — весь период') + '</span>' +
+    '<button type="button" class="' + N + '-btn xs" data-dzall="1"' + (zw.all ? ' disabled' : '') + '>Весь период</button></div></div>';
+}
+// Шаг ряда → номер дня (UTC-дни, как CPER): начало шага (end = false) или конец (end = true; не позже последнего дня периода).
+function dnOfT(t, grain, end) {
+  var d0 = Math.round(Date.UTC(t.y, t.m, t.d) / 86400000), wd = (new Date(d0 * 86400000).getUTCDay() + 6) % 7;
+  if (grain === 'w') d0 = end ? d0 - wd + 6 : d0 - wd;
+  else if (grain === 'm') d0 = end ? Math.round(Date.UTC(t.y, t.m + 1, 0) / 86400000) : Math.round(Date.UTC(t.y, t.m, 1) / 86400000);
+  return end && CPER ? Math.min(d0, CPER.t) : d0;
+}
 function dynamicsHtml(ts, grain) {
+  if (dynPeopleOn() && CPER && CPER.long) {
+    var ps0 = dynPeople(), vs0 = 0;
+    for (var p0 = 0; p0 < ps0.length; p0++) vs0 += ps0[p0].views || 0;
+    return '<div class="' + CFG.ns + '-tbl-note">По выбранным в «Кто смотрит» людям динамика по ' + ({ d: 'дням', w: 'неделям', m: 'месяцам' })[CPER.g] +
+      ' есть для периода до ' + CFG.spacing.long + ' шагов, а сейчас их ' + CPER.n + ': выбери период короче или шаг крупнее в календаре шапки. ' +
+      'За весь период у выбранных людей <b>' + nf(vs0) + '</b> просмотров.</div>';
+  }
   if (!ts.length) return '<div class="' + CFG.ns + '-tbl-note">Динамики за этот период в данных нет.</div>';
-  var h = usersChartSvg(ts, grain);
+  if (ts.length <= CFG.spacing.long || !CPER) return dynamicsBody(ts, grain, null);
+  var zw = dynWin(ts.length);
+  return dynamicsBody(ts.slice(zw.a, zw.b + 1), grain, zw) + dynOverviewHtml(ts, zw, grain);
+}
+// zw — окно длинного ряда (null — весь ряд): графики получают уже вырезанный ряд, охват ЦА режется так же.
+function dynamicsBody(ts, grain, zw) {
+  var h = usersChartSvg(ts, grain, zw);
   if (dynPeopleOn()) {
     var ps = dynPeople(), vs = 0;
     for (var pi = 0; pi < ps.length; pi++) vs += ps[pi].views || 0;
@@ -3501,12 +3622,12 @@ function dynamicsHtml(ts, grain) {
       { key: 'per', label: 'На пользователя', on: state.viewsMode === 'per' },
       { key: 'cov', label: 'Охват ЦА', on: state.viewsMode === 'cov' }
     ]) + '</div></div>';
-  if (state.viewsMode !== 'cov') { h += viewsChartSvg(ts, grain); return h; }
+  if (state.viewsMode !== 'cov') { h += viewsChartSvg(ts, grain, zw); return h; }
   // Охват ЦА (третий режим нижнего графика): сплошная — накоплено к дате, пунктир — заходили в этом периоде.
   var t = tc0;
   h += !t.ca ? '<div class="' + CFG.ns + '-tbl-note">В целевой аудитории никого нет — проверь условия в строке «Целевая аудитория».</div>'
     : (wide() ? '<div class="' + CFG.ns + '-tbl-note">Доступ открыт почти всей компании — охват по такому знаменателю не показываем. Сузь ЦА в строке «Целевая аудитория».</div>'
-      : covChartSvg(caSeries(), grain));
+      : covChartSvg(zw ? caSeries().slice(zw.a, zw.b + 1) : caSeries(), grain, zw));
   return h;
 }
 
@@ -3514,6 +3635,16 @@ function dynamicsHtml(ts, grain) {
 // набралось к нему с начала окна (cum). Считаем по маскам зрителей периода (у них бит k = активен k периодов назад).
 function caSeries() {
   var n = CFG.grains[MODEL.grain].n, ps = MODEL.list, t = caTotals(), out = [], k, i;
+  if (CPER && CPER.long) {
+    // масок у людей нет — ряд из ответа (ts: люди ЦА в шаге и шаг их самого раннего визита в окне), правило то же
+    var cum0 = 0;
+    for (i = 0; i < MODEL.ts.length; i++) {
+      var q = MODEL.ts[i];
+      cum0 += q.caf || 0;
+      out.push({ k: q.k, users: q.ca || 0, cum: cum0, covCum: t.ca ? cum0 / t.ca * 100 : 0, covAct: t.ca ? (q.ca || 0) / t.ca * 100 : 0 });
+    }
+    return out;
+  }
   for (k = n - 1; k >= 0; k--) {
     var act = 0, cum = 0, pw = Math.pow(2, k);
     for (i = 0; i < ps.length; i++) {
@@ -3527,7 +3658,7 @@ function caSeries() {
   return out;
 }
 // Охват ЦА линиями: сплошная — накоплено к дате, пунктир — заходили в этом периоде.
-function covChartSvg(ts, grain) {
+function covChartSvg(ts, grain, zw) {
   var C = CFG.colors, n = ts.length, i;
   var maxV = 0;
   for (i = 0; i < n; i++) if (ts[i].covCum > maxV) maxV = ts[i].covCum;
@@ -3551,7 +3682,7 @@ function covChartSvg(ts, grain) {
   var stepL = labelStep(n), bk = [];
   for (i = 0; i < n; i++) {
     var cx = padL + i * step + step / 2, cy = y2(ts[i].covCum);
-    body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, n - 1)) + '" cx="' + r1(cx) + '" cy="' + r1(cy) + '" r="2.6" fill="' + C.cov + '" stroke="#fff" stroke-width="1.6"/>';
+    if (n <= CFG.spacing.long) body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, n - 1)) + '" cx="' + r1(cx) + '" cy="' + r1(cy) + '" r="2.6" fill="' + C.cov + '" stroke="#fff" stroke-width="1.6"/>';
     if (i % stepL === 0 || i === n - 1) {
       body += '<text class="fade" x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
         '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(pct(ts[i].covCum, 0)) + '</text>';
@@ -3559,7 +3690,7 @@ function covChartSvg(ts, grain) {
     bk.push({ k: ts[i].k, u: ts[i].users, c: ts[i].cum, pc: ts[i].covCum, pa: ts[i].covAct });
   }
   body += calAxisSvg(ts, grain, function (j) { return padL + j * step + step / 2; }, top + pH);
-  body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent" data-dyn="cov" data-n="' + n +
+  body += '<rect x="' + padL + '" y="' + top + '" width="' + r1(inner) + '" height="' + r1(pH) + '" fill="transparent"' + (zw ? ' style="cursor:crosshair"' : '') + ' data-dyn="cov" data-n="' + n +
     '" data-colw="' + r1(step) + '" data-grain="' + esc(grain) + '" data-bk="' + esc(JSON.stringify(bk)) + '"/>';
   return '<svg viewBox="0 0 ' + SVG_W + ' ' + r1(H) + '" width="100%" data-dyn-svg="1" style="height:auto;display:block" font-family="' + CFG.fonts.family +
     '" role="img" aria-label="Охват целевой аудитории по периодам">' + body + '</svg>';
@@ -3830,7 +3961,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var avail = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
       var heads = body.querySelectorAll('.' + CFG.ns + '-dynhead');
       for (var i = 0; i < heads.length; i++) avail -= heads[i].offsetHeight;
-      var notes = body.querySelectorAll('.' + CFG.ns + '-tbl-note');   // пояснение вместо нижнего графика (люди)
+      var notes = body.querySelectorAll('.' + CFG.ns + '-tbl-note, .' + CFG.ns + '-dynov');   // пояснение вместо нижнего графика (люди), обзор длинного периода
       for (i = 0; i < notes.length; i++) avail -= notes[i].offsetHeight;
       // зазоры flex-колонки — по факту (детей − 1) × gap: строка «Пользователи по периодам» ушла в заголовок (09.10)
       avail -= Math.max(0, body.children.length - 1) * (parseFloat(cs.rowGap) || CFG.spacing.stackGap);
@@ -4063,6 +4194,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       t.style.opacity = '1';
     }
     function onMove(e) {
+      if (state.dzDrag) return;
       var el = trigger(e.target, 'data-dyn');
       if (!el) {
         if (state.dynEl) { state.dynEl = null; state.dynI = -1; hideTip(); }
@@ -4085,6 +4217,74 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
         var dt = getTip(); dt.innerHTML = dynTipHtml(el, i); dt.__h = null;
       }
       placeTip(e.clientX, e.clientY);
+    }
+
+    // Длинный свой период: протягивание по графику — приблизить отрезок; в обзоре — двигать окно (клик мимо окна —
+    // перенести его туда) и тянуть за края. Во время протягивания меняется только рамка (без render), итог — по отпусканию.
+    function dzPaint(ov, d) {
+      var x0 = 6 + d.na * d.st, x1 = 6 + (d.nb + 1) * d.st, inner = SVG_W - 12;
+      var set = function (sel, x, w) { var el = ov.querySelector(sel); if (el) { el.setAttribute('x', r1(x)); if (w != null) el.setAttribute('width', r1(Math.max(0, w))); } };
+      set('[data-dov-l]', 6, x0 - 6); set('[data-dov-r]', x1, 6 + inner - x1); set('[data-dov-f]', x0, x1 - x0);
+      set('[data-dovh="a"]', x0 - 4); set('[data-dovh="b"]', x1 - 4);
+    }
+    function dzStart(e) {
+      if (e.button !== 0) return;
+      var ov = overlay.querySelector('svg[data-dov]');
+      if (!ov) return;
+      var inOv = trigger(e.target, 'data-dov'), dyn = inOv ? null : trigger(e.target, 'data-dyn');
+      if (!inOv && !dyn) return;
+      e.preventDefault();
+      if (state.tipOff) state.tipOff();
+      var n = +ov.getAttribute('data-n'), za = +ov.getAttribute('data-a'), zb = +ov.getAttribute('data-b'), mz = CFG.spacing.zoomMin;
+      var svg = inOv || dyn.ownerSVGElement, rc = svg.getBoundingClientRect(), sc = SVG_W / (rc.width || SVG_W);
+      var ux = function (cx) { return (cx - rc.left) * sc; };
+      var d, hd = trigger(e.target, 'data-dovh');
+      if (inOv) {
+        var st = num(ov.getAttribute('data-colw')) || 1;
+        var idx = function (cx) { return Math.max(0, Math.min(n - 1, Math.floor((ux(cx) - 6) / st))); };
+        var i0 = idx(e.clientX), mode = hd ? hd.getAttribute('data-dovh') : (i0 >= za && i0 <= zb ? 'm' : 'c');
+        if (mode === 'c') { var w0 = zb - za; za = Math.max(0, Math.min(n - 1 - w0, i0 - Math.floor(w0 / 2))); zb = za + w0; mode = 'm'; }
+        d = { ov: true, mode: mode, i0: i0, a: za, b: zb, na: za, nb: zb, st: st, idx: idx };
+        dzPaint(ov, d);
+      } else {
+        var colw = num(dyn.getAttribute('data-colw')) || 1, nn = +dyn.getAttribute('data-n') || 1;
+        var y = +dyn.getAttribute('y'), h = +dyn.getAttribute('height');
+        var rr = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rr.setAttribute('y', y); rr.setAttribute('height', h); rr.setAttribute('x', r1(ux(e.clientX))); rr.setAttribute('width', 0);
+        rr.setAttribute('fill', 'rgba(36,95,212,.12)'); rr.setAttribute('stroke', CFG.colors.act); rr.setAttribute('stroke-width', '1');
+        rr.setAttribute('pointer-events', 'none');
+        svg.appendChild(rr);
+        d = { ov: false, r: rr, x0: ux(e.clientX), x1: ux(e.clientX), colw: colw, nn: nn };
+      }
+      state.dzDrag = true;
+      var mv = function (ev) {
+        if (d.ov) {
+          var i = d.idx(ev.clientX);
+          if (d.mode === 'm') { var w = d.b - d.a; d.na = Math.max(0, Math.min(n - 1 - w, d.a + i - d.i0)); d.nb = d.na + w; }
+          else if (d.mode === 'a') { d.na = Math.max(0, Math.min(i, d.b - mz + 1)); d.nb = d.b; }
+          else { d.nb = Math.min(n - 1, Math.max(i, d.a + mz - 1)); d.na = d.a; }
+          dzPaint(ov, d);
+        } else {
+          d.x1 = Math.max(6, Math.min(SVG_W - 6, ux(ev.clientX)));
+          d.r.setAttribute('x', r1(Math.min(d.x0, d.x1))); d.r.setAttribute('width', r1(Math.abs(d.x1 - d.x0)));
+        }
+      };
+      var up = function () {
+        document.removeEventListener('mousemove', mv, true);
+        document.removeEventListener('mouseup', up, true);
+        state.dzDrag = false;
+        if (d.ov) {
+          if (d.na === +ov.getAttribute('data-a') && d.nb === +ov.getAttribute('data-b')) return;   // окно не сдвинули
+          dynSetWin(d.na, d.nb, n); render(); return;
+        }
+        if (d.r.parentNode) d.r.parentNode.removeChild(d.r);
+        if (Math.abs(d.x1 - d.x0) < 6) return;                  // это клик, не протягивание
+        var c0 = Math.max(0, Math.min(d.nn - 1, Math.floor((Math.min(d.x0, d.x1) - 6) / d.colw)));
+        var c1 = Math.max(0, Math.min(d.nn - 1, Math.floor((Math.max(d.x0, d.x1) - 6) / d.colw)));
+        dynSetWin(za + c0, za + c1, n); render();
+      };
+      document.addEventListener('mousemove', mv, true);
+      document.addEventListener('mouseup', up, true);
     }
 
     // ── Людская шина → тело 788805 ──
@@ -4141,6 +4341,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     }
     function onClick(e) {
       if (textPicked(e.target)) return;
+      if (trigger(e.target, 'data-dzall')) { state.dynZoom = null; render(); return; }
       // Клик по строке когорт — закрепить её линию на кривой (повторный — снять).
       var ckr = trigger(e.target, 'data-ck');
       if (ckr && overlay.querySelector('[class*="-ct-cv"]')) {
@@ -4438,6 +4639,10 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     }
     overlay.addEventListener('click', onClick);
     overlay.addEventListener('input', onInput);
+    overlay.addEventListener('mousedown', dzStart);
+    overlay.addEventListener('dblclick', function (e) {
+      if (state.dynZoom && (trigger(e.target, 'data-dyn') || trigger(e.target, 'data-dov'))) { state.dynZoom = null; render(); }
+    });
 
     // Escape: закрыть открытый дропдаун. Глобальный слушатель живёт в state
     // и снимается явно — переживает перезапуск скрипта (шаблон, БЛОК 6).

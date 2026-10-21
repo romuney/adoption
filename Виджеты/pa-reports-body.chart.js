@@ -465,8 +465,8 @@ var CP_MS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл
 function cperOf(fl) {
   var v = fl && fl.period_param;
   v = v && typeof v === 'object' && v.length ? String(v[0]) : (typeof v === 'string' ? v : '');
-  var m = /^c\|(\d{4})-(\d{2})-(\d{2})\|([dwm])\|(\d{1,2})$/.exec(v);
-  if (!m || +m[5] < 1 || +m[5] > 32) return null;
+  var m = /^c\|(\d{4})-(\d{2})-(\d{2})\|([dwm])\|(\d{1,3})$/.exec(v);
+  if (!m || +m[5] < 1 || +m[5] > 400) return null;   // до 400 шагов — как разбор в SQL
   var n = +m[5], g = m[4], t = Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000), a, pa;
   if (g === 'd') { a = t - n + 1; pa = a - n; }
   else if (g === 'w') { var mo = t - (new Date(t * 86400000).getUTCDay() + 6) % 7; a = mo - 7 * (n - 1); pa = a - 7 * n; }

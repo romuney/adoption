@@ -12,6 +12,10 @@
 3. Неверные и враждебные значения (31 февраля, шаг x, n > 32, кавычки, «OR 1=1» …) — как «30 дней», запрос исполняется;
    песочница Jinja (SandboxedEnvironment, как в Superset) разбирает значение.
 4. Старый анализатор, prefer_column_name_to_alias = 1, join_use_nulls = 1 — тот же ответ.
+5. Длинный свой период (больше LONG_MAX = 32 шагов: у людей не маска, а массив шагов) — тот же путь, что маски: шаблон с
+   LONG_MAX = 0 на периодах до 32 шагов == маски, все секции; у людей вместо масок — число активных шагов (== битам маски);
+   ряд охвата ЦА в ts (люди ЦА в шаге, шаг самого раннего визита) == тому, что чарт считает по маскам (caSeries).
+   Длинные периоды (до года по дням) — в разделе 2 против факта.
 """
 import os, sys, re, json, shutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -64,7 +68,9 @@ for name, tpl in [('панель', ONE), ('каталог', CAT)]:
             ok(ra == rb, '1 %s · свой %s×%d по %s == готовый %s %s (%d строк)' % (name, g, n, MD, g, ex, len(ra)))
 
 # ---- 2. Свой период в прошлом == прямой расчёт по факту --------------------------------------------------------
-CASES = [('2026-07-15', 'd', 21), ('2026-06-30', 'd', 7), ('2026-08-09', 'w', 6), ('2026-05-31', 'm', 4), ('2026-03-10', 'd', 31)]
+CASES = [('2026-07-15', 'd', 21), ('2026-06-30', 'd', 7), ('2026-08-09', 'w', 6), ('2026-05-31', 'm', 4), ('2026-03-10', 'd', 31),
+         # длинные (LONG_MAX = 32): с начала года по дням и неделям, полгода по дням, год по дням, 3 года по месяцам
+         (MD, 'd', 264), (MD, 'w', 38), ('2026-08-31', 'd', 120), (MD, 'd', 366), (MD, 'm', 36), ('2026-06-14', 'w', 33)]
 for T, g, n in CASES:
     unit, sf = {'d': ('day', 'toStartOfDay'), 'w': ('week', 'toMonday'), 'm': ('month', 'toStartOfMonth')}[g]
     k = "toInt64(dateDiff('%s', %s(log_dttm), %s(toDate('%s'))))" % (unit, sf, sf, T)
@@ -122,7 +128,8 @@ for name, tpl in [('панель', ONE), ('каталог', CAT)]:
 # ---- 4. Настройки боевого ClickHouse -----------------------------------------------------------------------------
 for name, tpl in [('панель', ONE), ('каталог', CAT)]:
     for f in [{'period_param': 'c|2026-07-15|d|21'}, {'period_param': 'c|2026-08-09|w|6', 'ca_spec_f': ['Спец 1']},
-              {'period_param': 'c|2026-05-31|m|4', 'mode_param': 'report', 'sel_f': ['1']}]:
+              {'period_param': 'c|2026-05-31|m|4', 'mode_param': 'report', 'sel_f': ['1']},
+              {'period_param': 'c|%s|d|264' % MD}, {'period_param': 'c|%s|w|38' % MD, 'ca_spec_f': ['Спец 1']}]:
         sql = stand.render(tpl, dict(f))
         b0 = norm(stand.stat(sql)[0], ())
         for st, back in [('SET allow_experimental_analyzer = 0', 'SET allow_experimental_analyzer = 1'),
@@ -132,6 +139,59 @@ for name, tpl in [('панель', ONE), ('каталог', CAT)]:
             g1 = norm(stand.stat(sql)[0], ())
             stand.S.query(back)
             ok(g1 == b0, '4 %s · %s · %s — тот же ответ' % (name, f['period_param'], st[4:]))
+
+# ---- 5. Длинный путь == маски ------------------------------------------------------------------------------------
+def forced(tpl):
+    t = open(tpl).read()
+    assert '{% set LONG_MAX = 32 %}' in t, tpl
+    fp = os.path.join(HERE, '__pycache__', '_long_' + os.path.basename(tpl))
+    open(fp, 'w').write(t.replace('{% set LONG_MAX = 32 %}', '{% set LONG_MAX = 0 %}'))
+    return fp
+def bitc(v):
+    return bin(int(v)).count('1')
+def masks_to_counts(d, n):
+    # маски людей → число активных шагов (как у длинного пути); ряд охвата ЦА по маскам — как caSeries чарта
+    act, first = {}, {}
+    for r in d:
+        if r['section'] in ('list', 'lo'):
+            ls = []
+            for ln in str(r['k']).split('\n'):
+                x = ln.split('|')
+                if len(x) >= 13:
+                    cur, prv = int(x[5]), int(x[6])
+                    if r['section'] == 'list' and int(x[10]) & 64 and cur:
+                        ks = [k for k in range(n) if cur >> k & 1]
+                        for k in ks: act[k] = act.get(k, 0) + 1
+                        first[max(ks)] = first.get(max(ks), 0) + 1
+                    x[5], x[6] = str(bitc(cur)), str(bitc(prv & ((1 << n) - 1)))
+                ls.append('|'.join(x))
+            r['k'] = '\n'.join(ls)
+    return d, act, first
+def ts_cut(d):
+    ca, cf = {}, {}
+    for r in d:
+        if r['section'] == 'ts':
+            ls = []
+            for ln in str(r['k']).split('\n'):
+                x = ln.split('|')
+                if len(x) >= 7:
+                    if int(x[5]): ca[int(x[0])] = int(x[5])
+                    if int(x[6]): cf[int(x[0])] = int(x[6])
+                ls.append('|'.join(x[:5]))
+            r['k'] = '\n'.join(ls)
+    return d, ca, cf
+LONG_EX = [{}, {'mode_param': 'report', 'sel_f': ['1']}, {'ca_spec_f': ['Спец 1']}, {'exc_f': '0'}, {'aud_spec_f': ['Спец 1']},
+           {'mode_param': 'cut:spec', 'sel_f': ['Спец 1']}, {'freq_f': ['2', '4']}]
+for name, tpl in [('панель', ONE), ('каталог', CAT)]:
+    ftpl = forced(tpl)
+    for per, n in [('c|%s|d|30' % MD, 30), ('c|2026-07-15|d|21', 21), ('c|2026-08-09|w|6', 6), ('c|2026-05-31|m|4', 4)]:
+        for ex in LONG_EX:
+            f = dict(ex, period_param=per)
+            a, act, first = masks_to_counts(rows(tpl, f), n)
+            b, ca, cf = ts_cut(rows(ftpl, f))
+            same = norm(a) == norm(b)
+            ok(same and (name != 'панель' or (act == ca and first == cf)),
+               '5 %s · %s %s: массив шагов == маски%s' % (name, per, ex, ', охват ЦА по шагам (%d) == по маскам' % len(act) if name == 'панель' else ''))
 
 # ---- ответы для стенда листа ------------------------------------------------------------------------------------
 if '--mocks' in sys.argv:
@@ -143,6 +203,13 @@ if '--mocks' in sys.argv:
     for fn, tpl in [('one.json', ONE), ('cat_ca.json', CAT), ('head.json', HEAD)]:
         json.dump(rows(tpl, f), open(os.path.join(MO, fn), 'w'), ensure_ascii=False)
     print('моки своего периода (25 авг – 14 сен по дням) → .stand/mocks_cp/')
+    # длинный: с начала года по дням (264 шага) — mocks_cp/long/
+    LO = os.path.join(MO, 'long')
+    shutil.copytree(os.path.join(HERE, 'mocks_audbar'), LO)
+    f = {'period_param': 'c|%s|d|264' % MD}
+    for fn, tpl in [('one.json', ONE), ('cat_ca.json', CAT), ('head.json', HEAD)]:
+        json.dump(rows(tpl, f), open(os.path.join(LO, fn), 'w'), ensure_ascii=False)
+    print('моки длинного периода (с 1 янв по дням) → .stand/mocks_cp/long/')
 
 print('\nИТОГ: ' + ('всё сходится' if not bad else 'расхождений %d' % bad))
 sys.exit(1 if bad else 0)

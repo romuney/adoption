@@ -80,7 +80,8 @@ var CFG = {
   listMax: 200,
   // Свой период (2026-10-21): календарь под кнопкой «Свой». max — шагов в окне (маска 2n бит ≤ 64): дни, недели, месяцы.
   // period_param = «c|ГГГГ-ММ-ДД|шаг|n» — последний день, шаг, число шагов; SQL каталога и панели разбирает его сам.
-  custom: { w: 660, max: { d: 31, w: 32, m: 24 }, steps: [['d', 'Дни', 'дням'], ['w', 'Недели', 'неделям'], ['m', 'Месяцы', 'месяцам']] },
+  // max — шагов не больше (SQL принимает до 400; больше 32 — «длинный» свой период: в SQL массив шагов вместо маски)
+  custom: { w: 660, max: { d: 366, w: 106, m: 36 }, steps: [['d', 'Дни', 'дням'], ['w', 'Недели', 'неделям'], ['m', 'Месяцы', 'месяцам']] },
   colors: {
     bg: '#f6f6f6', card: '#fff', act: '#245FD4', actInk: '#1B4AA8', blueBg: '#EAF0FC', actLine: '#C3D4F5',
     ink: '#23272e', ink2: '#454b55', mut: '#8a909c', mut2: '#b4b9c2', line: '#e7e9ee', line2: '#eef0f3',
@@ -388,12 +389,12 @@ function calHtml() {
     var st = CFG.custom.steps[i], ok = cpFits(d.a, d.pick ? d.a : d.b, st[0]);
     h += '<button type="button"' + (ok ? ' data-cpstep="' + st[0] + '"' : ' disabled') + ' class="' + (d.g === st[0] ? 'on' : '') + '">' + st[1] + '</button>';
   }
-  var hint = d.g === 'd' ? 'по дням — до 31 дня' : d.g === 'w' ? 'целыми неделями, пн–вс, до 32 недель' : 'целыми месяцами, до 24';
-  if (!cpFits(d.a, d.pick ? d.a : d.b, 'd') && d.g !== 'd') hint = 'больше 31 дня — ' + (d.g === 'w' ? 'по неделям, целыми неделями' : 'по месяцам, целыми месяцами');
+  var hint = d.g === 'd' ? 'по дням — до ' + CFG.custom.max.d + ' дней' : d.g === 'w' ? 'целыми неделями, пн–вс, до ' + CFG.custom.max.w + ' недель' : 'целыми месяцами, до ' + CFG.custom.max.m;
+  if (!cpFits(d.a, d.pick ? d.a : d.b, 'd') && d.g !== 'd') hint = 'больше ' + CFG.custom.max.d + ' дней — ' + (d.g === 'w' ? 'по неделям, целыми неделями' : 'по месяцам, целыми месяцами');
   h += '</span><span class="' + N + '-note">' + hint + '</span></div>';
   h += '<div class="' + N + '-dd-f"><em>' + (d.pick ? 'Выбери последний день периода' : fits
       ? '<b>' + cpLen(p) + '</b> · по ' + cpStepWord(d.g) + '<i>«к пред. периоду» — к ' + esc(cpRange(pr.a, pr.b)) + ' (заштриховано)</i>'
-      : 'Слишком длинный период: больше 24 месяцев') + '</em>' +
+      : 'Слишком длинный период: больше ' + CFG.custom.max.m + ' месяцев') + '</em>' +
     '<button type="button" class="' + N + '-btn sm" data-cpcancel="1">Отмена</button>' +
     '<button type="button" class="' + N + '-btn primary sm" data-cpapply="1"' + (fits ? '' : ' disabled') + '>Применить</button></div>';
   return h;
@@ -1049,7 +1050,7 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
         if (dy) {
           var dn = +dy.getAttribute('data-cpday');
           if (!cpd.pick) { cpd.a = dn; cpd.b = dn; cpd.pick = 1; }
-          else { if (dn < cpd.a) { cpd.b = cpd.a; cpd.a = dn; } else cpd.b = dn; cpd.pick = 0; cpd.g = 'd'; cpAutoStep(cpd); }   // новые даты — самый мелкий шаг, что влезает
+          else { if (dn < cpd.a) { cpd.b = cpd.a; cpd.a = dn; } else cpd.b = dn; cpd.pick = 0; cpd.g = 'd'; cpAutoStep(cpd); }   // новые даты — самый мелкий шаг, что влезает (по дням — до 366 дней)
           cpd.pre = 'own'; renderDd(); return;
         }
         var nv = trigger(e.target, 'data-cpnav');

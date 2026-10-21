@@ -1,4 +1,4 @@
-{# Proteus Adoption — единый лист · поставка 14.10 · 2026-10-14 · pa-reports-body.data.sql ee2736fdf31f · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-reports-body.data.sql, сборка — python3 .stand/pack.py #}
+{# Proteus Adoption — единый лист · поставка 21.10 · 2026-10-21 · pa-reports-body.data.sql 6d828b71b861 · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-reports-body.data.sql, сборка — python3 .stand/pack.py #}
 {#- pa_cube v7 — каталог (левый чарт): отчёты / коллекции / владельцы + ИТОГО + аудитория (разрезы людей).
     Источник — предагрегат пар prod_proteus.pa_pair (GP-параграф «PA · пары отчёт×логин»):
     у пары «отчёт × логин» уже лежат 64-битная маска активных бакетов, суммы окна и v_life
@@ -18,9 +18,21 @@
       aud   — g = разрез аудитории (o — оргструктура, s — специализация, t — стрим, q — HQ, i — IT, h — руководители):
               «значение|родитель (у o — путь уровнем выше)|людей заходило|просмотров|постоянных|людей в штате». -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay'}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday'}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth'}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter'}} %}
-{% set grain = filter_values('period_param')|first|default('d', true) %}
+{#- Свой период (2026-10-21) — как в SQL панели: period_param = «c|ГГГГ-ММ-ДД|шаг|n», шаг d / w / m, n ≤ 32 шагов по этот день;
+    дата пересобирается из чисел, неверное значение — как «30 дней». Маска и просмотры окна — из подневного факта (ppx). -#}
+{% set pv = filter_values('period_param')|first|default('d', true)|string %}
+{% set CP = {} %}
+{% if pv[:2] == 'c|' %}{% set pz = pv.split('|') %}{% if pz|length == 4 and pz[1]|length == 10 and pz[2] in ['d', 'w', 'm'] %}
+{% set cy, cmo, cdy, cn = pz[1][0:4]|int, pz[1][5:7]|int, pz[1][8:10]|int, pz[3]|int %}
+{% set dim = [31, 29 if cy % 4 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] %}
+{% if cy >= 2000 and cy <= 2100 and cmo >= 1 and cmo <= 12 and cdy >= 1 and cdy <= dim[cmo - 1] and cn >= 1 and cn <= 32 %}
+{% set _ = CP.update({'t': cy|string ~ '-' ~ ('0' if cmo < 10 else '') ~ cmo ~ '-' ~ ('0' if cdy < 10 else '') ~ cdy, 'g': pz[2], 'n': cn}) %}
+{% endif %}{% endif %}{% endif %}
+{% set cper = CP|length > 0 %}
+{% set grain = CP.g if cper else pv %}
 {% set grain = grain if grain in GRAINS else 'd' %}
-{% set g = GRAINS[grain] %}
+{% set g = {'n': CP.n, 'u': GRAINS[grain].u, 'sf': GRAINS[grain].sf} if cper else GRAINS[grain] %}
+{% set GK = 'c' if cper else grain %}{#- суффикс колонок окна msk_/v_ — у своего периода их даёт ppx -#}
 {% set CUR = 2 ** g.n - 1 %}
 {% set WITH_CA = true %}{#- true — у датасета каталога вкладки «Аудитория»: +2 колонки ca_n / ca_wide (ЦА отчёта по правам
     из pa_dash_ca, поставка 2026-09-24). У каталога «Отчётов» — false: ответ прежний, pa_dash_ca не нужна. -#}
@@ -49,7 +61,22 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
 {% macro fx(x) %}translate({{ x }}, '|\t\n\r', '    '){% endmacro %}
 {% macro jes(s) -%}{{ s|string|replace('\\', '\\\\')|replace('"', '\\"')|replace("'", "''") }}{%- endmacro %}
 {% macro jal(a) -%}[{% for v in a %}{% if not loop.first %}, {% endif %}"{{ jes(v) }}"{% endfor %}]{%- endmacro %}
-{% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}((SELECT md FROM maxd)))){%- endmacro %}
+{% set AN = "toDate('" ~ CP.t ~ "')" if cper else '(SELECT md FROM maxd)' %}{#- анкер шагов: последний день своего периода, у готовых — свежесть -#}
+{% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}({{ AN }}))){%- endmacro %}
+{#- Пары с окном своего периода: pa_pair + маска msk_c и просмотры текущего окна v_c — из подневного факта (2n шагов по
+    последний день, одно чтение дат окна). У готовых периодов — сама pa_pair. Те же правила — макрос ppx в SQL панели. -#}
+{% macro ppx(dsub) -%}
+{%- if cper -%}
+(SELECT p.*, toUInt64(ifNull(c.m, 0)) AS msk_c, toInt64(ifNull(c.v, 0)) AS v_c
+    FROM prod_proteus.pa_pair p
+    LEFT JOIN (SELECT dashboard_id, login, groupBitOr(bitShiftLeft(toUInt64(1), toUInt8(k))) AS m, sumIf(views, k < {{ g.n }}) AS v
+      FROM (SELECT dashboard_id, login, views, {{ kx('log_dttm') }} AS k FROM prod_proteus.pa_evd_day
+        WHERE dashboard_id IN ({{ dsub }}) AND log_dttm >= toDateTime({{ g.sf }}({{ AN }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month'}[grain] }}({{ 2 * g.n - 1 }}))
+          AND log_dttm < toDateTime({{ AN }}) + toIntervalDay(1))
+      WHERE k >= 0 AND k < {{ 2 * g.n }} GROUP BY dashboard_id, login) c ON c.dashboard_id = p.dashboard_id AND c.login = p.login
+    WHERE p.dashboard_id IN ({{ dsub }}))
+{%- else -%}prod_proteus.pa_pair{%- endif -%}
+{%- endmacro %}
 {% set pubv = filter_values('pub_f')|first|default('1', true) %}{% set pubv = pubv if pubv in ['0', '1'] else '1' %}
 {% set actv = filter_values('act_f')|first|default('1', true) %}{% set actv = actv if actv in ['0', '1'] else '1' %}
 {% set excv = filter_values('exc_f')|first|default('1', true) %}{% set excv = excv if excv in ['0', '1'] else '1' %}
@@ -168,10 +195,10 @@ WITH
         own_flg = 1 — зритель среди владельцев отчёта (свиток «без просмотров владельцев»). -#}
     SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,
       {#- ifNull: gp_to_click создаёт колонки Nullable; NULL в сумме доехал бы до CAST и уронил запрос (Code 349). -#}
-      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, e.dmax AS dmax,
+      toUInt64(ifNull(e.msk_{{ GK }}, 0)) AS msk, ifNull(e.v_{{ GK }}, 0) AS v_cur, e.dmax AS dmax,
       {#- маски дней/недель/месяцев — для ритма отчёта (не зависят от грануляции) -#}
       toUInt64(ifNull(e.msk_d, 0)) AS pd, toUInt64(ifNull(e.msk_w, 0)) AS pw, toUInt64(ifNull(e.msk_m, 0)) AS pm
-    FROM prod_proteus.pa_pair e
+    FROM {{ ppx('SELECT dashboard_id FROM dash_ok') }} e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
     {%- if exlf %} AND e.login NOT IN {{ q(exlf) }}{% endif %}

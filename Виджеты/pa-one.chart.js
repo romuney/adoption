@@ -358,7 +358,8 @@ function refDay() {
   return DATA_MD ? new Date(Date.UTC(DATA_MD.y, DATA_MD.m, DATA_MD.d)) : new Date(Date.now() - 86400000);
 }
 function tsDate(k, grain) {
-  var now = refDay();
+  // свой период: шаг 0 — его последний день (у готовых — дата свежести)
+  var now = CPER ? new Date(CPER.t * 86400000) : refDay();
   var y = now.getUTCFullYear(), m = now.getUTCMonth(), d = now.getUTCDate();
   if (grain === 'd') { d -= k; }
   else if (grain === 'w') { d -= k * 7; }
@@ -676,6 +677,13 @@ function buildModel() {
   }
   // Ось динамики — ВСЕ n бакетов периода: бакет без визитов приходит из SQL
   // пропуском и должен стать нулевым столбиком, а не выпасть из оси.
+  // свой период: число шагов и подписи — до рядов динамики (ряд строится на n шагов)
+  CPER = cperOf(m.flt);
+  if (CPER && CPER.g === m.grain && CFG.grains[CPER.g] && !CFG.grains[CPER.g].custom) {
+    // прошлый отрезок раньше начала истории — сравнивать не с чем (как у «12 месяцев»)
+    var cpDs = m.hist.ds ? Math.round(Date.UTC(m.hist.ds.y, m.hist.ds.m, m.hist.ds.d) / 86400000) : null;
+    CFG.grains[CPER.g] = cperGrain(CFG.grains[CPER.g], CPER, cpDs == null || CPER.pa >= cpDs);
+  } else CPER = null;
   var nB = CFG.grains[m.grain].n, byK = {};
   for (i = 0; i < m.ts.length; i++) byK[m.ts[i].k] = m.ts[i];
   var full = [];
@@ -717,6 +725,43 @@ function buildModel() {
   m.rows = m.list;
   return m;
 }
+// ---------- СВОЙ ПЕРИОД (2026-10-21) ----------
+// Шапка шлёт period_param = «c|ГГГГ-ММ-ДД|шаг|n» (последний день, шаг d / w / m, n шагов); SQL отвечает в той же
+// грануляции (parent = шаг), значит, все подписи периода — из CFG.grains[шаг]: подменяем его описание на свой
+// период (n шагов, «за 25 авг – 14 сен», «к 4 – 24 авг»). Значение — из эха фильтров ответа: что посчитано, то и подписано.
+var CP_MS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+function cperOf(fl) {
+  var v = fl && fl.period_param;
+  v = v && typeof v === 'object' && v.length ? String(v[0]) : (typeof v === 'string' ? v : '');
+  var m = /^c\|(\d{4})-(\d{2})-(\d{2})\|([dwm])\|(\d{1,2})$/.exec(v);
+  if (!m || +m[5] < 1 || +m[5] > 32) return null;
+  var n = +m[5], g = m[4], t = Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000), a, pa;
+  if (g === 'd') { a = t - n + 1; pa = a - n; }
+  else if (g === 'w') { var mo = t - (new Date(t * 86400000).getUTCDay() + 6) % 7; a = mo - 7 * (n - 1); pa = a - 7 * n; }
+  else {
+    var dt = new Date(t * 86400000);
+    a = Math.round(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() - (n - 1), 1) / 86400000);
+    pa = Math.round(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() - (2 * n - 1), 1) / 86400000);
+  }
+  return { g: g, n: n, t: t, a: a, pa: pa, pb: a - 1 };
+}
+// «28 сен – 18 окт», «3 – 9 авг»; год — если отрезок не в этом году или пересекает Новый год.
+function cperRange(a, b) {
+  var x = new Date(a * 86400000), y = new Date(b * 86400000), yr = new Date().getUTCFullYear();
+  var showY = x.getUTCFullYear() !== y.getUTCFullYear() || y.getUTCFullYear() !== yr;
+  var left = x.getUTCFullYear() === y.getUTCFullYear() && x.getUTCMonth() === y.getUTCMonth() ? String(x.getUTCDate())
+    : x.getUTCDate() + ' ' + CP_MS[x.getUTCMonth()] + (x.getUTCFullYear() !== y.getUTCFullYear() ? ' ' + x.getUTCFullYear() : '');
+  return left + ' – ' + y.getUTCDate() + ' ' + CP_MS[y.getUTCMonth()] + (showY ? ' ' + y.getUTCFullYear() : '');
+}
+function cperGrain(base, c, prevOk) {
+  var o = {};
+  for (var k in base) if (Object.prototype.hasOwnProperty.call(base, k)) o[k] = base[k];
+  o.n = c.n; o.custom = true; o.prev = prevOk;
+  o.label = 'за ' + cperRange(c.a, c.t);
+  o.vs = 'к ' + cperRange(c.pa, c.pb);
+  return o;
+}
+var CPER = null;   // свой период (cperOf) — задаёт buildModel, до рядов динамики
 var MODEL = buildModel();
 // Отпечаток ответа: меняется, когда пришли новые данные (область, период, опции).
 MODEL.sig = [MODEL.grain, MODEL.total, MODEL.kpi ? MODEL.kpi.views : 0, MODEL.rows.length, MODEL.ts.length, MODEL.coh.length,
@@ -2900,8 +2945,8 @@ function buildHTML() {
       '</span>' +
       '<span class="sub">' + (view === 'who'
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
-        : (view === 'dyn' ? (dynPeopleOn() ? 'пользователи по периодам · только люди, выбранные в «Кто смотрит» (' + nf(dynPeople().length) + ')'
-          : 'пользователи по периодам · клик по строке каталога выбирает отчёты')
+        : (view === 'dyn' ? (CPER ? 'пользователи по ' + ({ d: 'дням', w: 'неделям', m: 'месяцам' })[CPER.g] + ' · ' + cperRange(CPER.a, CPER.t) + ' · ' : 'пользователи по периодам · ') +
+          (dynPeopleOn() ? 'только люди, выбранные в «Кто смотрит» (' + nf(dynPeople().length) + ')' : 'клик по строке каталога выбирает отчёты')
           : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке'
             : (view === 'path' ? 'кого считаем аудиторией и как она доходит до отчётов' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
     (view === 'dyn' ? dynLegendHtml(dts, MODEL.grain, {}) : '') +

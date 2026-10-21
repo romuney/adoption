@@ -457,6 +457,44 @@ var MODEL = (function () {
   __S.MODEL = fresh;
   return fresh;
 })();
+// ---------- СВОЙ ПЕРИОД (2026-10-21) ----------
+// Шапка шлёт period_param = «c|ГГГГ-ММ-ДД|шаг|n» (последний день, шаг d / w / m, n шагов); SQL отвечает в той же
+// грануляции (parent = шаг), значит, все подписи периода — из CFG.grains[шаг]: подменяем его описание на свой
+// период (n шагов, «за 25 авг – 14 сен», «к 4 – 24 авг»). Значение — из эха фильтров ответа: что посчитано, то и подписано.
+var CP_MS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+function cperOf(fl) {
+  var v = fl && fl.period_param;
+  v = v && typeof v === 'object' && v.length ? String(v[0]) : (typeof v === 'string' ? v : '');
+  var m = /^c\|(\d{4})-(\d{2})-(\d{2})\|([dwm])\|(\d{1,2})$/.exec(v);
+  if (!m || +m[5] < 1 || +m[5] > 32) return null;
+  var n = +m[5], g = m[4], t = Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000), a, pa;
+  if (g === 'd') { a = t - n + 1; pa = a - n; }
+  else if (g === 'w') { var mo = t - (new Date(t * 86400000).getUTCDay() + 6) % 7; a = mo - 7 * (n - 1); pa = a - 7 * n; }
+  else {
+    var dt = new Date(t * 86400000);
+    a = Math.round(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() - (n - 1), 1) / 86400000);
+    pa = Math.round(Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth() - (2 * n - 1), 1) / 86400000);
+  }
+  return { g: g, n: n, t: t, a: a, pa: pa, pb: a - 1 };
+}
+// «28 сен – 18 окт», «3 – 9 авг»; год — если отрезок не в этом году или пересекает Новый год.
+function cperRange(a, b) {
+  var x = new Date(a * 86400000), y = new Date(b * 86400000), yr = new Date().getUTCFullYear();
+  var showY = x.getUTCFullYear() !== y.getUTCFullYear() || y.getUTCFullYear() !== yr;
+  var left = x.getUTCFullYear() === y.getUTCFullYear() && x.getUTCMonth() === y.getUTCMonth() ? String(x.getUTCDate())
+    : x.getUTCDate() + ' ' + CP_MS[x.getUTCMonth()] + (x.getUTCFullYear() !== y.getUTCFullYear() ? ' ' + x.getUTCFullYear() : '');
+  return left + ' – ' + y.getUTCDate() + ' ' + CP_MS[y.getUTCMonth()] + (showY ? ' ' + y.getUTCFullYear() : '');
+}
+function cperGrain(base, c, prevOk) {
+  var o = {};
+  for (var k in base) if (Object.prototype.hasOwnProperty.call(base, k)) o[k] = base[k];
+  o.n = c.n; o.custom = true; o.prev = prevOk;
+  o.label = 'за ' + cperRange(c.a, c.t);
+  o.vs = 'к ' + cperRange(c.pa, c.pb);
+  return o;
+}
+var CPER = cperOf(MODEL.stateJ && MODEL.stateJ.flt);
+if (CPER && CFG.grains[CPER.g]) CFG.grains[CPER.g] = cperGrain(CFG.grains[CPER.g], CPER, true);
 
 // Выбор и разрез переживают перерисовку Proteus через window.__pvtState
 // (живёт, пока жив ифрейм). v5 не восстанавливает разрез по форме ответа:
@@ -1337,7 +1375,7 @@ function tourSteps() {
   function add(o) { if ((o.need === undefined || o.need) && (!o.remote || has(o.remote))) out.push(o); }
   add({ intro: true, title: 'Proteus Adoption за минуту', html: tourIntroHTML() });
   add({ remote: 'head:period', pad: 4, title: 'Период',
-    html: '30 дней, 20 недель, 12 месяцев или 8 кварталов — окно для всех чисел листа. Изменения в процентах — к такому же предыдущему окну.' });
+    html: '30 дней, 20 недель, 12 месяцев или 8 кварталов — окно для всех чисел листа. «Свой» — любые даты из истории по дням, неделям или месяцам. Изменения в процентах — к такому же предыдущему отрезку.' });
   add({ remote: 'head:opts', pad: 4, title: 'Что считать',
     html: 'По умолчанию — опубликованные и актуальные отчёты, без просмотров владельцами своих отчётов. Выключи переключатель — посчитаем и их.' });
   add({ remote: 'head:ca', pad: 2, title: 'Целевая аудитория',

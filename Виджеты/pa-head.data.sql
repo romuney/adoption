@@ -1,7 +1,8 @@
 {#- pa_head — ШАПКА единого листа (2026-09-30): период и «Считать» + строка «Целевая аудитория» одним чартом.
     Фильтров НЕ читает (ни каталога, ни панели) — ответ одинаковый для всех, считается один раз при открытии и кэшируется.
     Секции — как у pa_ca_dict (s / d / adg / total — справочник для выпадашек условий ЦА) плюс
-      section = 'md' — k = дата свежести данных (последний день витрины, YYYY-MM-DD): «данные на ДД.ММ» в шапке.
+      section = 'md' — k = дата свежести данных (последний день витрины, YYYY-MM-DD): «данные на ДД.ММ» в шапке;
+                       parent = начало истории событий (с 2026-10-21: нижняя граница календаря «Свой период»).
     Прежние pa_strip (эхо фильтров для пилюль шапки) и pa_ca_dict — не нужны: пилюли «Выбранные фильтры»
     рисует каталог, дата — здесь. -#}
 {#- (справочник строки ЦА, как pa_ca_dict) pa_ca_dict — строка «Целевая аудитория» листа «Аудитория» (чарт «Аудитория: настройка ЦА»).
@@ -51,4 +52,6 @@ UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL
 {# Дата свежести: одна строка pa_pair (md одинаков у всех пар), а не скан таблицы. #}
-SELECT 'md' AS section, '' AS g, ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), '') AS k, '' AS parent, toInt64(0) AS n
+SELECT 'md' AS section, '' AS g, ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), '') AS k,
+  {#- начало истории событий — нижняя граница календаря «Свой период» (2026-10-21) -#}
+  ifNull(toString(toDate((SELECT min(dmin) FROM prod_proteus.pa_pair))), '') AS parent, toInt64(0) AS n

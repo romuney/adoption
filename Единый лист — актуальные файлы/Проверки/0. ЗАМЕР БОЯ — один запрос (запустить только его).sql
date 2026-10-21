@@ -34,7 +34,7 @@ WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^(?:\\
 UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL
-SELECT 'md' AS section, '' AS g, ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), '') AS k, '' AS parent, toInt64(0) AS n
+SELECT 'md' AS section, '' AS g, ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), '') AS k,ifNull(toString(toDate((SELECT min(dmin) FROM prod_proteus.pa_pair))), '') AS parent, toInt64(0) AS n
 )
 UNION ALL
 SELECT '2 каталог' AS item, toFloat64(count()) AS rows_or_n, round(sum(length(k)) / 1024) AS answer_kb FROM (

@@ -2,3 +2,4 @@
 __pycache__/
 node_modules
 e2e_*.json
+mocks_cp/

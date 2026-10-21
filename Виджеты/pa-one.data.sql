@@ -41,9 +41,23 @@
     путь «УС-3 › …» обрывается на них, как на пустом уровне (иначе «-» становится отдельным подразделением). -#}
 {% macro ou(col) %}if(match(toString(ifNull(a.{{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(a.{{ col }}, ''))){% endmacro %}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay', 'gap': 7}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday', 'gap': 1}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth', 'gap': 1}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter', 'gap': 1}} %}
-{% set grain = filter_values('period_param')|first|default('d', true) %}
+{#- Свой период (2026-10-21): period_param = «c|ГГГГ-ММ-ДД|шаг|n» — последний день, шаг d / w / m и число шагов n ≤ 32.
+    Текущее окно — n шагов по этот день, прошлое — n шагов перед ним (как у готовых периодов, только от своего дня).
+    Дата пересобирается из чисел — в SQL попадают только цифры; неверное значение — как «30 дней». Маски и просмотры
+    окна — из подневного факта (макрос ppx), остальное (ритм, MAU, когорты, календарь, последний визит) — из pa_pair. -#}
+{% set pv = filter_values('period_param')|first|default('d', true)|string %}
+{% set CP = {} %}
+{% if pv[:2] == 'c|' %}{% set pz = pv.split('|') %}{% if pz|length == 4 and pz[1]|length == 10 and pz[2] in ['d', 'w', 'm'] %}
+{% set cy, cmo, cdy, cn = pz[1][0:4]|int, pz[1][5:7]|int, pz[1][8:10]|int, pz[3]|int %}
+{% set dim = [31, 29 if cy % 4 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] %}
+{% if cy >= 2000 and cy <= 2100 and cmo >= 1 and cmo <= 12 and cdy >= 1 and cdy <= dim[cmo - 1] and cn >= 1 and cn <= 32 %}
+{% set _ = CP.update({'t': cy|string ~ '-' ~ ('0' if cmo < 10 else '') ~ cmo ~ '-' ~ ('0' if cdy < 10 else '') ~ cdy, 'g': pz[2], 'n': cn}) %}
+{% endif %}{% endif %}{% endif %}
+{% set cper = CP|length > 0 %}
+{% set grain = CP.g if cper else pv %}
 {% set grain = grain if grain in GRAINS else 'd' %}
-{% set g = GRAINS[grain] %}
+{% set g = {'n': CP.n, 'u': GRAINS[grain].u, 'sf': GRAINS[grain].sf, 'gap': GRAINS[grain].gap} if cper else GRAINS[grain] %}
+{% set GK = 'c' if cper else grain %}{#- суффикс колонок окна: msk_/v_/vp_/kmax_ — у своего периода их даёт ppx -#}
 {% set CUR = 2 ** g.n - 1 %}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% set GAPM = 2 ** g.gap - 1 %}
@@ -68,7 +82,28 @@
     Просмотры по дням — pa_dash_bkt (грануляция d), они есть только за 30 дней. -#}
 {% set CAL_N = 60 %}
 {% macro kd(col) -%}toInt64(dateDiff('day', toStartOfDay({{ col }}), toStartOfDay({{ MD }}))){%- endmacro %}
-{% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}({{ MD }}))){%- endmacro %}
+{% set AN = "toDate('" ~ CP.t ~ "')" if cper else MD %}{#- анкер бакетов: последний день своего периода, у готовых — свежесть -#}
+{% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}({{ AN }}))){%- endmacro %}
+{#- Пары с окном своего периода: pa_pair + маска msk_c (бит k — заходил в шаге k от последнего дня, k < глубины), просмотры
+    текущего (v_c) и прошлого (vp_c) окна и шаг первого визита kmax_c — из подневного факта, одним чтением дат окна.
+    dsub — подзапрос id отчётов. Глубина — 2n шагов (и ещё шаги «перерыва» вернувшихся). У готовых периодов — сама pa_pair. -#}
+{% set RD = [2 * g.n, g.n + g.gap]|max %}
+{% macro ppx(dsub) -%}
+{%- if cper -%}
+(SELECT p.*, toUInt64(ifNull(c.m, 0)) AS msk_c, toInt64(ifNull(c.v, 0)) AS v_c, toInt64(ifNull(c.vp, 0)) AS vp_c,
+      greatest(toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(p.dmin), {{ g.sf }}({{ AN }}))), toInt64(0)) AS kmax_c
+    FROM prod_proteus.pa_pair p
+    LEFT JOIN (SELECT dashboard_id, login, groupBitOr(bitShiftLeft(toUInt64(1), toUInt8(k))) AS m,
+        sumIf(views, k < {{ g.n }}) AS v, sumIf(views, k >= {{ g.n }} AND k < {{ 2 * g.n }}) AS vp
+      FROM (SELECT dashboard_id, login, views, {{ kx('log_dttm') }} AS k FROM prod_proteus.pa_evd_day
+        WHERE dashboard_id IN ({{ dsub }}) AND log_dttm >= toDateTime({{ g.sf }}({{ AN }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month'}[grain] }}({{ RD - 1 }}))
+          AND log_dttm < toDateTime({{ AN }}) + toIntervalDay(1))
+      WHERE k >= 0 AND k < {{ RD }} GROUP BY dashboard_id, login) c ON c.dashboard_id = p.dashboard_id AND c.login = p.login
+    WHERE p.dashboard_id IN ({{ dsub }}))
+{%- else -%}prod_proteus.pa_pair{%- endif -%}
+{%- endmacro %}
+{% set DOK = 'SELECT dashboard_id FROM dash_ok' %}
+{% set PPD = 'pp' if cper else 'prod_proteus.pa_pair' %}{#- пары области: у своего периода — CTE pp (один текст на все чтения: разбор Superset дорожает с длиной SQL) -#}
 {% set pubv = filter_values('pub_f')|first|default('1', true) %}{% set pubv = pubv if pubv in ['0', '1'] else '1' %}
 {% set actv = filter_values('act_f')|first|default('1', true) %}{% set actv = actv if actv in ['0', '1'] else '1' %}
 {% set excv = filter_values('exc_f')|first|default('1', true) %}{% set excv = excv if excv in ['0', '1'] else '1' %}
@@ -205,9 +240,9 @@ SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard
 {% set OWN = 'AND ifNull(own_flg, 0) = 0' if excv == '1' else '' %}
 {#- Зрители текущего периода (те же пары и то же «без владельцев», что у evd) — логины в нижнем регистре. -#}
 {% macro curset() -%}
-SELECT lower(toString(login)) FROM prod_proteus.pa_pair
+SELECT lower(toString(login)) FROM {{ PPD }}
       WHERE dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(login)
-        AND bitAnd(toUInt64(ifNull(msk_{{ grain }}, 0)), {{ CUR }}) != 0 {{ OWN }}
+        AND bitAnd(toUInt64(ifNull(msk_{{ GK }}, 0)), {{ CUR }}) != 0 {{ OWN }}
 {%- endmacro %}
 {% set OUT_MAX = NAMES_MAX %}{#- «вне ЦА» (при ЦА по условиям) поимённо — не больше стольких, самые активные -#}
 WITH
@@ -219,7 +254,7 @@ WITH
       периода есть ≥ {{ HIST_DAYS }} дней истории — иначе «впервые в данных» = «давно не заходил». kt — самый
       старый такой период (возраст бакета); периоды старше kt новых не выделяют (в чарте — «мало истории»). #}
   maxd AS (
-    SELECT tuple(md, ds, toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1),
+    SELECT tuple(md, ds, toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}({{ "toDate('" ~ CP.t ~ "')" if cper else 'md' }}))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1),
       toInt64(dateDiff('day', dt, toDate(md)))) AS h
     FROM (SELECT md, toDate(ds0) AS ds, addDays(toDate(ds0), {{ HIST_DAYS }}) AS dt
           FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
@@ -245,20 +280,21 @@ WITH
     {%- if have and pmode == 'owner' %} AND hasAny({{ owns('') }}, {{ qa(sel) }}){% endif %}
     {%- if have and pmode == 'collection' %} AND hasAny(collection_names, {{ qa(sel) }}){% endif %}
   ),
+  {% if cper %}pp AS {{ ppx(DOK) }},{% endif %}
   evd AS (
     {#- Одна строка на зрителя области из пар: msk — bit k = активен в бакете возраста k (k < 2n),
         fd_k — возраст бакета первого визита, mon — bit = возраст месяца активности. -#}
     SELECT toString(ifNull(e.login, '')) AS login, lower(toString(ifNull(e.login, ''))) AS lg,
-      groupBitOr(toUInt64(ifNull(e.msk_{{ grain }}, 0))) AS msk,
-      sum(ifNull(e.v_{{ grain }}, 0)) AS v_cur,
-      sum(ifNull(e.vp_{{ grain }}, 0)) AS v_prev,
-      max(ifNull(e.kmax_{{ grain }}, 0)) AS fd_k,
+      groupBitOr(toUInt64(ifNull(e.msk_{{ GK }}, 0))) AS msk,
+      sum(ifNull(e.v_{{ GK }}, 0)) AS v_cur,
+      sum(ifNull(e.vp_{{ GK }}, 0)) AS v_prev,
+      max(ifNull(e.kmax_{{ GK }}, 0)) AS fd_k,
       max(e.dmax) AS dmax,
       groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon,
       {#- календарь: активные дни (bit k = заходил k дней назад, k < 60) и возраст первого визита в днях -#}
       groupBitOr(toUInt64(ifNull(e.msk_d, 0))) AS mskd,
       max(ifNull(e.kmax_d, 0)) AS fd_d
-    FROM prod_proteus.pa_pair e
+    FROM {{ PPD }} e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
     {%- if custom %} AND lower(toString(e.login)) IN ({{ CSET }}){% endif %}
@@ -319,8 +355,8 @@ WITH
   aav AS (
     {#- Вкладка «Аудитория» каталога при выбранной области: зрители периода области (без условий группы из каталога,
         с условиями строки ЦА) — каталог сам свой выбор не видит (самовлияние выключено), числа ему передаёт панель. -#}
-    SELECT lower(toString(e.login)) AS vl, groupBitOr(toUInt64(ifNull(e.msk_{{ grain }}, 0))) AS vm, sum(ifNull(e.v_{{ grain }}, 0)) AS vv
-    FROM prod_proteus.pa_pair e
+    SELECT lower(toString(e.login)) AS vl, groupBitOr(toUInt64(ifNull(e.msk_{{ GK }}, 0))) AS vm, sum(ifNull(e.v_{{ GK }}, 0)) AS vv
+    FROM {{ PPD }} e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
     GROUP BY vl
@@ -344,14 +380,15 @@ WITH
       Правила — как секции rep / grp / total каталога при ЦА по условиям (каталог с условиями строки ЦА = эта группа):
       все отчёты шапки (выбор отчётов в каталоге их НЕ сужает — как aa не сужается группой), пары людей группы
       и условий строки ЦА, «без владельцев»; постоянный — ≥ {{ FBIN[1] + 1 }} периодов; ритм — тот же. -#}
+{% set DMETA = 'SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE 1=1' ~ (' AND published = 1' if pubv == '1' else '') ~ (' AND actual_flg = 1' if actv == '1' else '') %}
   arp AS (
     SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,
-      toUInt64(ifNull(e.msk_{{ grain }}, 0)) AS msk, ifNull(e.v_{{ grain }}, 0) AS v_cur, e.dmax AS dmax,
+      toUInt64(ifNull(e.msk_{{ GK }}, 0)) AS msk, ifNull(e.v_{{ GK }}, 0) AS v_cur, e.dmax AS dmax,
       {#- ритм пары (как в каталоге): маски дней / недель / месяцев не зависят от грануляции -#}
       multiIf(bitCount(bitAnd(toUInt64(ifNull(e.msk_d, 0)), 1073741823)) >= 12, 4, bitCount(bitAnd(toUInt64(ifNull(e.msk_w, 0)), 255)) >= 6, 3,
         bitCount(bitAnd(toUInt64(ifNull(e.msk_m, 0)), 7)) >= 2, 2, bitAnd(toUInt64(ifNull(e.msk_m, 0)), 7) != 0, 1, 0) AS rc
-    FROM prod_proteus.pa_pair e
-    WHERE e.dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE 1=1{% if pubv == '1' %} AND published = 1{% endif %}{% if actv == '1' %} AND actual_flg = 1{% endif %})
+    FROM {{ ppx(DMETA) }} e
+    WHERE e.dashboard_id IN ({{ DMETA }})
       AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
       AND lower(toString(e.login)) IN ({{ CSET }})
   ),
@@ -386,9 +423,9 @@ WITH
     {#- ЦА по условиям: зрители текущего периода ВНЕ ЦА (те же пары, «без владельцев» и срез области, что у evd) —
         для списка «Вне ЦА» в «Кто смотрит» и их числа. -#}
     SELECT toString(ifNull(e.login, '')) AS login, lower(toString(ifNull(e.login, ''))) AS lg,
-      groupBitOr(toUInt64(ifNull(e.msk_{{ grain }}, 0))) AS msk, sum(ifNull(e.v_{{ grain }}, 0)) AS v_cur,
-      max(ifNull(e.kmax_{{ grain }}, 0)) AS fd_k, max(e.dmax) AS dmax, groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
-    FROM prod_proteus.pa_pair e
+      groupBitOr(toUInt64(ifNull(e.msk_{{ GK }}, 0))) AS msk, sum(ifNull(e.v_{{ GK }}, 0)) AS v_cur,
+      max(ifNull(e.kmax_{{ GK }}, 0)) AS fd_k, max(e.dmax) AS dmax, groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
+    FROM {{ PPD }} e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
       AND lower(toString(e.login)) NOT IN ({{ CSET }})
@@ -455,14 +492,14 @@ WITH
   bv AS (
     {#- Просмотры по бакетам: gg = 'g' — окно периода (линия «Просмотры» динамики), gg = 'd' — дни календаря (30 дней).
         Людской срез области (cut:*) — только из факта (у pa_dash_bkt разбивки по людям нет), одним чтением на обе серии. -#}
-    {%- if (have and pmode in CUTS) or custom %}
+    {%- if (have and pmode in CUTS) or custom or cper %}
     SELECT x.1 AS gg, x.2 AS bk, sum(e.views) AS bviews
     FROM prod_proteus.pa_evd_day e
-    ARRAY JOIN arrayFilter(y -> y.2 < if(y.1 = 'g', {{ g.n }}, 30), [('g', {{ kx('e.log_dttm') }}), ('d', {{ kd('e.log_dttm') }})]) AS x
+    ARRAY JOIN arrayFilter(y -> {% if cper %}y.2 >= 0 AND {% endif %}y.2 < if(y.1 = 'g', {{ g.n }}, 30), [('g', {{ kx('e.log_dttm') }}), ('d', {{ kd('e.log_dttm') }})]) AS x
     {# Нижняя граница даты — отдельным условием на саму колонку: по нему ClickHouse отбрасывает старые месяцы факта
        (партиции по месяцу); выражения dateDiff(…) < n для отсечения не годятся — факт читался целиком. #}
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok)
-      AND e.log_dttm >= least(toDateTime({{ g.sf }}({{ MD }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] }}({{ g.n - 1 }})), toDateTime(toStartOfDay({{ MD }}) - toIntervalDay(29)))
+      AND e.log_dttm >= least(toDateTime({{ g.sf }}({{ AN }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] }}({{ g.n - 1 }})), toDateTime(toStartOfDay({{ MD }}) - toIntervalDay(29)))
       AND ({{ kx('e.log_dttm') }} < {{ g.n }} OR {{ kd('e.log_dttm') }} < 30)
       {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
       {%- if custom %} AND lower(toString(e.login)) IN ({{ CSET }}){% endif %}

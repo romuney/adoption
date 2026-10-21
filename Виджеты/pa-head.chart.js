@@ -78,6 +78,9 @@ var CFG = {
     { k: 'adg', l: 'AD-группы', q: true, ph: 'Имя группы', w: 400 }
   ],
   listMax: 200,
+  // Свой период (2026-10-21): календарь под кнопкой «Свой». max — шагов в окне (маска 2n бит ≤ 64): дни, недели, месяцы.
+  // period_param = «c|ГГГГ-ММ-ДД|шаг|n» — последний день, шаг, число шагов; SQL каталога и панели разбирает его сам.
+  custom: { w: 660, max: { d: 31, w: 32, m: 24 }, steps: [['d', 'Дни', 'дням'], ['w', 'Недели', 'неделям'], ['m', 'Месяцы', 'месяцам']] },
   colors: {
     bg: '#f6f6f6', card: '#fff', act: '#245FD4', actInk: '#1B4AA8', blueBg: '#EAF0FC', actLine: '#C3D4F5',
     ink: '#23272e', ink2: '#454b55', mut: '#8a909c', mut2: '#b4b9c2', line: '#e7e9ee', line2: '#eef0f3',
@@ -94,7 +97,7 @@ var __S = window.__pvtState;
 if (!__S[CFG.ns]) __S[CFG.ns] = { tip: null };
 var state = __S[CFG.ns];
 (function () {
-  var d0 = { draft: null, applied: null, dd: null, q: {}, openNodes: {}, baseH: 0, sig: false, grain: 'd', sw: null };
+  var d0 = { draft: null, applied: null, dd: null, q: {}, openNodes: {}, baseH: 0, sig: false, grain: 'd', sw: null, cp: null, cpd: null };
   for (var k in d0) if (Object.prototype.hasOwnProperty.call(d0, k) && state[k] === undefined) state[k] = d0[k];
   if (!state.sw) state.sw = {};
   var sd = swDefaults();
@@ -159,7 +162,7 @@ function buildModel() {
     else if (sec === 'd') { var dg = String(r[F.g] || ''); if (dict[dg]) dict[dg][String(r[F.k] || '')] = String(r[F.parent] == null ? '' : r[F.parent]); }
     else if (sec === 'adg') { m.adg.push({ name: String(r[F.k] || ''), n: num(r[F.n]) || 0 }); gName[String(r[F.parent] == null ? '' : r[F.parent])] = String(r[F.k] || ''); }
     else if (sec === 'total') m.staff = num(r[F.n]) || 0;
-    else if (sec === 'md') m.md = String(r[F.k] || '');
+    else if (sec === 'md') { m.md = String(r[F.k] || ''); m.hs = String(r[F.parent] || ''); }
   }
   var dv = function (g, id) { return dict[g][id] == null ? '' : dict[g][id]; };
   for (i = 0; i < sRows.length; i++) {
@@ -241,7 +244,8 @@ function caFacet(d) {
 // период и опции эмитятся ТОЛЬКО при отличии от умолчания.
 function stripMask(st) {
   var fl = [];
-  if (st.grain && st.grain !== 'd') fl.push({ column: 'period_param', operator: 'IN', value: [st.grain] });
+  if (st.cp) fl.push({ column: 'period_param', operator: 'IN', value: [cpParam(st.cp)] });
+  else if (st.grain && st.grain !== 'd') fl.push({ column: 'period_param', operator: 'IN', value: [st.grain] });
   for (var i = 0; i < CFG.switches.length; i++) {
     var s = CFG.switches[i];
     if (st.sw[s.key] !== s.def) fl.push({ column: s.emit, operator: 'IN', value: [s.val] });
@@ -275,6 +279,137 @@ function plural(n, one, few, many) {
   return many;
 }
 function ppl(n) { return nf(n) + ' ' + plural(n, 'человек', 'человека', 'человек'); }
+
+// ---------- СВОЙ ПЕРИОД (2026-10-21) ----------
+// Даты — номера дней от 1970-01-01 (UTC): без часовых поясов. Шаг d — ровно выбранные дни; w — целые недели (пн–вс),
+// m — целые месяцы; последний шаг не позже свежести данных. Сравнение — столько же шагов перед периодом (как у готовых).
+var MS_SH = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+var MON_F = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+var WD_SH = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+function dnOf(y, m, d) { return Math.round(Date.UTC(y, m, d) / 86400000); }
+function dnStr(s) { var t = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || '')); return t ? dnOf(+t[1], +t[2] - 1, +t[3]) : null; }
+function dnParts(n) { var d = new Date(n * 86400000); return { y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), w: (d.getUTCDay() + 6) % 7 }; }
+function p2(v) { return (v < 10 ? '0' : '') + v; }
+function dnIso(n) { var t = dnParts(n); return t.y + '-' + p2(t.m + 1) + '-' + p2(t.d); }
+function dnFull(n) { var t = dnParts(n); return p2(t.d) + '.' + p2(t.m + 1) + '.' + t.y; }
+function cpMd() { return dnStr(MODEL.md) || Math.round(Date.now() / 86400000) - 1; }
+function cpHs() { var h = dnStr(MODEL.hs); return h == null ? cpMd() - 730 : h; }
+function monthStart(n) { var t = dnParts(n); return dnOf(t.y, t.m, 1); }
+function monthEnd(n) { var t = dnParts(n); return dnOf(t.y, t.m + 1, 0); }
+function monthsBetween(a, b) { var x = dnParts(a), y = dnParts(b); return (y.y - x.y) * 12 + (y.m - x.m); }
+// Выбор a…b + шаг → период: { a, b — даты с учётом шага, t — последний день, g, n — шагов }.
+function cpSnap(a, b, g) {
+  var md = cpMd(), lo, hi, n;
+  if (g === 'w') { lo = a - dnParts(a).w; hi = Math.min(b - dnParts(b).w + 6, md); n = Math.floor((hi - dnParts(hi).w - lo) / 7) + 1; }
+  else if (g === 'm') { lo = monthStart(a); hi = Math.min(monthEnd(b), md); n = monthsBetween(lo, hi) + 1; }
+  else { lo = a; hi = Math.min(b, md); n = hi - lo + 1; }
+  return { a: lo, b: hi, t: hi, g: g, n: n };
+}
+function cpFits(a, b, g) { var p = cpSnap(a, b, g); return p.n >= 1 && p.n <= CFG.custom.max[g]; }
+// Прошлый отрезок, с которым считаются дельты «к …»: n шагов перед периодом.
+function cpPrev(p) {
+  if (p.g === 'w') return { a: p.a - 7 * p.n, b: p.a - 1 };
+  if (p.g === 'm') { var t = dnParts(p.a); return { a: dnOf(t.y, t.m - p.n, 1), b: p.a - 1 }; }
+  return { a: p.a - p.n, b: p.a - 1 };
+}
+function cpParam(p) { return 'c|' + dnIso(p.t) + '|' + p.g + '|' + p.n; }
+// «28 сен – 18 окт», «3 – 9 авг»; год — если отрезок не в году свежести или пересекает Новый год.
+function cpRange(a, b) {
+  var x = dnParts(a), y = dnParts(b), yr = dnParts(cpMd()).y, showY = x.y !== y.y || y.y !== yr;
+  var left = x.y === y.y && x.m === y.m ? String(x.d) : x.d + ' ' + MS_SH[x.m] + (x.y !== y.y ? ' ' + x.y : '');
+  return left + ' – ' + y.d + ' ' + MS_SH[y.m] + (showY ? ' ' + y.y : '');
+}
+function cpStepWord(g) { for (var i = 0; i < CFG.custom.steps.length; i++) if (CFG.custom.steps[i][0] === g) return CFG.custom.steps[i][2]; return 'дням'; }
+function cpLen(p) { return p.n + ' ' + (p.g === 'w' ? plural(p.n, 'неделя', 'недели', 'недель') : p.g === 'm' ? plural(p.n, 'месяц', 'месяца', 'месяцев') : plural(p.n, 'день', 'дня', 'дней')); }
+// Черновик календаря: из применённого, иначе — последние 14 дней.
+function cpDraftNew() {
+  var md = cpMd(), c = state.cp;
+  var a = c ? c.a : md - 13, b = c ? c.b : md, bt = dnParts(b);
+  return { a: a, b: b, pick: 0, g: c ? c.g : 'd', pre: c ? (c.pre || 'own') : '14', vy: bt.m === 0 ? bt.y - 1 : bt.y, vm: bt.m === 0 ? 11 : bt.m - 1 };
+}
+function cpAutoStep(d) { if (!cpFits(d.a, d.b, d.g)) { d.g = cpFits(d.a, d.b, 'd') ? 'd' : cpFits(d.a, d.b, 'w') ? 'w' : 'm'; } }
+function cpPreset(d, k) {
+  var md = cpMd(), t = dnParts(md);
+  d.pre = k; d.pick = 0;
+  if (k === '7') { d.a = md - 6; d.b = md; d.g = 'd'; }
+  else if (k === '14') { d.a = md - 13; d.b = md; d.g = 'd'; }
+  else if (k === 'lw') { var mo = md - t.w - 7; d.a = mo; d.b = mo + 6; d.g = 'd'; }
+  else if (k === 'lm') { d.a = dnOf(t.y, t.m - 1, 1); d.b = dnOf(t.y, t.m, 0); d.g = 'd'; }
+  else if (k === 'ytd') { d.a = Math.max(dnOf(t.y, 0, 1), cpHs()); d.b = md; d.g = 'd'; }
+  cpAutoStep(d);
+  var bt = dnParts(d.b); d.vy = bt.m === 0 ? bt.y - 1 : bt.y; d.vm = bt.m === 0 ? 11 : bt.m - 1;
+}
+function cpMonthHtml(y, m, d) {
+  var N = CFG.ns, md = cpMd(), hs = cpHs(), first = dnOf(y, m, 1), off = dnParts(first).w, days = dnOf(y, m + 1, 0) - first + 1;
+  var sel = d.pick ? { a: d.a, b: d.a } : cpSnap(d.a, d.b, d.g), pr = d.pick ? null : cpPrev(sel);
+  var h = '<div class="' + N + '-cal-mo"><div class="' + N + '-cal-mh">' + MON_F[m] + ' ' + y + '</div><div class="' + N + '-cal-g">';
+  for (var i = 0; i < 7; i++) h += '<span class="' + N + '-cal-wd' + (i > 4 ? ' we' : '') + '">' + WD_SH[i] + '</span>';
+  for (i = 0; i < off; i++) h += '<span></span>';
+  for (var k = 0; k < days; k++) {
+    var n = first + k, c = N + '-cal-d', dis = n > md || n < hs;
+    if (dis) c += ' off';
+    else {
+      if (dnParts(n).w > 4) c += ' we';
+      if (n === sel.a) c += ' s';
+      if (n === sel.b) c += ' e';
+      if (n > sel.a && n < sel.b) c += ' in';
+      if (pr && n >= pr.a && n <= pr.b) c += ' pv';
+      if (n === md) c += ' md';
+    }
+    h += '<button type="button" class="' + c + '"' + (dis ? ' disabled aria-disabled="true"' : ' data-cpday="' + n + '"') +
+      ' aria-label="' + esc(dnFull(n) + (dis ? (n > md ? ' — данных ещё нет' : ' — раньше начала истории') : '')) + '"><span>' + (k + 1) + '</span></button>';
+  }
+  return h + '</div></div>';
+}
+function calHtml() {
+  var N = CFG.ns, d = state.cpd || (state.cpd = cpDraftNew()), md = cpMd(), hs = cpHs(), wide = window.innerWidth >= 700;
+  var v1y = d.vy, v1m = d.vm, v2y = d.vm === 11 ? d.vy + 1 : d.vy, v2m = (d.vm + 1) % 12;
+  var p = cpSnap(d.a, d.pick ? d.a : d.b, d.g), pr = cpPrev(p), fits = !d.pick && p.n <= CFG.custom.max[d.g];
+  var canPrev = dnOf(v1y, v1m, 1) > hs, canNext = dnOf(v2y, v2m + 1, 1) <= md;
+  var h = '<div class="' + N + '-cal-row">';
+  if (wide) {
+    var PRE = [['7', 'Последние 7 дней'], ['14', 'Последние 14 дней'], ['lw', 'Прошлая неделя'], ['lm', 'Прошлый месяц'], ['ytd', 'С начала года'], ['own', 'Свои даты']];
+    h += '<div class="' + N + '-cal-pre" role="group" aria-label="Быстрый выбор"><span class="' + N + '-lbl">Быстро</span>';
+    for (var i = 0; i < PRE.length; i++) {
+      h += '<button type="button"' + (PRE[i][0] === 'own' ? ' tabindex="-1"' : ' data-cppre="' + PRE[i][0] + '"') + ' class="' + (d.pre === PRE[i][0] ? 'on' : '') + '">' + PRE[i][1] + '</button>';
+    }
+    h += '</div>';
+  }
+  h += '<div class="' + N + '-cal-main"><div class="' + N + '-cal-top">' +
+    '<span class="' + N + '-cal-box' + (d.pick === 0 ? ' cur' : '') + '"><em>с</em>' + dnFull(p.a) + '</span><span class="' + N + '-cal-dash">—</span>' +
+    '<span class="' + N + '-cal-box' + (d.pick === 1 ? ' cur' : '') + '"><em>по</em>' + (d.pick ? 'выбери день' : dnFull(p.b)) + '</span>' +
+    '<span class="' + N + '-sp"></span>' +
+    '<button type="button" class="' + N + '-cal-nav" data-cpnav="-1"' + (canPrev ? '' : ' disabled') + ' aria-label="Раньше">‹</button>' +
+    '<button type="button" class="' + N + '-cal-nav" data-cpnav="1"' + (canNext ? '' : ' disabled') + ' aria-label="Позже">›</button></div>' +
+    '<div class="' + N + '-cal-ms">' + cpMonthHtml(v1y, v1m, d) + cpMonthHtml(v2y, v2m, d) + '</div></div></div>';
+  // шаг: недоступный по длине — серый; подсказка — почему
+  h += '<div class="' + N + '-cal-opt"><span class="' + N + '-lbl">Шаг</span><span class="' + N + '-cal-seg" role="group" aria-label="Шаг">';
+  for (i = 0; i < CFG.custom.steps.length; i++) {
+    var st = CFG.custom.steps[i], ok = cpFits(d.a, d.pick ? d.a : d.b, st[0]);
+    h += '<button type="button"' + (ok ? ' data-cpstep="' + st[0] + '"' : ' disabled') + ' class="' + (d.g === st[0] ? 'on' : '') + '">' + st[1] + '</button>';
+  }
+  var hint = d.g === 'd' ? 'по дням — до 31 дня' : d.g === 'w' ? 'целыми неделями, пн–вс, до 32 недель' : 'целыми месяцами, до 24';
+  if (!cpFits(d.a, d.pick ? d.a : d.b, 'd') && d.g !== 'd') hint = 'больше 31 дня — ' + (d.g === 'w' ? 'по неделям, целыми неделями' : 'по месяцам, целыми месяцами');
+  h += '</span><span class="' + N + '-note">' + hint + '</span></div>';
+  h += '<div class="' + N + '-dd-f"><em>' + (d.pick ? 'Выбери последний день периода' : fits
+      ? '<b>' + cpLen(p) + '</b> · по ' + cpStepWord(d.g) + '<i>«к пред. периоду» — к ' + esc(cpRange(pr.a, pr.b)) + ' (заштриховано)</i>'
+      : 'Слишком длинный период: больше 24 месяцев') + '</em>' +
+    '<button type="button" class="' + N + '-btn sm" data-cpcancel="1">Отмена</button>' +
+    '<button type="button" class="' + N + '-btn primary sm" data-cpapply="1"' + (fits ? '' : ' disabled') + '>Применить</button></div>';
+  return h;
+}
+// Кнопка периода: «Свой» или применённый период — синей подписью с × (вернуть 30 дней).
+function cpButtonHtml() {
+  var N = CFG.ns, c = state.cp, op = state.dd === 'cal';
+  var ico = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>';
+  if (!c) return '<button type="button" class="' + N + '-cpb' + (op ? ' open' : '') + '" data-cadd="cal" aria-expanded="' + op + '"' +
+    tip({ title: 'Свой период', text: 'Любые даты из истории — по дням, неделям или месяцам. Сравнение — со столько же днями перед ним.' }) + '>' + ico + 'Свой</button>';
+  var pr = cpPrev(c), longOk = window.innerWidth >= 1560;
+  return '<button type="button" class="' + N + '-cpb on' + (op ? ' open' : '') + '" data-cadd="cal" aria-expanded="' + op + '" aria-label="' + esc('Свой период: ' + dnFull(c.a) + ' — ' + dnFull(c.b)) + '"' +
+    tip({ title: 'Свой период', rows: [{ label: 'Даты', value: dnFull(c.a) + ' — ' + dnFull(c.b) }, { label: 'Шаг', value: 'по ' + cpStepWord(c.g) + ', ' + cpLen(c) },
+      { label: 'Сравнение', value: cpRange(pr.a, pr.b) }], note: 'Клик — изменить, × — вернуть 30 дней' }) + '>' + ico +
+    '<span>' + esc(cpRange(c.a, c.b)) + (longOk ? ' · по ' + cpStepWord(c.g) : '') + '</span><span class="' + N + '-cpx" data-cpclr="1" aria-label="Вернуть 30 дней">×</span></button>';
+}
 // Подсказка — тот же HTML-контракт, что у каталога и панели.
 function tipHtml(o) {
   if (o == null) return '';
@@ -427,6 +562,55 @@ function buildCSS() {
     P + '-dd-f{display:flex;flex:0 0 auto;align-items:center;gap:6px;border-top:1px solid ' + C.line2 + ';padding-top:8px;}',
     P + '-dd-f em{font-style:normal;flex:1;font-size:11.5px;color:' + C.mut + ';}',
     P + '-dd-f em b{color:' + C.ink + ';font-weight:700;}',
+    // ── Свой период: кнопка в ряду периодов и календарь (карточка выпадашки) ──
+    P + '-cpb{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;border-radius:7px;height:30px;padding:0 10px;font:inherit;font-size:12px;color:' + C.mut + ';cursor:pointer;white-space:nowrap;}',
+    P + '-cpb:hover,' + P + '-cpb.open{color:' + C.ink + ';}',
+    P + '-cpb.on{background:#fff;color:' + C.actInk + ';font-weight:700;box-shadow:0 0 0 1px ' + C.actLine + ',0 1px 2px rgba(20,28,45,.12);}',
+    P + '-cpb span{overflow:hidden;text-overflow:ellipsis;}',
+    P + '-cpx{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;margin-right:-4px;color:' + C.mut + ';font-weight:400;font-size:13px;}',
+    P + '-cpx:hover{background:' + C.bgAlt + ';color:' + C.ink + ';}',
+    P + '-cal-row{display:flex;gap:14px;flex:0 0 auto;}',
+    P + '-cal-pre{display:flex;flex-direction:column;gap:2px;min-width:150px;border-right:1px solid ' + C.line2 + ';padding-right:10px;}',
+    P + '-cal-pre ' + P + '-lbl{margin:2px 8px 4px;}',
+    P + '-cal-pre button{border:0;background:transparent;text-align:left;font:inherit;font-size:12.5px;color:' + C.ink2 + ';padding:6px 8px;border-radius:6px;cursor:pointer;white-space:nowrap;}',
+    P + '-cal-pre button:hover{background:#f6f8fa;}',
+    P + '-cal-pre button.on{background:' + C.blueBg + ';color:' + C.actInk + ';font-weight:700;}',
+    P + '-cal-main{display:flex;flex-direction:column;gap:8px;min-width:0;}',
+    P + '-cal-top{display:flex;align-items:center;gap:6px;}',
+    P + '-cal-box{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border:1px solid ' + C.line + ';border-radius:8px;min-width:112px;color:' + C.ink + ';font-variant-numeric:tabular-nums;}',
+    P + '-cal-box em{font-style:normal;color:' + C.mut + ';}',
+    P + '-cal-box.cur{border-color:' + C.act + ';box-shadow:0 0 0 3px rgba(36,95,212,.12);}',
+    P + '-cal-dash{color:' + C.mut + ';}',
+    P + '-cal-nav{width:28px;height:28px;border:1px solid ' + C.line + ';border-radius:8px;background:#fff;cursor:pointer;color:' + C.ink2 + ';font:inherit;font-size:15px;line-height:1;padding:0;}',
+    P + '-cal-nav:hover{border-color:' + C.act + ';color:' + C.act + ';}',
+    P + '-cal-nav[disabled]{color:' + C.mut2 + ';border-color:' + C.line2 + ';cursor:default;}',
+    P + '-cal-ms{display:flex;gap:18px;}',
+    P + '-cal-mo{width:224px;}',
+    P + '-cal-mh{font-size:12.5px;font-weight:700;color:' + C.ink + ';text-align:center;margin:0 0 4px;}',
+    P + '-cal-g{display:grid;grid-template-columns:repeat(7,32px);row-gap:2px;}',
+    P + '-cal-wd{font-size:10.5px;color:' + C.mut + ';text-align:center;height:20px;line-height:20px;}',
+    P + '-cal-wd.we{color:' + C.mut2 + ';}',
+    P + '-cal-d{position:relative;height:30px;border:0;padding:0;background:transparent;display:flex;align-items:center;justify-content:center;font:inherit;font-size:12px;color:' + C.ink2 + ';cursor:pointer;font-variant-numeric:tabular-nums;}',
+    P + '-cal-d span{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;}',
+    P + '-cal-d:hover span{box-shadow:inset 0 0 0 1px ' + C.act + ';}',
+    P + '-cal-d.we{color:' + C.mut + ';}',
+    P + '-cal-d.pv{background:repeating-linear-gradient(135deg,#eef0f3 0 4px,#fff 4px 8px);}',
+    P + '-cal-d.in{background:' + C.blueBg + ';}',
+    P + '-cal-d.s{background:linear-gradient(90deg,transparent 50%,' + C.blueBg + ' 50%);}',
+    P + '-cal-d.e{background:linear-gradient(90deg,' + C.blueBg + ' 50%,transparent 50%);}',
+    P + '-cal-d.s.e{background:transparent;}',
+    P + '-cal-d.s span,' + P + '-cal-d.e span{background:' + C.act + ';color:#fff;font-weight:700;}',
+    P + '-cal-d.md span{box-shadow:inset 0 0 0 1.5px ' + C.ink + ';}',
+    P + '-cal-d.off{color:' + C.mut2 + ';cursor:default;}',
+    P + '-cal-d.off:hover span{box-shadow:none;}',
+    P + '-cal-opt{display:flex;align-items:center;gap:10px;flex:0 0 auto;border-top:1px solid ' + C.line2 + ';padding-top:8px;}',
+    P + '-cal-opt ' + P + '-lbl{width:40px;}',
+    P + '-cal-opt ' + P + '-note{flex:1;}',
+    P + '-cal-seg{display:inline-flex;gap:2px;background:' + C.bgAlt + ';border-radius:8px;padding:2px;}',
+    P + '-cal-seg button{border:0;background:transparent;border-radius:6px;height:26px;padding:0 10px;font:inherit;font-size:12px;color:' + C.mut + ';cursor:pointer;}',
+    P + '-cal-seg button.on{background:#fff;color:' + C.ink + ';font-weight:700;box-shadow:0 1px 2px rgba(20,28,45,.12);}',
+    P + '-cal-seg button[disabled]{color:' + C.mut2 + ';cursor:default;}',
+    P + '-dd-f em i{display:block;font-style:normal;font-size:11px;color:' + C.mut + ';margin-top:1px;}',
     '</style>'
   ].join('');
 }
@@ -527,9 +711,10 @@ function selChips(k) {
   return h;
 }
 function rowsOf(k) { return k === 'org' ? orgRows() : k === 'adg' ? adgRows() : k === 'heads' ? headRows() : valueRows(k); }
-function kindCfg(k) { for (var i = 0; i < CFG.kinds.length; i++) if (CFG.kinds[i].k === k) return CFG.kinds[i]; return null; }
+function kindCfg(k) { if (k === 'cal') return { k: 'cal', w: CFG.custom.w }; for (var i = 0; i < CFG.kinds.length; i++) if (CFG.kinds[i].k === k) return CFG.kinds[i]; return null; }
 // Содержимое выпадашки открытого условия (узел — в body, см. БЛОК 6).
 function ddHtml() {
+  if (state.dd === 'cal') return calHtml();
   var o = kindCfg(state.dd), d = state.draft, N = CFG.ns, f = caFacet(d);
   if (!o) return '';
   var pk = picked(d, o.k);
@@ -555,8 +740,9 @@ function buildHTML() {
   h.push('<div class="' + N + '-strip"><div class="' + N + '-strip-seg" role="group" aria-label="Период">');
   for (var gi = 0; gi < CFG.grains.length; gi++) {
     var gr = CFG.grains[gi];
-    h.push('<button type="button" data-grain="' + esc(gr.id) + '"' + (gr.id === state.grain ? ' class="on"' : '') + '>' + esc(gr.label) + '</button>');
+    h.push('<button type="button" data-grain="' + esc(gr.id) + '"' + (gr.id === state.grain && !state.cp ? ' class="on"' : '') + '>' + esc(gr.label) + '</button>');
   }
+  h.push(cpButtonHtml());
   h.push('</div><span class="' + N + '-sep" aria-hidden="true"></span><span class="' + N + '-lbl"' +
     tip({ title: 'Что считать', text: 'Какие отчёты и просмотры попадают во все числа борда: каталог, KPI, динамику и списки людей.' }) + '>Считать</span>');
   h.push('<div class="' + N + '-togs" role="group" aria-label="Какие отчёты и просмотры считать">');
@@ -799,6 +985,8 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
     }
     function openDd(k) {
       clearTimeout(state.tipT);
+      if (k === 'cal' && state.dd !== 'cal') state.cpd = cpDraftNew();
+      if (k !== 'cal') state.cpd = null;
       state.dd = k;
       state.tip = null;
       hideTip();
@@ -853,9 +1041,33 @@ function paOut(src, sheet, cols, fl) { paBcast({ type: 'PA_SEL', src: src, sheet
     function onClick(e) {
       var d = state.draft;
       if (trigger(e.target, 'data-tourstart')) { if (state.dd) openDd(null); paBcast({ type: 'PA_TOUR_GO' }); return; }
+      // Свой период: × на кнопке — вернуть 30 дней; клики в календаре — черновик state.cpd, «Применить» — state.cp.
+      if (trigger(e.target, 'data-cpclr')) { state.cp = null; state.cpd = null; state.grain = 'd'; if (state.dd) openDd(null); else render(); emit(); return; }
+      var cpd = state.cpd;
+      if (cpd) {
+        var dy = trigger(e.target, 'data-cpday');
+        if (dy) {
+          var dn = +dy.getAttribute('data-cpday');
+          if (!cpd.pick) { cpd.a = dn; cpd.b = dn; cpd.pick = 1; }
+          else { if (dn < cpd.a) { cpd.b = cpd.a; cpd.a = dn; } else cpd.b = dn; cpd.pick = 0; cpd.g = 'd'; cpAutoStep(cpd); }   // новые даты — самый мелкий шаг, что влезает
+          cpd.pre = 'own'; renderDd(); return;
+        }
+        var nv = trigger(e.target, 'data-cpnav');
+        if (nv) { var mo = cpd.vy * 12 + cpd.vm + (+nv.getAttribute('data-cpnav')); cpd.vy = Math.floor(mo / 12); cpd.vm = mo % 12; renderDd(); return; }
+        var sp = trigger(e.target, 'data-cpstep');
+        if (sp) { cpd.g = sp.getAttribute('data-cpstep'); renderDd(); return; }
+        var pz = trigger(e.target, 'data-cppre');
+        if (pz) { cpPreset(cpd, pz.getAttribute('data-cppre')); renderDd(); return; }
+        if (trigger(e.target, 'data-cpcancel')) { state.cpd = null; openDd(null); return; }
+        if (trigger(e.target, 'data-cpapply')) {
+          var pp = cpSnap(cpd.a, cpd.b, cpd.g);
+          if (pp.n >= 1 && pp.n <= CFG.custom.max[pp.g]) { pp.pre = cpd.pre; state.cp = pp; }
+          state.cpd = null; openDd(null); emit(); return;
+        }
+      }
       // Ряд 1: период — взаимоисключающий выбор; опция — браузер уже переключил input.checked до click.
       var gb = trigger(e.target, 'data-grain');
-      if (gb) { state.grain = gb.getAttribute('data-grain'); render(); emit(); return; }
+      if (gb) { state.grain = gb.getAttribute('data-grain'); state.cp = null; state.cpd = null; if (state.dd) openDd(null); else render(); emit(); return; }
       var sb = trigger(e.target, 'data-f');
       if (sb && sb.tagName === 'INPUT') { state.sw[sb.getAttribute('data-f')] = sb.checked; render(); emit(); return; }
       // × на пилюле снимает условие целиком (черновик), выпадашку не открывает.

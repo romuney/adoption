@@ -31,8 +31,8 @@ import unicodedata
 
 # ─────────────────────────────── НАСТРОЙКИ ───────────────────────────────
 REPORT = 'Proteus Adoption — единый лист'
-DELIVERY = '14.10'                     # поставка — по дате (единый лист живёт одной папкой, без номеров поставок)
-DATE = '2026-10-14'                    # дата поставки — руками (штамп не зависит от дня сборки)
+DELIVERY = '21.10'                     # поставка — по дате (единый лист живёт одной папкой, без номеров поставок)
+DATE = '2026-10-21'                    # дата поставки — руками (штамп не зависит от дня сборки)
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))   # корень репозитория
 OUT = os.path.join(ROOT, 'Единый лист — актуальные файлы')
 KIT = os.environ.get('PLAYBOOK_KIT') or os.path.dirname(os.path.abspath(__file__))       # .stand/min.cjs — копия kit/min.cjs

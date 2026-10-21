@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Свой период — варианты</title>
+<!-- Макет предложения «свой период по дням» для единого листа Proteus Adoption (2026-10-21).
+     Самодостаточный: стили шапки pa-head (Arial, токены профиля §16), календарь — свой (нативных date-полей в отчёте нет).
+     Данные — синтетика: свежесть 20.10.2026, история с 01.10.2024. -->
+<style>
+  :root{
+    --bg:#f6f6f6;--card:#fff;--act:#245FD4;--act-ink:#1B4AA8;--blue-bg:#EAF0FC;--act-line:#C3D4F5;
+    --ink:#23272e;--ink2:#454b55;--mut:#8a909c;--mut2:#b4b9c2;--line:#e7e9ee;--line2:#eef0f3;--bg-alt:#eef0f3;
+    --warn-bg:#fffaf1;--warn-line:#f0dcb4;--warn-tx:#8a5a00;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink);font-size:12.5px}
+  .page{max-width:1240px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:20px;margin:0 0 6px}
+  .lead{color:var(--ink2);font-size:13px;line-height:1.5;max-width:900px;margin:0 0 22px}
+  .variant{margin:0 0 40px}
+  .vh{display:flex;align-items:baseline;gap:10px;margin:0 0 4px}
+  .vh b{font-size:16px}
+  .vh .tag{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;padding:2px 7px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink)}
+  .vd{color:var(--ink2);font-size:12.5px;line-height:1.5;margin:0 0 12px;max-width:980px}
+  .scene{margin:0 0 14px}
+  .sl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:0 0 6px}
+  .pc{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--ink2);line-height:1.5;margin:4px 0 0}
+  .pc div{flex:1 1 300px;background:#fff;border-radius:10px;padding:10px 14px}
+  .pc b{color:var(--ink)}
+
+  /* ── шапка (как pa-head) ── */
+  .head{background:#fff;border-radius:12px;padding:14px 16px;position:relative}
+  .strip{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0}
+  .seg{display:inline-flex;align-items:center;gap:2px;background:var(--bg-alt);border-radius:9px;padding:2px;flex:0 0 auto}
+  .seg button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 12px;font:inherit;font-size:12px;color:var(--mut);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(20,28,45,.12);font-weight:700}
+  .seg button.cust.on{background:#fff;color:var(--act-ink);box-shadow:0 0 0 1px var(--act-line),0 1px 2px rgba(20,28,45,.12)}
+  .seg button .x{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;color:var(--mut);font-weight:400;margin-right:-4px}
+  .seg button .x:hover{background:var(--bg-alt);color:var(--ink)}
+  .seg button.dis{color:var(--mut2);cursor:default}
+  .sep{width:1px;height:20px;background:var(--line);margin:0 4px;flex:0 0 auto}
+  .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);flex:0 0 auto}
+  .tog{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px 0 8px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:12px;color:var(--ink2);white-space:nowrap}
+  .tog i{position:relative;width:26px;height:15px;border-radius:999px;background:var(--act);flex:0 0 auto}
+  .tog i:after{content:'';position:absolute;top:2px;left:13px;width:11px;height:11px;border-radius:50%;background:#fff}
+  .fresh{margin-left:auto;font-size:11.5px;color:var(--mut);white-space:nowrap}
+  .fresh b{color:var(--ink2)}
+  .fld{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit;font-size:12px;color:var(--ink);cursor:pointer;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .fld.on{border-color:var(--act);box-shadow:0 0 0 3px rgba(36,95,212,.12)}
+  .fld .k{color:var(--mut)}
+  .fld .car{color:var(--mut);font-size:9px}
+  .modes{display:inline-flex;gap:2px;background:var(--bg-alt);border-radius:9px;padding:2px}
+  .modes button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 10px;font:inherit;font-size:12px;color:var(--mut);cursor:pointer;white-space:nowrap}
+  .modes button.on{background:var(--ink);color:#fff;font-weight:700}
+  .ico{width:14px;height:14px;flex:0 0 auto}
+
+  /* ── строка под шапкой: как читается применённый период ── */
+  .ctx{display:flex;align-items:center;gap:10px;margin:10px 0 0;flex-wrap:wrap}
+  .ctx .lbl{margin-right:2px}
+  .chip{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 6px 0 10px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:11.5px}
+  .chip .x{color:var(--act-ink);opacity:.7}
+  .panel{background:#fff;border-radius:12px;padding:12px 16px;margin:10px 0 0;display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+  .pt{font-size:14.5px;font-weight:700}
+  .pt span{font-weight:400;color:var(--mut)}
+  .ps{font-size:11.5px;color:var(--mut);margin-top:2px}
+  .ps b{color:var(--ink2);font-weight:400}
+  .kpi{border:1px solid var(--line2);border-radius:10px;padding:8px 12px;min-width:150px}
+  .kpi .l{font-size:11.5px;color:var(--mut)}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
+  .kpi .kd{font-size:11px;color:var(--mut);margin-top:2px}
+  .pill{display:inline-block;font-size:11.5px;border-radius:999px;padding:1px 8px;background:#ffcccc;color:#d11414;margin-right:4px}
+  .pill.g{background:#bff2cd;color:#0a8f3c}
+
+  /* ── карточка календаря (как выпадашка pa-head .dd) ── */
+  .dd{position:relative;z-index:5;width:max-content;max-width:100%;margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.18);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:12.5px;color:var(--ink2)}
+  .dd-row{display:flex;gap:14px}
+  .pre{display:flex;flex-direction:column;gap:2px;min-width:150px;border-right:1px solid var(--line2);padding-right:10px}
+  .pre .h{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:2px 6px 4px}
+  .pre button{border:0;background:transparent;text-align:left;font:inherit;font-size:12.5px;color:var(--ink2);padding:6px 8px;border-radius:6px;cursor:pointer;white-space:nowrap}
+  .pre button:hover{background:#f6f8fa}
+  .pre button.on{background:var(--blue-bg);color:var(--act-ink);font-weight:700}
+  .pre .gap{height:6px}
+  .cal{display:flex;flex-direction:column;gap:8px}
+  .cal-top{display:flex;align-items:center;gap:8px}
+  .cal-top .rng{display:inline-flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+  .box{display:inline-flex;align-items:center;height:30px;padding:0 10px;border:1px solid var(--line);border-radius:8px;min-width:104px;color:var(--ink);background:#fff}
+  .box.cur{border-color:var(--act);box-shadow:0 0 0 3px rgba(36,95,212,.12)}
+  .box .k{color:var(--mut);margin-right:6px}
+  .nav{margin-left:auto;display:inline-flex;gap:4px}
+  .nav button{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer;color:var(--ink2);font:inherit;font-size:14px;line-height:1}
+  .nav button:disabled{color:var(--mut2);cursor:default}
+  .months{display:flex;gap:18px}
+  .mo{width:224px}
+  .mo .mh{font-size:12.5px;font-weight:700;color:var(--ink);text-align:center;margin:0 0 6px}
+  .grid{display:grid;grid-template-columns:repeat(7,32px);row-gap:2px}
+  .wd{font-size:10.5px;color:var(--mut);text-align:center;height:20px;line-height:20px}
+  .wd.we{color:var(--mut2)}
+  .d{position:relative;height:30px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--ink2);cursor:pointer;font-variant-numeric:tabular-nums}
+  .d span{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .d:hover span{box-shadow:inset 0 0 0 1px var(--act)}
+  .d.in{background:var(--blue-bg)}
+  .d.s{background:linear-gradient(90deg,transparent 50%,var(--blue-bg) 50%)}
+  .d.e{background:linear-gradient(90deg,var(--blue-bg) 50%,transparent 50%)}
+  .d.s.e{background:transparent}
+  .d.s span,.d.e span{background:var(--act);color:#fff;font-weight:700}
+  .d.cmp span{box-shadow:inset 0 0 0 1.5px #8a909c}
+  .d.cmpin{background:repeating-linear-gradient(135deg,#f3f4f6 0 4px,#fff 4px 8px)}
+  .d.md span{box-shadow:inset 0 0 0 1.5px var(--ink)}
+  .d.off{color:var(--mut2);cursor:default}
+  .d.off:hover span{box-shadow:none}
+  .d.wkend{color:var(--mut)}
+  .opt{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line2);padding-top:10px}
+  .opt .lbl{width:86px}
+  .mini{display:inline-flex;gap:2px;background:var(--bg-alt);border-radius:8px;padding:2px}
+  .mini button{border:0;background:transparent;border-radius:6px;height:26px;padding:0 10px;font:inherit;font-size:12px;color:var(--mut);cursor:pointer}
+  .mini button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(20,28,45,.12)}
+  .mini button:disabled{color:var(--mut2);cursor:default}
+  .hint{font-size:11px;color:var(--mut)}
+  .sel{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink2);font-size:12px;white-space:nowrap}
+  .sel .car{color:var(--mut);font-size:9px}
+  .foot{display:flex;align-items:center;gap:8px;border-top:1px solid var(--line2);padding-top:10px}
+  .foot .sum{font-size:12px;color:var(--ink2)}
+  .foot .sum b{color:var(--ink)}
+  .btn{height:32px;padding:0 14px;border-radius:9px;border:1px solid var(--line);background:#fff;font:inherit;font-size:12.5px;color:var(--ink2);cursor:pointer}
+  .btn.pr{background:var(--act);border-color:var(--act);color:#fff;font-weight:700}
+  .btn.ml{margin-left:auto}
+  .warn{background:var(--warn-bg);border:1px solid var(--warn-line);color:var(--warn-tx);border-radius:8px;padding:6px 10px;font-size:11.5px;line-height:1.4}
+  @media (max-width:720px){.months{flex-direction:column}.dd-row{flex-direction:column}.pre{border-right:0;border-bottom:1px solid var(--line2);padding:0 0 8px;flex-direction:row;flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Свой период по дням — три варианта</h1>
+  <p class="lead">Запрос: смотреть любой отрезок истории по дням — например, сравнить первые три недели после релиза полгода назад и после
+  доработки сейчас. Ниже три способа встроить это в шапку. В каждом: как шапка выглядит по умолчанию, как выбирается период и как
+  видно, что сейчас действует свой период. Календарь живой — можно выбрать начало и конец. Данные — синтетика: свежесть 20 октября 2026.</p>
+
+  <!-- ═════════════════ ВАРИАНТ A ═════════════════ -->
+  <section class="variant">
+    <div class="vh"><b>A · «Свой период» пятой кнопкой</b><span class="tag">рекомендую</span></div>
+    <p class="vd">Четыре готовых периода остаются в один клик. Рядом — кнопка «Свой»: открывает календарь с быстрыми отрезками, шагом
+    (дни / недели / месяцы) и периодом сравнения. После «Применить» кнопка сама становится подписью периода — синей, с крестиком «вернуть 30 дней».</p>
+
+    <div class="scene"><div class="sl">1 · По умолчанию</div>
+      <div class="head"><div class="strip" data-strip="A0"></div></div>
+    </div>
+    <div class="scene"><div class="sl">2 · Нажали «Свой» — календарь под кнопкой</div>
+      <div class="head"><div class="strip" data-strip="A1"></div><div data-cal="A" data-mode="full"></div></div>
+    </div>
+    <div class="scene"><div class="sl">3 · Применили: как видно, что период свой</div>
+      <div class="head"><div class="strip" data-strip="A2"></div></div>
+      <div data-applied="1"></div>
+    </div>
+  </section>
+
+  <!-- ═════════════════ ВАРИАНТ B ═════════════════ -->
+  <section class="variant">
+    <div class="vh"><b>B · Переключатель «Последние | Свой период»</b><span class="tag" style="background:#f3f4f6;color:var(--ink2)">как в запросе</span></div>
+    <p class="vd">Слева — режим. В «Последних» всё как сейчас. В «Своём периоде» вместо готовых окон появляются шаг (дни / недели / месяцы)
+    и поле дат, по клику — календарь. Режим виден сразу: тёмная кнопка слева. Цена: шире шапка и лишний клик, чтобы вернуться к «30 дням».</p>
+
+    <div class="scene"><div class="sl">1 · По умолчанию — режим «Последние»</div>
+      <div class="head"><div class="strip" data-strip="B0"></div></div>
+    </div>
+    <div class="scene"><div class="sl">2 · Режим «Свой период» — шаг и поле дат, по клику календарь</div>
+      <div class="head"><div class="strip" data-strip="B1"></div><div data-cal="B" data-mode="plain" style="margin-left:286px"></div></div>
+    </div>
+    <div class="scene"><div class="sl">3 · Применили</div>
+      <div class="head"><div class="strip" data-strip="B2"></div></div>
+      <div data-applied="1"></div>
+    </div>
+  </section>
+
+  <!-- ═════════════════ ВАРИАНТ C ═════════════════ -->
+  <section class="variant">
+    <div class="vh"><b>C · Одна кнопка «Период», как в Яндекс Метрике</b></div>
+    <p class="vd">Вместо четырёх кнопок — одна с подписью текущего периода. В карточке слева готовые окна и быстрые отрезки, справа календарь.
+    Самая компактная шапка (помогает на 980 px), но готовые периоды уходят на второй клик — сейчас их переключают одним.</p>
+
+    <div class="scene"><div class="sl">1 · По умолчанию</div>
+      <div class="head"><div class="strip" data-strip="C0"></div></div>
+    </div>
+    <div class="scene"><div class="sl">2 · Открыли</div>
+      <div class="head"><div class="strip" data-strip="C1"></div><div data-cal="C" data-mode="full" data-grains="1"></div></div>
+    </div>
+    <div class="scene"><div class="sl">3 · Применили</div>
+      <div class="head"><div class="strip" data-strip="C2"></div></div>
+      <div data-applied="1"></div>
+    </div>
+  </section>
+
+  <section class="variant">
+    <div class="vh"><b>Что общее у всех вариантов</b></div>
+    <div class="pc">
+      <div><b>Шаг и пределы.</b> По дням — до 31 дня, по неделям — до 32 недель, по месяцам — до 24. Выбрали 90 дней — «Дни» серые,
+      шаг сам встаёт на недели, под ним подсказка почему. Даты позже свежести данных и раньше начала истории — бледные, их не выбрать.</div>
+      <div><b>Сравнение.</b> По умолчанию — предыдущий такой же отрезок (21 день → 21 день до него), так считаются все «к пред. периоду».
+      Можно «тот же отрезок год назад». «Свой второй период» (релиз против доработки день в день) — вторым этапом: нужна вторая линия в «Динамике».</div>
+      <div><b>Где виден период.</b> В шапке (подпись вместо кнопки), в заголовках «Динамика · 28 сен – 18 окт, по дням» и в подписях дельт
+      «к 7 – 27 сен». MAU и «Закрепляемость» периода не слушают — как сейчас.</div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var MD = new Date(2026, 9, 20), H0 = new Date(2024, 9, 1);   // свежесть данных и начало истории
+  var MON = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+  var MS = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  var WD = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  var LIM = { d: 31, w: 32 * 7, m: 24 * 31 };
+  function dd(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function add(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return dd(x); }
+  function days(a, b) { return Math.round((dd(b) - dd(a)) / 864e5) + 1; }
+  function f2(n) { return (n < 10 ? '0' : '') + n; }
+  function full(d) { return f2(d.getDate()) + '.' + f2(d.getMonth() + 1) + '.' + d.getFullYear(); }
+  function shortR(a, b) {
+    var sameM = a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+    return (sameM ? a.getDate() : a.getDate() + ' ' + MS[a.getMonth()]) + ' – ' + b.getDate() + ' ' + MS[b.getMonth()] +
+      (b.getFullYear() !== MD.getFullYear() ? ' ' + b.getFullYear() : '');
+  }
+  function plural(n, a, b, c) { var m = n % 10, h = n % 100; return n + ' ' + (m === 1 && h !== 11 ? a : m >= 2 && m <= 4 && (h < 10 || h >= 20) ? b : c); }
+  var CAL_SVG = '<svg class="ico" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>';
+  var A = new Date(2026, 8, 28), B = new Date(2026, 9, 18);   // выбранный свой период (21 день)
+
+  function seg(active, custom) {
+    var it = [['d', '30 дней'], ['w', '20 недель'], ['m', '12 месяцев'], ['q', '8 кварталов']];
+    var h = '<div class="seg">';
+    it.forEach(function (x) { h += '<button class="' + (active === x[0] ? 'on' : '') + '">' + x[1] + '</button>'; });
+    if (custom === 'btn') h += '<button class="cust">' + CAL_SVG + 'Свой</button>';
+    if (custom === 'open') h += '<button class="cust on">' + CAL_SVG + 'Свой</button>';
+    if (custom === 'set') h += '<button class="cust on">' + CAL_SVG + shortR(A, B) + ' · по дням<span class="x" title="Вернуть 30 дней">×</span></button>';
+    return h + '</div>';
+  }
+  function rest() {
+    return '<span class="sep"></span><span class="lbl">Считать</span>' +
+      '<span class="tog"><i></i>Опубликованные</span><span class="tog"><i></i>Актуальные</span>' +
+      '<span class="fresh">данные на <b>20.10</b></span>';
+  }
+  var STRIPS = {
+    A0: seg('d', 'btn') + rest(),
+    A1: seg('', 'open') + rest(),
+    A2: seg('', 'set') + rest(),
+    B0: '<div class="modes"><button class="on">Последние</button><button>Свой период</button></div>' + seg('d') + rest(),
+    B1: '<div class="modes"><button>Последние</button><button class="on">Свой период</button></div>' +
+        '<div class="seg"><button class="on">Дни</button><button>Недели</button><button>Месяцы</button></div>' +
+        '<button class="fld on">' + CAL_SVG + full(A) + ' — ' + full(B) + '<span class="car">▼</span></button>' + rest(),
+    B2: '<div class="modes"><button>Последние</button><button class="on">Свой период</button></div>' +
+        '<div class="seg"><button class="on">Дни</button><button>Недели</button><button>Месяцы</button></div>' +
+        '<button class="fld">' + CAL_SVG + full(A) + ' — ' + full(B) + '<span class="car">▼</span></button>' + rest(),
+    C0: '<button class="fld"><span class="k">Период</span>Последние 30 дней<span class="car">▼</span></button>' + rest(),
+    C1: '<button class="fld on"><span class="k">Период</span>Последние 30 дней<span class="car">▼</span></button>' + rest(),
+    C2: '<button class="fld" style="border-color:var(--act-line);background:var(--blue-bg);color:var(--act-ink)">' + CAL_SVG + shortR(A, B) + ' · по дням<span class="car">▼</span></button>' + rest()
+  };
+  [].forEach.call(document.querySelectorAll('[data-strip]'), function (el) { el.innerHTML = STRIPS[el.getAttribute('data-strip')]; });
+
+  // Как читается применённый период: строка выбранных фильтров, заголовок панели, KPI с дельтой «к …»
+  var pA = add(A, -days(A, B)), pB = add(A, -1);
+  [].forEach.call(document.querySelectorAll('[data-applied]'), function (el) {
+    el.innerHTML = '<div class="ctx"><span class="lbl">Выбранные фильтры</span><span class="chip">Отчёт: Продажи<span class="x">×</span></span></div>' +
+      '<div class="panel"><div style="flex:1 1 360px"><div class="pt">Динамика · <span>весь Proteus</span></div>' +
+      '<div class="ps">пользователи <b>' + shortR(A, B) + ' 2026, по дням</b> · серым — ' + shortR(pA, pB) + '</div></div>' +
+      '<div class="kpi"><div class="l">Пользователей</div><div class="v">4 918</div><div class="kd"><span class="pill">−6,4%</span>к ' + shortR(pA, pB) + '</div></div>' +
+      '<div class="kpi"><div class="l">Просмотров</div><div class="v">118K</div><div class="kd"><span class="pill g">+3,1%</span>к ' + shortR(pA, pB) + '</div></div></div>';
+  });
+
+  // ── Календарь диапазона ──
+  function Cal(host) {
+    var mode = host.getAttribute('data-mode'), grains = host.getAttribute('data-grains');
+    var s = { a: A, b: B, pick: 0, view: new Date(B.getFullYear(), B.getMonth() - 1, 1), step: 'd', cmp: 'prev', pre: 'own' };
+    host.className = 'dd';
+    function stepOk(st) { return days(s.a, s.b) <= LIM[st]; }
+    function fixStep() { if (!stepOk(s.step)) s.step = stepOk('w') ? 'w' : 'm'; }
+    function month(y, m) {
+      var first = new Date(y, m, 1), off = (first.getDay() + 6) % 7, n = new Date(y, m + 1, 0).getDate();
+      var pa = add(s.a, -days(s.a, s.b)), pb = add(s.a, -1);
+      var h = '<div class="mo"><div class="mh">' + MON[m].charAt(0).toUpperCase() + MON[m].slice(1) + ' ' + y + '</div><div class="grid">';
+      WD.forEach(function (w, i) { h += '<div class="wd' + (i > 4 ? ' we' : '') + '">' + w + '</div>'; });
+      for (var i = 0; i < off; i++) h += '<div></div>';
+      for (var d = 1; d <= n; d++) {
+        var t = new Date(y, m, d), c = 'd', wk = (t.getDay() + 6) % 7;
+        var off2 = t > MD || t < H0;
+        if (off2) c += ' off';
+        else {
+          if (wk > 4) c += ' wkend';
+          if (+t === +s.a) c += ' s';
+          if (+t === +s.b) c += ' e';
+          if (t > s.a && t < s.b) c += ' in';
+          if (s.cmp === 'prev' && !s.pick && t >= pa && t <= pb) c += ' cmpin';
+          if (+t === +MD) c += ' md';
+        }
+        h += '<div class="' + c + '" data-t="' + (+t) + '" title="' + (off2 ? (t > MD ? 'данных ещё нет' : 'раньше начала истории') : '') + '"><span>' + d + '</span></div>';
+      }
+      return h + '</div></div>';
+    }
+    function render() {
+      fixStep();
+      var v = s.view, v2 = new Date(v.getFullYear(), v.getMonth() + 1, 1), n = days(s.a, s.b);
+      var pa = add(s.a, -n), pb = add(s.a, -1);
+      var h = '<div class="dd-row">';
+      if (mode === 'full') {
+        h += '<div class="pre">' + (grains ? '<div class="h">Последние</div><button>30 дней</button><button>20 недель</button><button>12 месяцев</button><button>8 кварталов</button><div class="gap"></div>' : '') +
+          '<div class="h">Быстро</div>' +
+          [['7', 'Последние 7 дней'], ['14', 'Последние 14 дней'], ['lw', 'Прошлая неделя'], ['lm', 'Прошлый месяц'], ['ytd', 'С начала года'], ['own', 'Свои даты']]
+            .map(function (p) { return '<button data-pre="' + p[0] + '" class="' + (s.pre === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</div>';
+      }
+      h += '<div class="cal"><div class="cal-top"><span class="rng"><span class="box' + (s.pick === 0 ? ' cur' : '') + '"><span class="k">с</span>' + full(s.a) + '</span>—' +
+        '<span class="box' + (s.pick === 1 ? ' cur' : '') + '"><span class="k">по</span>' + (s.pick === 1 ? '…' : full(s.b)) + '</span></span>' +
+        '<span class="nav"><button data-nav="-1">‹</button><button data-nav="1"' + (v2.getFullYear() === MD.getFullYear() && v2.getMonth() >= MD.getMonth() ? ' disabled' : '') + '>›</button></span></div>' +
+        '<div class="months">' + month(v.getFullYear(), v.getMonth()) + month(v2.getFullYear(), v2.getMonth()) + '</div></div></div>';
+      if (mode === 'full') {
+        h += '<div class="opt"><span class="lbl">Шаг</span><span class="mini">' +
+          [['d', 'Дни'], ['w', 'Недели'], ['m', 'Месяцы']].map(function (g) { return '<button data-step="' + g[0] + '"' + (stepOk(g[0]) ? '' : ' disabled') + ' class="' + (s.step === g[0] ? 'on' : '') + '">' + g[1] + '</button>'; }).join('') +
+          '</span><span class="hint">' + (stepOk('d') ? 'по дням — до 31 дня' : 'больше 31 дня — по неделям') + '</span></div>' +
+          '<div class="opt"><span class="lbl">Сравнить с</span><span class="mini">' +
+          '<button data-cmp="prev" class="' + (s.cmp === 'prev' ? 'on' : '') + '">предыдущим отрезком</button><button data-cmp="yr" class="' + (s.cmp === 'yr' ? 'on' : '') + '">год назад</button>' +
+          '</span><span class="hint">' + (s.cmp === 'prev' ? shortR(pa, pb) + ' — заштрихован' : shortR(new Date(s.a.getFullYear() - 1, s.a.getMonth(), s.a.getDate()), new Date(s.b.getFullYear() - 1, s.b.getMonth(), s.b.getDate()))) + '</span></div>';
+      }
+      h += '<div class="foot"><span class="sum"><b>' + plural(n, 'день', 'дня', 'дней') + '</b>' + (mode === 'full' ? ' · по ' + ({ d: 'дням', w: 'неделям', m: 'месяцам' })[s.step] : '') + '</span>' +
+        '<button class="btn ml">Отмена</button><button class="btn pr">Применить</button></div>';
+      host.innerHTML = h;
+    }
+    host.addEventListener('click', function (e) {
+      var t = e.target.closest('[data-t]'), nv = e.target.closest('[data-nav]'), st = e.target.closest('[data-step]'), cm = e.target.closest('[data-cmp]'), pr = e.target.closest('[data-pre]');
+      if (t && !t.classList.contains('off')) {
+        var d = new Date(+t.getAttribute('data-t'));
+        if (s.pick === 0) { s.a = d; s.b = d; s.pick = 1; }
+        else { if (d < s.a) { s.b = s.a; s.a = d; } else s.b = d; s.pick = 0; }
+        s.pre = 'own';
+      } else if (nv && !nv.disabled) {
+        s.view = new Date(s.view.getFullYear(), s.view.getMonth() + (+nv.getAttribute('data-nav')), 1);
+      } else if (st && !st.disabled) s.step = st.getAttribute('data-step');
+      else if (cm) s.cmp = cm.getAttribute('data-cmp');
+      else if (pr) {
+        var p = pr.getAttribute('data-pre'); s.pre = p; s.pick = 0;
+        if (p === '7') { s.b = MD; s.a = add(MD, -6); }
+        if (p === '14') { s.b = MD; s.a = add(MD, -13); }
+        if (p === 'lw') { var mo = add(MD, -((MD.getDay() + 6) % 7) - 7); s.a = mo; s.b = add(mo, 6); }
+        if (p === 'lm') { s.a = new Date(MD.getFullYear(), MD.getMonth() - 1, 1); s.b = new Date(MD.getFullYear(), MD.getMonth(), 0); }
+        if (p === 'ytd') { s.a = new Date(MD.getFullYear(), 0, 1); s.b = MD; }
+        s.view = new Date(s.b.getFullYear(), s.b.getMonth() - 1, 1);
+      } else return;
+      render();
+    });
+    render();
+  }
+  [].forEach.call(document.querySelectorAll('[data-cal]'), Cal);
+})();
+</script>
+</body>
+</html>

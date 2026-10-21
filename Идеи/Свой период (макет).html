@@ -139,8 +139,8 @@
   <!-- ═════════════════ ВАРИАНТ A ═════════════════ -->
   <section class="variant">
     <div class="vh"><b>A · «Свой период» пятой кнопкой</b><span class="tag">рекомендую</span></div>
-    <p class="vd">Четыре готовых периода остаются в один клик. Рядом — кнопка «Свой»: открывает календарь с быстрыми отрезками, шагом
-    (дни / недели / месяцы) и периодом сравнения. После «Применить» кнопка сама становится подписью периода — синей, с крестиком «вернуть 30 дней».</p>
+    <p class="vd">Четыре готовых периода остаются в один клик. Рядом — кнопка «Свой»: открывает календарь с быстрыми отрезками и шагом
+    (дни / недели / месяцы). После «Применить» кнопка сама становится подписью периода — синей, с крестиком «вернуть 30 дней».</p>
 
     <div class="scene"><div class="sl">1 · По умолчанию</div>
       <div class="head"><div class="strip" data-strip="A0"></div></div>
@@ -195,8 +195,8 @@
     <div class="pc">
       <div><b>Шаг и пределы.</b> По дням — до 31 дня, по неделям — до 32 недель, по месяцам — до 24. Выбрали 90 дней — «Дни» серые,
       шаг сам встаёт на недели, под ним подсказка почему. Даты позже свежести данных и раньше начала истории — бледные, их не выбрать.</div>
-      <div><b>Сравнение.</b> По умолчанию — предыдущий такой же отрезок (21 день → 21 день до него), так считаются все «к пред. периоду».
-      Можно «тот же отрезок год назад». «Свой второй период» (релиз против доработки день в день) — вторым этапом: нужна вторая линия в «Динамике».</div>
+      <div><b>Сравнение — как сейчас, без настроек.</b> «−13% к пред. 30 дням» у готовых периодов — это 30 дней против 30 дней до них.
+      У своего периода так же: 21 день против 21 дня до него (в календаре он заштрихован). Отдельного переключателя нет.</div>
       <div><b>Где виден период.</b> В шапке (подпись вместо кнопки), в заголовках «Динамика · 28 сен – 18 окт, по дням» и в подписях дельт
       «к 7 – 27 сен». MAU и «Закрепляемость» периода не слушают — как сейчас.</div>
     </div>
@@ -260,7 +260,7 @@
   [].forEach.call(document.querySelectorAll('[data-applied]'), function (el) {
     el.innerHTML = '<div class="ctx"><span class="lbl">Выбранные фильтры</span><span class="chip">Отчёт: Продажи<span class="x">×</span></span></div>' +
       '<div class="panel"><div style="flex:1 1 360px"><div class="pt">Динамика · <span>весь Proteus</span></div>' +
-      '<div class="ps">пользователи <b>' + shortR(A, B) + ' 2026, по дням</b> · серым — ' + shortR(pA, pB) + '</div></div>' +
+      '<div class="ps">пользователи <b>' + shortR(A, B) + ' 2026, по дням</b> — столбики по дням этого отрезка</div></div>' +
       '<div class="kpi"><div class="l">Пользователей</div><div class="v">4 918</div><div class="kd"><span class="pill">−6,4%</span>к ' + shortR(pA, pB) + '</div></div>' +
       '<div class="kpi"><div class="l">Просмотров</div><div class="v">118K</div><div class="kd"><span class="pill g">+3,1%</span>к ' + shortR(pA, pB) + '</div></div></div>';
   });
@@ -268,7 +268,7 @@
   // ── Календарь диапазона ──
   function Cal(host) {
     var mode = host.getAttribute('data-mode'), grains = host.getAttribute('data-grains');
-    var s = { a: A, b: B, pick: 0, view: new Date(B.getFullYear(), B.getMonth() - 1, 1), step: 'd', cmp: 'prev', pre: 'own' };
+    var s = { a: A, b: B, pick: 0, view: new Date(B.getFullYear(), B.getMonth() - 1, 1), step: 'd', pre: 'own' };
     host.className = 'dd';
     function stepOk(st) { return days(s.a, s.b) <= LIM[st]; }
     function fixStep() { if (!stepOk(s.step)) s.step = stepOk('w') ? 'w' : 'm'; }
@@ -287,7 +287,7 @@
           if (+t === +s.a) c += ' s';
           if (+t === +s.b) c += ' e';
           if (t > s.a && t < s.b) c += ' in';
-          if (s.cmp === 'prev' && !s.pick && t >= pa && t <= pb) c += ' cmpin';
+          if (!s.pick && t >= pa && t <= pb) c += ' cmpin';
           if (+t === +MD) c += ' md';
         }
         h += '<div class="' + c + '" data-t="' + (+t) + '" title="' + (off2 ? (t > MD ? 'данных ещё нет' : 'раньше начала истории') : '') + '"><span>' + d + '</span></div>';
@@ -312,17 +312,15 @@
       if (mode === 'full') {
         h += '<div class="opt"><span class="lbl">Шаг</span><span class="mini">' +
           [['d', 'Дни'], ['w', 'Недели'], ['m', 'Месяцы']].map(function (g) { return '<button data-step="' + g[0] + '"' + (stepOk(g[0]) ? '' : ' disabled') + ' class="' + (s.step === g[0] ? 'on' : '') + '">' + g[1] + '</button>'; }).join('') +
-          '</span><span class="hint">' + (stepOk('d') ? 'по дням — до 31 дня' : 'больше 31 дня — по неделям') + '</span></div>' +
-          '<div class="opt"><span class="lbl">Сравнить с</span><span class="mini">' +
-          '<button data-cmp="prev" class="' + (s.cmp === 'prev' ? 'on' : '') + '">предыдущим отрезком</button><button data-cmp="yr" class="' + (s.cmp === 'yr' ? 'on' : '') + '">год назад</button>' +
-          '</span><span class="hint">' + (s.cmp === 'prev' ? shortR(pa, pb) + ' — заштрихован' : shortR(new Date(s.a.getFullYear() - 1, s.a.getMonth(), s.a.getDate()), new Date(s.b.getFullYear() - 1, s.b.getMonth(), s.b.getDate()))) + '</span></div>';
+          '</span><span class="hint">' + (stepOk('d') ? 'по дням — до 31 дня' : 'больше 31 дня — по неделям') + '</span></div>';
       }
-      h += '<div class="foot"><span class="sum"><b>' + plural(n, 'день', 'дня', 'дней') + '</b>' + (mode === 'full' ? ' · по ' + ({ d: 'дням', w: 'неделям', m: 'месяцам' })[s.step] : '') + '</span>' +
+      h += '<div class="foot"><span class="sum"><b>' + plural(n, 'день', 'дня', 'дней') + '</b>' + (mode === 'full' ? ' · по ' + ({ d: 'дням', w: 'неделям', m: 'месяцам' })[s.step] : '') +
+        '<span class="hint" style="display:block;margin-top:2px">дельты «к пред. периоду» — к ' + shortR(pa, pb) + ' (заштрихован)</span></span>' +
         '<button class="btn ml">Отмена</button><button class="btn pr">Применить</button></div>';
       host.innerHTML = h;
     }
     host.addEventListener('click', function (e) {
-      var t = e.target.closest('[data-t]'), nv = e.target.closest('[data-nav]'), st = e.target.closest('[data-step]'), cm = e.target.closest('[data-cmp]'), pr = e.target.closest('[data-pre]');
+      var t = e.target.closest('[data-t]'), nv = e.target.closest('[data-nav]'), st = e.target.closest('[data-step]'), pr = e.target.closest('[data-pre]');
       if (t && !t.classList.contains('off')) {
         var d = new Date(+t.getAttribute('data-t'));
         if (s.pick === 0) { s.a = d; s.b = d; s.pick = 1; }
@@ -331,7 +329,6 @@
       } else if (nv && !nv.disabled) {
         s.view = new Date(s.view.getFullYear(), s.view.getMonth() + (+nv.getAttribute('data-nav')), 1);
       } else if (st && !st.disabled) s.step = st.getAttribute('data-step');
-      else if (cm) s.cmp = cm.getAttribute('data-cmp');
       else if (pr) {
         var p = pr.getAttribute('data-pre'); s.pre = p; s.pick = 0;
         if (p === '7') { s.b = MD; s.a = add(MD, -6); }

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Длинная динамика — макет</title>
+<!-- Макет к «своему периоду» (2026-10-21): что делает «Динамика» панели pa-one, когда выбран год по дням.
+     Обзор снизу с окном, приближение протягиванием, «Сравнить отрезки» A и B. Свой SVG, как в виджете; колесо не трогаем —
+     им листают страницу борда. Данные — синтетика: релиз 7 апр, доработка 6 окт, праздники в январе и мае. -->
+<style>
+  :root{--bg:#f6f6f6;--card:#fff;--act:#245FD4;--act-ink:#1B4AA8;--blue-bg:#EAF0FC;--act-line:#C3D4F5;--ink:#23272e;--ink2:#454b55;
+    --mut:#8a909c;--mut2:#b4b9c2;--line:#e7e9ee;--line2:#eef0f3;--bg-alt:#eef0f3;--a:#245FD4;--a-bg:rgba(36,95,212,.10);--b:#d9480f;--b-bg:rgba(217,72,15,.10)}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink);font-size:12.5px}
+  .page{max-width:1240px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:20px;margin:0 0 6px}
+  .lead{color:var(--ink2);font-size:13px;line-height:1.5;max-width:960px;margin:0 0 18px}
+  .lead b{color:var(--ink)}
+  .card{background:#fff;border-radius:12px;padding:14px 16px 12px;position:relative;user-select:none}
+  .hd{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .tt{font-size:14.5px;font-weight:700}
+  .tt span{font-weight:400;color:var(--mut)}
+  .st{font-size:11.5px;color:var(--mut);margin-top:2px}
+  .st b{color:var(--ink2);font-weight:400}
+  .ml{margin-left:auto}
+  .seg{display:inline-flex;gap:2px;background:var(--bg-alt);border-radius:9px;padding:2px}
+  .seg button{border:0;background:transparent;border-radius:7px;height:28px;padding:0 10px;font:inherit;font-size:12px;color:var(--mut);cursor:pointer;white-space:nowrap}
+  .seg button.on{background:#fff;color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgba(20,28,45,.12)}
+  .btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:#fff;font:inherit;font-size:12px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+  .btn:hover{border-color:#d3d8e0}
+  .btn.on{border-color:var(--act);color:var(--act-ink);background:var(--blue-bg);font-weight:700}
+  .btn:disabled{color:var(--mut2);cursor:default}
+  .lg{display:flex;gap:12px;font-size:11.5px;color:var(--ink2);margin:10px 0 0}
+  .lg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .hint{font-size:11.5px;color:var(--mut);margin:8px 0 0;min-height:16px}
+  .hint b{color:var(--ink2);font-weight:400}
+  svg{display:block;overflow:visible}
+  .ax{font-size:10.5px;fill:var(--mut)}
+  .axb{font-size:10.5px;fill:var(--ink2);font-weight:700}
+  .vl{font-size:10px;fill:var(--ink2)}
+  .cap{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);margin:14px 0 4px}
+  .tip{position:fixed;z-index:50;pointer-events:none;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px rgba(20,30,50,.16);padding:8px 10px;font-size:11.5px;color:var(--ink2);min-width:170px;display:none}
+  .tip .h{font-size:10.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--mut);margin-bottom:4px}
+  .tip .r{display:flex;justify-content:space-between;gap:12px}
+  .tip .r b{color:var(--ink);font-variant-numeric:tabular-nums}
+  .cmp{display:none;margin:12px 0 0;border-top:1px solid var(--line2);padding-top:12px;gap:16px;align-items:stretch}
+  .cmp.on{display:flex;flex-wrap:wrap}
+  .sp{flex:1 1 220px;border:1px solid var(--line2);border-radius:10px;padding:10px 12px;position:relative}
+  .sp .k{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;color:#fff;font-weight:700;font-size:11.5px;margin-right:8px}
+  .sp .dt{font-weight:700;color:var(--ink)}
+  .sp .x{position:absolute;right:8px;top:8px;border:0;background:transparent;color:var(--mut);cursor:pointer;font-size:14px}
+  .sp .rows{margin-top:8px;display:grid;grid-template-columns:1fr auto;row-gap:4px;font-size:12px}
+  .sp .rows span{color:var(--mut)}
+  .sp .rows b{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:400;text-align:right}
+  .sp.empty{display:flex;align-items:center;justify-content:center;color:var(--mut);border-style:dashed;text-align:center;line-height:1.45}
+  .dlt{flex:0 1 170px;display:flex;flex-direction:column;justify-content:center;gap:6px;font-size:12px;color:var(--ink2)}
+  .pill{display:inline-block;font-size:11.5px;border-radius:999px;padding:1px 8px;background:#bff2cd;color:#0a8f3c}
+  .pill.r{background:#ffcccc;color:#d11414}
+  .ov{flex:1 1 360px;border:1px solid var(--line2);border-radius:10px;padding:8px 12px}
+  .ov .h{font-size:11.5px;color:var(--mut)}
+  .notes{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0 0;font-size:12px;color:var(--ink2);line-height:1.5}
+  .notes div{flex:1 1 280px;background:#fff;border-radius:10px;padding:10px 14px}
+  .notes b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>«Динамика» за год по дням — как смотреть и сравнивать</h1>
+  <p class="lead">Выбран свой период — <b>год по дням</b> (365 столбиков). Попробуй: <b>протяни мышью по графику</b> — приблизится
+  выделенное; <b>двигай окно в обзоре</b> под графиком; «Весь период» — обратно. <b>«Сравнить отрезки»</b> — протяни два раза:
+  отрезок A (например, неделя релиза) и B (неделя доработки) — внизу появятся числа рядом и наложение «день в день».</p>
+
+  <div class="card" id="dyn">
+    <div class="hd">
+      <div><div class="tt">Динамика · <span>весь Proteus</span></div>
+        <div class="st">пользователи в день · <b>21 окт 2025 – 20 окт 2026</b></div></div>
+      <div class="ml seg" id="step"><button data-st="d" class="on">Дни</button><button data-st="w">Недели</button><button data-st="m">Месяцы</button></div>
+      <button class="btn" id="cmpBtn">⇆ Сравнить отрезки</button>
+      <button class="btn" id="reset" disabled>Весь период</button>
+    </div>
+    <div class="lg"><span><i style="background:#245FD4"></i>Новые</span><span><i style="background:#AA77FF"></i>Вернувшиеся</span><span><i style="background:#8AAAEC"></i>Продолжающие</span></div>
+    <div id="main"></div>
+    <div class="cap">Просмотры</div>
+    <div id="views"></div>
+    <div id="over"></div>
+    <div class="hint" id="hint"></div>
+    <div class="cmp" id="cmp"></div>
+  </div>
+
+  <div class="notes">
+    <div><b>Сколько столбиков видно — так и рисуем.</b> До ~45 — с числами над столбиками, как сейчас. Дальше чисел нет, только
+    наведение; от ~120 — без зазоров. Подписи оси — по дням, неделям или месяцам, смотря что влезает.</div>
+    <div><b>Колесо не трогаем.</b> Им листают страницу борда — график его не перехватывает. Приближение — протягиванием и окном
+    в обзоре. Горизонтальной прокрутки у графика нет: две прокрутки на экране — путаница.</div>
+    <div><b>Сравнение A и B — без нового запроса.</b> Считаем из дней на графике: в среднем в день, просмотры, пик. Точное «разных людей
+    за отрезок» (не сумму по дням) — кнопкой «Сделать периодом»: отрезок станет своим периодом всего листа.</div>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+(function () {
+  // ── синтетика: год по дням ──
+  var D0 = new Date(2025, 9, 21), N = 365, MS = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  var MSN = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  var WD = ['вс','пн','вт','ср','чт','пт','сб'];
+  function dt(i) { var d = new Date(D0); d.setDate(d.getDate() + i); return d; }
+  function lab(i) { var d = dt(i); return d.getDate() + ' ' + MS[d.getMonth()]; }
+  function nf(x) { return Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+  function idx(y, m, d) { return Math.round((new Date(y, m, d) - D0) / 864e5); }
+  var seed = 7; function rnd() { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }
+  var REL = idx(2026, 3, 7), FIX = idx(2026, 9, 6), U = [], V = [];
+  for (var i = 0; i < N; i++) {
+    var d = dt(i), wd = d.getDay(), we = wd === 0 || wd === 6, m = d.getMonth(), dd = d.getDate();
+    var base = 900 + i * 0.9;
+    var hol = (m === 0 && dd <= 11) || (m === 4 && (dd <= 3 || (dd >= 9 && dd <= 11)));
+    var v = we || hol ? base * 0.3 : base * (0.92 + rnd() * 0.16);
+    if (i >= REL && i < REL + 14 && !we) v *= 1 + 0.9 * Math.exp(-(i - REL) / 4);
+    if (i >= FIX && i < FIX + 10 && !we) v *= 1 + 0.55 * Math.exp(-(i - FIX) / 3);
+    var nu = v * (0.05 + (i >= REL && i < REL + 7 ? 0.12 : 0) + (i >= FIX && i < FIX + 5 ? 0.06 : 0)), re = v * 0.1;
+    U.push({ n: nu, r: re, c: v - nu - re, t: v }); V.push(v * (3.6 + rnd() * 0.8));
+  }
+  // ── состояние ──
+  var S = { w0: 0, w1: N - 1, step: 'd', cmp: false, A: null, B: null, drag: null, hover: -1 };
+  var W = 0, H = 236, HV = 120, HO = 46, PL = 8, PR = 8;
+  function buckets() {   // шаг: дни / недели (с пн) / месяцы — сумма просмотров, среднее людей в день
+    if (S.step === 'd') return U.map(function (u, i) { return { i0: i, i1: i, u: u, v: V[i] }; });
+    var out = [], cur = null;
+    for (var i = 0; i < N; i++) {
+      var d = dt(i), key = S.step === 'w' ? Math.floor((i + ((D0.getDay() + 6) % 7)) / 7) : d.getFullYear() * 12 + d.getMonth();
+      if (!cur || cur.key !== key) { cur = { key: key, i0: i, i1: i, u: { n: 0, r: 0, c: 0, t: 0 }, v: 0, k: 0 }; out.push(cur); }
+      cur.i1 = i; cur.k++; cur.u.n += U[i].n; cur.u.r += U[i].r; cur.u.c += U[i].c; cur.u.t += U[i].t; cur.v += V[i];
+    }
+    out.forEach(function (b) { b.u = { n: b.u.n / b.k, r: b.u.r / b.k, c: b.u.c / b.k, t: b.u.t / b.k }; });
+    return out;
+  }
+  function x(i) { return PL + (i - S.w0) / (S.w1 - S.w0 + 1) * (W - PL - PR); }
+  function ix(px) { return Math.max(0, Math.min(N - 1, Math.floor(S.w0 + (px - PL) / (W - PL - PR) * (S.w1 - S.w0 + 1)))); }
+  function band(sp, col, bg, letter, h) {
+    if (!sp) return '';
+    var a = Math.max(sp[0], S.w0), b = Math.min(sp[1], S.w1); if (a > b) return '';
+    var x0 = x(a), x1 = x(b + 1);
+    return '<rect x="' + x0 + '" y="0" width="' + (x1 - x0) + '" height="' + h + '" fill="' + bg + '"/>' +
+      '<rect x="' + x0 + '" y="0" width="' + (x1 - x0) + '" height="3" fill="' + col + '"/>' +
+      (letter ? '<g><rect x="' + (x0 + 2) + '" y="6" width="16" height="16" rx="4" fill="' + col + '"/><text x="' + (x0 + 10) + '" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#fff">' + letter + '</text></g>' : '');
+  }
+  function axis(h) {   // подписи оси: дни / недели / месяцы — что влезает
+    var span = S.w1 - S.w0 + 1, px = (W - PL - PR) / span, out = '', last = -99;
+    for (var i = S.w0; i <= S.w1; i++) {
+      var d = dt(i), first = d.getDate() === 1, mon = d.getDay() === 1, show;
+      if (px >= 22) show = true; else if (px >= 4) show = mon; else show = first;
+      if (!show) continue;
+      var xx = x(i) + px / 2; if (xx - last < 34 && !first) continue;
+      if (first && xx - last < 34) out = out.replace(/<text[^>]*>[^<]*<\/text>$/, '');
+      last = xx;
+      var t = px >= 4 ? (first ? '1 ' + MS[d.getMonth()] : String(d.getDate())) : MSN[d.getMonth()] + (d.getMonth() === 0 ? ' ' + d.getFullYear() : '');
+      out += '<text class="' + (first ? 'axb' : 'ax') + '" x="' + xx + '" y="' + (h + 14) + '" text-anchor="middle">' + t + '</text>';
+    }
+    return out;
+  }
+  function draw() {
+    W = document.getElementById('dyn').clientWidth - 32;
+    var bs = buckets().filter(function (b) { return b.i1 >= S.w0 && b.i0 <= S.w1; });
+    var mx = 0, mv = 0; bs.forEach(function (b) { mx = Math.max(mx, b.u.t); mv = Math.max(mv, b.v); });
+    var n = bs.length, pxb = (W - PL - PR) / n, gap = n > 120 ? 0 : Math.min(6, pxb * 0.25), labels = n <= 45;
+    var top = labels ? 18 : 6, hh = H - top - 4;
+    var s = '<svg width="' + W + '" height="' + (H + 20) + '" id="msvg">';
+    s += band(S.A, 'var(--a)', 'var(--a-bg)', 'A', H) + band(S.B, 'var(--b)', 'var(--b-bg)', 'B', H);
+    var pk = -1, pv = -1; bs.forEach(function (b, k) { if (b.u.t > pv) { pv = b.u.t; pk = k; } });
+    bs.forEach(function (b, k) {
+      var x0 = x(Math.max(b.i0, S.w0)) + gap / 2, x1 = x(Math.min(b.i1, S.w1) + 1) - gap / 2, w = Math.max(0.6, x1 - x0);
+      var y = H, parts = [['c', '#8AAAEC'], ['r', '#AA77FF'], ['n', '#245FD4']];
+      parts.forEach(function (p) { var hgt = b.u[p[0]] / mx * hh; y -= hgt; s += '<rect x="' + x0 + '" y="' + y + '" width="' + w + '" height="' + hgt + '" fill="' + p[1] + '"' + (S.hover === k ? ' opacity=".75"' : '') + '/>'; });
+      if (labels) s += '<text class="vl" x="' + (x0 + w / 2) + '" y="' + (y - 4) + '" text-anchor="middle">' + (b.u.t >= 1000 ? (b.u.t / 1000).toFixed(1).replace('.', ',') + 'K' : Math.round(b.u.t)) + '</text>';
+    });
+    if (!labels && pk >= 0 && !S.cmp) {   // на длинном — подписан только пик
+      var b = bs[pk], xm = x((b.i0 + b.i1) / 2 + 0.5), ym = H - b.u.t / mx * hh;
+      s += '<circle cx="' + xm + '" cy="' + (ym - 6) + '" r="2.5" fill="#23272e"/><text class="vl" x="' + xm + '" y="' + (ym - 12) + '" text-anchor="middle" font-weight="700">пик ' + nf(b.u.t) + ' · ' + lab(b.i0) + '</text>';
+    }
+    s += '<line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + H + '" y2="' + H + '" stroke="#d4d7de"/>' + axis(H);
+    if (S.drag && S.drag.kind === 'sel') {
+      var a = Math.min(S.drag.a, S.drag.b), c = Math.max(S.drag.a, S.drag.b), col = S.cmp ? (S.A && !S.B ? 'var(--b)' : 'var(--a)') : 'var(--act)';
+      s += '<rect x="' + x(a) + '" y="0" width="' + (x(c + 1) - x(a)) + '" height="' + H + '" fill="' + (S.cmp ? (S.A && !S.B ? 'var(--b-bg)' : 'var(--a-bg)') : 'rgba(36,95,212,.12)') + '" stroke="' + col + '" stroke-dasharray="3 3"/>';
+    }
+    s += '</svg>';
+    document.getElementById('main').innerHTML = s;
+    // просмотры — линия, тот же масштаб по оси X
+    var v = '<svg width="' + W + '" height="' + (HV + 18) + '">' + band(S.A, 'var(--a)', 'var(--a-bg)', '', HV) + band(S.B, 'var(--b)', 'var(--b-bg)', '', HV), pts = [];
+    bs.forEach(function (b) { pts.push((x(Math.max(b.i0, S.w0)) + x(Math.min(b.i1, S.w1) + 1)) / 2 + ',' + (HV - 4 - b.v / mv * (HV - 12))); });
+    v += '<polyline points="' + pts.join(' ') + '" fill="none" stroke="#5f6673" stroke-width="1.5"/><line x1="' + PL + '" x2="' + (W - PR) + '" y1="' + HV + '" y2="' + HV + '" stroke="#d4d7de"/>' + axis(HV) + '</svg>';
+    document.getElementById('views').innerHTML = v;
+    drawOver();
+    document.getElementById('reset').disabled = S.w0 === 0 && S.w1 === N - 1;
+    var span = S.w1 - S.w0 + 1;
+    document.getElementById('hint').innerHTML = (span < N ? 'Видно <b>' + lab(S.w0) + ' – ' + lab(S.w1) + '</b> (' + span + ' дн.) · ' : '') +
+      (S.cmp ? (!S.A ? 'Протяни мышью по графику — отрезок <b>A</b>' : !S.B ? 'Теперь второй — отрезок <b>B</b>' : 'Протяни ещё раз — заменишь B') : 'Протяни мышью по графику — приблизить отрезок');
+    drawCmp();
+  }
+  function drawOver() {   // обзор: весь год, окно — что видно сверху
+    var mx = 0; U.forEach(function (u) { mx = Math.max(mx, u.t); });
+    var X = function (i) { return PL + i / N * (W - PL - PR); }, pts = [PL + ',' + HO];
+    U.forEach(function (u, i) { pts.push(X(i + 0.5) + ',' + (HO - u.t / mx * (HO - 6))); }); pts.push((W - PR) + ',' + HO);
+    var s = '<svg width="' + W + '" height="' + (HO + 30) + '" id="osvg" style="margin-top:10px;cursor:pointer"><polygon points="' + pts.join(' ') + '" fill="#e3e8f2"/>';
+    [[S.A, 'var(--a)'], [S.B, 'var(--b)']].forEach(function (p) { if (p[0]) s += '<rect x="' + X(p[0][0]) + '" y="0" width="' + Math.max(2, X(p[0][1] + 1) - X(p[0][0])) + '" height="' + HO + '" fill="' + p[1] + '" opacity=".35"/>'; });
+    var a = X(S.w0), b = X(S.w1 + 1);
+    s += '<rect x="' + PL + '" y="0" width="' + (a - PL) + '" height="' + HO + '" fill="rgba(246,246,246,.75)"/><rect x="' + b + '" y="0" width="' + (W - PR - b) + '" height="' + HO + '" fill="rgba(246,246,246,.75)"/>' +
+      '<rect x="' + a + '" y="0" width="' + (b - a) + '" height="' + HO + '" fill="none" stroke="var(--act)" stroke-width="1.5" rx="3" style="cursor:grab"/>' +
+      '<rect x="' + (a - 4) + '" y="12" width="8" height="22" rx="3" fill="#fff" stroke="var(--act)" style="cursor:ew-resize"/><rect x="' + (b - 4) + '" y="12" width="8" height="22" rx="3" fill="#fff" stroke="var(--act)" style="cursor:ew-resize"/>';
+    for (var i = 0; i < N; i++) { var d = dt(i); if (d.getDate() === 1) s += '<text class="' + (d.getMonth() === 0 ? 'axb' : 'ax') + '" x="' + X(i) + '" y="' + (HO + 14) + '">' + MSN[d.getMonth()] + (d.getMonth() === 0 ? ' ' + d.getFullYear() : '') + '</text>'; }
+    s += '<text class="ax" x="' + PL + '" y="' + (HO + 28) + '">Обзор всего периода — тяни окно или его края</text></svg>';
+    document.getElementById('over').innerHTML = s;
+  }
+  function stat(sp) {
+    var k = sp[1] - sp[0] + 1, su = 0, sv = 0, pk = sp[0], nw = 0;
+    for (var i = sp[0]; i <= sp[1]; i++) { su += U[i].t; sv += V[i]; nw += U[i].n; if (U[i].t > U[pk].t) pk = i; }
+    return { k: k, avg: su / k, views: sv, vavg: sv / k, peak: U[pk].t, pkd: pk, nw: nw / k };
+  }
+  function spHtml(sp, L, col) {
+    if (!sp) return '<div class="sp empty">Протяни мышью по графику —<br>отрезок ' + L + '</div>';
+    var s = stat(sp);
+    return '<div class="sp"><button class="x" data-clr="' + L + '">×</button><span class="k" style="background:' + col + '">' + L + '</span><span class="dt">' + lab(sp[0]) + ' – ' + lab(sp[1]) + '</span>' +
+      '<div class="rows"><span>дней</span><b>' + s.k + '</b><span>пользователей в день, в среднем</span><b>' + nf(s.avg) + '</b><span>из них новых в день</span><b>' + nf(s.nw) + '</b>' +
+      '<span>просмотров за отрезок</span><b>' + nf(s.views) + '</b><span>пик</span><b>' + nf(s.peak) + ' · ' + WD[dt(s.pkd).getDay()] + ', ' + lab(s.pkd) + '</b></div>' +
+      '<div style="margin-top:8px"><button class="btn" style="height:26px">Сделать периодом</button></div></div>';
+  }
+  function drawCmp() {
+    var el = document.getElementById('cmp'); el.className = 'cmp' + (S.cmp ? ' on' : '');
+    if (!S.cmp) { el.innerHTML = ''; return; }
+    var h = spHtml(S.A, 'A', 'var(--a)');
+    if (S.A && S.B) {
+      var a = stat(S.A), b = stat(S.B), r = (b.avg / a.avg - 1) * 100, rv = (b.vavg / a.vavg - 1) * 100;
+      h += '<div class="dlt"><div>B к A, в среднем в день:</div><div><span class="pill' + (r < 0 ? ' r' : '') + '">' + (r >= 0 ? '+' : '−') + Math.abs(r).toFixed(0) + '%</span> пользователи</div>' +
+        '<div><span class="pill' + (rv < 0 ? ' r' : '') + '">' + (rv >= 0 ? '+' : '−') + Math.abs(rv).toFixed(0) + '%</span> просмотры</div>' +
+        (a.k !== b.k ? '<div style="font-size:11px;color:var(--mut)">отрезки разной длины — сравниваем «в день»</div>' : '') + '</div>';
+    }
+    h += spHtml(S.B, 'B', 'var(--b)');
+    if (S.A && S.B) {   // наложение «день в день»: день 1 = первый день отрезка
+      var L = Math.max(S.A[1] - S.A[0], S.B[1] - S.B[0]) + 1, w = 340, hh = 84, mx = 0, k;
+      for (k = 0; k < L; k++) { if (S.A[0] + k <= S.A[1]) mx = Math.max(mx, U[S.A[0] + k].t); if (S.B[0] + k <= S.B[1]) mx = Math.max(mx, U[S.B[0] + k].t); }
+      var line = function (sp, col) { var p = []; for (var k = 0; k <= sp[1] - sp[0]; k++) p.push((k / Math.max(1, L - 1) * w) + ',' + (hh - U[sp[0] + k].t / mx * (hh - 8))); return '<polyline points="' + p.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2"/>'; };
+      var ax = ''; for (k = 0; k < L; k += Math.max(1, Math.ceil(L / 8))) ax += '<text class="ax" x="' + (k / Math.max(1, L - 1) * w) + '" y="' + (hh + 14) + '" text-anchor="middle">' + (k + 1) + '</text>';
+      h += '<div class="ov"><div class="h">День в день: пользователи по дням от начала отрезка</div><svg width="' + w + '" height="' + (hh + 18) + '" style="margin-top:6px">' +
+        '<line x1="0" x2="' + w + '" y1="' + hh + '" y2="' + hh + '" stroke="#d4d7de"/>' + line(S.A, 'var(--a)') + line(S.B, 'var(--b)') + ax + '</svg></div>';
+    }
+    el.innerHTML = h;
+  }
+  // ── мышь: протягивание по графику — приблизить или задать A / B; наведение — подсказка ──
+  var tip = document.getElementById('tip');
+  function relX(e, el) { return e.clientX - el.getBoundingClientRect().left; }
+  document.getElementById('main').addEventListener('pointerdown', function (e) {
+    var px = relX(e, this); S.drag = { kind: 'sel', a: ix(px), b: ix(px), x0: px }; this.setPointerCapture(e.pointerId);
+  });
+  document.getElementById('main').addEventListener('pointermove', function (e) {
+    var px = relX(e, this);
+    if (S.drag && S.drag.kind === 'sel') { S.drag.b = ix(px); tip.style.display = 'none'; draw(); return; }
+    var bs = buckets().filter(function (b) { return b.i1 >= S.w0 && b.i0 <= S.w1; }), i = ix(px), k = -1;
+    bs.forEach(function (b, j) { if (i >= b.i0 && i <= b.i1) k = j; });
+    if (k < 0) return;
+    var b = bs[k];
+    if (S.hover !== k) { S.hover = k; draw(); }
+    tip.style.display = 'block'; tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+    tip.innerHTML = '<div class="h">' + (b.i0 === b.i1 ? WD[dt(b.i0).getDay()] + ', ' + lab(b.i0) + ' ' + dt(b.i0).getFullYear() : lab(b.i0) + ' – ' + lab(b.i1) + ' · в среднем в день') + '</div>' +
+      '<div class="r">Пользователей<b>' + nf(b.u.t) + '</b></div><div class="r">новых<b>' + nf(b.u.n) + '</b></div><div class="r">Просмотров<b>' + nf(b.v) + '</b></div>';
+  });
+  document.getElementById('main').addEventListener('pointerleave', function () { tip.style.display = 'none'; if (S.hover >= 0) { S.hover = -1; draw(); } });
+  document.getElementById('main').addEventListener('pointerup', function (e) {
+    if (!S.drag) return; var d = S.drag; S.drag = null;
+    var a = Math.min(d.a, d.b), b = Math.max(d.a, d.b);
+    if (Math.abs(relX(e, this) - d.x0) < 6) { draw(); return; }   // просто клик — ничего
+    if (S.cmp) { if (!S.A || S.B) { if (S.B) S.B = [a, b]; else S.A = [a, b]; } else S.B = [a, b]; }
+    else { if (b - a < 6) { var c = (a + b) / 2; a = Math.max(0, Math.round(c - 3)); b = Math.min(N - 1, a + 6); } S.w0 = a; S.w1 = b; }
+    draw();
+  });
+  // обзор: тянуть окно, края, клик мимо — перенести окно
+  document.getElementById('over').addEventListener('pointerdown', function (e) {
+    var px = relX(e, this), X = function (i) { return PL + i / N * (W - PL - PR); }, a = X(S.w0), b = X(S.w1 + 1), toI = function (p) { return Math.round((p - PL) / (W - PL - PR) * N); };
+    var mode = Math.abs(px - a) < 8 ? 'l' : Math.abs(px - b) < 8 ? 'r' : (px > a && px < b) ? 'm' : 'jump';
+    if (mode === 'jump') { var span = S.w1 - S.w0, c = toI(px); S.w0 = Math.max(0, Math.min(N - 1 - span, c - Math.round(span / 2))); S.w1 = S.w0 + span; draw(); mode = 'm'; }
+    var st = { px: px, w0: S.w0, w1: S.w1 }, el = this; el.setPointerCapture(e.pointerId);
+    function mv(ev) {
+      var dI = toI(relX(ev, el)) - toI(st.px);
+      if (mode === 'm') { var sp = st.w1 - st.w0; S.w0 = Math.max(0, Math.min(N - 1 - sp, st.w0 + dI)); S.w1 = S.w0 + sp; }
+      if (mode === 'l') S.w0 = Math.max(0, Math.min(S.w1 - 6, st.w0 + dI));
+      if (mode === 'r') S.w1 = Math.min(N - 1, Math.max(S.w0 + 6, st.w1 + dI));
+      draw();
+    }
+    function up() { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); }
+    el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up);
+  });
+  document.getElementById('reset').onclick = function () { S.w0 = 0; S.w1 = N - 1; draw(); };
+  document.getElementById('cmpBtn').onclick = function () { S.cmp = !S.cmp; this.className = 'btn' + (S.cmp ? ' on' : ''); if (!S.cmp) { S.A = S.B = null; } draw(); };
+  document.getElementById('step').onclick = function (e) { var b = e.target.closest('[data-st]'); if (!b) return; S.step = b.getAttribute('data-st'); [].forEach.call(this.children, function (c) { c.className = c === b ? 'on' : ''; }); draw(); };
+  document.getElementById('cmp').onclick = function (e) { var c = e.target.closest('[data-clr]'); if (!c) return; if (c.getAttribute('data-clr') === 'A') { S.A = S.B; S.B = null; } else S.B = null; draw(); };
+  window.addEventListener('resize', draw);
+  window.__mock = { S: S, draw: draw, idx: idx };   // для скриншотов
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -647,13 +647,14 @@ FROM (
   FROM (
     {#- sumMap → (ключи, суммы): значение бакета — по его ключу (indexOf по короткому массиву; нет ключа — 0) -#}
     SELECT x.1 AS x_sec, x.2 AS x_k, x.3 AS x_u, x.4 AS x_n, x.5 AS x_r, if(x.1 = 'ts', 'g', 'd') AS x_g{% if LONG %}, x.6 AS x_a, x.7 AS x_q{% endif %}
-    FROM tc{% if FCAL %} CROSS JOIN calf cf0{% endif %}
+    {# соединение с calf — во вложенном подзапросе: старый анализатор делает ARRAY JOIN до JOIN и колонок calf не видит #}
+    FROM {% if FCAL %}(SELECT * FROM tc CROSS JOIN calf){% else %}tc{% endif %}
     ARRAY JOIN arrayConcat(
       arrayMap((t, u) -> ('ts', toInt64(t), u, if(indexOf(tn.1, t) > 0, tn.2[indexOf(tn.1, t)], toUInt64(0)),
         if(indexOf(tr.1, t) > 0, tr.2[indexOf(tr.1, t)], toUInt64(0)){% if LONG %},
         if(indexOf(ta.1, t) > 0, ta.2[indexOf(ta.1, t)], toUInt64(0)), if(indexOf(tq.1, t) > 0, tq.2[indexOf(tq.1, t)], toUInt64(0)){% endif %}), tu.1, tu.2),
       {% if FCAL %}{#- календарь по периоду: x.5 — просмотры дня -#}
-      arrayMap((t, u, v) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), v{% if LONG %}, toUInt64(0), toUInt64(0){% endif %}), cf0.ks, cf0.us, cf0.vs)) AS x
+      arrayMap((t, u, v) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), v{% if LONG %}, toUInt64(0), toUInt64(0){% endif %}), ks, us, vs)) AS x
       {%- else %}
       arrayMap((t, u) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), toUInt64(0){% if LONG %}, toUInt64(0), toUInt64(0){% endif %}), cu.1, cu.2)) AS x{% endif %}
     WHERE x.3 > 0

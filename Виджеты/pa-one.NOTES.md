@@ -267,4 +267,5 @@
   `syncCalH`), число — при клетке ≥ 26 × 18, ступени — квантили дней окна (`calQuant`). Ширина вкладки — `CAL_W`
   (syncCalH), одна колонка — по `window.innerWidth ≤ 760`, как @media.
 - Регресс — check_period §6 (FCAL на «30 днях» == маски; окно и дни 20 недель / 12 мес / 8 кв / своего == факт).
-
+- calf соединяется с tc во ВЛОЖЕННОМ подзапросе `(SELECT * FROM tc CROSS JOIN calf)`: старый анализатор делает ARRAY JOIN до JOIN
+  и колонок calf не видит (Code 47 «Unknown identifier: ks», check_period §4).

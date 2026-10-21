@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Календарь по периоду — макет</title>
+<!-- Макет предложения (2026-10-21): вкладка «Календарь» панели pa_one масштабируется по выбранному периоду.
+     До ~10 недель — лента недель с ЧИСЛОМ пользователей в клетке (день — мелко в углу); до ~7 месяцев — мини-календари
+     по месяцам; длиннее — годовая тепловая карта (недели × дни недели). Числа — только если клетка их вмещает.
+     Самодостаточный: Arial, токены профиля §16, синтетика (свежесть 21.09.2026, история с 23.08.2025). -->
+<style>
+  :root{--bg:#f6f6f6;--card:#fff;--act:#245FD4;--act-ink:#1B4AA8;--blue-bg:#EAF0FC;--ink:#23272e;--ink2:#454b55;--mut:#8a909c;--mut2:#b4b9c2;--line:#e7e9ee;--bg-alt:#eef0f3}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:var(--ink);font-size:12.5px}
+  .page{max-width:1240px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:20px;margin:0 0 6px}
+  .lead{color:var(--ink2);font-size:13px;line-height:1.5;max-width:960px;margin:0 0 18px}
+  .ctl{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin:0 0 14px}
+  .ctl .l{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+  .seg{display:inline-flex;gap:2px;background:var(--bg-alt);border-radius:9px;padding:2px}
+  .seg button{border:0;background:transparent;border-radius:7px;height:30px;padding:0 12px;font:inherit;font-size:12px;color:var(--mut);cursor:pointer;white-space:nowrap}
+  .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(20,28,45,.12);font-weight:700}
+  .seg.tiny button{height:24px;padding:0 9px;font-size:11.5px}
+  .panel{background:#fff;border-radius:12px;padding:16px 18px 18px;margin:0 auto 0 0}
+  .ph b{font-size:14px}.ph .a{color:var(--mut);font-size:14px}
+  .ph .sub{display:block;color:var(--mut);font-size:11.5px;margin-top:3px}
+  .bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:14px 0 12px}
+  .lg{display:flex;align-items:center;gap:3px;color:var(--mut);font-size:11px}
+  .lg i{display:inline-block;width:11px;height:11px;border-radius:3px}
+  .lg .sp{width:10px}
+  .main{display:flex;gap:22px;align-items:flex-start}
+  .left{flex:1 1 auto;min-width:0}
+  .side{flex:0 0 300px;display:flex;flex-direction:column;gap:8px}
+  .chip{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:9px;padding:9px 12px;color:var(--mut);font-size:12px}
+  .chip b{color:var(--ink);font-size:13px}
+  .see{background:var(--bg-alt);border-radius:9px;padding:9px 12px;font-size:12px;line-height:1.5;color:var(--ink2)}
+  .see b{color:var(--ink)}
+  .note{color:var(--mut);font-size:11.5px;line-height:1.5}
+  /* лента недель */
+  .rib{display:grid;grid-template-columns:76px repeat(7,minmax(0,1fr));gap:3px;align-items:stretch}
+  .wd{font-size:10.5px;color:var(--mut);text-align:center;align-self:end;padding-bottom:2px}
+  .wd.we{color:var(--mut2)}
+  .ml{font-size:12.5px;color:var(--ink2);padding-top:3px;line-height:1.3}
+  .ml b{display:block;font-weight:700;color:var(--ink)}
+  .ml span{font-size:11px;color:var(--mut)}
+  .gap{grid-column:1/-1;height:6px}
+  .c{position:relative;border-radius:5px;height:38px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#1d2a44;cursor:default}
+  .c .dn{position:absolute;left:5px;top:3px;font-size:9.5px;font-weight:400;opacity:.62}
+  .c.dk{color:#fff}
+  .c.out{background:transparent !important;color:var(--mut2);font-weight:400;font-size:11px}
+  .c.last{box-shadow:0 0 0 2px #23272e}
+  .c:hover{outline:2px solid #23272e;outline-offset:-1px}
+  /* мини-календари */
+  .mg{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--mw,196px),1fr));gap:14px 18px}
+  .mo h4{margin:0 0 4px;font-size:12.5px;font-weight:700}
+  .mo h4 span{font-weight:400;color:var(--mut);font-size:11px;margin-left:4px}
+  .mo .g{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+  .mo .w{font-size:9.5px;color:var(--mut2);text-align:center}
+  .mo .d{height:var(--ch,24px);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#1d2a44;position:relative}
+  .mo .d.dk{color:#fff}
+  .mo .d.e{background:transparent}
+  .mo .d.out{background:#f7f8fa}
+  .mo .d.last{box-shadow:0 0 0 2px #23272e}
+  .mo .d:hover{outline:2px solid #23272e;outline-offset:-1px}
+  /* год */
+  .yr{overflow:hidden}
+  .yr svg{display:block}
+  /* дни недели */
+  .wbs{display:grid;grid-template-columns:76px repeat(7,minmax(0,1fr));gap:3px;margin-top:26px;height:96px;align-items:end}
+  .wb{display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
+  .wb .col{position:relative;width:62%;flex:1 1 auto;display:flex;align-items:flex-end}
+  .wb .col i{display:block;width:100%;background:#8AAAEC;border-radius:4px 4px 0 0}
+  .wb.pk .col i{background:#245FD4}
+  .wb .v{position:absolute;left:0;right:0;text-align:center;font-size:11px;font-weight:700}
+  .wb .lab{font-size:10.5px;color:var(--mut);margin-top:3px}
+  .tip{position:fixed;pointer-events:none;background:#23272e;color:#fff;border-radius:8px;padding:8px 10px;font-size:11.5px;line-height:1.5;z-index:9;display:none;max-width:240px}
+  .tip b{display:block;margin-bottom:2px}
+  .cards{display:flex;gap:16px;flex-wrap:wrap;margin:22px 0 0}
+  .cards div{flex:1 1 300px;background:#fff;border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.55;color:var(--ink2)}
+  .cards b{color:var(--ink)}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>«Календарь посещений» по выбранному периоду</h1>
+  <p class="lead">Сейчас календарь всегда показывает последние 60 дней. Предложение: показывать <b>весь выбранный период по дням</b>
+    и выбирать вид по длине. Короткий период — лента недель, в клетке <b>число пользователей</b>, день месяца мелко в углу.
+    Средний — мини-календари по месяцам. Длинный — годовая тепловая карта. Число пишем, только если оно помещается в клетку;
+    иначе только цвет, а дата и число — в подсказке. Столбики «В среднем» и факты справа считаются за тот же период.
+    Переключи период и ширину панели, чтобы увидеть, как меняется вид.</p>
+  <div class="ctl">
+    <span class="l">Период</span>
+    <div class="seg" id="per">
+      <button data-p="60" class="on">30 дней (календарь — 60)</button>
+      <button data-p="140">20 недель</button>
+      <button data-p="264">С начала года</button>
+      <button data-p="396">12 месяцев</button>
+    </div>
+    <span class="l">Ширина панели</span>
+    <div class="seg tiny" id="wid"><button data-w="980" class="on">980 (большой экран)</button><button data-w="760">760 (ноутбук)</button></div>
+  </div>
+  <div class="panel" id="panel">
+    <div class="ph"><b>Календарь посещений · </b><span class="a">весь Proteus</span><span class="sub" id="sub"></span></div>
+    <div class="bar">
+      <div class="seg tiny" id="met"><button data-m="u" class="on">Пользователи</button><button data-m="v">Просмотры</button></div>
+      <div class="lg" id="lg"></div>
+    </div>
+    <div class="main"><div class="left" id="cal"></div><div class="side" id="side"></div></div>
+  </div>
+  <div class="cards">
+    <div><b>Откуда данные.</b> Подневный факт <code>pa_evd_day</code> хранит всю историю. Для своего периода он уже читается
+      для «Динамики», поэтому календарь на весь период почти ничего не добавит. У готовых «20 недель / 12 месяцев /
+      8 кварталов» сейчас 60 дней берутся из маски пар <code>pa_pair</code>, а подневный факт не читается. Календарь
+      на весь такой период — это ещё одно чтение факта на каждый клик, и у этих периодов «Применить» станет медленнее.</div>
+    <div><b>Пороги вида</b> (меняются по ширине панели; цвет — пять ступеней по квантилям дней периода, чтобы один всплеск не делал остальные дни бледными): клетка шире 34 px — лента недель с числами; мини-календари, пока
+      месяцы с клетками от 20 px влезают без прокрутки; дальше — год неделями-колонками. В мини-календаре число
+      пишется, если клетка от 30 px, в годовом виде — никогда.</div>
+    <div><b>Просмотры по дням.</b> Сейчас они есть только за 30 дней (<code>pa_dash_bkt</code>). Если календарь читает
+      подневный факт, просмотры будут за весь период, и пометка «просмотров по дням нет» уйдёт.</div>
+  </div>
+</div>
+<div class="tip" id="tip"></div>
+<script>
+var MD = Date.UTC(2026, 8, 21), DAY = 864e5, HS = Date.UTC(2025, 7, 23);
+var MS = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+var MF = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+var WD = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'], WDF = ['понедельник','вторник','среда','четверг','пятница','суббота','воскресенье'];
+var C = ['#f1f3f6','#E4ECFB','#C4D5F6','#8AAAEC','#4A7BE0','#245FD4'];
+// синтетика: будни ~1,1K, выходные ~0,3K, праздники ниже, рост к весне, всплеск в апреле
+function rnd(i) { var x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); }
+function val(t) {
+  var d = new Date(t), w = (d.getUTCDay() + 6) % 7, m = d.getUTCMonth(), dd = d.getUTCDate(), i = Math.round(t / DAY);
+  if (t < HS) return null;
+  var base = 900 + 260 * Math.sin((t - Date.UTC(2026, 0, 1)) / DAY / 365 * Math.PI * 1.4) + (i % 97) * 0.8;
+  if (w >= 5) base *= 0.27;
+  if (m === 0 && dd <= 8) base *= 0.18;
+  if (m === 4 && (dd <= 3 || (dd >= 9 && dd <= 11))) base *= 0.3;
+  if (m === 11 && dd === 31) base *= 0.15;
+  if (m === 3 && dd >= 7 && dd <= 9) base *= 1.7;
+  return Math.round(base * (0.9 + rnd(i) * 0.2));
+}
+var S = { p: 60, w: 980, m: 'u' };
+function nf(v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); }
+function cp(v) { return v >= 1e4 ? Math.round(v / 1e3) + 'K' : v >= 1e3 ? (v / 1e3).toFixed(1).replace('.', ',') + 'K' : String(v); }
+var Q = [];
+function lvl(v) { if (v == null) return -1; if (!v) return 0; for (var i = 0; i < Q.length; i++) if (v <= Q[i]) return i + 1; return 5; }
+function days() {
+  var out = [], n = S.p;
+  for (var k = n - 1; k >= 0; k--) {
+    var t = MD - k * DAY, d = new Date(t), u = val(t);
+    out.push({ t: t, k: k, y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), w: (d.getUTCDay() + 6) % 7, u: u, v: u == null ? null : Math.round(u * (6.4 + rnd(k) * 1.6)) });
+  }
+  return out;
+}
+function vOf(x) { return S.m === 'v' ? x.v : x.u; }
+function tipAttr(x) { return ' data-t="' + x.t + '"'; }
+function render() {
+  var P = document.getElementById('panel'); P.style.maxWidth = S.w + 'px';
+  var ds = days(), mx = 0, i, byT = {};
+  for (i = 0; i < ds.length; i++) { byT[ds[i].t] = ds[i]; if (vOf(ds[i]) > mx) mx = vOf(ds[i]); }
+  window.__byT = byT;
+  // пороги цвета — квантили дней периода (20/40/60/80 %): один всплеск не красит остальные дни в бледный
+  var vs = ds.map(vOf).filter(function (v) { return v; }).sort(function (a, b) { return a - b; });
+  Q = [0.2, 0.4, 0.6, 0.8].map(function (q) { return vs[Math.min(vs.length - 1, Math.floor(q * vs.length))]; });
+  var calW = S.w - 36 - 300 - 22;              // ширина под календарь
+  var cellRib = (calW - 76 - 6 * 3) / 7, nWeeks = Math.ceil(ds.length / 7) + 1;
+  var mode = cellRib >= 34 && ds.length <= 75 ? 'rib' : (ds.length <= 215 ? 'mon' : 'yr');
+  var dark = function (L) { return L >= 4; };
+  var h = '';
+  if (mode === 'rib') {
+    // лента недель: как сейчас, но в клетке — число, день — в углу
+    h = '<div class="rib"><span></span>';
+    for (i = 0; i < 7; i++) h += '<span class="wd' + (i >= 5 ? ' we' : '') + '">' + WD[i] + '</span>';
+    var t0 = ds[0].t - ds[0].w * DAY, t1 = ds[ds.length - 1].t + (6 - ds[ds.length - 1].w) * DAY, lastM = null;
+    for (var wt = t0; wt <= t1; wt += 7 * DAY) {
+      var parts = [];
+      for (var j = 0; j < 7; j++) { var dq = new Date(wt + j * DAY), kq = dq.getUTCFullYear() + '-' + dq.getUTCMonth(); if (parts.indexOf(kq) < 0) parts.push(kq); }
+      for (var pi = 0; pi < parts.length; pi++) {
+        var cells = '', any = false;
+        for (j = 0; j < 7; j++) {
+          var tt = wt + j * DAY, de = new Date(tt), key = de.getUTCFullYear() + '-' + de.getUTCMonth(), x = byT[tt];
+          if (key !== parts[pi]) { cells += '<span></span>'; continue; }
+          if (!x) { cells += '<span class="c out">' + de.getUTCDate() + '</span>'; continue; }
+          any = true;
+          var L = lvl(vOf(x));
+          cells += '<span class="c' + (dark(L) ? ' dk' : '') + (x.k === 0 ? ' last' : '') + '" style="background:' + C[Math.max(L, 0)] + '"' + tipAttr(x) + '>' +
+            '<span class="dn">' + x.d + (x.d === 1 ? ' ' + MS[x.m] : '') + '</span>' + (vOf(x) == null ? '—' : (cellRib >= 52 && vOf(x) < 1e5 ? nf(vOf(x)) : cp(vOf(x)))) + '</span>';
+        }
+        if (!any) continue;
+        var lab = '';
+        if (parts[pi] !== lastM) {
+          var mi = +parts[pi].split('-')[1], su = 0, cn = 0;
+          for (i = 0; i < ds.length; i++) if (ds[i].y + '-' + ds[i].m === parts[pi] && vOf(ds[i]) != null) { su += vOf(ds[i]); cn++; }
+          if (lastM !== null) h += '<span class="gap"></span>';
+          lab = '<b>' + MF[mi] + '</b><span>' + (cn ? cp(Math.round(su / cn)) + ' в день' : '') + '</span>';
+          lastM = parts[pi];
+        }
+        h += '<span class="ml">' + lab + '</span>' + cells;
+      }
+    }
+    h += '</div>';
+  } else if (mode === 'mon') {
+    // мини-календари: месяц — свой блок Пн…Вс; число — если клетка ≥ 30 px
+    var months = [], seen = {};
+    for (i = 0; i < ds.length; i++) { var mk = ds[i].y + '-' + ds[i].m; if (!seen[mk]) { seen[mk] = 1; months.push([ds[i].y, ds[i].m]); } }
+    var per = Math.max(1, Math.floor((calW + 18) / (7 * 22 + 12 + 18))), mw = Math.floor((calW - (per - 1) * 18) / per);
+    var cw = (mw - 12) / 7, ch = Math.max(18, Math.min(30, Math.round(cw * 0.85))), num = cw >= 30;
+    h = '<div class="mg" style="--mw:' + mw + 'px;--ch:' + ch + 'px">';
+    for (var q = 0; q < months.length; q++) {
+      var y = months[q][0], m = months[q][1], first = Date.UTC(y, m, 1), nd = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), off = (new Date(first).getUTCDay() + 6) % 7;
+      var su2 = 0, cn2 = 0, g = '';
+      for (i = 0; i < 7; i++) g += '<span class="w">' + WD[i].charAt(0) + '</span>';
+      for (i = 0; i < off; i++) g += '<span class="d e"></span>';
+      for (var dd = 1; dd <= nd; dd++) {
+        var t = Date.UTC(y, m, dd), z = byT[t];
+        if (!z) { g += '<span class="d out"></span>'; continue; }
+        var L2 = lvl(vOf(z));
+        if (vOf(z) != null) { su2 += vOf(z); cn2++; }
+        g += '<span class="d' + (dark(L2) ? ' dk' : '') + (z.k === 0 ? ' last' : '') + '" style="background:' + C[Math.max(L2, 0)] + '"' + tipAttr(z) + '>' + (num && vOf(z) != null ? cp(vOf(z)) : '') + '</span>';
+      }
+      h += '<div class="mo"><h4>' + MF[m] + (y !== 2026 ? ' ' + y : '') + '<span>' + (cn2 ? cp(Math.round(su2 / cn2)) + ' в день' : '') + '</span></h4><div class="g">' + g + '</div></div>';
+    }
+    h += '</div>';
+  } else {
+    // год: недели — колонки, дни недели — строки; месяцы подписаны сверху, январь — с годом
+    var w0 = ds[0].t - ds[0].w * DAY, nW = Math.round((ds[ds.length - 1].t - w0) / DAY / 7) + 1;
+    var lx = 22, cs = Math.max(6, Math.min(16, Math.floor((calW - lx) / nW) - 2)), stp = cs + 2, H = 18 + 7 * stp + 4, W = lx + nW * stp;
+    var sv = '';
+    for (i = 0; i < 7; i++) if (i % 2 === 0 || i === 6) sv += '<text x="0" y="' + (18 + i * stp + cs - 2) + '" font-size="9.5" fill="#8a909c">' + WD[i] + '</text>';
+    var lastMo = -1, lastX = -99, lastW = 0;
+    for (var wk = 0; wk < nW; wk++) {
+      for (var wd2 = 0; wd2 < 7; wd2++) {
+        var tt2 = w0 + (wk * 7 + wd2) * DAY, zz = byT[tt2];
+        if (!zz) continue;
+        var L3 = lvl(vOf(zz)), xx = lx + wk * stp, yy = 18 + wd2 * stp;
+        sv += '<rect x="' + xx + '" y="' + yy + '" width="' + cs + '" height="' + cs + '" rx="2" fill="' + C[Math.max(L3, 0)] + '"' + (zz.k === 0 ? ' stroke="#23272e" stroke-width="1.5"' : '') + tipAttr(zz) + '/>';
+        if (zz.d === 1 && zz.m !== lastMo && xx - lastX > lastW) {
+          sv += '<text x="' + xx + '" y="11" font-size="10.5" fill="' + (zz.m === 0 ? '#23272e' : '#8a909c') + '" font-weight="' + (zz.m === 0 ? 700 : 400) + '">' + MS[zz.m] + (zz.m === 0 ? ' ' + zz.y : '') + '</text>';
+          lastMo = zz.m; lastX = xx; lastW = (zz.m === 0 ? 8 : 3) * 6.5 + 6;
+        }
+      }
+    }
+    h = '<div class="yr"><svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' + sv + '</svg></div>';
+  }
+  // дни недели — среднее за день за период
+  var su3 = [0,0,0,0,0,0,0], cn3 = [0,0,0,0,0,0,0], am = 0, pk = 0;
+  for (i = 0; i < ds.length; i++) { var vv = vOf(ds[i]); if (vv == null) continue; su3[ds[i].w] += vv; cn3[ds[i].w]++; }
+  var av = su3.map(function (s, k) { return cn3[k] ? s / cn3[k] : 0; });
+  for (i = 0; i < 7; i++) { am = Math.max(am, av[i]); if (av[i] > av[pk]) pk = i; }
+  if (mode === 'rib') {
+    h += '<div class="wbs"><span class="ml"><b>В среднем</b><span>за день</span></span>';
+    for (i = 0; i < 7; i++) h += '<span class="wb' + (i === pk ? ' pk' : '') + '"><span class="col"><i style="height:' + (av[i] / am * 100).toFixed(1) + '%"></i><span class="v" style="bottom:calc(' + (av[i] / am * 100).toFixed(1) + '% + 3px)">' + cp(Math.round(av[i])) + '</span></span></span>';
+    h += '</div>';
+  } else {
+    h += '<div class="wbs" style="grid-template-columns:76px repeat(7,40px);height:80px"><span class="ml"><b>В среднем</b><span>за день</span></span>';
+    for (i = 0; i < 7; i++) h += '<span class="wb' + (i === pk ? ' pk' : '') + '"><span class="col"><i style="height:' + (av[i] / am * 100).toFixed(1) + '%"></i><span class="v" style="bottom:calc(' + (av[i] / am * 100).toFixed(1) + '% + 3px)">' + cp(Math.round(av[i])) + '</span></span><span class="lab">' + WD[i] + '</span></span>';
+    h += '</div>';
+  }
+  document.getElementById('cal').innerHTML = h;
+  // справа — факты за период
+  var best = null; for (i = 0; i < ds.length; i++) if (vOf(ds[i]) != null && (!best || vOf(ds[i]) > vOf(best))) best = ds[i];
+  var wdS = su3[0] + su3[1] + su3[2] + su3[3] + su3[4], all = wdS + su3[5] + su3[6];
+  var a = ds[0], b = ds[ds.length - 1];
+  document.getElementById('sub').textContent = (S.p === 60 ? 'последние 60 дней по дням' : 'весь период по дням · ' + a.d + ' ' + MS[a.m] + (a.y !== b.y ? ' ' + a.y : '') + ' – ' + b.d + ' ' + MS[b.m] + ' ' + b.y + ' · ' + ds.length + ' дн.') +
+    ' · вид: ' + ({ rib: 'лента недель', mon: 'мини-календари', yr: 'год по неделям' })[mode];
+  document.getElementById('side').innerHTML =
+    '<div class="chip"><span>Пик недели</span><b>' + WD[pk] + ' · ' + cp(Math.round(av[pk])) + '</b></div>' +
+    '<div class="chip"><span>В будни</span><b>' + Math.round(wdS / all * 100) + '%</b></div>' +
+    '<div class="chip"><span>Лучший день</span><b>' + best.d + ' ' + MS[best.m] + ' · ' + cp(vOf(best)) + '</b></div>' +
+    '<div class="see"><b>Что видно:</b> пик — ' + WDF[pk] + '; в выходные — ' + cp(Math.round((av[5] + av[6]) / 2)) + ' в день.' +
+    (ds[0].t <= Date.UTC(2026, 0, 8) ? ' Провалы — праздники: 1–8 января, майские.' : '') + '</div>' +
+    '<div class="note">' + (mode === 'rib' ? 'В клетке — пользователей за день; мелко в углу — число месяца. Наведи — дата, новые, просмотры.'
+      : mode === 'mon' ? 'Клетки мелкие — число не помещается, только цвет. Наведи на день — дата и число.' : 'Каждая клетка — день, колонка — неделя. Наведи — дата и число.') + '</div>';
+  var lg = 'меньше'; for (i = 0; i < C.length; i++) lg += '<i style="background:' + C[i] + '"></i>';
+  document.getElementById('lg').innerHTML = lg + 'больше<span class="sp"></span><i style="box-shadow:0 0 0 2px #23272e;background:' + C[4] + '"></i>последний день данных';
+}
+function on(id, attr, k) {
+  document.getElementById(id).addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    [].forEach.call(this.children, function (x) { x.classList.toggle('on', x === b); });
+    S[k] = k === 'm' ? b.getAttribute(attr) : +b.getAttribute(attr); render();
+  });
+}
+on('per', 'data-p', 'p'); on('wid', 'data-w', 'w'); on('met', 'data-m', 'm');
+var tip = document.getElementById('tip');
+document.addEventListener('mousemove', function (e) {
+  var el = e.target.closest ? e.target.closest('[data-t]') : null;
+  if (!el) { tip.style.display = 'none'; return; }
+  var x = window.__byT[+el.getAttribute('data-t')]; if (!x) return;
+  tip.innerHTML = '<b>' + WDF[x.w] + ', ' + x.d + ' ' + MS[x.m] + ' ' + x.y + '</b>Пользователей: ' + (x.u == null ? '—' : nf(x.u)) + '<br>Просмотров: ' + (x.v == null ? '—' : nf(x.v));
+  tip.style.display = 'block'; tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY + 16) + 'px';
+});
+render();
+</script>
+</body>
+</html>

@@ -501,7 +501,10 @@ WITH
         {#- новый в бакете первого визита (если он в окне и до него ≥ {{ HIST_DAYS }} дней истории) -#}
         if(fd_k < {{ g.n }} AND fd_k <= {{ KT }} AND {% if LONG %}has(msk, toUInt16(least(fd_k, 65535))){% else %}bitTest(msk, toUInt8(least(fd_k, 63))){% endif %}, [toUInt16(fd_k)], CAST([], 'Array(UInt16)')) AS tf,
         {#- вернувшиеся: активен в бакете, не первый визит и ни одного визита в {{ g.gap }} бакетах перед ним -#}
-        arrayFilter(t -> t != fd_k AND {% if LONG %}NOT arrayExists(kq -> kq > t AND kq <= t + {{ g.gap }}, msk){% else %}bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(t + 1)))) = 0{% endif %}, tb) AS tr0,
+        {% if LONG %}{#- у длинного — за один проход по шагам по возрастанию: следующий (более ранний) визит дальше {{ g.gap }} шагов -#}
+        arrayFilter((t, nx) -> t < {{ g.n }} AND t != fd_k AND nx > t + {{ g.gap }}, arraySort(msk), arrayPopFront(arrayPushBack(arraySort(msk), toUInt16(65535)))) AS tr0,
+        {%- else %}
+        arrayFilter(t -> t != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(t + 1)))) = 0, tb) AS tr0,{% endif %}
         {%- if LONG %}
         toUInt8(lg IN (SELECT login FROM prod_proteus.pa_staff){% if not custom %} AND lg IN ({{ accset() }}){% endif %}) AS ica,
         if(ica = 1, tb, CAST([], 'Array(UInt16)')) AS ta0,

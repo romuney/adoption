@@ -67,7 +67,15 @@ for name, tpl in [('панель', ONE), ('каталог', CAT)]:
             a, b = dict(ex), dict(ex, period_param='c|%s|%s|%d' % (MD, g, n))
             if g != 'd':
                 a['period_param'] = g
-            ra, rb = norm(rows(tpl, a)), norm(rows(tpl, b))
+            ra, rb = rows(tpl, a), rows(tpl, b)
+            if g == 'd':
+                # календарь своего периода — из подневного факта (просмотры за все 60 дней, parent — первый день окна), у
+                # готовых «30 дней» — из маски (просмотры за 30): сверяем люди и новые за 60 дней, просмотры — за 30
+                for r in rb:
+                    if r['section'] == 'cal':
+                        r['parent'] = ''
+                        r['k'] = '\n'.join((ln if int(ln.split('|')[0]) < 30 else '|'.join(ln.split('|')[:3] + ['0'])) for ln in str(r['k']).split('\n') if ln)
+            ra, rb = norm(ra), norm(rb)
             ok(ra == rb, '1 %s · свой %s×%d по %s == готовый %s %s (%d строк)' % (name, g, n, MD, g, ex, len(ra)))
 
 # ---- 2. Свой период в прошлом == прямой расчёт по факту --------------------------------------------------------

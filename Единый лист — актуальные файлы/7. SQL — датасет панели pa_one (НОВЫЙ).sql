@@ -1,4 +1,4 @@
-{# Proteus Adoption — единый лист · поставка 21.10-2 · 2026-10-21 · pa-one.data.sql 04a043e7ec3c · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-one.data.sql, сборка — python3 .stand/pack.py #}
+{# Proteus Adoption — единый лист · поставка 21.10-3 · 2026-10-21 · pa-one.data.sql 066748d79310 · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-one.data.sql, сборка — python3 .stand/pack.py #}
 {#- pa_one — панель ЕДИНОГО листа (объединение «Использование» + «Охват ЦА», 2026-09-30), v2 (2026-09-30).
     Всё, что считал pa_people (KPI области, корзины, группы, динамика, календарь, когорты), плюс целевая аудитория
     второго листа (охват, путь ЦА, кто из ЦА, не заходившие) — ОДНИМ запросом, одним списком людей.
@@ -18,7 +18,8 @@
                   ca_prev|ca_regprev|ca_yr|ca_out|f1|f2|f3|f4 (ЦА: заходили в пред. периоде / из них постоянные / в этом году /
                   зрители вне ЦА; f1…f4 — людей в корзинах частоты 1…4);
       ts    — «возраст|users|new_u|react_u|views» (у длинного своего периода ещё «|людей ЦА в шаге|из них впервые в окне»);
-              cal — «день|users|new_u|views»;
+              cal — «день|users|new_u|views», день — дней назад от последнего дня периода; parent — первый день окна
+              календаря (пусто у «30 дней»: последние 60 дней от даты свежести, просмотры — за 30);
       coh   — «месяц|людей|возрасты через ,|активных через ,»;
       ctx   — строка на разрез g (org / spec / stream / head): «ключ|родитель|users|users_prev|views|views_prev|new_u|regular|sleeping»;
       list  — ВСЕ зрители текущего периода, строка на подразделение (parent = путь «УС-3 › …»), поля (13):
@@ -102,6 +103,17 @@
     текущего (v_c) и прошлого (vp_c) окна и шаг первого визита kmax_c — из подневного факта, одним чтением дат окна.
     dsub — подзапрос id отчётов. Глубина — 2n шагов (и ещё шаги «перерыва» вернувшихся). У готовых периодов — сама pa_pair. -#}
 {% set RD = [2 * g.n, g.n + g.gap]|max %}
+{#- Календарь посещений по периоду (2026-10-21): «30 дней» — 60 дней из маски дней пар (msk_d, как было); любой другой
+    период — ВЕСЬ период по дням из подневного факта (calf): 20 недель — с понедельника 19 недель назад, 12 месяцев — с 1-го
+    числа 11 месяцев назад, 8 кварталов — с начала квартала 7 назад, свой — его даты, но не меньше 60 дней; не раньше начала
+    истории. День k — дней назад от CAN (последний день периода). Люди и просмотры дня — те же условия, что у evd
+    (область, «без владельцев», срез, ЦА по условиям); новый в день первого визита — из fd_d пар (сдвиг SH к CAN). -#}
+{% set FCAL = cper or grain != 'd' %}
+{% set CAN = 'toDate(' ~ AN ~ ')' %}
+{% set CSX = 'toDate(' ~ g.sf ~ '(' ~ AN ~ ') - toInterval' ~ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] ~ '(' ~ (g.n - 1) ~ '))' %}
+{% set CS = 'greatest(' ~ ('least(' ~ CSX ~ ', ' ~ CAN ~ ' - 59)' if cper else CSX) ~ ', toDate(' ~ DS ~ '))' %}
+{% set CD = "toInt64(dateDiff('day', " ~ CS ~ ", " ~ CAN ~ ") + 1)" %}
+{% set SH = "toInt64(dateDiff('day', " ~ CAN ~ ", toDate(" ~ MD ~ ")))" %}
 {% macro ppx(dsub) -%}
 {%- if cper -%}
 (SELECT p.*, {% if LONG %}c.m{% else %}toUInt64(ifNull(c.m, 0)){% endif %} AS msk_c, toInt64(ifNull(c.v, 0)) AS v_c, toInt64(ifNull(c.vp, 0)) AS vp_c,
@@ -510,11 +522,31 @@ WITH
         toUInt8(lg IN (SELECT login FROM prod_proteus.pa_staff){% if not custom %} AND lg IN ({{ accset() }}){% endif %}) AS ica,
         if(ica = 1, tb, CAST([], 'Array(UInt16)')) AS ta0,
         if(ica = 1 AND notEmpty(tb), [arrayMax(tb)], CAST([], 'Array(UInt16)')) AS tq0,{% endif %}
+        {%- if FCAL %}
+        {#- календарь по периоду: люди дня — из calf; здесь только день первого визита (он всегда активный) -#}
+        CAST([], 'Array(UInt16)') AS cb,
+        if(fd_d - {{ SH }} >= 0 AND fd_d - {{ SH }} < {{ CD }} AND fd_d <= {{ KTD }}, [toUInt16(fd_d - {{ SH }})], CAST([], 'Array(UInt16)')) AS cf
+        {%- else %}
         arrayMap(x -> toUInt16(x), arrayFilter(t -> t < {{ CAL_N }}, bitPositionsToArray(mskd))) AS cb,
         if(fd_d < {{ CAL_N }} AND fd_d <= {{ KTD }} AND bitTest(mskd, toUInt8(least(fd_d, 63))), [toUInt16(fd_d)], CAST([], 'Array(UInt16)')) AS cf
+        {%- endif %}
       FROM evd
     )
   ),
+  {%- if FCAL %}
+  calf AS (
+    {#- Календарь по периоду: люди и просмотры по дням окна — одной строкой массивов (ключ — дней назад от CAN). -#}
+    SELECT groupArray(ck) AS ks, groupArray(cu) AS us, groupArray(cv) AS vs FROM (
+      SELECT toUInt16(dateDiff('day', toDate(e.log_dttm), {{ CAN }})) AS ck, toUInt64(uniqExact(e.login)) AS cu, toUInt64(sum(e.views)) AS cv
+      FROM prod_proteus.pa_evd_day e
+      WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login)
+        AND e.log_dttm >= toDateTime({{ CS }}) AND e.log_dttm < toDateTime({{ CAN }}) + toIntervalDay(1)
+        {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
+        {%- if custom %} AND lower(toString(e.login)) IN ({{ CSET }}){% endif %}
+        {%- if excv == '1' %} AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1){% endif %}
+      GROUP BY ck)
+  ),
+  {%- endif %}
   bv AS (
     {#- Просмотры по бакетам: gg = 'g' — окно периода (линия «Просмотры» динамики), gg = 'd' — дни календаря (30 дней).
         Людской срез области (cut:*) — только из факта (у pa_dash_bkt разбивки по людям нет), одним чтением на обе серии. -#}
@@ -611,17 +643,20 @@ FROM (
   {# Динамика (ts: «возраст|users|new_u|react_u|views») и календарь (cal: «день|users|new_u|views») — из массивов tc;
      просмотры — серии bv (g — бакеты периода, d — дни). Бакеты без зрителей не выводятся (чарт дорисует нулями). #}
   SELECT x_sec AS section, '' AS g, arrayStringConcat(groupArray(concat(toString(x_k), '|', toString(x_u), '|', toString(x_n), '|',
-      if(x_sec = 'ts', concat(toString(x_r), '|'), ''), toString(toInt64(ifNull(b.bviews, 0))){% if LONG %},
-      if(x_sec = 'ts', concat('|', toString(x_a), '|', toString(x_q)), ''){% endif %})), '\n') AS k, '' AS parent, toInt64(count()) AS n
+      if(x_sec = 'ts', concat(toString(x_r), '|'), ''), toString({% if FCAL %}if(x_sec = 'cal', toInt64(x_r), toInt64(ifNull(b.bviews, 0))){% else %}toInt64(ifNull(b.bviews, 0)){% endif %}){% if LONG %},
+      if(x_sec = 'ts', concat('|', toString(x_a), '|', toString(x_q)), ''){% endif %})), '\n') AS k, {% if FCAL %}if(x_sec = 'cal', toString({{ CS }}), ''){% else %}''{% endif %} AS parent, toInt64(count()) AS n
   FROM (
     {#- sumMap → (ключи, суммы): значение бакета — по его ключу (indexOf по короткому массиву; нет ключа — 0) -#}
     SELECT x.1 AS x_sec, x.2 AS x_k, x.3 AS x_u, x.4 AS x_n, x.5 AS x_r, if(x.1 = 'ts', 'g', 'd') AS x_g{% if LONG %}, x.6 AS x_a, x.7 AS x_q{% endif %}
-    FROM tc
+    FROM tc{% if FCAL %} CROSS JOIN calf cf0{% endif %}
     ARRAY JOIN arrayConcat(
       arrayMap((t, u) -> ('ts', toInt64(t), u, if(indexOf(tn.1, t) > 0, tn.2[indexOf(tn.1, t)], toUInt64(0)),
         if(indexOf(tr.1, t) > 0, tr.2[indexOf(tr.1, t)], toUInt64(0)){% if LONG %},
         if(indexOf(ta.1, t) > 0, ta.2[indexOf(ta.1, t)], toUInt64(0)), if(indexOf(tq.1, t) > 0, tq.2[indexOf(tq.1, t)], toUInt64(0)){% endif %}), tu.1, tu.2),
-      arrayMap((t, u) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), toUInt64(0){% if LONG %}, toUInt64(0), toUInt64(0){% endif %}), cu.1, cu.2)) AS x
+      {% if FCAL %}{#- календарь по периоду: x.5 — просмотры дня -#}
+      arrayMap((t, u, v) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), v{% if LONG %}, toUInt64(0), toUInt64(0){% endif %}), cf0.ks, cf0.us, cf0.vs)) AS x
+      {%- else %}
+      arrayMap((t, u) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), toUInt64(0){% if LONG %}, toUInt64(0), toUInt64(0){% endif %}), cu.1, cu.2)) AS x{% endif %}
     WHERE x.3 > 0
   ) z
   LEFT JOIN bv b ON b.gg = z.x_g AND b.bk = z.x_k

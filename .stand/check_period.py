@@ -16,6 +16,9 @@
    LONG_MAX = 0 на периодах до 32 шагов == маски, все секции; у людей вместо масок — число активных шагов (== битам маски);
    ряд охвата ЦА в ts (люди ЦА в шаге, шаг самого раннего визита) == тому, что чарт считает по маскам (caSeries).
    Длинные периоды (до года по дням) — в разделе 2 против факта.
+6. «Календарь посещений» по периоду (панель, секция cal): у «30 дней» — 60 дней из маски msk_d; любой другой период — весь
+   период по дням из подневного факта (parent строки — первый день окна). Путь факта, включённый на «30 днях», == маски
+   (люди, новые, просмотры за 30 дней); у 20 недель / 12 месяцев / 8 кварталов / своего — окно и люди / просмотры по дням == факт.
 """
 import os, sys, re, json, shutil
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -192,6 +195,33 @@ for name, tpl in [('панель', ONE), ('каталог', CAT)]:
             same = norm(a) == norm(b)
             ok(same and (name != 'панель' or (act == ca and first == cf)),
                '5 %s · %s %s: массив шагов == маски%s' % (name, per, ex, ', охват ЦА по шагам (%d) == по маскам' % len(act) if name == 'панель' else ''))
+
+# ---- 6. Календарь по периоду ----------------------------------------------------------------------------------
+def calsec(d):
+    for r in d:
+        if r['section'] == 'cal':
+            return r['parent'], {int(x.split('|')[0]): tuple(int(v) for v in x.split('|')[1:4]) for x in str(r['k']).split('\n') if x}
+    return None, {}
+FC = "{% set FCAL = cper or grain != 'd' %}"
+assert FC in open(ONE).read()
+fct = os.path.join(HERE, '__pycache__', '_fcal_' + os.path.basename(ONE))
+open(fct, 'w').write(open(ONE).read().replace(FC, '{% set FCAL = true %}'))
+for ex in [{}, {'mode_param': 'report', 'sel_f': ['2']}, {'mode_param': 'report', 'sel_f': ['2', '3', '5']}, {'ca_spec_f': ['Спец 1']}, {'exc_f': '0'},
+           {'mode_param': 'cut:spec', 'sel_f': ['Спец 1']}, {'aud_spec_f': ['Спец 1']}]:
+    p0, a = calsec(rows(ONE, ex))
+    p1, b = calsec(rows(fct, ex))
+    ok({k: v for k, v in a.items() if k < 30} == b and p0 == '', '6 «30 дней» %s: календарь из факта (%d дн., с %s) == маски' % (ex, len(b), p1))
+for per, start in [('w', "toMonday(toDate('%s')) - toIntervalWeek(19)" % MD), ('m', "toStartOfMonth(toDate('%s')) - toIntervalMonth(11)" % MD),
+                   ('q', "toStartOfQuarter(toDate('%s')) - toIntervalQuarter(7)" % MD), ('c|2026-07-15|d|21', "toDate('2026-07-15') - 59"),
+                   ('c|%s|d|264' % MD, "toDate('2026-01-01')"), ('c|2026-08-09|w|6', "toDate('2026-08-09') - 59"),
+                   ('c|%s|m|36' % MD, "toStartOfMonth(toDate('%s')) - toIntervalMonth(35)" % MD)]:
+    T = per.split('|')[1] if per.startswith('c|') else MD
+    p, c = calsec(rows(ONE, {'period_param': per, 'exc_f': '0'}))
+    hs = Q("SELECT toString(greatest(toDate(%s), toDate(min(dmin)))) AS s FROM prod_proteus.pa_pair" % start)[0]['s']
+    ref = {int(r['k']): (int(r['u']), int(r['v'])) for r in Q(
+        "SELECT dateDiff('day', toDate(log_dttm), toDate('%s')) AS k, uniqExact(login) AS u, sum(views) AS v FROM prod_proteus.pa_evd_day "
+        "WHERE dashboard_id IN (%s) AND toDate(log_dttm) >= toDate('%s') AND toDate(log_dttm) <= toDate('%s') GROUP BY k" % (T, DOK, hs, T))}
+    ok(p == hs and {k: (v[0], v[2]) for k, v in c.items()} == ref, '6 календарь %s: окно с %s (%d дн.), люди и просмотры по дням == факт' % (per, p, len(ref)))
 
 # ---- ответы для стенда листа ------------------------------------------------------------------------------------
 if '--mocks' in sys.argv:

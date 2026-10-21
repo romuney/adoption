@@ -247,8 +247,11 @@ for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'
           'ts': ('users', 'new_u', 'react_u', 'views'), 'cal': ('users', 'new_u', 'views'), 'coh': ('cnt', 'ages', 'acts'),
           'area': ('days', 'last_dt', 'lvl3')}
     norm = lambda v: str(v).replace(' ', '').replace("'", '')
-    A = {key(r): tuple(norm(r.get(x)) for x in CC[r['section']]) for r in a if r['section'] in SEC}
-    B = {key(r): tuple(norm(r.get(x)) for x in CC[r['section']]) for r in b if r['section'] in SEC and not (r['section'] == 'ctx' and not int(r['users']))}
+    # календарь: у pa_people — всегда 60 дней; у pa_one с 21.10 — 60 дней только у «30 дней», у остальных периодов —
+    # весь период по дням (сверка с фактом — check_period.py §6)
+    SC = SEC if g == 'd' else tuple(x for x in SEC if x != 'cal')
+    A = {key(r): tuple(norm(r.get(x)) for x in CC[r['section']]) for r in a if r['section'] in SC}
+    B = {key(r): tuple(norm(r.get(x)) for x in CC[r['section']]) for r in b if r['section'] in SC and not (r['section'] == 'ctx' and not int(r['users']))}
     diff = [k for k in A.keys() | B.keys() if A.get(k) != B.get(k)]
     ok(not diff, f'pa_one без ЦА == pa_people (секции) {c}' + (f'  расхождений {len(diff)}: {sorted(diff)[:2]}' if diff else ''))
     pa, pb = one_people(a, g), ppl_people(b)

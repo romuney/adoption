@@ -657,7 +657,9 @@ function buildModel() {
     } else if (sec === 'n') {
       nRows.push(r);
     } else if (sec === 'cal') {
-      // календарь: «день|users|new_u|views», день = возраст k (дней назад от даты свежести), последние 60 дней
+      // календарь: «день|users|new_u|views», день = k дней назад от последнего дня периода; parent — первый день окна
+      // (пусто у «30 дней»: последние 60 дней от даты свежести)
+      m.calFrom = toDate(r[F.parent]) || null;
       L = linesOf(r);
       for (j = 0; j < L.length; j++) { f = L[j].split('|'); m.cal[int(f[0])] = { users: int(f[1]), new_u: int(f[2]), views: int(f[3]) }; }
     } else if (sec === 'ts') {
@@ -1489,8 +1491,32 @@ function buildCSS() {
     P + '-cal-ml b{font-size:var(--fs-body);font-weight:400;color:var(--ink2);}',
     P + '-cal-wd{font-size:var(--fs-cap);color:var(--muted);text-align:center;letter-spacing:.3px;padding-bottom:2px;}',
     P + '-cal-wd.we{color:var(--muted2);}',
-    P + '-cal-c{min-height:14px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;white-space:nowrap;overflow:hidden;}',
-    P + '-cal-c.m1{font-weight:700;}',
+    // клетка ленты: число дня — жирно по центру, число месяца — мелко в левом верхнем углу (владелец 21.10: «непонятно, что
+    // цифры — это числа месяца»); поле слева 13 px — число дня не наезжает на угловое на узкой клетке
+    P + '-cal-c{position:relative;min-height:14px;border-radius:5px;display:flex;align-items:center;justify-content:center;padding-left:13px;font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums;cursor:help;white-space:nowrap;overflow:hidden;}',
+    P + '-cal-c i{position:absolute;left:4px;top:3px;font-style:normal;font-size:9px;line-height:1;opacity:.62;}',
+    P + '-cal-c b{font-size:11.5px;font-weight:700;}',
+    P + '-cal-c.m1 i{font-weight:700;opacity:.8;}',
+    P + '-cal-c.out{padding-left:0;}',
+    P + '-cal-c.ctx{opacity:.42;}',   // свой период короче 60 дней: дни до него — для сравнения
+    // мини-календари (период длиннее CAL_RIB дней): месяцы сеткой, клетка — по высоте вкладки (CAL_H)
+    P + '-cal-mos{display:grid;gap:12px 16px;align-content:start;justify-content:start;flex:0 0 auto;}',
+    P + '-cal-mh{display:flex;align-items:baseline;gap:6px;height:18px;margin-bottom:2px;white-space:nowrap;overflow:hidden;font-size:var(--fs-body);color:var(--ink2);}',
+    P + '-cal-mh b{flex:0 0 auto;}',
+    P + '-cal-left.mos{flex:1 1 auto;max-width:none;}',
+    P + '-cal-left.mos + ' + P + '-cal-side{flex:0 0 280px;}',
+    P + '-cal-mh b{font-weight:700;color:var(--ink);}',
+    P + '-cal-mh span{font-size:var(--fs-cap);color:var(--muted);}',
+    P + '-cal-mg{display:grid;gap:2px;grid-template-rows:12px;}',
+    P + '-cal-mg .w{font-size:9.5px;line-height:12px;color:var(--muted);text-align:center;}',
+    P + '-cal-mg .w.we{color:var(--muted2);}',
+    P + '-cal-mg .d{border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--ink2);cursor:help;font-variant-numeric:tabular-nums;overflow:hidden;}',
+    P + '-cal-mg .d.hi{color:#fff;}',
+    P + '-cal-mg .d.out{background:#f7f8fa;cursor:default;}',
+    P + '-cal-mg .d.nd{border:1px dashed #dde0e6;}',
+    P + '-cal-mg .d.last{box-shadow:0 0 0 2px var(--ink);}',
+    P + '-cal-mg .d:not(.out):hover{box-shadow:0 0 0 2px var(--ink2);}',
+    P + '-cal-wbs.fix{grid-template-columns:72px repeat(7,44px);}',
     P + '-cal-gap{grid-column:1 / -1;}',   // полоса-разрыв между месяцами (строка 4–8 px)
     P + '-cal-c.hi{color:#fff;}',
     P + '-cal-c.out{background:transparent;color:var(--muted2);cursor:default;}',
@@ -2988,7 +3014,7 @@ function buildHTML() {
         ? 'клик по группе или человеку сузит каталог слева · Shift — несколько'
         : (view === 'dyn' ? (CPER ? 'пользователи по ' + ({ d: 'дням', w: 'неделям', m: 'месяцам' })[CPER.g] + ' · ' + cperRange(CPER.a, CPER.t) + ' · ' : 'пользователи по периодам · ') +
           (dynPeopleOn() ? 'только люди, выбранные в «Кто смотрит» (' + nf(dynPeople().length) + ')' : 'клик по строке каталога выбирает отчёты')
-          : (view === 'cal' ? 'последние 60 дней по дням — при любом периоде в шапке'
+          : (view === 'cal' ? calSub()
             : (view === 'path' ? 'кого считаем аудиторией и как она доходит до отчётов' : 'когорты первого визита; период на них не действует')))) + '</span></div>' +
     (view === 'dyn' ? dynLegendHtml(dts, MODEL.grain, {}) : '') +
     // «Кто смотрит»: разбивка — в заголовке карточки справа (своя строка съедала место у таблицы, 09.10)
@@ -3119,22 +3145,30 @@ function pathHtml() {
 }
 
 // --- ТАБ «КАЛЕНДАРЬ ПОСЕЩЕНИЙ» ------------------------------------------------
-// Строки cal: день k (дней назад от даты свежести) → люди, новые, просмотры. 60 дней при любом
-// периоде (маска дней пар pa_pair.msk_d); просмотры — только за 30 дней (pa_dash_bkt).
-// Месяцы — отдельными мини-календарями «Пн…Вс × недели», у каждого свой заголовок: не слипаются.
-var CAL_N = 60, CAL_V = 30;
+// Строки cal: день k (дней назад от последнего дня периода) → люди, новые, просмотры. «30 дней» — последние 60 дней
+// (маска дней пар pa_pair.msk_d), просмотры — только за 30 (pa_dash_bkt). Любой другой период (2026-10-21, владелец:
+// «подневный — всегда») — ВЕСЬ период по дням из подневного факта: первый день окна — parent строки cal (MODEL.calFrom),
+// просмотры — за все дни. Вид — по числу дней: до CAL_RIB — лента недель (в клетке число пользователей, число месяца —
+// мелко в углу), длиннее — мини-календари месяцев (число — если клетка вмещает, иначе только цвет; дата — в подсказке).
+var CAL_N = 60, CAL_V = 30, CAL_RIB = 75;
 var CAL_C = ['#f1f3f6', '#E4ECFB', '#C4D5F6', '#8AAAEC', '#4A7BE0', '#245FD4'];
 var WD_S = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 var WD_N = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
 var WD_O = ['обычного понедельника', 'обычного вторника', 'обычной среды', 'обычного четверга', 'обычной пятницы', 'обычной субботы', 'обычного воскресенья'];
+// Высота под мини-календари: меряется после монтажа (syncCalH), как DYN_H у «Динамики»; 0 — по умолчанию.
+var CAL_H = state.calH || 0, CAL_W = state.calW || 0;
+function calAnchor() { return CPER ? CPER.t * 86400000 : refDay().getTime(); }
 function calDays() {
-  var md = refDay().getTime(), out = [], hk = MODEL.hist ? MODEL.hist : null;
+  var md = calAnchor(), out = [], hk = MODEL.hist ? MODEL.hist : null, cf = MODEL.calFrom, full = !!cf;
+  var n = full ? Math.max(1, Math.round((md - Date.UTC(cf.y, cf.m, cf.d)) / 86400000) + 1) : CAL_N;
   // «новых» за день выделяем, только если до него ≥ 90 дней истории (как в динамике)
   var hd = hk && hk.ds ? Date.UTC(hk.ds.y, hk.ds.m, hk.ds.d) + 90 * 86400000 : null;
-  for (var k = CAL_N - 1; k >= 0; k--) {
+  for (var k = n - 1; k >= 0; k--) {
     var t = md - k * 86400000, d = new Date(t), c = MODEL.cal[k] || { users: 0, new_u: 0, views: 0 };
     out.push({ k: k, t: t, y: d.getUTCFullYear(), m: d.getUTCMonth(), d: d.getUTCDate(), w: (d.getUTCDay() + 6) % 7,
-      users: c.users, new_u: c.new_u, views: k < CAL_V ? c.views : null, newOk: hd == null || t >= hd });
+      users: c.users, new_u: c.new_u, views: full || k < CAL_V ? c.views : null, newOk: hd == null || t >= hd,
+      // в периоде: «30 дней» — последние 30; свой период короче 60 дней — его даты (окно шире — дни до него для сравнения)
+      cur: full ? !CPER || t >= CPER.a * 86400000 : k < 30 });
   }
   return out;
 }
@@ -3145,12 +3179,35 @@ function calLvl(v, mx) {
   var r = v / mx;
   return r < 0.12 ? 1 : r < 0.35 ? 2 : r < 0.6 ? 3 : r < 0.85 ? 4 : 5;
 }
-function calendarHtml() {
-  var N = CFG.ns, days = calDays(), isV = state.calM === 'v', i, mx = 0;
-  if (!MODEL.kpi) return '<div class="' + N + '-empty"><b>' + esc(CFG.text.noData) + '</b></div>';
-  for (i = 0; i < days.length; i++) { var v0 = calVal(days[i]); if (v0 != null && v0 > mx) mx = v0; }
-  // Лента недель (2026-10-09, владелец: месяцы рядом вытягивали клетки в столбики): один сплошной календарь —
-  // колонки Пн…Вс, строки — недели окна сверху вниз; месяц подписан слева у недели, где он начинается.
+// Ступени мини-календарей — по квантилям дней окна (20 / 40 / 60 / 80 %): за год один всплеск по максимуму красил бы
+// все остальные дни в бледный.
+function calQuant(days) {
+  var vs = [], i;
+  for (i = 0; i < days.length; i++) { var v = calVal(days[i]); if (v) vs.push(v); }
+  vs.sort(function (a, b) { return a - b; });
+  return [0.2, 0.4, 0.6, 0.8].map(function (q) { return vs.length ? vs[Math.min(vs.length - 1, Math.floor(q * vs.length))] : 0; });
+}
+function calQLvl(v, Q) {
+  if (v == null) return -1;
+  if (!v) return 0;
+  for (var i = 0; i < Q.length; i++) if (v <= Q[i]) return i + 1;
+  return 5;
+}
+// Подсказка дня — одна на оба вида.
+function calTip(x, full) {
+  var rows = [{ label: 'Пользователей', value: nf(x.users) }];
+  if (x.newOk) rows.push({ label: 'из них впервые', value: nf(x.new_u) });
+  rows.push({ label: 'Просмотров', value: x.views == null ? '—' : nf(x.views) });
+  return tip({ title: WD_S[x.w].toLowerCase() + ', ' + x.d + ' ' + MONTHS[x.m] + ' ' + x.y, rows: rows,
+    note: x.views == null ? 'Просмотры по дням есть только за последние 30 дней.' : (x.newOk ? '' : 'Начало истории данных: «впервые» не отличить от давно не заходивших.') });
+}
+// Ширина под календарь (cal-left ≤ 800, справа — колонка фактов; узкая панель — одна колонка).
+// Мини-календарям — вся ширина, кроме узкой колонки фактов (280 + зазор 24).
+function calLeftW(mos) { var w = CAL_W || SVG_W || 760; return window.innerWidth <= 760 ? w : (mos ? w - 304 : Math.min(800, w - 364)); }   // ≤ 760 — одна колонка (тот же @media, что у cal-main)
+// Лента недель: колонки Пн…Вс, строки — недели окна сверху вниз; месяц подписан слева у недели, где он начинается.
+// В клетке — число дня (пользователей или просмотров) жирно, число месяца — мелко в левом верхнем углу.
+function calRibHtml(days, mx, full) {
+  var N = CFG.ns, i, cellW = (calLeftW() - 72 - 18) / 7;
   var t0 = days[0].t - days[0].w * 86400000, t1 = days[days.length - 1].t + (6 - days[days.length - 1].w) * 86400000;
   var nW = Math.round((t1 - t0 + 86400000) / 86400000 / 7), byT = {}, msum = {}, mcnt = {};
   for (i = 0; i < days.length; i++) {
@@ -3176,16 +3233,12 @@ function calendarHtml() {
         var x = byT[tt], key = dy + '-' + dm;
         if (key !== parts[pi]) { cells += '<span></span>'; continue; }   // день другого месяца — в его строке
         if (x) any = true;
-        var num = dn === 1 ? dn + ' ' + MONTHS[dm] : String(dn);
+        var num = dn === 1 && cellW >= 66 ? dn + ' ' + MONTHS[dm] : String(dn);
         if (!x) { cells += '<span class="' + N + '-cal-c out">' + esc(num) + '</span>'; continue; }
         var val = calVal(x), L = calLvl(val, mx);
-        var dt = WD_S[x.w].toLowerCase() + ', ' + dn + ' ' + MONTHS[dm] + ' ' + dy;
-        var rows = [{ label: 'Пользователей', value: nf(x.users) }];
-        if (x.newOk) rows.push({ label: 'из них впервые', value: nf(x.new_u) });
-        rows.push({ label: 'Просмотров', value: x.views == null ? '—' : nf(x.views) });
-        cells += '<span class="' + N + '-cal-c' + (L < 0 ? ' nd' : '') + (L >= 4 ? ' hi' : '') + (x.k === 0 ? ' last' : '') + (dn === 1 ? ' m1' : '') + '"' +
-          (L >= 0 ? ' style="background:' + CAL_C[L] + '"' : '') +
-          tip({ title: dt, rows: rows, note: x.views == null ? 'Просмотры по дням есть только за последние 30 дней.' : (x.newOk ? '' : 'Начало истории данных: «впервые» не отличить от давно не заходивших.') }) + '>' + esc(num) + '</span>';
+        var vt = val == null ? '—' : (cellW >= 58 && val < 1e5 ? nf(val) : compact(val));
+        cells += '<span class="' + N + '-cal-c' + (L < 0 ? ' nd' : '') + (L >= 4 ? ' hi' : '') + (x.k === 0 ? ' last' : '') + (dn === 1 ? ' m1' : '') + (full && !x.cur ? ' ctx' : '') + '"' +
+          (L >= 0 ? ' style="background:' + CAL_C[L] + '"' : '') + calTip(x, full) + '><i>' + esc(num) + '</i><b>' + esc(vt) + '</b></span>';
       }
       if (!any) continue;   // часть недели целиком вне окна (месяц до первого дня или после даты свежести) — не рисуем
       if (parts[pi] !== lastM) {
@@ -3196,44 +3249,108 @@ function calendarHtml() {
         lastM = parts[pi];
       }
       rib += '<span class="' + N + '-cal-ml">' + mLab + '</span>' + cells;
-      rowsT.push('minmax(20px,1fr)');   // 20 — название месяца (body 12,5 × 1,3 + 3) целиком
+      rowsT.push('minmax(24px,1fr)');   // 24 — число дня (11,5) и число месяца в углу (9): по горизонтали их разводит поле 13 px
     }
   }
-  // Дни недели: среднее за день — последние 30 дней и предыдущие 30 (черта)
+  // нижний предел ленты: строка дней недели 16 + недели по 24 + разрывы по 4 + промежутки 3
+  var ribMin = 16 + (rowsT.length - 1) * 3;
+  for (i = 1; i < rowsT.length; i++) ribMin += rowsT[i].indexOf('4px') > 0 ? 4 : 24;
+  return { min: ribMin, html: '<div class="' + N + '-cal-rib" style="min-height:' + ribMin + 'px;grid-template-rows:' + rowsT.join(' ') + '">' + rib + '</div>' };
+}
+// Мини-календари: месяц окна — свой блок «Пн…Вс × недели» с названием и средним в день. Размер клетки — самый
+// крупный, при котором все месяцы влезают в высоту вкладки (CAL_H); не влезают и при мелкой — вкладка прокручивается.
+function calMonthsHtml(days, full) {
+  var N = CFG.ns, byT = {}, ms = [], seen = {}, i, Q = calQuant(days), isVc = state.calM === 'v';
+  for (i = 0; i < days.length; i++) {
+    byT[days[i].t] = days[i];
+    var key = days[i].y + '-' + days[i].m;
+    if (!seen[key]) { seen[key] = { y: days[i].y, m: days[i].m, s: 0, c: 0 }; ms.push(seen[key]); }
+    var v = calVal(days[i]);
+    if (v != null) { seen[key].s += v; seen[key].c++; }
+  }
+  // месяцев в ряд — так, чтобы клетка была крупнее всего: ширина клетки — от ширины ряда, высота — от высоты вкладки
+  // (6 недель месяца + название 18 + дни недели 14), не выше ширины; мельче 10 px — дальше не ужимаем, вкладка прокручивается
+  var W = calLeftW(true), H = CAL_H || 420, M = ms.length, pick = null;
+  for (var per = 1; per <= 8; per++) {
+    var cw = Math.min(44, Math.floor(((W - (per - 1) * 16) / per - 12) / 7)), rows = Math.ceil(M / per);
+    if (cw < 10 && pick) break;
+    var chH = Math.floor(((H - (rows - 1) * 12) / rows - 32) / 6 - 2);
+    var ch = Math.max(11, Math.min(30, cw, chH)), sc = Math.min(cw, chH);
+    var o = { per: per, cw: Math.max(10, cw), ch: ch, sc: sc };
+    if (!pick || o.sc > pick.sc) pick = o;
+  }
+  var yrs = ms.length && ms[0].y !== ms[ms.length - 1].y, num = pick.cw >= 26 && pick.ch >= 18, hd = '';
+  for (i = 0; i < 7; i++) hd += '<span class="w' + (i >= 5 ? ' we' : '') + '">' + (pick.cw >= 17 ? WD_S[i] : WD_S[i].charAt(0)) + '</span>';
+  var mw = 7 * pick.cw + 12, h = '<div class="' + N + '-cal-mos" style="grid-template-columns:repeat(' + pick.per + ',' + mw + 'px)">';
+  for (var q = 0; q < ms.length; q++) {
+    var mo = ms[q], first = Date.UTC(mo.y, mo.m, 1), nd = new Date(Date.UTC(mo.y, mo.m + 1, 0)).getUTCDate(), off = (new Date(first).getUTCDay() + 6) % 7;
+    var g = hd;
+    for (i = 0; i < off; i++) g += '<span></span>';
+    for (var dd = 1; dd <= nd; dd++) {
+      var x = byT[Date.UTC(mo.y, mo.m, dd)];
+      if (!x) { g += '<span class="d out"></span>'; continue; }   // вне окна: до начала периода (истории) или после последнего дня
+      var val = calVal(x), L = calQLvl(val, Q);
+      g += '<span class="d' + (L < 0 ? ' nd' : '') + (L >= 4 ? ' hi' : '') + (x.k === 0 ? ' last' : '') + '"' + (L >= 0 ? ' style="background:' + CAL_C[L] + '"' : '') +
+        calTip(x, full) + '>' + (num && val != null ? esc(compact(val)) : '') + '</span>';
+    }
+    var mt = MONTHS_FULL[mo.m].charAt(0).toUpperCase() + MONTHS_FULL[mo.m].slice(1);
+    h += '<div class="' + N + '-cal-mo"><div class="' + N + '-cal-mh"' + (mo.c ? tip({ title: mt + ' ' + mo.y, text: 'В среднем ' + nf(Math.round(mo.s / mo.c)) + ' в день' + (isVc ? ' просмотров' : ' пользователей') + '.' }) : '') + '><b>' + esc(mt + ((yrs && !q) || mo.m === 0 ? ' ' + mo.y : '')) + '</b>' +
+      (mo.c && mw >= 140 ? '<span>' + compact(Math.round(mo.s / mo.c)) + ' в день</span>' : '') + '</div>' +
+      '<div class="' + N + '-cal-mg" style="grid-template-columns:repeat(7,' + pick.cw + 'px);grid-auto-rows:' + pick.ch + 'px">' + g + '</div></div>';
+  }
+  return h + '</div>';
+}
+// Подзаголовок вкладки: какое окно показано.
+function calSub() {
+  if (!MODEL.calFrom) return 'последние 60 дней по дням';
+  var a = Math.round(Date.UTC(MODEL.calFrom.y, MODEL.calFrom.m, MODEL.calFrom.d) / 86400000), b = Math.round(calAnchor() / 86400000);
+  return 'весь период по дням · ' + cperRange(a, b) + ' · наведи на день — число и дата';
+}
+function calendarHtml() {
+  var N = CFG.ns, days = calDays(), isV = state.calM === 'v', i, mx = 0, full = !!MODEL.calFrom;
+  if (!MODEL.kpi) return '<div class="' + N + '-empty"><b>' + esc(CFG.text.noData) + '</b></div>';
+  for (i = 0; i < days.length; i++) { var v0 = calVal(days[i]); if (v0 != null && v0 > mx) mx = v0; }
+  var rib = days.length <= CAL_RIB, cal = rib ? calRibHtml(days, mx, full) : { min: 0, html: calMonthsHtml(days, full) };
+  // Дни недели: среднее за день — у «30 дней» последние 30 и предыдущие 30 (черта), у остальных — весь период
+  var inCur = function (z) { return z.cur; };
+  var ctx = false;   // есть дни до периода: черта на столбиках — «до периода» (у «30 дней» — предыдущие 30)
+  for (i = 0; i < days.length; i++) if (!days[i].cur) { ctx = true; break; }
   var cur = [0, 0, 0, 0, 0, 0, 0], cn = [0, 0, 0, 0, 0, 0, 0], pr = [0, 0, 0, 0, 0, 0, 0], pn = [0, 0, 0, 0, 0, 0, 0];
   for (i = 0; i < days.length; i++) {
     var vv = calVal(days[i]);
     if (vv == null) continue;
-    if (days[i].k < 30) { cur[days[i].w] += vv; cn[days[i].w]++; } else { pr[days[i].w] += vv; pn[days[i].w]++; }
+    if (inCur(days[i])) { cur[days[i].w] += vv; cn[days[i].w]++; } else { pr[days[i].w] += vv; pn[days[i].w]++; }
   }
   var avg = [], pav = [], am = 0, pk = 0;
   for (i = 0; i < 7; i++) {
-    avg[i] = cn[i] ? cur[i] / cn[i] : 0; pav[i] = pn[i] ? pr[i] / pn[i] : null;
+    avg[i] = cn[i] ? cur[i] / cn[i] : 0; pav[i] = ctx && pn[i] ? pr[i] / pn[i] : null;
     am = Math.max(am, avg[i], pav[i] || 0);
     if (avg[i] > avg[pk]) pk = i;
   }
-  // Дни недели — столбики вверх под своими колонками ленты (владелец 09.10): высота — среднее за день за последние
-  // 30 дней, черта — предыдущие 30; над столбиком — число, под ним — изменение.
-  var wh = '<span class="' + N + '-cal-ml"><b>В среднем</b><span>за день, 30 дн.</span></span>';
+  var span = full ? 'за период' : 'в последние 30 дней';
+  // Дни недели — столбики вверх под своими колонками ленты (владелец 09.10): высота — среднее за день, черта — предыдущие
+  // 30 (только у «30 дней»); над столбиком — число, под ним — изменение (или день недели у мини-календарей).
+  var wh = '<span class="' + N + '-cal-ml"><b>В среднем</b><span>за день, ' + (full ? 'период' : '30 дн.') + '</span></span>';
+  var lastLbl = ctx && full ? 'до периода' : 'предыдущие 30';
   for (i = 0; i < 7; i++) {
     var dl = pav[i] ? (avg[i] / pav[i] - 1) * 100 : null, hp = am ? avg[i] / am * 100 : 0, pp = am && pav[i] != null ? pav[i] / am * 100 : null;
     wh += '<span class="' + N + '-cal-wb' + (i === pk && avg[i] ? ' pk' : '') + (i >= 5 ? ' we' : '') + '"' +
       tip({ title: WD_N[i].charAt(0).toUpperCase() + WD_N[i].slice(1) + ' · в среднем за день', rows: [
-        { label: 'Последние 30 дней', value: nf(Math.round(avg[i])) },
-        pav[i] != null ? { label: 'Предыдущие 30 дней', value: nf(Math.round(pav[i])), dash: true, color: '#5f6673' } : null],
+        { label: full ? 'За период' : 'Последние 30 дней', value: nf(Math.round(avg[i])) },
+        pav[i] != null ? { label: full ? 'До периода' : 'Предыдущие 30 дней', value: nf(Math.round(pav[i])), dash: true, color: '#5f6673' } : null],
         note: i === pk && avg[i] ? 'Пик недели.' : null }) + '>' +
       // число — сразу над столбиком (или над чертой, если она выше)
       '<span class="col"><i style="height:' + hp.toFixed(1) + '%"></i>' +
         (pp != null ? '<em style="bottom:' + pp.toFixed(1) + '%"></em>' : '') +
         '<span class="v" style="bottom:calc(' + Math.max(hp, pp || 0).toFixed(1) + '% + 4px)">' + compact(Math.round(avg[i])) + '</span></span>' +
-      '<span class="d">' + (dl != null && isFinite(dl) ? (dl >= 0 ? '+' : MINUS) + nf(Math.abs(dl), 0) + '%' : '&nbsp;') + '</span></span>';
+      '<span class="d">' + (rib ? (dl != null && isFinite(dl) ? (dl >= 0 ? '+' : MINUS) + nf(Math.abs(dl), 0) + '%' : '&nbsp;') : WD_S[i]) + '</span></span>';
   }
   var wdS = cur[0] + cur[1] + cur[2] + cur[3] + cur[4], all = wdS + cur[5] + cur[6], sh = all ? wdS / all * 100 : 0;
-  // Лучший день и провал (будний день, сильнее всего ниже среднего своего дня недели, порог −25 %) — за последние 30
+  // Лучший день и провал (будний день, сильнее всего ниже среднего своего дня недели, порог −25 %)
   var best = null, dip = null, dr = 1;
   for (i = 0; i < days.length; i++) {
     var z = days[i], zv = calVal(z);
-    if (z.k >= 30 || zv == null) continue;
+    if (!inCur(z) || zv == null) continue;
     if (!best || zv > calVal(best)) best = z;
     if (z.w < 5 && avg[z.w]) { var rr = zv / avg[z.w]; if (rr < 0.75 && rr < dr) { dr = rr; dip = z; } }
   }
@@ -3243,24 +3360,24 @@ function calendarHtml() {
   var h = '<div class="' + N + '-cal-bar">' +
     '<div class="' + N + '-sub-tabs tiny" role="tablist">' + tabsHtml('calM', [
       { key: 'u', label: 'Пользователи', on: !isV }, { key: 'v', label: 'Просмотры', on: isV }]) + '</div>' + '<div class="' + N + '-cal-lg">меньше' + CAL_C.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join('') + 'больше' +
-    '<span class="sp"></span><i style="box-shadow:0 0 0 2px #23272e;background:' + CAL_C[4] + '"></i>последний день данных' +
-    (isV ? '<span class="sp"></span><i style="border:1px dashed #dde0e6"></i>просмотров по дням нет (старше 30 дней)' : '') + '</div></div>';
-  // нижний предел ленты: строка дней недели 16 + недели по 20 + разрывы по 4 + промежутки 3; под ней — столбики 84 и зазор 12
-  var ribMin = 16 + (rowsT.length - 1) * 3;
-  for (i = 1; i < rowsT.length; i++) ribMin += rowsT[i].indexOf('4px') > 0 ? 4 : 20;
-  h += '<div class="' + N + '-cal-main" style="min-height:' + (ribMin + 84 + 12) + 'px"><div class="' + N + '-cal-left">' +
-    '<div class="' + N + '-cal-rib" style="min-height:' + ribMin + 'px;grid-template-rows:' + rowsT.join(' ') + '">' + rib + '</div>' +
-    '<div class="' + N + '-cal-wbs">' + wh + '</div></div>';
+    '<span class="sp"></span><i style="box-shadow:0 0 0 2px #23272e;background:' + CAL_C[4] + '"></i>последний день периода' +
+    (isV && !full ? '<span class="sp"></span><i style="border:1px dashed #dde0e6"></i>просмотров по дням нет (старше 30 дней)' : '') + '</div></div>';
+  // нижний предел: лента (или мини-календари — без предела, они сами ужимаются по CAL_H), под ней — столбики 84 и зазор 12
+  h += '<div class="' + N + '-cal-main"' + (rib ? ' style="min-height:' + (cal.min + 84 + 12) + 'px"' : '') + '><div class="' + N + '-cal-left' + (rib ? '' : ' mos') + '">' +
+    cal.html + '<div class="' + N + '-cal-wbs' + (rib ? '' : ' fix') + '">' + wh + '</div></div>';
   h += '<div class="' + N + '-cal-side">' +
-      '<div class="' + N + '-cal-chip"' + tip({ title: 'Пик недели', text: 'День недели с наибольшим средним за день в последние 30 дней.' }) + '><span>Пик недели</span><b>' + WD_S[pk] + ' · ' + compact(Math.round(avg[pk])) + '</b></div>' +
-      '<div class="' + N + '-cal-chip"' + tip({ title: 'В будни', text: 'Доля ' + (isV ? 'просмотров' : 'человеко-дней (сумма людей по дням)') + ' с понедельника по пятницу, последние 30 дней.' }) + '><span>В будни</span><b>' + nf(sh, 0) + '%</b></div>' +
-      (best ? '<div class="' + N + '-cal-chip"><span>Лучший день</span><b>' + best.d + ' ' + MONTHS[best.m] + ' · ' + compact(calVal(best)) + '</b></div>' : '') +
+      '<div class="' + N + '-cal-chip"' + tip({ title: 'Пик недели', text: 'День недели с наибольшим средним за день ' + span + '.' }) + '><span>Пик недели</span><b>' + WD_S[pk] + ' · ' + compact(Math.round(avg[pk])) + '</b></div>' +
+      '<div class="' + N + '-cal-chip"' + tip({ title: 'В будни', text: 'Доля ' + (isV ? 'просмотров' : 'человеко-дней (сумма людей по дням)') + ' с понедельника по пятницу, ' + span + '.' }) + '><span>В будни</span><b>' + nf(sh, 0) + '%</b></div>' +
+      (best ? '<div class="' + N + '-cal-chip"><span>Лучший день</span><b>' + best.d + ' ' + MONTHS[best.m] + (full && best.y !== new Date(calAnchor()).getUTCFullYear() ? ' ' + best.y : '') + ' · ' + compact(calVal(best)) + '</b></div>' : '') +
     '<div class="' + N + '-cal-see"><b>Что видно:</b> ' +
-      (all ? 'пик — ' + WD_N[pk] + ', меньше всего из будней — ' + WD_S[lowWd].toLowerCase() + ' (на ' + nf((1 - avg[lowWd] / (avg[pk] || 1)) * 100, 0) + '% ниже пика). ' : 'данных за последние 30 дней нет. ') +
-      (dip ? 'Провал ' + dip.d + ' ' + MONTHS[dip.m] + ' (' + WD_S[dip.w].toLowerCase() + ') — на ' + nf((1 - dr) * 100, 0) + '% ниже ' + WD_O[dip.w] + '. ' : '') +
+      (all ? 'пик — ' + WD_N[pk] + ', меньше всего из будней — ' + WD_S[lowWd].toLowerCase() + ' (на ' + nf((1 - avg[lowWd] / (avg[pk] || 1)) * 100, 0) + '% ниже пика). ' : 'данных ' + span + ' нет. ') +
+      (dip ? 'Провал ' + dip.d + ' ' + MONTHS[dip.m] + (full && dip.y !== new Date(calAnchor()).getUTCFullYear() ? ' ' + dip.y : '') + ' (' + WD_S[dip.w].toLowerCase() + ') — на ' + nf((1 - dr) * 100, 0) + '% ниже ' + WD_O[dip.w] + '. ' : '') +
       (all ? what + ' в будни — <b>' + nf(sh, 0) + '%</b>, в выходные — ' + compact(Math.round((avg[5] + avg[6]) / 2)) + ' в день.' : '') +
     '</div>' +
-    '<div class="' + N + '-cal-note">Столбики под календарём — среднее за день по дням недели за последние 30 дней; черта — предыдущие 30' + (isV ? ' (просмотров за них нет)' : '') + ', % — изменение к ним.</div>' +
+    '<div class="' + N + '-cal-note">' + (full
+      ? (rib ? 'В клетке — ' + (isV ? 'просмотров' : 'пользователей') + ' за день, мелко в углу — число месяца' + (ctx ? '; бледные — дни до периода, для сравнения' : '') + '. ' : 'Клетка — день: чем темнее, тем больше ' + (isV ? 'просмотров' : 'пользователей') + ' (пять ступеней — по долям дней периода); число — в подсказке. ') +
+        'Столбики — среднее за день по дням недели за ' + (ctx ? 'период; черта — ' + lastLbl + ', % — изменение к ним.' : 'весь период.')
+      : 'В клетке — ' + (isV ? 'просмотров' : 'пользователей') + ' за день, мелко в углу — число месяца. Столбики под календарём — среднее за день по дням недели за последние 30 дней; черта — предыдущие 30' + (isV ? ' (просмотров за них нет)' : '') + ', % — изменение к ним.') + '</div>' +
     '</div></div>';
   return h;
 }
@@ -3974,6 +4091,22 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     }
     // Воронка «Путь ЦА» — в остаток вкладки: высота тела минус всё, что в нём не воронка (карточка ЦА, подписи,
     // зазоры). Не влезает и в минимум ступеней — тогда прокрутка тела.
+    // «Календарь» по периоду: ширина вкладки и высота под мини-календари (тело минус панель переключателей, столбики дней
+    // недели и зазоры) — по ним calMonthsHtml выбирает число месяцев в ряд и размер клетки.
+    function syncCalH() {
+      var body = overlay.querySelector('.' + CFG.ns + '-panel-b.cal-wrap');
+      if (!body) return false;
+      var cs = getComputedStyle(body), bar = body.querySelector('.' + CFG.ns + '-cal-bar'), wbs = body.querySelector('.' + CFG.ns + '-cal-wbs');
+      var w = Math.floor(body.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
+      var hh = body.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (bar ? bar.offsetHeight + 12 : 0) -
+        (parseFloat(cs.rowGap) || 10) - (wbs ? wbs.offsetHeight + 12 : 0);
+      hh = Math.max(160, Math.floor(hh));
+      var chg = false;
+      if (w > 0 && Math.abs(w - CAL_W) > 4) { CAL_W = w; state.calW = w; chg = true; }
+      if (!body.querySelector('.' + CFG.ns + '-cal-mos')) return chg;   // лента — высота ей не нужна
+      if (!(hh >= CAL_H && hh - CAL_H <= 4)) { CAL_H = hh; state.calH = hh; chg = true; }
+      return chg;
+    }
     function syncFnH() {
       var body = overlay.querySelector('.' + CFG.ns + '-panel-b.path-wrap'), svg = body && body.querySelector('svg[data-fn]');
       if (!svg) return false;
@@ -4068,8 +4201,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       state.animSig = MODEL.sig;
       syncOvr();
       overlay.innerHTML = buildHTML();
-      var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch4 = syncFnH();
-      if (ch1 || ch2 || ch4) overlay.innerHTML = buildHTML();
+      var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch4 = syncFnH(), ch5 = syncCalH();
+      if (ch1 || ch2 || ch4 || ch5) overlay.innerHTML = buildHTML();
       if (ANIM) animateIn(overlay);
       ANIM = false;
       fitDd();

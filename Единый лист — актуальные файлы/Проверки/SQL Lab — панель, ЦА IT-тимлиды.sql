@@ -137,7 +137,8 @@ WITH
       sumMap(cb, arrayWithConstant(length(cb), toUInt64(1))) AS cu,
       sumMap(cf, arrayWithConstant(length(cf), toUInt64(1))) AS cn
     FROM (
-      SELECT arrayMap(x -> toUInt16(x), bitPositionsToArray(bitAnd(msk, 1073741823))) AS tb,if(fd_k < 30 AND fd_k <= tupleElement((SELECT h FROM maxd), 3) AND bitTest(msk, toUInt8(least(fd_k, 63))), [toUInt16(fd_k)], CAST([], 'Array(UInt16)')) AS tf,arrayFilter(t -> t != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64(127), toUInt8(t + 1)))) = 0, tb) AS tr0,
+      SELECT arrayMap(x -> toUInt16(x), bitPositionsToArray(bitAnd(msk, 1073741823))) AS tb,if(fd_k < 30 AND fd_k <= tupleElement((SELECT h FROM maxd), 3) AND bitTest(msk, toUInt8(least(fd_k, 63))), [toUInt16(fd_k)], CAST([], 'Array(UInt16)')) AS tf,
+        arrayFilter(t -> t != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64(127), toUInt8(t + 1)))) = 0, tb) AS tr0,
         arrayMap(x -> toUInt16(x), arrayFilter(t -> t < 60, bitPositionsToArray(mskd))) AS cb,
         if(fd_d < 60 AND fd_d <= tupleElement((SELECT h FROM maxd), 4) AND bitTest(mskd, toUInt8(least(fd_d, 63))), [toUInt16(fd_d)], CAST([], 'Array(UInt16)')) AS cf
       FROM evd

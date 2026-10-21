@@ -172,7 +172,8 @@ var CFG = {
     dense: 16,                // больше N бакетов — плотная сетка
     // длинный свой период (больше long шагов — та же граница LONG_MAX, что в SQL): столбики без подписей, ось по месяцам,
     // обзор всего периода с окном и приближение протягиванием; zoomMin — меньше стольких шагов окно не сужается
-    long: 32, zoomMin: 7, ovH: 40,
+    // denseW — колонка уже стольких px: столбики без подписей, ось по месяцам (окно приближения пошире — обычный вид)
+    long: 32, zoomMin: 7, ovH: 40, denseW: 24,
     headroom: 1.3, headroomDense: 1.22,  // воздух над марками под подписи
     // Ряд «каталог | панель» ноутбука — ПОТОЛОК вкладок «Календарь» (800 = MIN ряда в CSS 9: на ноутбуке шапку листа
     // прокручивают, и ряд упирается в 800 — фото владельца 09.10; 653 было без прокрутки)
@@ -400,7 +401,7 @@ function calAxisSvg(ts, grain, xOf, y0) {
   var hs = ts.length > 1 ? (xOf(1) - xOf(0)) / 2 : 12;
   var out = ts.length ? '<line x1="' + r1(xOf(0) - hs) + '" y1="' + (y0 + 0.5) + '" x2="' + r1(xOf(ts.length - 1) + hs) + '" y2="' + (y0 + 0.5) +
     '" stroke="' + CFG.colors.axisLine + '" stroke-width="1"/>' : '';
-  if (ts.length > CFG.spacing.long) return out + calAxisLong(ts, grain, xOf, y0, hs);
+  if (ts.length > CFG.spacing.long && hs * 2 < CFG.spacing.denseW) return out + calAxisLong(ts, grain, xOf, y0, hs);
   for (var i = 0; i < ts.length; i++) {
     var L = calLabel(ts, i, grain), x = r1(xOf(i));
     out += '<text x="' + x + '" y="' + (y0 + 12) + '" font-size="10.5" text-anchor="middle" font-weight="' + (L.bold ? 600 : 400) +
@@ -3343,7 +3344,7 @@ function usersChartSvg(ts, grain, zw) {
   for (i = 0; i < n; i++) if (stackAct(ts[i]) > maxU) maxU = stackAct(ts[i]);
   var topU = svgHeadroom(maxU, n);
   var padL = 6, padR = 6, inner = SVG_W - padL - padR;
-  var step = inner / n, lng = n > CFG.spacing.long, pk = -1;
+  var step = inner / n, lng = n > CFG.spacing.long && step < CFG.spacing.denseW, pk = -1;
   var bw = lng ? Math.max(1, step * 0.72) : svgBarWidth(n);
   // длинный ряд: подпись — только у пика (у каждого столбика не влезает)
   if (lng) for (i = 0; i < n; i++) if (pk < 0 || stackAct(ts[i]) > stackAct(ts[pk])) pk = i;
@@ -3409,7 +3410,7 @@ function viewsChartSvg(ts, grain, zw) {
   for (i = 0; i < n; i++) if (viewsOf(ts[i]) > maxV) maxV = viewsOf(ts[i]);
   var topV = svgHeadroom(maxV, n);
   var padL = 6, padR = 6, inner = SVG_W - padL - padR;
-  var step = inner / n, lng = n > CFG.spacing.long, pk = -1;
+  var step = inner / n, lng = n > CFG.spacing.long && step < CFG.spacing.denseW, pk = -1;
   if (lng) for (i = 0; i < n; i++) if (pk < 0 || viewsOf(ts[i]) > viewsOf(ts[pk])) pk = i;
   var top = lng ? 18 : 14, axH = 32;
   var pH = DYN_H ? Math.max(40, Math.round(DYN_H * 0.4) - top - axH) : 112;
@@ -3682,7 +3683,7 @@ function covChartSvg(ts, grain, zw) {
   var stepL = labelStep(n), bk = [];
   for (i = 0; i < n; i++) {
     var cx = padL + i * step + step / 2, cy = y2(ts[i].covCum);
-    if (n <= CFG.spacing.long) body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, n - 1)) + '" cx="' + r1(cx) + '" cy="' + r1(cy) + '" r="2.6" fill="' + C.cov + '" stroke="#fff" stroke-width="1.6"/>';
+    if (n <= CFG.spacing.long || step >= CFG.spacing.denseW) body += '<circle class="fade" data-d="' + Math.round(150 + 600 * i / Math.max(1, n - 1)) + '" cx="' + r1(cx) + '" cy="' + r1(cy) + '" r="2.6" fill="' + C.cov + '" stroke="#fff" stroke-width="1.6"/>';
     if (i % stepL === 0 || i === n - 1) {
       body += '<text class="fade" x="' + r1(cx) + '" y="' + r1(cy - 8) + '" font-size="' + fsVal + '" text-anchor="middle" fill="' + C.label +
         '" style="paint-order:stroke;stroke:#fff;stroke-width:3px">' + esc(pct(ts[i].covCum, 0)) + '</text>';

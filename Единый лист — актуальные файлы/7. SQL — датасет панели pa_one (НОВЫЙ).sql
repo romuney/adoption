@@ -1,4 +1,4 @@
-{# Proteus Adoption — единый лист · поставка 21.10 · 2026-10-21 · pa-one.data.sql 28389fafbe0a · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-one.data.sql, сборка — python3 .stand/pack.py #}
+{# Proteus Adoption — единый лист · поставка 21.10-2 · 2026-10-21 · pa-one.data.sql ede7d6a3ec5c · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-one.data.sql, сборка — python3 .stand/pack.py #}
 {#- pa_one — панель ЕДИНОГО листа (объединение «Использование» + «Охват ЦА», 2026-09-30), v2 (2026-09-30).
     Всё, что считал pa_people (KPI области, корзины, группы, динамика, календарь, когорты), плюс целевая аудитория
     второго листа (охват, путь ЦА, кто из ЦА, не заходившие) — ОДНИМ запросом, одним списком людей.
@@ -17,11 +17,12 @@
       total — k = users|users_prev|views|views_prev|new_u|new_prev|react_u|regular|regular_prev|sleeping|mau|mau_prev|
                   ca_prev|ca_regprev|ca_yr|ca_out|f1|f2|f3|f4 (ЦА: заходили в пред. периоде / из них постоянные / в этом году /
                   зрители вне ЦА; f1…f4 — людей в корзинах частоты 1…4);
-      ts    — «возраст|users|new_u|react_u|views»; cal — «день|users|new_u|views»;
+      ts    — «возраст|users|new_u|react_u|views» (у длинного своего периода ещё «|людей ЦА в шаге|из них впервые в окне»);
+              cal — «день|users|new_u|views»;
       coh   — «месяц|людей|возрасты через ,|активных через ,»;
       ctx   — строка на разрез g (org / spec / stream / head): «ключ|родитель|users|users_prev|views|views_prev|new_u|regular|sleeping»;
       list  — ВСЕ зрители текущего периода, строка на подразделение (parent = путь «УС-3 › …»), поля (13):
-              логин | ФИО | код спец. | код стрима | код стажа | маска текущего окна | маска предыдущего | возраст первого визита |
+              логин | ФИО | код спец. | код стрима | код стажа | маска текущего окна | маска предыдущего (у длинного своего периода — число активных шагов в них) | возраст первого визита |
               просмотров | дней с визита (−1 — нет) | флаги (1 рук · 2 MAU · 4 MAU пред. · 8 в этом году · 16 сотрудник ·
               32 доступ · 64 в ЦА) | код HQ | код IT;
       h     — люди ЦА БЕЗ визитов в текущем периоде, свёрнуты по подразделению (parent): «код спец|код стрима|рук|код HQ|код IT|
@@ -42,7 +43,7 @@
     путь «УС-3 › …» обрывается на них, как на пустом уровне (иначе «-» становится отдельным подразделением). -#}
 {% macro ou(col) %}if(match(toString(ifNull(a.{{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(a.{{ col }}, ''))){% endmacro %}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay', 'gap': 7}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday', 'gap': 1}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth', 'gap': 1}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter', 'gap': 1}} %}
-{#- Свой период (2026-10-21): period_param = «c|ГГГГ-ММ-ДД|шаг|n» — последний день, шаг d / w / m и число шагов n ≤ 32.
+{#- Свой период (2026-10-21): period_param = «c|ГГГГ-ММ-ДД|шаг|n» — последний день, шаг d / w / m и число шагов n ≤ 400.
     Текущее окно — n шагов по этот день, прошлое — n шагов перед ним (как у готовых периодов, только от своего дня).
     Дата пересобирается из чисел — в SQL попадают только цифры; неверное значение — как «30 дней». Маски и просмотры
     окна — из подневного факта (макрос ppx), остальное (ритм, MAU, когорты, календарь, последний визит) — из pa_pair. -#}
@@ -51,7 +52,7 @@
 {% if pv[:2] == 'c|' %}{% set pz = pv.split('|') %}{% if pz|length == 4 and pz[1]|length == 10 and pz[2] in ['d', 'w', 'm'] %}
 {% set cy, cmo, cdy, cn = pz[1][0:4]|int, pz[1][5:7]|int, pz[1][8:10]|int, pz[3]|int %}
 {% set dim = [31, 29 if cy % 4 == 0 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] %}
-{% if cy >= 2000 and cy <= 2100 and cmo >= 1 and cmo <= 12 and cdy >= 1 and cdy <= dim[cmo - 1] and cn >= 1 and cn <= 32 %}
+{% if cy >= 2000 and cy <= 2100 and cmo >= 1 and cmo <= 12 and cdy >= 1 and cdy <= dim[cmo - 1] and cn >= 1 and cn <= 400 %}
 {% set _ = CP.update({'t': cy|string ~ '-' ~ ('0' if cmo < 10 else '') ~ cmo ~ '-' ~ ('0' if cdy < 10 else '') ~ cdy, 'g': pz[2], 'n': cn}) %}
 {% endif %}{% endif %}{% endif %}
 {% set cper = CP|length > 0 %}
@@ -62,6 +63,18 @@
 {% set CUR = 2 ** g.n - 1 %}
 {% set PREV = 2 ** (2 * g.n) - 1 - CUR %}
 {% set GAPM = 2 ** g.gap - 1 %}
+{#- Длинный свой период (2026-10-21, больше LONG_MAX шагов): 2n бит в UInt64 не влезают — активность человека в окне
+    приходит не маской, а массивом номеров шагов (Array(UInt16), k < 2n). Макросы ниже — одно правило для обоих видов:
+    mcol — колонка пары, mor — свёртка по парам, mcur / mprv — заходил в текущем / прошлом окне, mnb / mnbp — сколько шагов.
+    У готовых периодов и своего до LONG_MAX шагов текст SQL — прежний (маски). -#}
+{% set LONG_MAX = 32 %}
+{% set LONG = cper and g.n > LONG_MAX %}
+{% macro mcol(p) %}{% if LONG %}{{ p }}msk_c{% else %}toUInt64(ifNull({{ p }}msk_{{ GK }}, 0)){% endif %}{% endmacro %}
+{% macro mor(x) %}{% if LONG %}groupUniqArrayArray({{ x }}){% else %}groupBitOr({{ x }}){% endif %}{% endmacro %}
+{% macro mcur(x) %}{% if LONG %}arrayExists(kq -> kq < {{ g.n }}, {{ x }}){% else %}bitAnd({{ x }}, {{ CUR }}) != 0{% endif %}{% endmacro %}
+{% macro mprv(x) %}{% if LONG %}arrayExists(kq -> kq >= {{ g.n }} AND kq < {{ 2 * g.n }}, {{ x }}){% else %}bitAnd({{ x }}, {{ PREV }}) != 0{% endif %}{% endmacro %}
+{% macro mnb(x) %}{% if LONG %}arrayCount(kq -> kq < {{ g.n }}, {{ x }}){% else %}bitCount(bitAnd({{ x }}, {{ CUR }})){% endif %}{% endmacro %}
+{% macro mnbp(x) %}{% if LONG %}arrayCount(kq -> kq >= {{ g.n }} AND kq < {{ 2 * g.n }}, {{ x }}){% else %}bitCount(bitAnd({{ x }}, {{ PREV }})){% endif %}{% endmacro %}
 {#- Корзины частоты — верхние границы корзин 1–3 (четвёртая — открытая «N+») по АКТИВНЫМ периодам, своя шкала у каждой гранулярности
     (в 12 месяцах и 8 кварталах нет недостижимых «8–15» / «16+»). Та же таблица — в SQL каталога. -#}
 {% set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] %}
@@ -85,16 +98,16 @@
 {% macro kd(col) -%}toInt64(dateDiff('day', toStartOfDay({{ col }}), toStartOfDay({{ MD }}))){%- endmacro %}
 {% set AN = "toDate('" ~ CP.t ~ "')" if cper else MD %}{#- анкер бакетов: последний день своего периода, у готовых — свежесть -#}
 {% macro kx(col) -%}toInt64(dateDiff('{{ g.u }}', {{ g.sf }}({{ col }}), {{ g.sf }}({{ AN }}))){%- endmacro %}
-{#- Пары с окном своего периода: pa_pair + маска msk_c (бит k — заходил в шаге k от последнего дня, k < глубины), просмотры
+{#- Пары с окном своего периода: pa_pair + маска msk_c (бит k — заходил в шаге k от последнего дня, k < глубины; у длинного — массив k), просмотры
     текущего (v_c) и прошлого (vp_c) окна и шаг первого визита kmax_c — из подневного факта, одним чтением дат окна.
     dsub — подзапрос id отчётов. Глубина — 2n шагов (и ещё шаги «перерыва» вернувшихся). У готовых периодов — сама pa_pair. -#}
 {% set RD = [2 * g.n, g.n + g.gap]|max %}
 {% macro ppx(dsub) -%}
 {%- if cper -%}
-(SELECT p.*, toUInt64(ifNull(c.m, 0)) AS msk_c, toInt64(ifNull(c.v, 0)) AS v_c, toInt64(ifNull(c.vp, 0)) AS vp_c,
+(SELECT p.*, {% if LONG %}c.m{% else %}toUInt64(ifNull(c.m, 0)){% endif %} AS msk_c, toInt64(ifNull(c.v, 0)) AS v_c, toInt64(ifNull(c.vp, 0)) AS vp_c,
       greatest(toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(p.dmin), {{ g.sf }}({{ AN }}))), toInt64(0)) AS kmax_c
     FROM prod_proteus.pa_pair p
-    LEFT JOIN (SELECT dashboard_id, login, groupBitOr(bitShiftLeft(toUInt64(1), toUInt8(k))) AS m,
+    LEFT JOIN (SELECT dashboard_id, login, {% if LONG %}groupUniqArray(toUInt16(k)){% else %}groupBitOr(bitShiftLeft(toUInt64(1), toUInt8(k))){% endif %} AS m,
         sumIf(views, k < {{ g.n }}) AS v, sumIf(views, k >= {{ g.n }} AND k < {{ 2 * g.n }}) AS vp
       FROM (SELECT dashboard_id, login, views, {{ kx('log_dttm') }} AS k FROM prod_proteus.pa_evd_day
         WHERE dashboard_id IN ({{ dsub }}) AND log_dttm >= toDateTime({{ g.sf }}({{ AN }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month'}[grain] }}({{ RD - 1 }}))
@@ -120,7 +133,7 @@
 {% macro plnx(inca) -%}
 concat({{ fx('p.login') }}, '|', {% if HAS_FIO %}{{ cz("toString(ifNull(a.fio, ''))") }}{% else %}''{% endif %}, '|', {{ cd('spec', 'spec') }}, '|', {{ cd('stream', 'stream') }}, '|',
         {% if HAS_FIO %}{{ cd('exp', "toString(ifNull(a.exp_nm, ''))") }}{% else %}{{ cd('exp', "''") }}{% endif %}, '|',
-        toString(bitAnd(p.msk, {{ CUR }})), '|', toString(bitShiftRight(p.msk, {{ g.n }})), '|', toString(p.fd_k), '|', toString(p.v_cur), '|',
+        {% if LONG %}toString({{ mnb('p.msk') }}), '|', toString({{ mnbp('p.msk') }}){% else %}toString(bitAnd(p.msk, {{ CUR }})), '|', toString(bitShiftRight(p.msk, {{ g.n }})){% endif %}, '|', toString(p.fd_k), '|', toString(p.v_cur), '|',
         toString(if(isNull(p.dmax), toInt64(-1), toInt64(dateDiff('day', toStartOfDay(p.dmax), toStartOfDay({{ MD }}))))), '|',
         toString(is_head + 2 * m1 + 4 * m2 + 8 * yr + 16 * p.stf + 32 * p.acc + 64 * {{ inca }}), '|', {{ cd('hq', 'p.hq') }}, '|', {{ cd('it', 'p.it') }})
 {%- endmacro %}
@@ -205,8 +218,8 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
 {%- endmacro %}
 {#- Метрики строки каталога (секция ar) — как mets() каталога: пользователи, просмотры, постоянные, дней с визита. -#}
 {% macro armets() -%}
-countIf(bitAnd(msk, {{ CUR }}) != 0) AS users, sum(v_cur) AS views,
-      countIf(bitCount(bitAnd(msk, {{ CUR }})) > {{ FBIN[1] }}) AS regular_users,
+countIf({{ mcur('msk') }}) AS users, sum(v_cur) AS views,
+      countIf({{ mnb('msk') }} > {{ FBIN[1] }}) AS regular_users,
       dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay({{ MD }})) AS last_view_days
 {%- endmacro %}
 {% macro caset() -%}SELECT lg FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) WHERE {{ cond() }}{%- endmacro %}
@@ -243,7 +256,7 @@ SELECT principal FROM prod_proteus.pa_dash_acl WHERE kind = 'user' AND dashboard
 {% macro curset() -%}
 SELECT lower(toString(login)) FROM {{ PPD }}
       WHERE dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(login)
-        AND bitAnd(toUInt64(ifNull(msk_{{ GK }}, 0)), {{ CUR }}) != 0 {{ OWN }}
+        AND {{ mcur(mcol('')) }} {{ OWN }}
 {%- endmacro %}
 {% set OUT_MAX = NAMES_MAX %}{#- «вне ЦА» (при ЦА по условиям) поимённо — не больше стольких, самые активные -#}
 WITH
@@ -286,7 +299,7 @@ WITH
     {#- Одна строка на зрителя области из пар: msk — bit k = активен в бакете возраста k (k < 2n),
         fd_k — возраст бакета первого визита, mon — bit = возраст месяца активности. -#}
     SELECT toString(ifNull(e.login, '')) AS login, lower(toString(ifNull(e.login, ''))) AS lg,
-      groupBitOr(toUInt64(ifNull(e.msk_{{ GK }}, 0))) AS msk,
+      {{ mor(mcol('e.')) }} AS msk,
       sum(ifNull(e.v_{{ GK }}, 0)) AS v_cur,
       sum(ifNull(e.vp_{{ GK }}, 0)) AS v_prev,
       max(ifNull(e.kmax_{{ GK }}, 0)) AS fd_k,
@@ -310,8 +323,8 @@ WITH
       arrayMap(i -> toInt64(i), arrayFilter(i -> bitTest(p.mon, i), range(63))) AS bms,
       if(empty(bms), toInt64(0), arrayMax(bms)) AS gm,
       addMonths(toStartOfMonth({{ MD }}), -toInt32(gm)) AS c0,
-      bitAnd(p.msk, {{ CUR }}) != 0 AS cur, bitAnd(p.msk, {{ PREV }}) != 0 AS prv,
-      bitCount(bitAnd(p.msk, {{ CUR }})) AS nb_cur, bitCount(bitAnd(p.msk, {{ PREV }})) AS nb_prev,
+      {{ mcur('p.msk') }} AS cur, {{ mprv('p.msk') }} AS prv,
+      {{ mnb('p.msk') }} AS nb_cur, {{ mnbp('p.msk') }} AS nb_prev,
       multiIf(nb_cur <= {{ FBIN[0] }}, 1, nb_cur <= {{ FBIN[1] }}, 2, nb_cur <= {{ FBIN[2] }}, 3, 4) AS bin,  {#- корзина — по АКТИВНЫМ ПЕРИОДАМ грануляции -#}
       {# Атрибуты — строго не-Nullable: при join_use_nulls = 1 LEFT JOIN даёт NULL у логинов без атрибутов,
          а arrayConcat ролей в CH 24 приводит массивы к типу первого — NULL ронял запрос (Code 349). #}
@@ -356,16 +369,16 @@ WITH
   aav AS (
     {#- Вкладка «Аудитория» каталога при выбранной области: зрители периода области (без условий группы из каталога,
         с условиями строки ЦА) — каталог сам свой выбор не видит (самовлияние выключено), числа ему передаёт панель. -#}
-    SELECT lower(toString(e.login)) AS vl, groupBitOr(toUInt64(ifNull(e.msk_{{ GK }}, 0))) AS vm, sum(ifNull(e.v_{{ GK }}, 0)) AS vv
+    SELECT lower(toString(e.login)) AS vl, {{ mor(mcol('e.')) }} AS vm, sum(ifNull(e.v_{{ GK }}, 0)) AS vv
     FROM {{ PPD }} e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
     GROUP BY vl
-    HAVING bitAnd(vm, {{ CUR }}) != 0
+    HAVING {{ mcur('vm') }}
   ),
   aak AS (
     {#- те же разрезы и правила, что секция aud каталога: штат (pa_staff) × зрители, постоянный — ≥ {{ FBIN[1] + 1 }} периодов -#}
-    SELECT kk.1 AS ad, kk.2 AS ak0, count() AS users, sum(vv) AS views, countIf(bitCount(bitAnd(vm, {{ CUR }})) > {{ FBIN[1] }}) AS regular
+    SELECT kk.1 AS ad, kk.2 AS ak0, count() AS users, sum(vv) AS views, countIf({{ mnb('vm') }} > {{ FBIN[1] }}) AS regular
     FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) t
     INNER JOIN aav x ON x.vl = t.lg
     ARRAY JOIN arrayConcat(
@@ -384,7 +397,7 @@ WITH
 {% set DMETA = 'SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE 1=1' ~ (' AND published = 1' if pubv == '1' else '') ~ (' AND actual_flg = 1' if actv == '1' else '') %}
   arp AS (
     SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toString(ifNull(e.login, '')) AS login,
-      toUInt64(ifNull(e.msk_{{ GK }}, 0)) AS msk, ifNull(e.v_{{ GK }}, 0) AS v_cur, e.dmax AS dmax,
+      {{ mcol('e.') }} AS msk, ifNull(e.v_{{ GK }}, 0) AS v_cur, e.dmax AS dmax,
       {#- ритм пары (как в каталоге): маски дней / недель / месяцев не зависят от грануляции -#}
       multiIf(bitCount(bitAnd(toUInt64(ifNull(e.msk_d, 0)), 1073741823)) >= 12, 4, bitCount(bitAnd(toUInt64(ifNull(e.msk_w, 0)), 255)) >= 6, 3,
         bitCount(bitAnd(toUInt64(ifNull(e.msk_m, 0)), 7)) >= 2, 2, bitAnd(toUInt64(ifNull(e.msk_m, 0)), 7) != 0, 1, 0) AS rc
@@ -395,7 +408,7 @@ WITH
   ),
   ark AS (
     {#- ключ строки размножается, как kx каталога: 0 = ИТОГО, 2 = каждый владелец отчёта, 3 = коллекция -#}
-    SELECT kd, k0, login, groupBitOr(m0) AS msk, sum(v_cur) AS v_cur, max(dmax) AS dmax
+    SELECT kd, k0, login, {{ mor('m0') }} AS msk, sum(v_cur) AS v_cur, max(dmax) AS dmax
     FROM (
       SELECT arrayJoin(arrayConcat(
           [(toUInt8(0), '')],
@@ -415,7 +428,7 @@ WITH
     SELECT toUInt8(1) AS kd, toString(did) AS k0, {{ armets() }},
       arrayStringConcat([toString(countIf(rc = 4)), toString(countIf(rc = 3)), toString(countIf(rc = 2)), toString(countIf(rc = 1))], ',') AS rhythm,
       {#- все зрители — люди группы (ЦА по условиям): «ЦА заходили» = пользователи -#}
-      countIf(bitAnd(msk, {{ CUR }}) != 0) AS ca_u
+      countIf({{ mcur('msk') }}) AS ca_u
     FROM arp GROUP BY did
   ),
   {% endif %}
@@ -424,14 +437,14 @@ WITH
     {#- ЦА по условиям: зрители текущего периода ВНЕ ЦА (те же пары, «без владельцев» и срез области, что у evd) —
         для списка «Вне ЦА» в «Кто смотрит» и их числа. -#}
     SELECT toString(ifNull(e.login, '')) AS login, lower(toString(ifNull(e.login, ''))) AS lg,
-      groupBitOr(toUInt64(ifNull(e.msk_{{ GK }}, 0))) AS msk, sum(ifNull(e.v_{{ GK }}, 0)) AS v_cur,
+      {{ mor(mcol('e.')) }} AS msk, sum(ifNull(e.v_{{ GK }}, 0)) AS v_cur,
       max(ifNull(e.kmax_{{ GK }}, 0)) AS fd_k, max(e.dmax) AS dmax, groupBitOr(toUInt64(ifNull(e.msk_mon, 0))) AS mon
     FROM {{ PPD }} e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if have and pmode in CUTS %} AND e.login IN (SELECT login FROM prod_proteus.pa_emp_attrs WHERE {{ CUTS[pmode] }} IN {{ q(sel) }}){% endif %}
       AND lower(toString(e.login)) NOT IN ({{ CSET }})
     GROUP BY e.login
-    HAVING bitAnd(msk, {{ CUR }}) != 0
+    HAVING {{ mcur('msk') }}
   ),
   po AS (
     SELECT opath AS o_path, pln AS o_ln FROM (
@@ -479,12 +492,21 @@ WITH
       sumMap(tr0, arrayWithConstant(length(tr0), toUInt64(1))) AS tr,
       sumMap(cb, arrayWithConstant(length(cb), toUInt64(1))) AS cu,
       sumMap(cf, arrayWithConstant(length(cf), toUInt64(1))) AS cn
+      {%- if LONG %},
+      {#- Охват ЦА по шагам (у длинного периода масок людей в списке нет — чарт берёт ряд отсюда): люди ЦА в шаге и
+          шаг их самого раннего визита в окне (накопленный охват — сумма от начала окна). ЦА — как inca в pr. -#}
+      sumMap(ta0, arrayWithConstant(length(ta0), toUInt64(1))) AS ta,
+      sumMap(tq0, arrayWithConstant(length(tq0), toUInt64(1))) AS tq{% endif %}
     FROM (
-      SELECT arrayMap(x -> toUInt16(x), bitPositionsToArray(bitAnd(msk, {{ CUR }}))) AS tb,
+      SELECT {% if LONG %}arraySort(arrayFilter(kq -> kq < {{ g.n }}, msk)){% else %}arrayMap(x -> toUInt16(x), bitPositionsToArray(bitAnd(msk, {{ CUR }}))){% endif %} AS tb,
         {#- новый в бакете первого визита (если он в окне и до него ≥ {{ HIST_DAYS }} дней истории) -#}
-        if(fd_k < {{ g.n }} AND fd_k <= {{ KT }} AND bitTest(msk, toUInt8(least(fd_k, 63))), [toUInt16(fd_k)], CAST([], 'Array(UInt16)')) AS tf,
+        if(fd_k < {{ g.n }} AND fd_k <= {{ KT }} AND {% if LONG %}has(msk, toUInt16(least(fd_k, 65535))){% else %}bitTest(msk, toUInt8(least(fd_k, 63))){% endif %}, [toUInt16(fd_k)], CAST([], 'Array(UInt16)')) AS tf,
         {#- вернувшиеся: активен в бакете, не первый визит и ни одного визита в {{ g.gap }} бакетах перед ним -#}
-        arrayFilter(t -> t != fd_k AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(t + 1)))) = 0, tb) AS tr0,
+        arrayFilter(t -> t != fd_k AND {% if LONG %}NOT arrayExists(kq -> kq > t AND kq <= t + {{ g.gap }}, msk){% else %}bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(t + 1)))) = 0{% endif %}, tb) AS tr0,
+        {%- if LONG %}
+        toUInt8(lg IN (SELECT login FROM prod_proteus.pa_staff){% if not custom %} AND lg IN ({{ accset() }}){% endif %}) AS ica,
+        if(ica = 1, tb, CAST([], 'Array(UInt16)')) AS ta0,
+        if(ica = 1 AND notEmpty(tb), [arrayMax(tb)], CAST([], 'Array(UInt16)')) AS tq0,{% endif %}
         arrayMap(x -> toUInt16(x), arrayFilter(t -> t < {{ CAL_N }}, bitPositionsToArray(mskd))) AS cb,
         if(fd_d < {{ CAL_N }} AND fd_d <= {{ KTD }} AND bitTest(mskd, toUInt8(least(fd_d, 63))), [toUInt16(fd_d)], CAST([], 'Array(UInt16)')) AS cf
       FROM evd
@@ -586,15 +608,17 @@ FROM (
   {# Динамика (ts: «возраст|users|new_u|react_u|views») и календарь (cal: «день|users|new_u|views») — из массивов tc;
      просмотры — серии bv (g — бакеты периода, d — дни). Бакеты без зрителей не выводятся (чарт дорисует нулями). #}
   SELECT x_sec AS section, '' AS g, arrayStringConcat(groupArray(concat(toString(x_k), '|', toString(x_u), '|', toString(x_n), '|',
-      if(x_sec = 'ts', concat(toString(x_r), '|'), ''), toString(toInt64(ifNull(b.bviews, 0))))), '\n') AS k, '' AS parent, toInt64(count()) AS n
+      if(x_sec = 'ts', concat(toString(x_r), '|'), ''), toString(toInt64(ifNull(b.bviews, 0))){% if LONG %},
+      if(x_sec = 'ts', concat('|', toString(x_a), '|', toString(x_q)), ''){% endif %})), '\n') AS k, '' AS parent, toInt64(count()) AS n
   FROM (
     {#- sumMap → (ключи, суммы): значение бакета — по его ключу (indexOf по короткому массиву; нет ключа — 0) -#}
-    SELECT x.1 AS x_sec, x.2 AS x_k, x.3 AS x_u, x.4 AS x_n, x.5 AS x_r, if(x.1 = 'ts', 'g', 'd') AS x_g
+    SELECT x.1 AS x_sec, x.2 AS x_k, x.3 AS x_u, x.4 AS x_n, x.5 AS x_r, if(x.1 = 'ts', 'g', 'd') AS x_g{% if LONG %}, x.6 AS x_a, x.7 AS x_q{% endif %}
     FROM tc
     ARRAY JOIN arrayConcat(
       arrayMap((t, u) -> ('ts', toInt64(t), u, if(indexOf(tn.1, t) > 0, tn.2[indexOf(tn.1, t)], toUInt64(0)),
-        if(indexOf(tr.1, t) > 0, tr.2[indexOf(tr.1, t)], toUInt64(0))), tu.1, tu.2),
-      arrayMap((t, u) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), toUInt64(0)), cu.1, cu.2)) AS x
+        if(indexOf(tr.1, t) > 0, tr.2[indexOf(tr.1, t)], toUInt64(0)){% if LONG %},
+        if(indexOf(ta.1, t) > 0, ta.2[indexOf(ta.1, t)], toUInt64(0)), if(indexOf(tq.1, t) > 0, tq.2[indexOf(tq.1, t)], toUInt64(0)){% endif %}), tu.1, tu.2),
+      arrayMap((t, u) -> ('cal', toInt64(t), u, if(indexOf(cn.1, t) > 0, cn.2[indexOf(cn.1, t)], toUInt64(0)), toUInt64(0){% if LONG %}, toUInt64(0), toUInt64(0){% endif %}), cu.1, cu.2)) AS x
     WHERE x.3 > 0
   ) z
   LEFT JOIN bv b ON b.gg = z.x_g AND b.bk = z.x_k
@@ -631,7 +655,7 @@ FROM (
   {# Все зрители выбранной области (и не сотрудники: увол., служебные) — ИТОГО вкладки «Аудитория», сходится с «Польз.»
      каталога и панелью. Формат строки разреза: «*|людей|просмотров|постоянных». С условиями строки ЦА — только люди ЦА. #}
   SELECT 'aa' AS section, 'all' AS g, concat('*|', toString(count()), '|', toString(sum(x.vv)), '|',
-    toString(countIf(bitCount(bitAnd(x.vm, {{ CUR }})) > {{ FBIN[1] }}))) AS k, '' AS parent, toInt64(count()) AS n
+    toString(countIf({{ mnb('x.vm') }} > {{ FBIN[1] }}))) AS k, '' AS parent, toInt64(count()) AS n
   FROM aav x
   {%- if caorg or caspec or castrm or cahq or cait or cahead != '' or caadg %}
   WHERE x.vl IN (SELECT lg FROM (SELECT {{ sattrs() }} FROM prod_proteus.pa_staff s) WHERE {{ condca() }}){% endif %}

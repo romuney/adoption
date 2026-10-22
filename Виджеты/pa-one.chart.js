@@ -45,10 +45,10 @@ var CFG = {
   ns: 'pone',                 // ПРЕФИКС всех CSS-классов и класса overlay
   sheet: 'aud',               // лист борда: каталог с колонкой ЦА шлёт sheet 'aud' (sheetOf по ca_n) — сверка с ним
   selShowAfter: 400,          // мс: плашку «Пересчитываем…» показываем, только если ждём дольше (без мигания)
-  // мс, ОТ КЛИКА (2026-10-22): правильный ответ не пришёл за max(selStaleWait, 3 × самый долгий недавний ответ борда), а под
-  // прежний выбор пришёл — автоповтор. Раньше — 10 с от прихода старого ответа: Proteus в это время уже считал новый
-  // запрос, повтор его обрывал и запускал заново («досчитал первый, потом опять запустился», владелец 22.10)
-  selStaleWait: 30000,
+  // мс: пришёл ответ под ПРЕЖНИЙ выбор — сразу переспрашиваем источник (2026-10-22, сниппет 11 на борде 60260: пока чарт
+  // считает, Proteus новый фильтр ему НЕ отправляет — клик для него теряется; ответ под прежний выбор = расчёт закончен,
+  // а нужного запроса нет). Было 10 с — ждали «старый расчёт + 10 с + новый» («досчитал первый, потом опять запустился»)
+  selStaleWait: 300,
   selGiveUp: 60000,           // мс: ответа нет совсем — через столько кнопка «Повторить запрос» (сами не повторяем)
   selMaxTries: 2,             // автоповторов на один выбор; дальше — кнопка
   paCols: ['org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f'],  // колонки «Кто смотрит» в кросс-фильтре (ключ сверки)
@@ -3914,8 +3914,8 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
   function hide() { guard.className = CFG.ns + '-selg'; guard.innerHTML = ''; }
   // fromData — вызов при новом ответе датасета (перезапуск скрипта). Долгий запрос ошибкой НЕ считается:
   // пока ответа нет — просто ждём (запрос мог идти и 20 с; повтор оборвал бы его и заставил ждать дважды).
-  // Повторяем только по факту: пришёл ответ НЕ под текущий выбор, а правильный от клика так и не пришёл за обычное время
-  // ответа этого борда с запасом (state.selDur, CFG.selStaleWait).
+  // Повторяем только по факту: пришёл ответ НЕ под текущий выбор — сразу (CFG.selStaleWait): Proteus клик, сделанный, пока
+  // чарт считал, ему не передаёт (сниппет 11, 22.10).
   function sync(fromData) {
     clearTimeout(state.selT);
     var flt = echoFn(), bad = [], now = Date.now(), src;
@@ -3925,8 +3925,6 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       if (!Object.prototype.hasOwnProperty.call(state.wants, src)) continue;
       var w = state.wants[src];
       if (paKey(w.cols, get) === w.key) {
-        // сколько обычно идёт ответ на этом борде (от клика до правильного ответа, без повторов): по нему — порог повтора
-        if (w.t && !w.tries && fromData) state.selDur = Math.max(now - w.t, (state.selDur || 0) * 0.8);
         w.t = 0; w.tries = 0; w.stale = 0;
       } else bad.push(w);
     }
@@ -3938,17 +3936,15 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       var b = bad[i];
       if (!b.t) b.t = now;
       if (fromData) b.stale = now;              // ответ пришёл, но под прежний выбор
-      // новый запрос Proteus запустил в момент клика и считает его параллельно со старым: ждём от клика столько, сколько
-      // обычно идёт ответ (с запасом), и только потом повторяем — повтор оборвал бы идущий запрос
-      var lim = Math.max(CFG.selStaleWait, 3 * (state.selDur || 0));
-      if (b.stale && now - b.t >= lim && b.tries < CFG.selMaxTries) {
+      // ответ под прежний выбор — расчёт чарта закончился, а под новый выбор Proteus его не запускал (пока чарт считает,
+      // клик для него теряется): переспрашиваем сразу. Пока ответа нет — не трогаем: долгий запрос — не ошибка
+      if (b.stale && now - b.stale >= CFG.selStaleWait && b.tries < CFG.selMaxTries) {
         b.tries++; b.stale = 0; b.t = now;
         paBcast({ type: 'PA_RESEND', src: b.src, sheet: sheetFn() });
       }
-      if (b.stale) next = Math.min(next, b.t + lim - now);
-      var gu = Math.max(CFG.selGiveUp, lim + 20000);   // кнопка — не раньше, чем успел бы автоповтор
-      if (now - b.t >= gu || (b.tries >= CFG.selMaxTries && b.stale)) giveUp = true;
-      else next = Math.min(next, b.t + gu - now);
+      if (b.stale) next = Math.min(next, b.stale + CFG.selStaleWait - now);
+      if (now - b.t >= CFG.selGiveUp || (b.tries >= CFG.selMaxTries && b.stale)) giveUp = true;
+      else next = Math.min(next, b.t + CFG.selGiveUp - now);
       if (now - b.t >= CFG.selShowAfter || b.tries) shown = true;
       else next = Math.min(next, b.t + CFG.selShowAfter - now);
       if (b.tries > tried) tried = b.tries;
@@ -3961,7 +3957,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
           '<span>Числа здесь могут быть для прежнего выбора.</span>' +
           '<button type="button" data-selretry="1">Повторить запрос</button></div>'
         : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>' +
-          (tried ? 'Пришли данные под прежний выбор — повторяю запрос (' + tried + ' из ' + CFG.selMaxTries + ')…' : 'Пересчитываем под новый выбор…') + '</div>';
+          (tried ? 'Пересчитываем под новый выбор — запрос отправлен ещё раз…' : 'Пересчитываем под новый выбор…') + '</div>';
     }
     if (!giveUp && next < Infinity) state.selT = setTimeout(function () { sync(false); }, Math.max(100, next + 60));
   }

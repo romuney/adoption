@@ -1,6 +1,7 @@
-// ЛЕНТА СОБЫТИЙ БОРДА (DevTools), версия 5 (2026-10-22): что на самом деле происходит при кликах — по секундам, в одной ленте.
+// ЛЕНТА СОБЫТИЙ БОРДА (DevTools), версия 6 (2026-10-22): что на самом деле происходит при кликах — по секундам, в одной ленте.
 //   v5: paTimes() — из чего сложилось время каждого запроса: отправка (код чарта едет в каждом запросе), расчёт на
 //   сервере (очередь + разбор SQL + ClickHouse), забор ответа, размеры в КБ, «из кэша».
+//   v6: при «крутилка появилась» — что лежит поверх чарта (слой загрузки Proteus глотал клики по вкладкам).
 //   ФИЛЬТР   — чарт отдал Proteus кросс-фильтр (applyCrossFilter): какие столбцы и значения, метка повтора;
 //   СВЕРКА   — служебные сообщения наших чартов (нужен JS 4, 6, 8 от 22.10 и позже): каталог «держу выбор / отправил /
 //              повтор не дублирую», панель «пришли данные под …», «прошу повторить»;
@@ -19,8 +20,8 @@
 (function () {
   var NAMES = { '803089': 'шапка', '803049': 'каталог', '803057': 'панель' };
   var NS = { phead: 'шапка', prb: 'каталог', pone: 'панель' };
-  if (window.__paLog5) { console.log('Запись уже идёт — набери paTimes(), paLog() или paReqs()'); return; }
-  window.__paLog5 = true;
+  if (window.__paLog6) { console.log('Запись уже идёт — набери paTimes(), paLog() или paReqs()'); return; }
+  window.__paLog6 = true;
   var t0 = performance.now(), ev = [], log = [], jobs = {}, byUrl = {}, nonces = {}, orig = window.fetch;
   var sec = function (t) { return Math.round((t - t0) / 100) / 10; };
   var dur = function (a, b) { return Math.round((b - a) / 100) / 10; };
@@ -77,10 +78,20 @@
       var cell = document.querySelector('.dashboard-chart-id-' + id) || document.getElementById('chart-id-' + id);
       if (!cell) return;
       var on = !!cell.querySelector('.loading, [alt="Loading..."], [aria-label="Loading"], [data-test="loading-indicator"]');
-      if (spin[id] !== undefined && spin[id] !== on) add('ЗАГРУЗКА', NAMES[id], on ? 'крутилка появилась' : 'крутилка исчезла');
+      if (spin[id] !== undefined && spin[id] !== on) add('ЗАГРУЗКА', NAMES[id], on ? 'крутилка появилась' + cover(cell) : 'крутилка исчезла');
       spin[id] = on;
     });
   }, 150);
+  // что лежит поверх чарта (v6): точка у правого верха iframe — там вкладки панели. Не iframe — клик съест слой сверху.
+  function cover(cell) {
+    var fr = cell.querySelector('iframe');
+    if (!fr || !document.elementsFromPoint) return '';
+    var r = fr.getBoundingClientRect(), x = r.right - 60, y = r.top + 20, top = document.elementsFromPoint(x, y)[0];
+    if (!top || top === fr) return ' · поверх чарта ничего — клики доходят';
+    var cs = getComputedStyle(top);
+    return ' · ПОВЕРХ ЧАРТА: ' + top.tagName.toLowerCase() + (top.className ? '.' + String(top.className).trim().split(/\s+/).join('.') : '') +
+      ' (pointer-events: ' + cs.pointerEvents + ', z-index: ' + cs.zIndex + ')' + (cs.pointerEvents === 'none' ? ' — пропускает клики' : ' — ГЛОТАЕТ КЛИКИ');
+  }
   // задания сервера: POST /api/v1/chart/data → 202 (задание) → событие готовности / забор данных по ключу
   function chartOf(url, body) {
     var s = '';
@@ -209,5 +220,5 @@
     }));
     return log.length + ' заданий';
   };
-  console.log('Лента событий включена (версия 5). Кликни 2–3 отчёта, которые сегодня не открывал, по одному, дожидаясь ответа; потом набери paTimes()');
+  console.log('Лента событий включена (версия 6). Кликни 2–3 отчёта, которые сегодня не открывал, по одному, дожидаясь ответа; потом набери paTimes()');
 })();

@@ -59,7 +59,8 @@ const pan = async () => (await fr('pan')).evaluate(() => {
   const g = document.querySelector('[class$="-selg"],[class*="-selg "]');
   const pend = document.querySelector('[class$="-pend"]');
   const area = (document.querySelector('[class$="-h-area"]') || {}).textContent;
-  return { kpi: k.slice(0, 2).join(' · '), area, plaque: g && /\bon\b/.test(g.className) ? g.textContent.replace(/\s+/g, ' ').trim().slice(0, 50) : '', pend: pend ? pend.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : '' };
+  const tabs = [...document.querySelectorAll('[data-view^="view:"]')].map(t => Math.round(t.getBoundingClientRect().width)).join(',');
+  return { kpi: k.slice(0, 2).join(' · '), area, tabs, plaque: g && /\bon\b/.test(g.className) ? g.textContent.replace(/\s+/g, ' ').trim().slice(0, 50) : '', pend: pend ? pend.textContent.replace(/\s+/g, ' ').trim().slice(0, 60) : '' };
 });
 const out = [];
 const log = async (step) => { out.push({ step, ...(await pan()), sent: sent.splice(0).join(', ') }); };

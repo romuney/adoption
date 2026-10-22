@@ -177,6 +177,14 @@ body:has(.dashboard-chart-id-803089 img.echarts-plugin[src*="UEEtVE9VUi1PTi0x"])
 .dashboard-component-chart-holder:has(.react_sanbbox) [aria-label="Loading"] {
   display: none !important;
 }
+/* Слой загрузки (2026-10-22): пока чарт пересчитывается, Proteus кладёт поверх него прозрачный слой во весь чарт со
+   значком загрузки (значок спрятан выше). Слой глотал клики: во время загрузки нельзя было переключить вкладку панели
+   («Динамика» ⇄ «Календарь»). Теперь клики проходят сквозь слой в чарт. Слой с самим чартом (iframe) не трогаем. */
+.dashboard-component-chart-holder:has(.react_sanbbox) div:has(> img.loading):not(:has(iframe)),
+.dashboard-component-chart-holder:has(.react_sanbbox) div:has(> [data-test="loading-indicator"]):not(:has(iframe)),
+.dashboard-component-chart-holder:has(.react_sanbbox) div:has(> [aria-label="Loading"]):not(:has(iframe)) {
+  pointer-events: none !important;
+}
 
 /* ==========================================================================
    Загрузка борда (2026-10-07, как в «Детальных списках»). Пока ответа нет, iframe чарта в ячейке ещё нет, и

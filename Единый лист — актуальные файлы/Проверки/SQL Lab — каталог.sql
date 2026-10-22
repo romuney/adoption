@@ -8,7 +8,7 @@ WITH
     FROM prod_proteus.pa_dash_meta
     WHERE 1=1 AND published = 1 AND actual_flg = 1
   ),
-  evd AS (SELECT [toInt32(ifNull(e.dashboard_id, 0))][1] AS did, [toString(ifNull(e.login, ''))][1] AS login,[toUInt64(ifNull(e.msk_d, 0))][1] AS msk, ifNull(e.v_d, 0) AS v_cur, e.dmax AS dmax,[toUInt64(ifNull(e.msk_d, 0))][1] AS pd, [toUInt64(ifNull(e.msk_w, 0))][1] AS pw, [toUInt64(ifNull(e.msk_m, 0))][1] AS pm
+  evd AS (SELECT [toInt32(ifNull(e.dashboard_id, 0))][1] AS did, [toString(ifNull(e.login, ''))][1] AS login,[toUInt64(ifNull(e.msk_d, 0))][1] AS msk, ifNull(e.v_d, 0) AS v_cur, e.dmax AS dmax,[toUInt64(ifNull(e.msk_d, 0))][1] AS pd, [toUInt64(ifNull(e.msk_w, 0))][1] AS pw, [toUInt64(ifNull(e.msk_m, 0))][1] AS pm,[ifNull(e.vp_d, 0)][1] AS vp_cur, [ifNull(e.kmax_d, 0)][1] AS fk, [toUInt64(ifNull(e.msk_mon, 0))][1] AS mon, ifNull(e.kmax_d, 0) AS fdd
     FROM prod_proteus.pa_pair e
     WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
   ),
@@ -91,15 +91,12 @@ WITH
       [sumForEach(arrayMap(i -> toUInt64(i = fk AND fk <= kt AND bitTest(msk, i)), range(30)))][1] AS tn,[sumForEach(arrayMap(i -> toUInt64(bitTest(msk, i) AND i != fk AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64(127), toUInt8(i + 1)))) = 0), range(30)))][1] AS tr,
       [sumForEach(arrayMap(i -> toUInt64(bitTest(mskd, i)), range(30, 60)))][1] AS cu,
       [sumForEach(arrayMap(i -> toUInt64(i = fdd AND fdd <= ktd AND bitTest(mskd, i)), range(30, 60)))][1] AS cn
-    FROM (
-      SELECT [toInt32(ifNull(e.dashboard_id, 0))][1] AS did, [toUInt64(ifNull(e.msk_d, 0))][1] AS msk, ifNull(e.v_d, 0) AS vc,
-        [ifNull(e.vp_d, 0)][1] AS vpv, [ifNull(e.kmax_d, 0)][1] AS fk, [toUInt64(ifNull(e.msk_mon, 0))][1] AS mon,
-        [toUInt64(ifNull(e.msk_d, 0))][1] AS mskd, ifNull(e.kmax_d, 0) AS fdd,
+    FROM (SELECT did, msk, v_cur AS vc, vp_cur AS vpv, fk, mon, pd AS mskd, fdd,
         bitAnd(msk, 1073741823) != 0 AS cur, bitAnd(msk, 1152921503533105152) != 0 AS prv,
         [bitCount(bitAnd(msk, 1073741823))][1] AS nbc, [bitCount(bitAnd(msk, 1152921503533105152))][1] AS nbp,
-        [tupleElement((SELECT h FROM pvd), 1)][1] AS kt, [tupleElement((SELECT h FROM pvd), 2)][1] AS ktd
-      FROM prod_proteus.pa_pair e
-      WHERE e.dashboard_id IN (SELECT did FROM pvt) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
+        [tupleElement((SELECT h FROM pvd), 1)][1] AS kt, [tupleElement((SELECT h FROM pvd), 2)][1] AS ktd, [tupleElement((SELECT h FROM pvd), 4)][1] AS cd
+      FROM evd
+      WHERE did IN (SELECT did FROM pvt)
     )
     GROUP BY did
   ),

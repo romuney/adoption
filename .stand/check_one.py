@@ -16,7 +16,7 @@
 7. Сегмент ЦА (seg_f) в SQL каталога: у каждого отчёта заходили == из ЦА + вне ЦА (панель seg_f больше не шлёт — запас).
 9. ЦА по условиям: список ЦА + «вне ЦА» поимённо (lo) == все зрители периода, без пересечений, число == ca_out.
 10. Выбрана область: разрезы aa (для вкладки «Аудитория» каталога) == панель после клика по этой группе (люди, просмотры, постоянные).
-14. Мгновенная панель: блок pv каталога (топ отчётов) == панель по клику на один отчёт (total без полей ЦА, ts, cal у «30 дней», kt).
+14. Мгновенная панель: блок pv каталога (топ отчётов) == панель по клику на один отчёт (total без полей ЦА, ts, cal, kt), и при ЦА по условиям.
 13. Выбрана группа во вкладке «Аудитория» каталога: секция ar панели (числа вкладок «Отчёты», «Коллекции», «Владельцы»
    и ИТОГО) == каталог, у которого условия строки ЦА == эта группа (построчно, все поля чисел); выбор отчётов её не сужает.
 8. <папка>/Проверки: рендеры без джини == текущие шаблоны поставки (не устарели), исполняются; метка id отчёта
@@ -549,7 +549,8 @@ def pv_unpack(k, grain, kt):
     return tot, ts, cal
 PV_IDX = list(range(0, 12)) + list(range(16, 20))   # поля total, которые панель берёт из блока (ЦА — нет)
 for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'}, {'exc_f': ['0']}, {'pub_f': ['0'], 'act_f': ['0']},
-          {'period_param': 'm', 'exc_f': ['0']}]:
+          {'period_param': 'm', 'exc_f': ['0']}, {'ca_spec_f': ['Спец 1']}, {'ca_it_f': ['IT'], 'ca_head_f': '1', 'period_param': 'w'},
+          {'ca_spec_f': ['Спец 1'], 'period_param': 'm'}, {'ca_spec_f': ['Спец 1'], 'period_param': 'q', 'exc_f': ['0']}]:
     cat = run(CAT, c, with_ca=True)
     pv = sorted([r for r in cat if r['section'] == 'pv'], key=lambda r: (-int(r['n']), int(r['g'])))
     ph = [r for r in cat if r['section'] == 'pvh']
@@ -580,7 +581,7 @@ for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'
     ok(not bad_l, f'pv {c}: блок каталога == панель по одному отчёту — {len(sample)} из {len(pv)} отчётов (total, ts, cal, kt)' +
        ('' if not bad_l else '\n       ' + '\n       '.join(bad_l[:5])))
 ok(not [r for r in run(CAT, {'login_f': ['u1']}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: при людской шине блока нет')
-ok(not [r for r in run(CAT, {'ca_it_f': ['IT']}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: при ЦА по условиям блока нет')
+ok(not [r for r in run(CAT, {'seg_f': ['reach']}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: при сегменте ЦА блока нет')
 ok(not [r for r in run(CAT, {'period_param': 'c|2026-08-01|d|20'}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: у своего периода блока нет')
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------

@@ -3927,7 +3927,17 @@ function pvRows(p) {
   flt.mode_param = ['report']; flt.sel_f = [String(p.id)];
   for (i = 0; i < rawData.length; i++) {
     var s0 = String(rawData[i][F.section] || '');
-    if (s0 === 'md' || s0 === 'd' || s0 === 'sj' || s0 === 'acl') rows.push(rawData[i]);
+    if (s0 === 'md' || s0 === 'd' || s0 === 'acl') rows.push(rawData[i]);
+    else if (s0 === 'sj') {
+      // штат — из ответа; режим и условия ЦА — из выбора, под который блок (ЦА могли только что поменять)
+      var sj = {};
+      try { sj = JSON.parse(String(rawData[i][F.k] || '{}')) || {}; } catch (eS) { sj = {}; }
+      var ca = {}, cm = { ca_org_f: 'org', ca_spec_f: 'spec', ca_stream_f: 'stream', ca_hq_f: 'hq', ca_it_f: 'it', ca_adg_f: 'adg' }, on = false;
+      for (var cc in cm) if (Object.prototype.hasOwnProperty.call(cm, cc) && flt[cc] && flt[cc].length) { ca[cm[cc]] = flt[cc]; on = true; }
+      if (flt.ca_head_f && flt.ca_head_f.length) { ca.head = String(flt.ca_head_f[0]); on = true; }
+      sj.ca = ca; sj.caMode = on ? 'cond' : 'acc'; sj.aud = {};
+      rows.push(row('sj', '', JSON.stringify(sj), '', 0));
+    }
   }
   rows.push(row('area', 'report', String(p.id), p.grain, int(p.kt) + 1));
   rows.push(row('nm', '', String(p.name || ''), '', 0));

@@ -56,6 +56,14 @@
   .dlt{flex:0 1 170px;display:flex;flex-direction:column;justify-content:center;gap:6px;font-size:12px;color:var(--ink2)}
   .pill{display:inline-block;font-size:11.5px;border-radius:999px;padding:1px 8px;background:#bff2cd;color:#0a8f3c}
   .pill.r{background:#ffcccc;color:#d11414}
+  .mch{display:none;flex-wrap:wrap;gap:4px;align-items:center;margin:8px 0 0}
+  .mch.on{display:flex}
+  .mch .l{font-size:11px;color:var(--mut);margin-right:4px}
+  .mch button{border:1px solid var(--line);background:#fff;border-radius:999px;height:24px;padding:0 10px;font:inherit;font-size:11.5px;color:var(--ink2);cursor:pointer;white-space:nowrap}
+  .mch button:hover{border-color:#c9ced8}
+  .mch button.a{background:var(--a);border-color:var(--a);color:#fff;font-weight:700}
+  .mch button.b{background:var(--b);border-color:var(--b);color:#fff;font-weight:700}
+  .mch button i{font-style:normal;opacity:.7;margin-left:3px}
   .ov{flex:1 1 360px;border:1px solid var(--line2);border-radius:10px;padding:8px 12px}
   .ov .h{font-size:11.5px;color:var(--mut)}
   .notes{display:flex;gap:16px;flex-wrap:wrap;margin:18px 0 0;font-size:12px;color:var(--ink2);line-height:1.5}
@@ -68,7 +76,8 @@
   <h1>«Динамика» за год по дням — как смотреть и сравнивать</h1>
   <p class="lead">Выбран свой период — <b>год по дням</b> (365 столбиков). Попробуй: <b>протяни мышью по графику</b> — приблизится
   выделенное; <b>двигай окно в обзоре</b> под графиком; «Весь период» — обратно. <b>«Сравнить отрезки»</b> — протяни два раза:
-  отрезок A (например, неделя релиза) и B (неделя доработки) — внизу появятся числа рядом и наложение «день в день».</p>
+  отрезок A (например, неделя релиза) и B (неделя доработки) — внизу появятся числа рядом и наложение «день в день».
+  <b>Месяц с месяцем</b> (январь и июль) — ещё проще: в режиме сравнения под графиком строка месяцев, клик — A, второй клик — B.</p>
 
   <div class="card" id="dyn">
     <div class="hd">
@@ -84,6 +93,7 @@
     <div id="views"></div>
     <div id="over"></div>
     <div class="hint" id="hint"></div>
+    <div class="mch" id="mch"></div>
     <div class="cmp" id="cmp"></div>
   </div>
 
@@ -193,8 +203,28 @@
     document.getElementById('reset').disabled = S.w0 === 0 && S.w1 === N - 1;
     var span = S.w1 - S.w0 + 1;
     document.getElementById('hint').innerHTML = (span < N ? 'Видно <b>' + lab(S.w0) + ' – ' + lab(S.w1) + '</b> (' + span + ' дн.) · ' : '') +
-      (S.cmp ? (!S.A ? 'Протяни мышью по графику — отрезок <b>A</b>' : !S.B ? 'Теперь второй — отрезок <b>B</b>' : 'Протяни ещё раз — заменишь B') : 'Протяни мышью по графику — приблизить отрезок');
+      (S.cmp ? (!S.A ? 'Выбери месяц кнопкой ниже или протяни мышью по графику любой отрезок — это <b>A</b>' : !S.B ? 'Теперь второй — <b>B</b>: месяц кнопкой или протяни по графику' : 'Ещё раз — заменишь B; клик по выбранному месяцу — снять') : 'Протяни мышью по графику — приблизить отрезок');
+    drawMch();
     drawCmp();
+  }
+  // Месяцы периода — кнопками: клик — A, второй — B, третий — заменить B; по выбранному — снять. Неполный месяц на краю
+  // периода подписан «с 21» / «по 20».
+  function months() {
+    var out = [], cur = null;
+    for (var i = 0; i < N; i++) { var d = dt(i), key = d.getFullYear() * 12 + d.getMonth(); if (!cur || cur.key !== key) { cur = { key: key, a: i, b: i, d: d }; out.push(cur); } cur.b = i; }
+    return out;
+  }
+  function same(sp, m) { return sp && sp[0] === m.a && sp[1] === m.b; }
+  function drawMch() {
+    var el = document.getElementById('mch'); el.className = 'mch' + (S.cmp ? ' on' : '');
+    if (!S.cmp) { el.innerHTML = ''; return; }
+    var h = '<span class="l">Месяц с месяцем:</span>';
+    months().forEach(function (m) {
+      var first = m.d.getDate() === 1, full = first && dt(m.b + 1).getDate() === 1;
+      h += '<button data-m="' + m.a + ',' + m.b + '" class="' + (same(S.A, m) ? 'a' : same(S.B, m) ? 'b' : '') + '">' + MSN[m.d.getMonth()] +
+        (m.d.getMonth() === 0 || m.a === 0 ? ' ' + m.d.getFullYear() : '') + (!first ? '<i>с ' + m.d.getDate() + '</i>' : (!full ? '<i>по ' + dt(m.b).getDate() + '</i>' : '')) + '</button>';
+    });
+    el.innerHTML = h;
   }
   function drawOver() {   // обзор: весь год, окно — что видно сверху
     var mx = 0; U.forEach(function (u) { mx = Math.max(mx, u.t); });
@@ -211,15 +241,19 @@
     document.getElementById('over').innerHTML = s;
   }
   function stat(sp) {
-    var k = sp[1] - sp[0] + 1, su = 0, sv = 0, pk = sp[0], nw = 0;
-    for (var i = sp[0]; i <= sp[1]; i++) { su += U[i].t; sv += V[i]; nw += U[i].n; if (U[i].t > U[pk].t) pk = i; }
-    return { k: k, avg: su / k, views: sv, vavg: sv / k, peak: U[pk].t, pkd: pk, nw: nw / k };
+    var k = sp[1] - sp[0] + 1, su = 0, sv = 0, pk = sp[0], nw = 0, wk = 0, wu = 0;
+    for (var i = sp[0]; i <= sp[1]; i++) {
+      su += U[i].t; sv += V[i]; nw += U[i].n; if (U[i].t > U[pk].t) pk = i;
+      var wd = dt(i).getDay(); if (wd !== 0 && wd !== 6) { wk++; wu += U[i].t; }
+    }
+    return { k: k, avg: su / k, views: sv, vavg: sv / k, peak: U[pk].t, pkd: pk, nw: nw / k, wk: wk, wavg: wk ? wu / wk : 0 };
   }
   function spHtml(sp, L, col) {
-    if (!sp) return '<div class="sp empty">Протяни мышью по графику —<br>отрезок ' + L + '</div>';
+    if (!sp) return '<div class="sp empty">Месяц кнопкой выше<br>или протяни по графику —<br>отрезок ' + L + '</div>';
     var s = stat(sp);
     return '<div class="sp"><button class="x" data-clr="' + L + '">×</button><span class="k" style="background:' + col + '">' + L + '</span><span class="dt">' + lab(sp[0]) + ' – ' + lab(sp[1]) + '</span>' +
-      '<div class="rows"><span>дней</span><b>' + s.k + '</b><span>пользователей в день, в среднем</span><b>' + nf(s.avg) + '</b><span>из них новых в день</span><b>' + nf(s.nw) + '</b>' +
+      '<div class="rows"><span>дней (будних)</span><b>' + s.k + ' (' + s.wk + ')</b><span>пользователей в день, в среднем</span><b>' + nf(s.avg) + '</b>' +
+      '<span>в будний день, в среднем</span><b>' + nf(s.wavg) + '</b><span>из них новых в день</span><b>' + nf(s.nw) + '</b>' +
       '<span>просмотров за отрезок</span><b>' + nf(s.views) + '</b><span>пик</span><b>' + nf(s.peak) + ' · ' + WD[dt(s.pkd).getDay()] + ', ' + lab(s.pkd) + '</b></div>' +
       '<div style="margin-top:8px"><button class="btn" style="height:26px">Сделать периодом</button></div></div>';
   }
@@ -228,10 +262,11 @@
     if (!S.cmp) { el.innerHTML = ''; return; }
     var h = spHtml(S.A, 'A', 'var(--a)');
     if (S.A && S.B) {
-      var a = stat(S.A), b = stat(S.B), r = (b.avg / a.avg - 1) * 100, rv = (b.vavg / a.vavg - 1) * 100;
+      var a = stat(S.A), b = stat(S.B), r = (b.avg / a.avg - 1) * 100, rv = (b.vavg / a.vavg - 1) * 100, rw = (b.wavg / a.wavg - 1) * 100;
       h += '<div class="dlt"><div>B к A, в среднем в день:</div><div><span class="pill' + (r < 0 ? ' r' : '') + '">' + (r >= 0 ? '+' : '−') + Math.abs(r).toFixed(0) + '%</span> пользователи</div>' +
+        '<div><span class="pill' + (rw < 0 ? ' r' : '') + '">' + (rw >= 0 ? '+' : '−') + Math.abs(rw).toFixed(0) + '%</span> в будний день</div>' +
         '<div><span class="pill' + (rv < 0 ? ' r' : '') + '">' + (rv >= 0 ? '+' : '−') + Math.abs(rv).toFixed(0) + '%</span> просмотры</div>' +
-        (a.k !== b.k ? '<div style="font-size:11px;color:var(--mut)">отрезки разной длины — сравниваем «в день»</div>' : '') + '</div>';
+        (a.k !== b.k || a.wk !== b.wk ? '<div style="font-size:11px;color:var(--mut);line-height:1.4">разное число дней или будних (праздники, выходные) — честнее «в будний день»</div>' : '') + '</div>';
     }
     h += spHtml(S.B, 'B', 'var(--b)');
     if (S.A && S.B) {   // наложение «день в день»: день 1 = первый день отрезка
@@ -290,6 +325,13 @@
   document.getElementById('reset').onclick = function () { S.w0 = 0; S.w1 = N - 1; draw(); };
   document.getElementById('cmpBtn').onclick = function () { S.cmp = !S.cmp; this.className = 'btn' + (S.cmp ? ' on' : ''); if (!S.cmp) { S.A = S.B = null; } draw(); };
   document.getElementById('step').onclick = function (e) { var b = e.target.closest('[data-st]'); if (!b) return; S.step = b.getAttribute('data-st'); [].forEach.call(this.children, function (c) { c.className = c === b ? 'on' : ''; }); draw(); };
+  document.getElementById('mch').onclick = function (e) {
+    var b = e.target.closest('[data-m]'); if (!b) return;
+    var r = b.getAttribute('data-m').split(',').map(Number), m = { a: r[0], b: r[1] };
+    if (same(S.A, m)) { S.A = S.B; S.B = null; } else if (same(S.B, m)) S.B = null;
+    else if (!S.A) S.A = r; else S.B = r;
+    draw();
+  };
   document.getElementById('cmp').onclick = function (e) { var c = e.target.closest('[data-clr]'); if (!c) return; if (c.getAttribute('data-clr') === 'A') { S.A = S.B; S.B = null; } else S.B = null; draw(); };
   window.addEventListener('resize', draw);
   window.__mock = { S: S, draw: draw, idx: idx };   // для скриншотов

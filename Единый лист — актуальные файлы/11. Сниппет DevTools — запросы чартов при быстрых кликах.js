@@ -107,6 +107,8 @@
     (list || []).forEach(function (x) {
       var r = jobs[x && x.job_id];
       if (!r) return;
+      var rk = x.result_url ? /\/chart\/data\/([^/?#]+)/.exec(String(x.result_url)) : null;
+      if (rk) byUrl[rk[1]] = r;
       if (x.status === 'done') { if (r.tev == null) r.tev = performance.now(); done(r, 'событие'); }
       else if (x.status === 'error') done(r, 'ошибка');
     });
@@ -122,7 +124,11 @@
     var km = /\/chart\/data\/([^/?#]+)/.exec(url), key = km ? km[1] : '';
     if (method === 'GET' && key) {
       var g = byUrl[key];
-      if (g) {
+      if (!g) {   // событие готовности пришло мимо сниппета (веб-сокет открыт до вставки) — самое раннее незабранное задание
+        g = log.filter(function (x) { return x.code === 202 && x.tg0 == null; })[0];
+        if (g) byUrl[key] = g;
+      }
+      if (g && g.tg0 == null) {
         if (g.tev == null) g.tev = performance.now();
         g.tg0 = performance.now();
         done(g, 'забрали данные');

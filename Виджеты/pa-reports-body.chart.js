@@ -441,6 +441,10 @@ function buildModelV2(M) {
       }
     } else if (sec === 'me') {
       M.me = txt;                    // пользователь борда актуальным логином (кнопка «Мои отчёты»)
+    } else if (sec === 'pv') {
+      (M.pv = M.pv || {})[String(r[F.g] || '')] = txt;   // мгновенная панель: строка отчёта топа (шлём панели по клику, pvSend)
+    } else if (sec === 'pvh') {
+      M.pvh = { grain: String(r[F.g] || 'd'), kt: int(r[F.n]) - 1 };
     } else if (sec === 'aud') {
       // значение|родитель|людей заходило|просмотров|постоянных|сотрудников
       var d = String(r[F.g] || ''), A = M.aud[d] = M.aud[d] || {};
@@ -1984,7 +1988,7 @@ function paBcast(msg) {
       }
     })(window.top, 0);
   } catch (e) { /* нет window.top — стенд без родителя */ }
-  if (/^PA_(SEL|RESEND|AUD|REP)$/.test(msg.type)) paDiag({ t: msg.type, src: msg.src, key: msg.key, noflt: msg.noflt });
+  if (/^PA_(SEL|RESEND|AUD|REP|PREV)$/.test(msg.type)) paDiag({ t: msg.type, src: msg.src, key: msg.key, noflt: msg.noflt });
 }
 // Диагностика (2026-10-22): копия служебных сообщений сверки — странице борда (сниппет 11 их пишет в ленту). Proteus
 // чужие типы сообщений не разбирает; уходит только тип, источник, ключ — без данных.
@@ -2550,6 +2554,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       // Панель узнаёт о новом выборе сразу (приглушится до своего ответа), а в Proteus фильтр уходит
       // через CFG.selDelay после ПОСЛЕДНЕГО клика: серия Shift-кликов — один запрос с полным выбором.
       paOut('cat', sheetOf(), CFG.paCols, fl);
+      pvSend(fl);
       state.pendMask = fl;
       clearTimeout(state.emitT);
       state.emitT = setTimeout(function () { catSend(state.pendMask); }, CFG.selDelay);
@@ -2557,6 +2562,19 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     // Выбор каталога — в Proteus, но не пока панель считает прошлый (CFG.selHoldMax): ключи выбора — как в её ответах
     // (PA_AUD — mode_param + sel_f, PA_REP — группа «Аудитории»). Держим последний и шлём, как только панель ответила.
     var AUDCOLS_P = ['aud_org_f', 'aud_spec_f', 'aud_stream_f', 'aud_hq_f', 'aud_it_f', 'aud_head_f'];   // = AUD_COLS панели
+    // Мгновенная панель (2026-10-22): выбран ровно один отчёт (без групп «Аудитории»), и он в топе блока pv этого ответа —
+    // сразу шлём панели его KPI, «Динамику» и «Календарь» (PA_PREV, тот же ключ выбора, что у PA_SEL). Эхо фильтров
+    // каталога — чтобы панель взяла блок, только если он про тот же период, опции и ЦА, которых она ждёт.
+    function pvSend(fl) {
+      var g = paMaskGet(fl), sel = g('sel_f'), i;
+      if (!MODEL.pv || !MODEL.pvh || g('mode_param')[0] !== 'report' || sel.length !== 1) return;
+      for (i = 0; i < AUDCOLS_P.length; i++) if (g(AUDCOLS_P[i]).length) return;
+      var id = String(sel[0]), k = MODEL.pv[id];
+      if (!k) return;
+      paBcast({ type: 'PA_PREV', src: 'cat', key: paKey(CFG.paCols, g), id: id, name: (MODEL.meta[id] || {}).dash_nm || '',
+        grain: MODEL.pvh.grain, kt: MODEL.pvh.kt, k: k, flt: (MODEL.stateJ && MODEL.stateJ.flt) || {} });
+    }
+    state.pvSend = pvSend;
     function catKeys(fl) { var g = paMaskGet(fl); return { a: paKey(['mode_param', 'sel_f'], g), r: paKey(AUDCOLS_P, g) }; }
     function panelBusy() {
       var s = state.catSent, h = state.audHeard;
@@ -2849,6 +2867,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     }
     // Сверка фильтров: каталог — источник выбора (отвечает на «повтори») и получатель шапки, «Кто смотрит», строки ЦА.
     paResendOn('cat', sheetOf, CFG.paCols, areaMask);
+    if (state.pvSend) state.pvSend(areaMask());   // новый ответ каталога: панель может ждать этот выбор под новый период
     // Вкладка «Аудитория» при выбранных отчётах/коллекциях/владельцах: числа по выбору присылает панель (PA_AUD, её
     // секция aa) — свой SQL каталога выбор не видит. Ключ — тот же выбор (mode_param + sel_f).
     state.audRender = render;

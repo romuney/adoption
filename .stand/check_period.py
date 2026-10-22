@@ -75,7 +75,8 @@ for name, tpl in [('панель', ONE), ('каталог', CAT)]:
                     if r['section'] == 'cal':
                         r['parent'] = ''
                         r['k'] = '\n'.join((ln if int(ln.split('|')[0]) < 30 else '|'.join(ln.split('|')[:3] + ['0'])) for ln in str(r['k']).split('\n') if ln)
-            ra, rb = norm(ra), norm(rb)
+            # мгновенная панель (pv / pvh) — только у готовых периодов: у своего её нет по построению (check_one §14)
+            ra, rb = norm(ra, ('flt', 'sj', 'pv', 'pvh')), norm(rb, ('flt', 'sj', 'pv', 'pvh'))
             ok(ra == rb, '1 %s · свой %s×%d по %s == готовый %s %s (%d строк)' % (name, g, n, MD, g, ex, len(ra)))
 
 # ---- 2. Свой период в прошлом == прямой расчёт по факту --------------------------------------------------------

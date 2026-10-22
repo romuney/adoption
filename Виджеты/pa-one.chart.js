@@ -45,6 +45,7 @@ var CFG = {
   ns: 'pone',                 // ПРЕФИКС всех CSS-классов и класса overlay
   sheet: 'aud',               // лист борда: каталог с колонкой ЦА шлёт sheet 'aud' (sheetOf по ca_n) — сверка с ним
   selShowAfter: 400,          // мс: плашку «Пересчитываем…» показываем, только если ждём дольше (без мигания)
+  prevTtl: 120000,            // мс: блок мгновенной панели из каталога (PA_PREV) свежее этого — можно показать вместо ответа под прежний выбор
   // мс: пришёл ответ под ПРЕЖНИЙ выбор — сразу переспрашиваем источник (2026-10-22, сниппет 11 на борде 60260: пока чарт
   // считает, Proteus новый фильтр ему НЕ отправляет — клик для него теряется; ответ под прежний выбор = расчёт закончен,
   // а нужного запроса нет). Было 10 с — ждали «старый расчёт + 10 с + новый» («досчитал первый, потом опять запустился»)
@@ -803,7 +804,10 @@ function cperGrain(base, c, prevOk) {
   return o;
 }
 var CPER = null;   // свой период (cperOf) — задаёт buildModel, до рядов динамики
+var GRAINS_BASE = {};   // описания грануляций до подмены своим периодом (cperGrain): мгновенная панель собирает модель заново
+(function () { for (var gk in CFG.grains) if (Object.prototype.hasOwnProperty.call(CFG.grains, gk)) GRAINS_BASE[gk] = CFG.grains[gk]; })();
 var MODEL = buildModel();
+var REAL = MODEL;   // модель из ответа датасета (MODEL может быть мгновенной панелью — preview, см. pvShow)
 // Отпечаток ответа: меняется, когда пришли новые данные (область, период, опции).
 MODEL.sig = [MODEL.grain, MODEL.total, MODEL.kpi ? MODEL.kpi.views : 0, MODEL.rows.length, MODEL.ts.length, MODEL.coh.length,
   MODEL.hold.length, MODEL.never.length, MODEL.outList.length, MODEL.caMode, JSON.stringify(MODEL.caApplied)].join('|');
@@ -1341,6 +1345,10 @@ function buildCSS() {
     P + '-selg-box b{font-weight:700;color:#23272e;}',
     P + '-selg-box span{color:#8a909c;line-height:1.4;}',
     P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:400;padding:6px 12px;cursor:pointer;}',
+    P + '-pend{display:flex;align-items:flex-start;gap:10px;margin:28px auto;max-width:460px;font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;line-height:1.45;}',
+    P + '-pend b{display:block;font-weight:700;color:#23272e;margin-bottom:2px;}',
+    P + '-pend span{color:#8a909c;}',
+    P + '-pend ' + P + '-selg-spin{margin-top:2px;}',
     P + '-selg-spin{width:14px;height:14px;border-radius:50%;border:2px solid #e7e9ee;border-top-color:#245FD4;animation:' + CFG.ns + '-spin .8s linear infinite;flex:0 0 auto;}',
     '@keyframes ' + CFG.ns + '-spin{to{transform:rotate(360deg)}}',
     P + '-dynov{flex:0 0 auto;display:flex;flex-direction:column;gap:2px;}',
@@ -2919,6 +2927,11 @@ function kpisHtml() {
 // «Охват ЦА»: доля целевой аудитории, заходившая за период. Доступ почти у всех — процент скрыт (знаменатель
 // ничего не значит), видно только размер ЦА. Дельта — в п.п. к прошлому периоду (размер ЦА тот же).
 function caKpi(G, dl) {
+  if (MODEL.preview) {
+    return kpiCard({ label: 'Охват ЦА', value: '…', hint: { title: 'Охват ЦА', text: 'Доля целевой аудитории, открывавшая отчёты за период.',
+      note: 'Считается по штату и доступам к выбранному отчёту — придёт с полным ответом панели.' },
+      delta: '<span class="' + CFG.ns + '-nocmp">догружается</span>', sub: 'по выбранному отчёту' });
+  }
   var t = caTotals(), W = wide(), cond = caModeNow() === 'cond';
   var cov = t.ca ? t.reach / t.ca * 100 : null, covP = t.ca ? t.reachPrev / t.ca * 100 : null;
   var base = cond ? 'по условиям: ' + (caCondText() || 'заданы') : 'по правам доступа';
@@ -2979,7 +2992,11 @@ function buildHTML() {
   var N = CFG.ns, ai = areaInfo();
   var view = state.view === 'who' || state.view === 'coh' || state.view === 'cal' || state.view === 'path' ? state.view : 'dyn';
   var body, bodyCls, title;
-  if (view === 'who') {
+  var pend = MODEL.preview && (view === 'who' || view === 'path' || view === 'coh' || (view === 'cal' && !Object.keys(MODEL.cal).length));
+  if (pend) {
+    title = view === 'who' ? 'Кто смотрит' : (view === 'path' ? 'Путь ЦА' : (view === 'coh' ? 'Закрепляемость' : 'Календарь посещений'));
+    body = pvPendHtml(title); bodyCls = 'pend-wrap';
+  } else if (view === 'who') {
     // Разбивка полосы и таблицы: по частоте (корзины, как было) или по ЦА (дошли / не заходили / вне ЦА).
     body = (isCa() ? segStripHtml() : freqStripHtml(busList())) + '<div class="' + N + '-list-zone">' + listZoneHtml() + '</div>';
     bodyCls = 'tbl-wrap'; title = 'Кто смотрит';
@@ -3745,6 +3762,7 @@ function dynamicsBody(ts, grain, zw) {
     ]) + '</div></div>';
   if (state.viewsMode !== 'cov') { h += viewsChartSvg(ts, grain, zw); return h; }
   // Охват ЦА (третий режим нижнего графика): сплошная — накоплено к дате, пунктир — заходили в этом периоде.
+  if (MODEL.preview) { h += pvPendHtml('Охват ЦА по периодам'); return h; }   // мгновенная панель: людей ЦА в блоке каталога нет
   var t = tc0;
   h += !t.ca ? '<div class="' + CFG.ns + '-tbl-note">В целевой аудитории никого нет — проверь условия в строке «Целевая аудитория».</div>'
     : (wide() ? '<div class="' + CFG.ns + '-tbl-note">Доступ открыт почти всей компании — охват по такому знаменателю не показываем. Сузь ЦА в строке «Целевая аудитория».</div>'
@@ -3851,6 +3869,78 @@ function dynTipHtml(el, i) {
 // с меткой pa_nonce → Proteus перезапрашивает) — ТОЛЬКО если пришёл ответ под прежний выбор; долгий
 // запрос не повторяем (ждём). Не больше CFG.selMaxTries раз; дальше — кнопка.
 // Ключ: колонки по алфавиту, значения отсортированы, «"», «\» и переводы строк выкинуты (так же в SQL).
+// ---------- МГНОВЕННАЯ ПАНЕЛЬ ПО КЛИКУ (2026-10-22) ----------
+// Каталог для топа отчётов уже посчитал то, что панель покажет по клику на ОДИН отчёт: KPI, «Динамику» и у «30 дней»
+// «Календарь» (секция pv его датасета, те же правила — check_one §14). По клику каталог шлёт строку отчёта (PA_PREV) —
+// панель рисует её сразу, до своего ответа; «Кто смотрит», «Путь ЦА», «Закрепляемость» и «Охват ЦА» — «догружается».
+// Свой ответ датасета её заменяет. Блок берётся, только если он про тот выбор и тот же период / опции / ЦА, которых
+// панель ждёт (ключи сверки фильтров).
+var PV_COLS = ['period_param', 'pub_f', 'act_f', 'exc_f', 'ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'];
+function pvWantsMet(flt) {
+  var w = state.wants || {}, get = function (c) { return (flt && flt[c]) || []; };
+  for (var s in w) if (Object.prototype.hasOwnProperty.call(w, s) && paKey(w[s].cols, get) !== w[s].key) return false;
+  return true;
+}
+function pvFits(p) {
+  var w = state.wants || {}, s, i, cov = {};
+  if (!p || !w.cat || w.cat.key !== p.key) return false;
+  var get = function (c) { return (p.flt && p.flt[c]) || []; };
+  for (s in w) {
+    if (!Object.prototype.hasOwnProperty.call(w, s) || s === 'cat') continue;
+    if (paKey(w[s].cols, get) !== w[s].key) return false;
+    for (i = 0; i < w[s].cols.length; i++) cov[w[s].cols[i]] = true;
+  }
+  // колонки, о которых источники ещё не сообщали, — как в нынешнем ответе панели
+  for (i = 0; i < PV_COLS.length; i++) {
+    var c = PV_COLS[i];
+    if (!cov[c] && paVals(get(c)).join(',') !== paVals((REAL.flt && REAL.flt[c]) || []).join(',')) return false;
+  }
+  return true;
+}
+// PA_PREV → строки ответа панели (формат секций — шапка SQL панели); md, словарь, штат и доступ — из нынешнего ответа
+function pvRows(p) {
+  var F = CFG.fields, L = String(p.k || '').split('\n'), rows = [], i;
+  var row = function (sec, g, k, par, n) { var r = {}; r[F.section] = sec; r[F.g] = g; r[F.k] = k; r[F.parent] = par; r[F.n] = n; return r; };
+  var arrAt = function (j) { var a = L[j] ? L[j].split(',') : [], o = []; for (var q = 0; q < a.length; q++) o.push(a[q] ? +a[q] : 0); return o; };
+  var tu = arrAt(1), tn = arrAt(2), tr = arrAt(3), tv = arrAt(4), cu = arrAt(5), cn = arrAt(6), ts = [], cal = [];
+  for (i = 0; i < tu.length; i++) if (tu[i] > 0) ts.push(i + '|' + tu[i] + '|' + (tn[i] || 0) + '|' + (tr[i] || 0) + '|' + (tv[i] || 0));
+  if (p.grain === 'd') {
+    for (i = 0; i < tu.length; i++) if (tu[i] > 0) cal.push(i + '|' + tu[i] + '|' + (tn[i] || 0) + '|' + (tv[i] || 0));
+    for (i = 0; i < cu.length; i++) if (cu[i] > 0) cal.push((tu.length + i) + '|' + cu[i] + '|' + (cn[i] || 0) + '|0');
+  }
+  var flt = {}, src = p.flt || {};
+  for (i = 0; i < PV_COLS.length; i++) if (src[PV_COLS[i]] && src[PV_COLS[i]].length) flt[PV_COLS[i]] = src[PV_COLS[i]];
+  flt.mode_param = ['report']; flt.sel_f = [String(p.id)];
+  for (i = 0; i < rawData.length; i++) {
+    var s0 = String(rawData[i][F.section] || '');
+    if (s0 === 'md' || s0 === 'd' || s0 === 'sj' || s0 === 'acl') rows.push(rawData[i]);
+  }
+  rows.push(row('area', 'report', String(p.id), p.grain, int(p.kt) + 1));
+  rows.push(row('nm', '', String(p.name || ''), '', 0));
+  rows.push(row('flt', '', JSON.stringify(flt), '', 0));
+  rows.push(row('total', '', L[0] || '', '', 0));
+  rows.push(row('ts', '', ts.join('\n'), '', ts.length));
+  if (p.grain === 'd') rows.push(row('cal', '', cal.join('\n'), '', cal.length));
+  return rows;
+}
+// Мгновенная модель (без перерисовки): MODEL — из блока каталога, REAL — по-прежнему ответ датасета
+function pvModel(p) {
+  var keep = rawData;
+  rawData = pvRows(p);
+  for (var gk in GRAINS_BASE) if (Object.prototype.hasOwnProperty.call(GRAINS_BASE, gk)) CFG.grains[gk] = GRAINS_BASE[gk];
+  var m = buildModel();
+  rawData = keep;
+  m.preview = { id: p.id, name: p.name || '', t: Date.now() };
+  m.sig = 'pv|' + p.key + '|' + p.grain;
+  return m;
+}
+// Заглушка вкладки, которой в мгновенной панели нет
+function pvPendHtml(what) {
+  var sec = MODEL.preview ? Math.max(0, Math.round((Date.now() - MODEL.preview.t) / 1000)) : 0;
+  return '<div class="' + CFG.ns + '-pend"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i><div><b>' + esc(what) + ' — догружается</b>' +
+    '<span>KPI, «Динамика»' + (MODEL.cal && Object.keys(MODEL.cal).length ? ' и «Календарь»' : '') + ' уже готовы. Остальное считается по выбранному отчёту' +
+    (sec >= 3 ? ' — ' + sec + ' с' : '') + '.</span></div></div>';
+}
 function paVals(a) {
   var o = [];
   for (var i = 0; i < (a || []).length; i++) { var v = String(a[i]).replace(/["\\\n\r]/g, ''); if (v !== '') o.push(v); }
@@ -3867,10 +3957,10 @@ function paMaskGet(fl) {
 }
 function paAudSend() {
   // отвечаем всегда (и без эха фильтров) — каталог по ответу отличает «панель старая» от «нет эха»
-  var fl = MODEL.flt;
-  paBcast({ type: 'PA_AUD', v: 2, noflt: !fl, key: fl ? paKey(['mode_param', 'sel_f'], function (c) { return fl[c] || []; }) : '', rows: MODEL.aa || null });
+  var fl = REAL.flt;   // ответ датасета, не мгновенная панель
+  paBcast({ type: 'PA_AUD', v: 2, noflt: !fl, key: fl ? paKey(['mode_param', 'sel_f'], function (c) { return fl[c] || []; }) : '', rows: REAL.aa || null });
   // обратно: группа из «Аудитории» каталога → числа его вкладок отчётов (секция ar), ключ — колонки группы из эха
-  paBcast({ type: 'PA_REP', v: 1, noflt: !fl, key: fl ? paKey(AUD_COLS, function (c) { return fl[c] || []; }) : '', rows: MODEL.ar || null });
+  paBcast({ type: 'PA_REP', v: 1, noflt: !fl, key: fl ? paKey(AUD_COLS, function (c) { return fl[c] || []; }) : '', rows: REAL.ar || null });
 }
 var AUD_COLS = ['aud_org_f', 'aud_spec_f', 'aud_stream_f', 'aud_hq_f', 'aud_it_f', 'aud_head_f'];
 // Рассылка всем iframe борда (обход от window.top; свой iframe пропускаем).
@@ -3955,7 +4045,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       else next = Math.min(next, b.t + CFG.selShowAfter - now);
       if (b.tries > tried) tried = b.tries;
     }
-    if (!shown && !giveUp) hide();
+    if ((!shown || MODEL.preview) && !giveUp) hide();
     else {
       guard.className = CFG.ns + '-selg on' + (giveUp ? ' late' : '');
       guard.innerHTML = giveUp
@@ -4898,11 +4988,31 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     window.addEventListener('resize', state.onWinResize);
 
     // Сверка фильтров: плашка «Пересчитываем…/повторяю запрос», источник людской шины отвечает на «повтори».
-    var paSync = paGuardMount(host, function () { return MODEL.flt; }, function () { return CFG.sheet; }, ['strip', 'cat', 'ca']);
+    var paSync = paGuardMount(host, function () { return REAL.flt; }, function () { return CFG.sheet; }, ['strip', 'cat', 'ca']);
     paResendOn('ppl', function () { return CFG.sheet; }, CFG.paCols, maskOf);
+    // Мгновенная панель: пришёл ответ, но под прежний выбор, а блок каталога под нынешний уже есть — показываем блок
+    // (ответ под нынешний выбор догонит и заменит). Блок старше CFG.prevTtl не берём.
+    var pv0 = state.prev;
+    if (pv0 && Date.now() - pv0.t < CFG.prevTtl && !pvWantsMet(REAL.flt) && pvFits(pv0.p)) MODEL = pvModel(pv0.p);
+    if (state.onPrev) window.removeEventListener('message', state.onPrev);
+    state.onPrev = function (e) {
+      var d = e.data || {};
+      if (d.type !== 'PA_PREV' || d.src !== 'cat') return;
+      state.prev = { p: d, t: Date.now() };
+      if (pvWantsMet(REAL.flt) || !pvFits(d)) return;   // ответ под этот выбор уже есть / блок не про то, чего ждём
+      MODEL = pvModel(d);
+      CA_MEMO.sig = null;
+      render();
+      paSync(false);
+      paDiag({ t: 'PREV', key: d.key });
+    };
+    window.addEventListener('message', state.onPrev);
+    // пока висит заглушка «догружается» — секунды в ней обновляются
+    clearInterval(state.pendT);
+    state.pendT = setInterval(function () { if (MODEL.preview && overlay.querySelector('.' + CFG.ns + '-pend')) render(); }, 5000);
     render();
     paSync(true);   // новый ответ датасета
-    paDiag({ t: 'DATA', key: MODEL.flt ? paKey(['mode_param', 'sel_f'], function (c) { return MODEL.flt[c] || []; }) : '(нет эха)' });
+    paDiag({ t: 'DATA', key: REAL.flt ? paKey(['mode_param', 'sel_f'], function (c) { return REAL.flt[c] || []; }) : '(нет эха)' });
     // Вкладка «Аудитория» каталога: каталог свой выбор не видит (самовлияние выключено) — разрезы по выбранной
     // области считает этот датасет (секция aa) и шлёт их каталогу с ключом выбора (mode_param + sel_f из эха).
     paAudSend();

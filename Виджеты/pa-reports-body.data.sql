@@ -15,7 +15,9 @@
               название|владелец|коллекции через ^|опубликован|сертифицирован|создан ГГГГ-ММ-ДД»;
       grp   — g = owner | collection: «значение|users|views|regular|last»;
       aud   — g = разрез аудитории (o — оргструктура, s — специализация, t — стрим, q — HQ, i — IT, h — руководители):
-              «значение|родитель (у o — путь уровнем выше)|людей заходило|просмотров|постоянных|людей в штате». -#}
+              «значение|родитель (у o — путь уровнем выше)|людей заходило|просмотров|постоянных|людей в штате»;
+      pv    — мгновенная панель по клику (2026-10-22): строка на отчёт топа, то, что панель покажет по клику на него
+              (формат — у блока PV_N ниже); pvh — n = kt + 1 для этого блока. -#}
 {% set GRAINS = {'d': {'n': 30, 'u': 'day', 'sf': 'toStartOfDay'}, 'w': {'n': 20, 'u': 'week', 'sf': 'toMonday'}, 'm': {'n': 12, 'u': 'month', 'sf': 'toStartOfMonth'}, 'q': {'n': 8, 'u': 'quarter', 'sf': 'toStartOfQuarter'}} %}
 {#- Свой период (2026-10-21) — как в SQL панели: period_param = «c|ГГГГ-ММ-ДД|шаг|n», шаг d / w / m, n ≤ 400 шагов по этот день;
     дата пересобирается из чисел, неверное значение — как «30 дней». Маска и просмотры окна — из подневного факта (ppx). -#}
@@ -152,6 +154,19 @@ SELECT lg FROM (
 {%- set FB = [] -%}
 {%- set FBIN = {'d': [1, 5, 15], 'w': [1, 5, 15], 'm': [1, 3, 6], 'q': [1, 2, 3]}[grain] -%}
 {%- for v in freqf -%}{%- set bi = v|int -%}{%- if bi == 1 %}{% set _ = FB.append('nb BETWEEN 1 AND ' ~ FBIN[0]) %}{% elif bi == 4 %}{% set _ = FB.append('nb > ' ~ FBIN[2]) %}{% elif bi in [2, 3] %}{% set _ = FB.append('nb BETWEEN ' ~ (FBIN[bi - 2] + 1) ~ ' AND ' ~ FBIN[bi - 1]) %}{% endif -%}{%- endfor %}
+{#- Мгновенная панель по клику (2026-10-22, «один запрос, два чарта»): для PV_N отчётов с наибольшим числом зрителей — то,
+    что панель (SQL панели pa_one) покажет по клику на ОДИН отчёт: KPI (секция total), «Динамика» (ts) и у «30 дней» — хвост
+    «Календаря» (дни ≥ n; дни < n у «30 дней» = ряд «Динамики»). Каталог и так пересчитывается на период и опции шапки; по клику
+    он сразу отдаёт панели этот блок (PA_PREV), панель рисует его до своего ответа. Правила — как у панели (evd → agg / tc / bv,
+    область из одного отчёта); равенство — check_one §14. Только без условий ЦА, людской шины и своего периода: там панель
+    считает по другим людям или из подневного факта. Числа «Охвата ЦА» здесь не считаются (у панели — по штату и доступам).
+    Строка pv: g = id, k — строки: total (20 полей, поля ЦА — 0) | людей по шагам 0…n−1 | новых | вернувшихся | просмотров |
+    людей по дням n…59 | новых по дням n…59 (последние два — только у «30 дней»); числа через запятую, 0 — пусто;
+    pvh: n = kt + 1 (надёжных шагов для новых). -#}
+{% set PV_N = 500 %}
+{% set PVON = not cper and not pplf %}
+{% set CAL_N = 60 %}
+{% set GAPM = 2 ** {'d': 7, 'w': 1, 'm': 1, 'q': 1}[grain] - 1 %}
 {%- set OCOL = ['lvl3_management_unit_nm', 'lvl4_management_unit_nm', 'lvl5_management_unit_nm', 'lvl6_management_unit_nm', 'lvl7_management_unit_nm'] -%}
 {%- set OC = [] -%}
 {%- for L in [1, 2, 3, 4, 5] -%}{%- set vs = [] -%}{%- for v in orgf -%}{%- if v.split(' › ')|length == L -%}{%- set _ = vs.append(v) -%}{%- endif -%}{%- endfor -%}
@@ -312,7 +327,53 @@ WITH
       arrayMap(i -> ('o', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › ')), range(1, ol + 1)),
       array(('s', sp, ''), ('t', st, ''), ('q', hqc, ''), ('i', itc, ''), ('h', toString(hdf), ''))) AS kk
     GROUP BY ad, ak0, ap
-  )
+  ){% if PVON %},
+  {#- даты начала истории — как maxd панели: kt — самый старый шаг, где новых можно отличить от давно не заходивших (≥ 90 дней истории) -#}
+  pvd AS (
+    SELECT tuple(toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1),
+      toInt64(dateDiff('day', dt, toDate(md)))) AS h
+    FROM (SELECT md, addDays(toDate(ds0), 90) AS dt FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+  ),
+  pvt AS (
+    SELECT did FROM evd GROUP BY did ORDER BY countIf({{ mcur('msk') }}) DESC, did LIMIT {{ PV_N }}
+  ),
+  pva AS (
+    {#- пара отчёта = строка зрителя области панели (evd панели по одному отчёту) -#}
+    SELECT did,
+      countIf(cur) AS u, countIf(prv) AS up, sum(vc) AS v, sum(vpv) AS vp,
+      countIf(cur AND fk < {{ g.n }} AND fk <= kt) AS nu,
+      countIf(prv AND fk >= {{ g.n }} AND fk < {{ 2 * g.n }} AND fk <= kt) AS np,
+      countIf(nbc > {{ FBIN[1] }}) AS rg, countIf(nbp > {{ FBIN[1] }}) AS rgp, countIf(prv AND NOT cur) AS sl,
+      countIf(bitTest(mon, 1)) AS m1, countIf(bitTest(mon, 2)) AS m2,
+      countIf(cur AND nbc <= {{ FBIN[0] }}) AS f1, countIf(nbc > {{ FBIN[0] }} AND nbc <= {{ FBIN[1] }}) AS f2,
+      countIf(nbc > {{ FBIN[1] }} AND nbc <= {{ FBIN[2] }}) AS f3, countIf(nbc > {{ FBIN[2] }}) AS f4,
+      sumForEach(arrayMap(i -> toUInt64(bitTest(msk, i)), range({{ g.n }}))) AS tu,
+      sumForEach(arrayMap(i -> toUInt64(i = fk AND fk <= kt AND bitTest(msk, i)), range({{ g.n }}))) AS tn,
+      {#- вернувшиеся: активен в шаге, не первый визит и ни одного визита в шагах перерыва перед ним -#}
+      sumForEach(arrayMap(i -> toUInt64(bitTest(msk, i) AND i != fk AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(i + 1)))) = 0), range({{ g.n }}))) AS tr
+      {%- if grain == 'd' %},
+      sumForEach(arrayMap(i -> toUInt64(bitTest(mskd, i)), range({{ g.n }}, {{ CAL_N }}))) AS cu,
+      sumForEach(arrayMap(i -> toUInt64(i = fdd AND fdd <= ktd AND bitTest(mskd, i)), range({{ g.n }}, {{ CAL_N }}))) AS cn{% endif %}
+    FROM (
+      SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toUInt64(ifNull(e.msk_{{ GK }}, 0)) AS msk, ifNull(e.v_{{ GK }}, 0) AS vc,
+        ifNull(e.vp_{{ GK }}, 0) AS vpv, ifNull(e.kmax_{{ GK }}, 0) AS fk, toUInt64(ifNull(e.msk_mon, 0)) AS mon,
+        toUInt64(ifNull(e.msk_d, 0)) AS mskd, ifNull(e.kmax_d, 0) AS fdd,
+        bitAnd(msk, {{ CUR }}) != 0 AS cur, bitAnd(msk, {{ PREV }}) != 0 AS prv,
+        bitCount(bitAnd(msk, {{ CUR }})) AS nbc, bitCount(bitAnd(msk, {{ PREV }})) AS nbp,
+        tupleElement((SELECT h FROM pvd), 1) AS kt, tupleElement((SELECT h FROM pvd), 2) AS ktd
+      FROM prod_proteus.pa_pair e
+      WHERE e.dashboard_id IN (SELECT did FROM pvt) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
+    )
+    GROUP BY did
+  ),
+  pvb AS (
+    {#- просмотры по шагам — как bv панели (pa_dash_bkt, без владельцев — views_nown) -#}
+    SELECT toInt32(dashboard_id) AS did,
+      sumForEach(arrayMap(i -> toInt64(if(toInt64(k) = toInt64(i), ifNull({{ 'views_nown' if excv == '1' else 'views' }}, 0), 0)), range({{ g.n }}))) AS tv
+    FROM prod_proteus.pa_dash_bkt
+    WHERE grain = '{{ grain }}' AND dashboard_id IN (SELECT did FROM pvt) AND k >= 0 AND k < {{ g.n }}
+    GROUP BY did
+  ){% endif %}
 SELECT CAST(section AS String) AS section, CAST(g AS String) AS g, CAST(k AS String) AS k, CAST(parent AS String) AS parent, CAST(n AS Int64) AS n
 FROM (
   {# Строки agg — упаковкой: отчёты порциями по 1000 (по id), группы — строкой на разрез, ИТОГО — отдельно. Строки в k — arraySort:
@@ -369,4 +430,20 @@ FROM (
   SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',
     toString(countIf({{ mnb('vm') }} >= {{ REG }})), '|0') AS k, '' AS parent, toInt64(count()) AS n
   FROM vz
+  {% if PVON %}
+  UNION ALL
+  {# Мгновенная панель: строка на отчёт топа (формат — в шапке блока PV_N). #}
+  SELECT 'pv' AS section, toString(a.did) AS g,
+    concat(toString(a.u), '|', toString(a.up), '|', toString(a.v), '|', toString(a.vp), '|', toString(a.nu), '|', toString(a.np), '|0|',
+      toString(a.rg), '|', toString(a.rgp), '|', toString(a.sl), '|', toString(a.m1), '|', toString(a.m2), '|0|0|0|0|',
+      toString(a.f1), '|', toString(a.f2), '|', toString(a.f3), '|', toString(a.f4), '\n',
+      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tn), ','), '\n',
+      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tr), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), b.tv), ','){% if grain == 'd' %}, '\n',
+      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cn), ','){% endif %}) AS k,
+    '' AS parent, toInt64(a.u) AS n
+  FROM pva a
+  LEFT JOIN pvb b ON b.did = a.did
+  UNION ALL
+  SELECT 'pvh' AS section, '{{ grain }}' AS g, '' AS k, '' AS parent, toInt64(greatest(tupleElement((SELECT h FROM pvd), 1) + 1, 0)) AS n
+  {% endif %}
 )

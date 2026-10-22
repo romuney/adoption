@@ -61,7 +61,9 @@
     SEND: function (o) { return 'отправил выбор в Proteus: ' + short(o.key, 80); },
     SEND_RESEND: function (o) { return 'отправил выбор с меткой повтора: ' + short(o.key, 80); },
     RESEND_SKIP: function (o) { return 'повтор не дублирую — этот выбор только что ушёл'; },
-    DATA: function (o) { return 'пришли данные' + (o.key ? ' под ' + short(o.key, 90) : ''); }
+    DATA: function (o) { return 'пришли данные' + (o.key ? ' под ' + short(o.key, 90) : ''); },
+    PA_PREV: function (o) { return 'отдал панели готовые KPI и «Динамику» по отчёту: ' + short(o.key, 60); },
+    PREV: function (o) { return 'ПОКАЗАЛА СРАЗУ по блоку каталога: ' + short(o.key, 60) + ' (свой ответ догонит)'; }
   };
   window.addEventListener('message', function (e) {
     var d = e.data || {};

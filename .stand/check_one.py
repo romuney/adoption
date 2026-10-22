@@ -16,6 +16,7 @@
 7. Сегмент ЦА (seg_f) в SQL каталога: у каждого отчёта заходили == из ЦА + вне ЦА (панель seg_f больше не шлёт — запас).
 9. ЦА по условиям: список ЦА + «вне ЦА» поимённо (lo) == все зрители периода, без пересечений, число == ca_out.
 10. Выбрана область: разрезы aa (для вкладки «Аудитория» каталога) == панель после клика по этой группе (люди, просмотры, постоянные).
+14. Мгновенная панель: блок pv каталога (топ отчётов) == панель по клику на один отчёт (total без полей ЦА, ts, cal у «30 дней», kt).
 13. Выбрана группа во вкладке «Аудитория» каталога: секция ar панели (числа вкладок «Отчёты», «Коллекции», «Владельцы»
    и ИТОГО) == каталог, у которого условия строки ЦА == эта группа (построчно, все поля чисел); выбор отчётов её не сужает.
 8. <папка>/Проверки: рендеры без джини == текущие шаблоны поставки (не устарели), исполняются; метка id отчёта
@@ -519,6 +520,58 @@ for c in [{'aud_spec_f': ['Спец 3']}, {'aud_org_f': ['Блок 3'], 'aud_hea
     ok(a and not diff, f'ar {c}: == каталог с ЦА {cc} — {nrep} отчётов, {len(a) - nrep - 1} групп, ИТОГО {a.get(("total", ""))}' +
        ('' if not diff else f'\n       расходится {len(diff)}: ' + '; '.join(f'{k}: {a.get(k)} / {b.get(k)}' for k in diff[:4])))
 ok(not [r for r in run(ONE, {'mode_param': 'report', 'sel_f': ['2']}, raw=True) if r['section'] == 'ar'], 'без группы из «Аудитории» секции ar нет')
+
+# ---- 14. Мгновенная панель по клику: блок pv каталога == панель по одному отчёту (total, ts, cal) ------------------
+def pv_unpack(k, grain, kt):
+    """Строка pv каталога → (поля total, строки ts, строки cal) в формате панели — как разбор в чарте панели (pvRows)."""
+    L = k.split('\n')
+    tot = L[0].split('|')
+    arr = lambda i: [int(x) if x else 0 for x in L[i].split(',')] if i < len(L) and L[i] != '' else []
+    tu, tn, tr, tv = arr(1), arr(2), arr(3), arr(4)
+    n = len(tu)
+    ts, cal = set(), set()
+    for i in range(n):
+        v = tv[i] if i < len(tv) else 0
+        if tu[i] > 0: ts.add(f'{i}|{tu[i]}|{tn[i]}|{tr[i]}|{v}')
+    if grain == 'd':
+        cu, cn = arr(5), arr(6)
+        for i in range(n):
+            if tu[i] > 0: cal.add(f'{i}|{tu[i]}|{tn[i]}|{tv[i] if i < len(tv) else 0}')
+        for j in range(len(cu)):
+            if cu[j] > 0: cal.add(f'{n + j}|{cu[j]}|{cn[j]}|0')
+    return tot, ts, cal
+PV_IDX = list(range(0, 12)) + list(range(16, 20))   # поля total, которые панель берёт из блока (ЦА — нет)
+for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'}, {'exc_f': ['0']}, {'pub_f': ['0'], 'act_f': ['0']}]:
+    cat = run(CAT, c, with_ca=True)
+    pv = sorted([r for r in cat if r['section'] == 'pv'], key=lambda r: (-int(r['n']), int(r['g'])))
+    ph = [r for r in cat if r['section'] == 'pvh']
+    grain = (c.get('period_param') or ['d'])[0]
+    if not pv or len(ph) != 1:
+        ok(False, f'pv {c}: блока нет'); continue
+    kt = int(ph[0]['n']) - 1
+    sample = pv[:8] + pv[8::max(1, len(pv) // 12)]
+    bad_l = []
+    for r in sample:
+        tot, ts, cal = pv_unpack(str(r['k']), grain, kt)
+        pc = dict(c, mode_param='report', sel_f=[str(r['g'])])
+        one = run(ONE, pc, raw=True)
+        sec = {}
+        for x in one: sec.setdefault(x['section'], []).append(x)
+        ptot = str(sec['total'][0]['k']).split('|') if sec.get('total') else []
+        pts = set(l for x in sec.get('ts', []) for l in str(x['k']).split('\n') if l)
+        pcal = set(l for x in sec.get('cal', []) for l in str(x['k']).split('\n') if l) if grain == 'd' else set()
+        pkt = int(sec['area'][0]['n']) - 1 if sec.get('area') else None
+        d = []
+        if [ptot[i] if i < len(ptot) else '0' for i in PV_IDX] != [tot[i] for i in PV_IDX]: d.append(f'total {"|".join(ptot)} / {"|".join(tot)}')
+        if pts != ts: d.append(f'ts −{sorted(pts - ts)[:3]} +{sorted(ts - pts)[:3]}')
+        if pcal != cal: d.append(f'cal −{sorted(pcal - cal)[:3]} +{sorted(cal - pcal)[:3]}')
+        if pkt != kt: d.append(f'kt {pkt} / {kt}')
+        if d: bad_l.append(f'{r["g"]}: ' + '; '.join(d))
+    ok(not bad_l, f'pv {c}: блок каталога == панель по одному отчёту — {len(sample)} из {len(pv)} отчётов (total, ts{", cal" if grain == "d" else ""}, kt)' +
+       ('' if not bad_l else '\n       ' + '\n       '.join(bad_l[:5])))
+ok(not [r for r in run(CAT, {'login_f': ['u1']}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: при людской шине блока нет')
+ok(not [r for r in run(CAT, {'ca_it_f': ['IT']}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: при ЦА по условиям блока нет')
+ok(not [r for r in run(CAT, {'period_param': 'c|2026-08-01|d|20'}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: у своего периода блока нет')
 
 # ---- 8. Проверки для SQL Lab ------------------------------------------------------------------------------------
 if LAB_DIR and os.path.isdir(LAB_DIR):

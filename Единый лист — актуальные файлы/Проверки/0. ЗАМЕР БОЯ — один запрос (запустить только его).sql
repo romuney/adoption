@@ -107,6 +107,43 @@ WITH
       arrayMap(i -> ('o', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › ')), range(1, ol + 1)),
       array(('s', sp, ''), ('t', st, ''), ('q', hqc, ''), ('i', itc, ''), ('h', toString(hdf), ''))) AS kk
     GROUP BY ad, ak0, ap
+  ),pvd AS (
+    SELECT [tuple(toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1),
+      toInt64(dateDiff('day', dt, toDate(md))))][1] AS h
+    FROM (SELECT md, [addDays(toDate(ds0), 90)][1] AS dt FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+  ),
+  pvt AS (
+    SELECT did FROM evd GROUP BY did ORDER BY countIf(bitAnd(msk, 1073741823) != 0) DESC, did LIMIT 500
+  ),
+  pva AS (SELECT did,
+      countIf(cur) AS u, countIf(prv) AS up, sum(vc) AS v, sum(vpv) AS vp,
+      [countIf(cur AND fk < 30 AND fk <= kt)][1] AS nu,
+      [countIf(prv AND fk >= 30 AND fk < 60 AND fk <= kt)][1] AS np,
+      [countIf(nbc > 5)][1] AS rg, [countIf(nbp > 5)][1] AS rgp, [countIf(prv AND NOT cur)][1] AS sl,
+      [countIf(bitTest(mon, 1))][1] AS m1, [countIf(bitTest(mon, 2))][1] AS m2,
+      [countIf(cur AND nbc <= 1)][1] AS f1, [countIf(nbc > 1 AND nbc <= 5)][1] AS f2,
+      [countIf(nbc > 5 AND nbc <= 15)][1] AS f3, [countIf(nbc > 15)][1] AS f4,
+      [sumForEach(arrayMap(i -> toUInt64(bitTest(msk, i)), range(30)))][1] AS tu,
+      [sumForEach(arrayMap(i -> toUInt64(i = fk AND fk <= kt AND bitTest(msk, i)), range(30)))][1] AS tn,[sumForEach(arrayMap(i -> toUInt64(bitTest(msk, i) AND i != fk AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64(127), toUInt8(i + 1)))) = 0), range(30)))][1] AS tr,
+      [sumForEach(arrayMap(i -> toUInt64(bitTest(mskd, i)), range(30, 60)))][1] AS cu,
+      [sumForEach(arrayMap(i -> toUInt64(i = fdd AND fdd <= ktd AND bitTest(mskd, i)), range(30, 60)))][1] AS cn
+    FROM (
+      SELECT [toInt32(ifNull(e.dashboard_id, 0))][1] AS did, [toUInt64(ifNull(e.msk_d, 0))][1] AS msk, ifNull(e.v_d, 0) AS vc,
+        [ifNull(e.vp_d, 0)][1] AS vpv, [ifNull(e.kmax_d, 0)][1] AS fk, [toUInt64(ifNull(e.msk_mon, 0))][1] AS mon,
+        [toUInt64(ifNull(e.msk_d, 0))][1] AS mskd, ifNull(e.kmax_d, 0) AS fdd,
+        bitAnd(msk, 1073741823) != 0 AS cur, bitAnd(msk, 1152921503533105152) != 0 AS prv,
+        [bitCount(bitAnd(msk, 1073741823))][1] AS nbc, [bitCount(bitAnd(msk, 1152921503533105152))][1] AS nbp,
+        [tupleElement((SELECT h FROM pvd), 1)][1] AS kt, [tupleElement((SELECT h FROM pvd), 2)][1] AS ktd
+      FROM prod_proteus.pa_pair e
+      WHERE e.dashboard_id IN (SELECT did FROM pvt) AND isNotNull(e.login) AND ifNull(e.own_flg, 0) = 0
+    )
+    GROUP BY did
+  ),
+  pvb AS (SELECT toInt32(dashboard_id) AS did,
+      [sumForEach(arrayMap(i -> toInt64(if(toInt64(k) = toInt64(i), ifNull(views_nown, 0), 0)), range(30)))][1] AS tv
+    FROM prod_proteus.pa_dash_bkt
+    WHERE grain = 'd' AND dashboard_id IN (SELECT did FROM pvt) AND k >= 0 AND k < 30
+    GROUP BY did
   )
 SELECT CAST(section AS String) AS section, CAST(g AS String) AS g, CAST(k AS String) AS k, CAST(parent AS String) AS parent, CAST(n AS Int64) AS n
 FROM (
@@ -147,6 +184,19 @@ FROM (
   SELECT 'aud' AS section, 'all' AS g, [concat('*||', toString(count()), '|', toString(sum(vv)), '|',
     toString(countIf(bitCount(bitAnd(vm, 1073741823)) >= 6)), '|0')][1] AS k, '' AS parent, toInt64(count()) AS n
   FROM vz
+  UNION ALL
+  SELECT 'pv' AS section, toString(a.did) AS g,
+    [concat(toString(a.u), '|', toString(a.up), '|', toString(a.v), '|', toString(a.vp), '|', toString(a.nu), '|', toString(a.np), '|0|',
+      toString(a.rg), '|', toString(a.rgp), '|', toString(a.sl), '|', toString(a.m1), '|', toString(a.m2), '|0|0|0|0|',
+      toString(a.f1), '|', toString(a.f2), '|', toString(a.f3), '|', toString(a.f4), '\n',
+      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tn), ','), '\n',
+      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tr), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), b.tv), ','), '\n',
+      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cn), ','))][1] AS k,
+    '' AS parent, toInt64(a.u) AS n
+  FROM pva a
+  LEFT JOIN pvb b ON b.did = a.did
+  UNION ALL
+  SELECT 'pvh' AS section, 'd' AS g, '' AS k, '' AS parent, [toInt64(greatest(tupleElement((SELECT h FROM pvd), 1) + 1, 0))][1] AS n
 )
 )
 UNION ALL

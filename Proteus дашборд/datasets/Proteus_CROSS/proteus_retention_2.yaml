@@ -1,0 +1,99 @@
+table_name: proteus_retention_2
+main_dttm_col: null
+description: null
+default_endpoint: null
+offset: 0
+cache_timeout: null
+schema: prod_proteus
+sql: "\nSELECT\n    cohort_month,\n    age,\n    active_users,\n    max(if(age = 0,\
+  \ active_users, 0)) OVER (PARTITION BY cohort_month) AS cohort_size,\n    max_date\n\
+  FROM\n(\n    SELECT\n        date_trunc('month', first_action)                 \
+  \             AS cohort_month,\n        dateDiff('month', date_trunc('month', first_action),\n\
+  \                          date_trunc('month', log_dttm))                AS age,\n\
+  \        toInt64(uniqExact(user_id))                                     AS active_users,\n\
+  \        max_date\n    FROM {{dataset(35153)}}\n    WHERE first_action >= date_add(YEAR,\
+  \ -3, date_trunc('month', max_date))\n    GROUP BY cohort_month, age, max_date\n\
+  \    HAVING age >= 0 AND age <= 24\n)\nORDER BY cohort_month, age;\n"
+params: null
+template_params: {}
+filter_select_enabled: false
+fetch_values_predicate: null
+extra: null
+uuid: 7a08e052-a7d7-4b13-8303-14cab141e4ad
+metrics:
+- metric_name: count
+  verbose_name: COUNT(*)
+  metric_type: null
+  expression: COUNT(*)
+  description: null
+  d3format: null
+  extra:
+    warning_markdown: null
+  warning_text: null
+columns:
+- column_name: active_users
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Int64
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: cohort_size
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Int64
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: age
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Int64
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: cohort_month
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: Date
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: max_date
+  verbose_name: null
+  is_dttm: true
+  is_active: true
+  type: Nullable(DateTime)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra: {}
+version: 1.0.0
+database_uuid: f3cf662e-9267-42ad-85d9-a009bacb4736

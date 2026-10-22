@@ -1,0 +1,227 @@
+slice_name: "\u0427\u0438\u0441\u043B\u0435\u043D\u043D\u043E\u0441\u0442\u044C vs\
+  \ \u044E\u0437\u0435\u0440\u044B \u0442\u0430\u0431\u043B\u0438\u0446\u0430"
+description: null
+certified_by: null
+certification_details: null
+viz_type: table
+params:
+  datasource: 137217__table
+  viz_type: table
+  slice_id: 640415
+  query_mode: aggregate
+  groupby:
+  - group_users2
+  temporal_columns_lookup:
+    business_dt: true
+    log_day: true
+    max_date: true
+    start_of_month: true
+  metrics:
+  - aggregate: null
+    column: null
+    datasourceWarning: false
+    expressionType: SQL
+    hasCustomLabel: true
+    label: "\u041F\u043E\u043A\u0440\u044B\u0442\u0438\u0435"
+    optionName: metric_n0dztmr26l_cmumh59rop
+    sqlExpression: round(1-((COUNT(DISTINCT ad_login) - COUNT(DISTINCT login)) / COUNT(DISTINCT
+      ad_login) ), 3)
+  - aggregate: COUNT_DISTINCT
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: ad_login
+      description: null
+      expression: null
+      filterable: true
+      groupby: true
+      id: 2206358
+      is_certified: false
+      is_dttm: false
+      python_date_format: null
+      type: Nullable(String)
+      type_generic: 1
+      verbose_name: null
+      warning_markdown: null
+    datasourceWarning: false
+    expressionType: SIMPLE
+    hasCustomLabel: true
+    label: "\u0421\u043E\u0442\u0440\u0443\u0434\u043D\u0438\u043A\u0438"
+    optionName: metric_h0gqmcsbfao_wy0biystch
+    sqlExpression: null
+  - aggregate: COUNT_DISTINCT
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: login
+      description: null
+      expression: null
+      filterable: true
+      groupby: true
+      id: 2206372
+      is_certified: false
+      is_dttm: false
+      python_date_format: null
+      type: Nullable(String)
+      type_generic: 1
+      verbose_name: null
+      warning_markdown: null
+    datasourceWarning: false
+    expressionType: SIMPLE
+    hasCustomLabel: true
+    label: "\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438"
+    optionName: metric_tkhzi3rbtrp_7ui90w9864w
+    sqlExpression: null
+  all_columns: []
+  percent_metrics: []
+  adhoc_filters:
+  - clause: WHERE
+    comparator: No filter
+    datasourceWarning: false
+    expressionType: SIMPLE
+    filterOptionName: filter_u6gk2vmk9jj_uj70hwem81k
+    isExtra: false
+    isNew: false
+    operator: TEMPORAL_RANGE
+    sqlExpression: null
+    subject: business_dt
+  - clause: WHERE
+    comparator: null
+    datasourceWarning: false
+    expressionType: SQL
+    filterOptionName: filter_mtd2itxjsni_jousk56ng1e
+    isExtra: false
+    isNew: false
+    operator: null
+    sqlExpression: "{% if filter_values('period_column')|first == '30 \u0434\u043D\
+      \u0435\u0439'%} \nbusiness_dt between date_add(DAY, -30,  max_date) and max_date\n\
+      {% elif filter_values('period_column')|first == '20 \u043D\u0435\u0434\u0435\
+      \u043B\u044C'%} \nbusiness_dt between date_add(WEEk, -20, max_date) and max_date\n\
+      {% elif filter_values('period_column')|first == '12 \u043C\u0435\u0441\u044F\
+      \u0446\u0435\u0432'%} \nbusiness_dt between date_add(MONTH, -12 , max_date)\
+      \ and max_date\n{% elif filter_values('period_column')|first == '8 \u043A\u0432\
+      \u0430\u0440\u0442\u0430\u043B\u043E\u0432'%} \nbusiness_dt between date_add(QUARTER,\
+      \ -8 , max_date) and max_date\n{% else %}\nbusiness_dt between date_add(DAY,\
+      \ -30, max_date) and max_date\n{% endif %}"
+    subject: null
+  timeseries_limit_metric: null
+  order_by_cols: []
+  server_pagination: false
+  row_limit: 10000
+  server_page_length: 10
+  order_desc: false
+  show_totals: false
+  page_length: null
+  include_search: false
+  show_cell_bars: true
+  allow_rearrange_columns: false
+  align_pn: false
+  color_pn: true
+  column_config:
+    "\u041F\u043E\u043A\u0440\u044B\u0442\u0438\u0435":
+      d3NumberFormat: ',.1%'
+    "\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0438":
+      showCellBars: false
+      d3NumberFormat: ~g
+      d3SmallNumberFormat: ~g
+    "\u0421\u043E\u0442\u0440\u0443\u0434\u043D\u0438\u043A\u0438":
+      showCellBars: false
+      d3NumberFormat: ~g
+      d3SmallNumberFormat: ~g
+  conditional_formatting: []
+  table_timestamp_format: smart_date
+  extra_form_data: {}
+query_context: "{\"datasource\":{\"id\":137217,\"type\":\"table\"},\"force\":false,\"\
+  queries\":[{\"filters\":[{\"col\":\"business_dt\",\"op\":\"TEMPORAL_RANGE\",\"val\"\
+  :\"No filter\"}],\"extras\":{\"having\":\"\",\"where\":\"({% if filter_values('period_column')|first\
+  \ == '30 \u0434\u043D\u0435\u0439'%} \\nbusiness_dt between date_add(DAY, -30, \
+  \ max_date) and max_date\\n{% elif filter_values('period_column')|first == '20 \u043D\
+  \u0435\u0434\u0435\u043B\u044C'%} \\nbusiness_dt between date_add(WEEk, -20, max_date)\
+  \ and max_date\\n{% elif filter_values('period_column')|first == '12 \u043C\u0435\
+  \u0441\u044F\u0446\u0435\u0432'%} \\nbusiness_dt between date_add(MONTH, -12 , max_date)\
+  \ and max_date\\n{% elif filter_values('period_column')|first == '8 \u043A\u0432\
+  \u0430\u0440\u0442\u0430\u043B\u043E\u0432'%} \\nbusiness_dt between date_add(QUARTER,\
+  \ -8 , max_date) and max_date\\n{% else %}\\nbusiness_dt between date_add(DAY, -30,\
+  \ max_date) and max_date\\n{% endif %})\"},\"applied_time_extras\":{},\"columns\"\
+  :[\"group_users2\"],\"metrics\":[{\"aggregate\":null,\"column\":null,\"datasourceWarning\"\
+  :false,\"expressionType\":\"SQL\",\"hasCustomLabel\":true,\"label\":\"\u041F\u043E\
+  \u043A\u0440\u044B\u0442\u0438\u0435\",\"optionName\":\"metric_n0dztmr26l_cmumh59rop\"\
+  ,\"sqlExpression\":\"round(1-((COUNT(DISTINCT ad_login) - COUNT(DISTINCT login))\
+  \ / COUNT(DISTINCT ad_login) ), 3)\"},{\"aggregate\":\"COUNT_DISTINCT\",\"column\"\
+  :{\"advanced_data_type\":null,\"certification_details\":null,\"certified_by\":null,\"\
+  column_name\":\"ad_login\",\"description\":null,\"expression\":null,\"filterable\"\
+  :true,\"groupby\":true,\"id\":2206358,\"is_certified\":false,\"is_dttm\":false,\"\
+  python_date_format\":null,\"type\":\"Nullable(String)\",\"type_generic\":1,\"verbose_name\"\
+  :null,\"warning_markdown\":null},\"datasourceWarning\":false,\"expressionType\"\
+  :\"SIMPLE\",\"hasCustomLabel\":true,\"label\":\"\u0421\u043E\u0442\u0440\u0443\u0434\
+  \u043D\u0438\u043A\u0438\",\"optionName\":\"metric_h0gqmcsbfao_wy0biystch\",\"sqlExpression\"\
+  :null},{\"aggregate\":\"COUNT_DISTINCT\",\"column\":{\"advanced_data_type\":null,\"\
+  certification_details\":null,\"certified_by\":null,\"column_name\":\"login\",\"\
+  description\":null,\"expression\":null,\"filterable\":true,\"groupby\":true,\"id\"\
+  :2206372,\"is_certified\":false,\"is_dttm\":false,\"python_date_format\":null,\"\
+  type\":\"Nullable(String)\",\"type_generic\":1,\"verbose_name\":null,\"warning_markdown\"\
+  :null},\"datasourceWarning\":false,\"expressionType\":\"SIMPLE\",\"hasCustomLabel\"\
+  :true,\"label\":\"\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\
+  \u0438\",\"optionName\":\"metric_tkhzi3rbtrp_7ui90w9864w\",\"sqlExpression\":null}],\"\
+  orderby\":[[{\"aggregate\":null,\"column\":null,\"datasourceWarning\":false,\"expressionType\"\
+  :\"SQL\",\"hasCustomLabel\":true,\"label\":\"\u041F\u043E\u043A\u0440\u044B\u0442\
+  \u0438\u0435\",\"optionName\":\"metric_n0dztmr26l_cmumh59rop\",\"sqlExpression\"\
+  :\"round(1-((COUNT(DISTINCT ad_login) - COUNT(DISTINCT login)) / COUNT(DISTINCT\
+  \ ad_login) ), 3)\"},false]],\"annotation_layers\":[],\"row_limit\":10000,\"series_limit\"\
+  :0,\"order_desc\":false,\"url_params\":{},\"custom_params\":{},\"custom_form_data\"\
+  :{},\"post_processing\":[]}],\"form_data\":{\"datasource\":\"137217__table\",\"\
+  viz_type\":\"table\",\"slice_id\":640415,\"query_mode\":\"aggregate\",\"groupby\"\
+  :[\"group_users2\"],\"temporal_columns_lookup\":{\"business_dt\":true,\"log_day\"\
+  :true,\"max_date\":true,\"start_of_month\":true},\"metrics\":[{\"aggregate\":null,\"\
+  column\":null,\"datasourceWarning\":false,\"expressionType\":\"SQL\",\"hasCustomLabel\"\
+  :true,\"label\":\"\u041F\u043E\u043A\u0440\u044B\u0442\u0438\u0435\",\"optionName\"\
+  :\"metric_n0dztmr26l_cmumh59rop\",\"sqlExpression\":\"round(1-((COUNT(DISTINCT ad_login)\
+  \ - COUNT(DISTINCT login)) / COUNT(DISTINCT ad_login) ), 3)\"},{\"aggregate\":\"\
+  COUNT_DISTINCT\",\"column\":{\"advanced_data_type\":null,\"certification_details\"\
+  :null,\"certified_by\":null,\"column_name\":\"ad_login\",\"description\":null,\"\
+  expression\":null,\"filterable\":true,\"groupby\":true,\"id\":2206358,\"is_certified\"\
+  :false,\"is_dttm\":false,\"python_date_format\":null,\"type\":\"Nullable(String)\"\
+  ,\"type_generic\":1,\"verbose_name\":null,\"warning_markdown\":null},\"datasourceWarning\"\
+  :false,\"expressionType\":\"SIMPLE\",\"hasCustomLabel\":true,\"label\":\"\u0421\u043E\
+  \u0442\u0440\u0443\u0434\u043D\u0438\u043A\u0438\",\"optionName\":\"metric_h0gqmcsbfao_wy0biystch\"\
+  ,\"sqlExpression\":null},{\"aggregate\":\"COUNT_DISTINCT\",\"column\":{\"advanced_data_type\"\
+  :null,\"certification_details\":null,\"certified_by\":null,\"column_name\":\"login\"\
+  ,\"description\":null,\"expression\":null,\"filterable\":true,\"groupby\":true,\"\
+  id\":2206372,\"is_certified\":false,\"is_dttm\":false,\"python_date_format\":null,\"\
+  type\":\"Nullable(String)\",\"type_generic\":1,\"verbose_name\":null,\"warning_markdown\"\
+  :null},\"datasourceWarning\":false,\"expressionType\":\"SIMPLE\",\"hasCustomLabel\"\
+  :true,\"label\":\"\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\
+  \u0438\",\"optionName\":\"metric_tkhzi3rbtrp_7ui90w9864w\",\"sqlExpression\":null}],\"\
+  all_columns\":[],\"percent_metrics\":[],\"adhoc_filters\":[{\"clause\":\"WHERE\"\
+  ,\"comparator\":\"No filter\",\"datasourceWarning\":false,\"expressionType\":\"\
+  SIMPLE\",\"filterOptionName\":\"filter_u6gk2vmk9jj_uj70hwem81k\",\"isExtra\":false,\"\
+  isNew\":false,\"operator\":\"TEMPORAL_RANGE\",\"sqlExpression\":null,\"subject\"\
+  :\"business_dt\"},{\"clause\":\"WHERE\",\"comparator\":null,\"datasourceWarning\"\
+  :false,\"expressionType\":\"SQL\",\"filterOptionName\":\"filter_mtd2itxjsni_jousk56ng1e\"\
+  ,\"isExtra\":false,\"isNew\":false,\"operator\":null,\"sqlExpression\":\"{% if filter_values('period_column')|first\
+  \ == '30 \u0434\u043D\u0435\u0439'%} \\nbusiness_dt between date_add(DAY, -30, \
+  \ max_date) and max_date\\n{% elif filter_values('period_column')|first == '20 \u043D\
+  \u0435\u0434\u0435\u043B\u044C'%} \\nbusiness_dt between date_add(WEEk, -20, max_date)\
+  \ and max_date\\n{% elif filter_values('period_column')|first == '12 \u043C\u0435\
+  \u0441\u044F\u0446\u0435\u0432'%} \\nbusiness_dt between date_add(MONTH, -12 , max_date)\
+  \ and max_date\\n{% elif filter_values('period_column')|first == '8 \u043A\u0432\
+  \u0430\u0440\u0442\u0430\u043B\u043E\u0432'%} \\nbusiness_dt between date_add(QUARTER,\
+  \ -8 , max_date) and max_date\\n{% else %}\\nbusiness_dt between date_add(DAY, -30,\
+  \ max_date) and max_date\\n{% endif %}\",\"subject\":null}],\"timeseries_limit_metric\"\
+  :null,\"order_by_cols\":[],\"server_pagination\":false,\"row_limit\":10000,\"server_page_length\"\
+  :10,\"order_desc\":false,\"show_totals\":false,\"page_length\":null,\"include_search\"\
+  :false,\"show_cell_bars\":true,\"allow_rearrange_columns\":false,\"align_pn\":false,\"\
+  color_pn\":true,\"column_config\":{\"\u041F\u043E\u043A\u0440\u044B\u0442\u0438\u0435\
+  \":{\"d3NumberFormat\":\",.1%\"},\"\u041F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\
+  \u0442\u0435\u043B\u0438\":{\"showCellBars\":false,\"d3NumberFormat\":\"~g\",\"\
+  d3SmallNumberFormat\":\"~g\"},\"\u0421\u043E\u0442\u0440\u0443\u0434\u043D\u0438\
+  \u043A\u0438\":{\"showCellBars\":false,\"d3NumberFormat\":\"~g\",\"d3SmallNumberFormat\"\
+  :\"~g\"}},\"conditional_formatting\":[],\"table_timestamp_format\":\"smart_date\"\
+  ,\"extra_form_data\":{},\"force\":false,\"result_format\":\"json\",\"result_type\"\
+  :\"full\"},\"result_format\":\"json\",\"result_type\":\"full\"}"
+cache_timeout: null
+uuid: eb8366c7-e8da-4376-8827-b5bcd65a1459
+version: 1.0.0
+dataset_uuid: 9b908cbc-2268-46a8-8827-9b7dfc9617cf

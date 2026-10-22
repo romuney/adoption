@@ -1,0 +1,68 @@
+{
+  "papi_frame_plan": {
+    "schema_version": 1,
+    "tabs": [
+      {
+        "id": "t1",
+        "name": "Main",
+        "rows": [
+          {
+            "role": null,
+            "label": null,
+            "slots": [
+              {
+                "id": "body",
+                "viz_kind": "echarts",
+                "width": "auto",
+                "intent": "Тело вкладки Отчёты — каталог, KPI, динамика, когорты, частота (чарт pa-reports-body, куб pa_cube_v1)",
+                "height": null
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "terminations": [
+      {
+        "slot_id": "shelf",
+        "reason": "Полка фильтров ещё не создана — слот резервировал левую колонку, борд терял 10-15% ширины. Вернём amend-ом, когда появится виджет pa-reports-shelf.",
+        "tab_name": "Main",
+        "viz_kind": "echarts",
+        "width": 6
+      }
+    ]
+  },
+  "label_colors": {},
+  "default_filters": "{}",
+  "timed_refresh_immune_slices": [],
+  "expanded_slices": {},
+  "refresh_frequency": 0,
+  "color_scheme": "",
+  "cross_filters_enabled": true,
+  "show_native_filters": false,
+  "filter_scopes": {},
+  "chart_configuration": {
+    "803049": {
+      "id": 803049,
+      "crossFilters": {
+        "scope": {"rootPath": ["ROOT_ID"], "excluded": [803049, 803089]},
+        "chartsInScope": [803057]
+      }
+    },
+    "803057": {
+      "id": 803057,
+      "crossFilters": {
+        "scope": {"rootPath": ["ROOT_ID"], "excluded": [803057, 803089]},
+        "chartsInScope": [803049]
+      }
+    },
+    "803089": {
+      "id": 803089,
+      "crossFilters": {
+        "scope": {"rootPath": ["ROOT_ID"], "excluded": [803089]},
+        "chartsInScope": [803049, 803057]
+      }
+    }
+  },
+  "native_filter_configuration": []
+}

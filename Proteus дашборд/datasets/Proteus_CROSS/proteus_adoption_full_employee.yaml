@@ -1,0 +1,388 @@
+table_name: proteus_adoption_full_employee
+main_dttm_col: null
+description: null
+default_endpoint: null
+offset: 0
+cache_timeout: null
+schema: prod_proteus
+sql: "SELECT *,\nmax(business_dt) over() as max_date,\n{% if filter_values('period_column')|first\
+  \ == '30 \u0434\u043D\u0435\u0439'%} \ndate_trunc('day',business_dt) \n{% elif '20\
+  \ \u043D\u0435\u0434\u0435\u043B\u044C' == filter_values('period_column')|first\
+  \ %} \ndate_trunc('week',business_dt) \n{% elif filter_values('period_column')|first\
+  \ == '12 \u043C\u0435\u0441\u044F\u0446\u0435\u0432'%} \ndate_trunc('month',business_dt)\
+  \ \n{% elif filter_values('period_column')|first == '8 \u043A\u0432\u0430\u0440\u0442\
+  \u0430\u043B\u043E\u0432'%} \ndate_trunc('quarter',business_dt) \n{% else %}\ndate_trunc('day',business_dt)\n\
+  {% endif %} as start_of_month,\ncoalesce({% if filter_values('group_column2')|first\
+  \ == '\u0421\u0442\u0440\u0438\u043C'%} \nemp_stream_desc\n{% elif filter_values('group_column2')|first\
+  \ == '\u0421\u043F\u0435\u0446\u0438\u0430\u043B\u0438\u0437\u0430\u0446\u0438\u044F\
+  '%} \nemp_specialization_desc\n{% elif filter_values('group_column2')|first == 'HQ|nonHQ'%}\
+  \ \nemp_specialization_oper_code\n{% elif filter_values('group_column2')|first ==\
+  \ 'IT|nonIT'%} \nemp_specialization_it_code\n{% elif filter_values('group_column2')|first\
+  \ == '\u0423\u0421-3'%} \nlvl3_management_unit_nm\n{% elif filter_values('group_column2')|first\
+  \ == '\u0423\u0421-4'%} \nlvl4_management_unit_nm\n{% elif filter_values('group_column2')|first\
+  \ == '\u0423\u0421-5'%} \nlvl5_management_unit_nm\n{% elif filter_values('group_column2')|first\
+  \ == '\u0423\u0421-6'%} \nlvl6_management_unit_nm\n{% elif filter_values('group_column2')|first\
+  \ == '\u0423\u0421-7'%} \nlvl7_management_unit_nm\n{% else %}\nlvl3_management_unit_nm\n\
+  {% endif %},'-') as group_users2\n\nFROM mdm_employee_daily_proteus m\nLEFT JOIN\
+  \ (\n    SELECT \n    distinct\n        login,\n        toStartOfDay(toDateTime(`log_dttm`))\
+  \ AS log_day,\n        dashboard_id as dash_cnt\n    FROM {{dataset(35153)}}\n)\
+  \ t\n    ON t.login = m.ad_login\n   AND t.log_day = m.business_dt\nwhere\n1=1\n\
+  {% if filter_values('ad_group')%}\nand hasAny(arrayMap(x -> replaceAll(replaceRegexpAll(x,\
+  \ '^\"|\"$', ''), '\\\\\"', '\"'), ad_groups), {{filter_values('ad_group')}})\n\
+  {% endif %}\n{% if filter_values('period_column')|first == '30 \u0434\u043D\u0435\
+  \u0439'%} \nand business_dt between date_add(DAY, -30,  max_business_dt) and max_business_dt\n\
+  {% elif filter_values('period_column')|first == '20 \u043D\u0435\u0434\u0435\u043B\
+  \u044C'%} \nand business_dt between date_add(WEEk, -20, max_business_dt) and max_business_dt\n\
+  {% elif filter_values('period_column')|first == '12 \u043C\u0435\u0441\u044F\u0446\
+  \u0435\u0432'%} \nand business_dt between date_add(MONTH, -12 , max_business_dt)\
+  \ and max_business_dt\n{% elif filter_values('period_column')|first == '8 \u043A\
+  \u0432\u0430\u0440\u0442\u0430\u043B\u043E\u0432'%} \nand business_dt between date_add(QUARTER,\
+  \ -8 , max_business_dt) and max_business_dt\n{% else %}\nand business_dt between\
+  \ date_add(DAY, -30, max_business_dt) and max_business_dt\n{% endif %}\nand active_type_nm\
+  \ in ('\u0410\u043A\u0442\u0438\u0432\u043D\u0430\u044F','\u0421\u0442\u0430\u0436\
+  \u0435\u0440\u044B')\n"
+params: null
+template_params: {}
+filter_select_enabled: false
+fetch_values_predicate: null
+extra: null
+uuid: 9b908cbc-2268-46a8-8827-9b7dfc9617cf
+metrics:
+- metric_name: count
+  verbose_name: COUNT(*)
+  metric_type: null
+  expression: COUNT(*)
+  description: null
+  d3format: null
+  extra:
+    warning_markdown: ''
+  warning_text: null
+columns:
+- column_name: management_head_flg
+  verbose_name: "\u0424\u043B\u0430\u0433 \u0440\u0443\u043A-\u043B\u044F"
+  is_dttm: false
+  is_active: null
+  type: Nullable(Int16)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_specialization_desc
+  verbose_name: "\u0421\u043F\u0435\u0446\u0438\u0430\u043B\u0438\u0437\u0430\u0446\
+    \u0438\u044F"
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: experience_group_nm
+  verbose_name: "\u0421\u0442\u0430\u0436"
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: ad_login
+  verbose_name: "\u041B\u043E\u0433\u0438\u043D"
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: group_users2
+  verbose_name: "\u0413\u0440\u0443\u043F\u043F\u0438\u0440\u043E\u0432\u043A\u0430"
+  is_dttm: false
+  is_active: null
+  type: String
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: company_fire_flg
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(Int16)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: mdm_employee_rk
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(Int32)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl3_management_unit_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl4_management_unit_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl5_management_unit_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl6_management_unit_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: lvl7_management_unit_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: ad_groups
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Array(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: start_of_month
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: Nullable(DateTime)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: max_business_dt
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: Nullable(Date)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: max_date
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: Nullable(Date)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: business_dt
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: Nullable(Date)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_specialization_oper_code
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_specialization_it_code
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: current_head_lvl_segment
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: emp_stream_desc
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: active_type_nm
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: login
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Nullable(String)
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: dash_cnt
+  verbose_name: null
+  is_dttm: false
+  is_active: null
+  type: Int32
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+- column_name: log_day
+  verbose_name: null
+  is_dttm: true
+  is_active: null
+  type: DateTime
+  advanced_data_type: null
+  groupby: true
+  filterable: true
+  expression: null
+  description: null
+  python_date_format: null
+  extra:
+    warning_markdown: null
+version: 1.0.0
+database_uuid: f3cf662e-9267-42ad-85d9-a009bacb4736

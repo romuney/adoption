@@ -1,0 +1,19 @@
+[
+  { "section": "rep", "k": "13896", "nm": "Проекты боевые", "parent": "" },
+  { "section": "rep", "k": "2048", "nm": "Аудит рисков", "parent": "" },
+  { "section": "rep", "k": "777", "nm": "Отчёт третьего этажа", "parent": "" },
+  { "section": "coll", "k": "Розница", "nm": "Розница", "parent": "" },
+  { "section": "coll", "k": "Финансы", "nm": "Финансы", "parent": "" },
+  { "section": "coll", "k": "Риски", "nm": "Риски", "parent": "" },
+  { "section": "own", "k": "a.petrov", "nm": "a.petrov", "parent": "" },
+  { "section": "own", "k": "b.ivanov", "nm": "b.ivanov", "parent": "" },
+  { "section": "auth", "k": "c.sidorov", "nm": "c.sidorov", "parent": "" },
+  { "section": "lvl3", "k": "Блок «Розница»", "nm": "Блок «Розница»", "parent": "" },
+  { "section": "lvl3", "k": "Блок «Технологии»", "nm": "Блок «Технологии»", "parent": "" },
+  { "section": "lvl4", "k": "Департамент продаж", "nm": "Департамент продаж", "parent": "Блок «Розница»" },
+  { "section": "lvl4", "k": "Департамент разработки", "nm": "Департамент разработки", "parent": "Блок «Технологии»" },
+  { "section": "stream", "k": "Технологии", "nm": "Технологии", "parent": "" },
+  { "section": "stream", "k": "Розничный бизнес", "nm": "Розничный бизнес", "parent": "" },
+  { "section": "spec", "k": "Аналитик", "nm": "Аналитик", "parent": "" },
+  { "section": "adg", "k": "proteus_fin", "nm": "proteus_fin", "parent": "" }
+]

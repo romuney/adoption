@@ -1,0 +1,1657 @@
+slice_name: "\u0417\u0430\u043A\u0440\u0435\u043F\u043B\u044F\u0435\u043C\u043E\u0441\
+  \u0442\u044C Proteus 2.0"
+description: null
+certified_by: null
+certification_details: null
+viz_type: react_sanbbox
+params:
+  datasource: 153285__table
+  viz_type: react_sanbbox
+  slice_id: 711333
+  groupby:
+  - cohort_month
+  - active_users
+  - cohort_size
+  - age
+  percent_metrics: []
+  timeseries_limit_metric:
+    aggregate: MAX
+    column:
+      advanced_data_type: null
+      certification_details: null
+      certified_by: null
+      column_name: cohort_month
+      description: null
+      expression: null
+      filterable: true
+      groupby: true
+      id: 2510721
+      is_certified: false
+      is_dttm: true
+      python_date_format: null
+      type: Date
+      type_generic: 2
+      verbose_name: null
+      warning_markdown: null
+    datasourceWarning: false
+    expressionType: SIMPLE
+    hasCustomLabel: false
+    label: MAX(cohort_month)
+    optionName: metric_nit70pdveuf_iq2ndkk26cd
+    sqlExpression: null
+  order_by_cols: []
+  order_desc: false
+  server_pagination: false
+  row_limit: 10000
+  server_page_length: 10
+  show_totals: false
+  adhoc_filters:
+  - clause: WHERE
+    comparator: null
+    datasourceWarning: false
+    expressionType: SQL
+    filterOptionName: filter_g2sxq58nzq6_assmq03obxj
+    isExtra: false
+    isNew: false
+    operator: TEMPORAL_RANGE
+    sqlExpression: 'cohort_month >= toStartOfMonth(max_date) - INTERVAL 11 MONTH
+
+      '
+    subject: cohort_month
+  jsx: "// ============================================================================\n\
+    // RETENTION COHORT HEATMAP (Proteus/Superset sandbox)\n// \u0421\u0442\u0440\u043E\
+    \u043A\u0438 = \u043A\u043E\u0433\u043E\u0440\u0442\u044B (\u043F\u0435\u0440\u0438\
+    \u043E\u0434 \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u0434\u0435\u0439\u0441\
+    \u0442\u0432\u0438\u044F), \u043A\u043E\u043B\u043E\u043D\u043A\u0438 = \xAB\u0447\
+    \u0435\u0440\u0435\u0437 N \u043F\u0435\u0440\u0438\u043E\u0434\u043E\u0432\xBB\
+    .\n// \u0426\u0432\u0435\u0442 \u2014 \u0434\u0438\u0432\u0435\u0440\u0433\u0435\
+    \u043D\u0442\u043D\u044B\u0439 \u043E\u0442\u043D\u043E\u0441\u0438\u0442\u0435\
+    \u043B\u044C\u043D\u043E \u041C\u0415\u0414\u0418\u0410\u041D\u042B \u0441\u0442\
+    \u043E\u043B\u0431\u0446\u0430 (\u0436\u0451\u043B\u0442\u044B\u0439 \u2190 \u043D\
+    \u0438\u0436\u0435 | \u0432\u044B\u0448\u0435 \u2192 \u0441\u0438\u043D\u0438\u0439\
+    ).\n// \u0413\u0440\u0430\u043D\u0443\u043B\u044F\u0440\u043D\u043E\u0441\u0442\
+    \u044C m/q/y \u2014 \u0433\u043E\u0442\u043E\u0432\u044B\u0435 \u0440\u0430\u0437\
+    \u0440\u0435\u0437\u044B \u0438\u0437 SQL (\u043A\u043E\u043B\u043E\u043D\u043A\
+    \u0430 grain), JS \u0442\u043E\u043B\u044C\u043A\u043E \u043F\u0435\u0440\u0435\
+    \u043A\u043B\u044E\u0447\u0430\u0435\u0442.\n//\n// \u041A\u041E\u041D\u0422\u0420\
+    \u0410\u041A\u0422 SANDBOX: \u0445\u043E\u0441\u0442 = \u043F\u043E\u0441\u043B\
+    \u0435\u0434\u043D\u0438\u0439 [_echarts_instance_]; canvas \u043F\u0440\u044F\
+    \u0447\u0435\u043C;\n// \u043E\u0432\u0435\u0440\u043B\u0435\u0439 appendChild;\
+    \ \u0432 \u043A\u043E\u043D\u0446\u0435 \u041E\u0411\u042F\u0417\u0410\u0422\u0415\
+    \u041B\u042C\u041D\u041E option = {...} \u0441 \u043F\u0443\u0441\u0442\u044B\u043C\
+    \ scatter.\n// ============================================================================\n\
+    \n// ============================================================================\n\
+    // \u0411\u041B\u041E\u041A 1: \u041A\u041E\u041D\u0424\u0418\u0413 (\u0432\u0441\
+    \u0435 \u0446\u0432\u0435\u0442\u0430 \u0438 \u0448\u0440\u0438\u0444\u0442\u044B\
+    \ \u0432 \u043E\u0434\u043D\u043E\u043C \u043C\u0435\u0441\u0442\u0435)\n// ============================================================================\n\
+    var CFG = {\n  // --- \u041F\u043E\u043B\u044F \u0438\u0437 SQL ---\n  fields:\
+    \ {\n    cohort: 'cohort_month',   // \u043C\u0435\u0441\u044F\u0446 \u043F\u0435\
+    \u0440\u0432\u043E\u0433\u043E \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044F\
+    \ (\u043A\u043E\u0433\u043E\u0440\u0442\u0430)\n    age:    'age',           \
+    \ // \u0432\u043E\u0437\u0440\u0430\u0441\u0442 \u0432 \u043C\u0435\u0441\u044F\
+    \u0446\u0430\u0445 (0 = \u0441\u0442\u0430\u0440\u0442\u043E\u0432\u044B\u0439\
+    )\n    active: 'active_users',   // uniqExact(user_id) \u0432 \u0442\u043E\u0447\
+    \u043A\u0435\n    size:   'cohort_size'     // \u0440\u0430\u0437\u043C\u0435\u0440\
+    \ \u043A\u043E\u0433\u043E\u0440\u0442\u044B (age=0)\n  },\n  defaultGrain: 'm',\n\
+    \  maxAge: 24,                 // \u0432\u0435\u0440\u0445\u043D\u044F\u044F \u0433\
+    \u0440\u0430\u043D\u0438\u0446\u0430 \u0432\u043E\u0437\u0440\u0430\u0441\u0442\
+    \u0430 \u043A\u043E\u0433\u043E\u0440\u0442\u044B (\u0432 \u043C\u0435\u0441\u044F\
+    \u0446\u0430\u0445)\n\n  // --- \u0422\u0435\u043A\u0441\u0442\u044B ---\n  text:\
+    \ {\n    title: '\u0417\u0430\u043A\u0440\u0435\u043F\u043B\u044F\u0435\u043C\u043E\
+    \u0441\u0442\u044C (retention) \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\
+    \u043D\u0438\u0435 12 \u043C\u0435\u0441\u044F\u0446\u0435\u0432',\n    subtitle:\
+    \ '\u043D\u0430 \u0433\u0440\u0430\u0444\u0438\u043A \u043D\u0435 \u0434\u0435\
+    \u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u0444\u0438\u043B\u044C\u0442\u0440\
+    \ \"\u043F\u0435\u0440\u0438\u043E\u0434\"',\n    cohortCol: '\u041C\u0435\u0441\
+    \u044F\u0446 \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u043F\u043E\u0441\u0435\
+    \u0449\u0435\u043D\u0438\u044F',\n    sizeCol: '\u041A\u043E\u043B\u0438\u0447\
+    \u0435\u0441\u0442\u0432\u043E \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\
+    \u0442\u0435\u043B\u0435\u0439',\n    noData: '\u041D\u0435\u0442 \u0434\u0430\
+    \u043D\u043D\u044B\u0445'\n  },\n\n  // --- \u0413\u0440\u0430\u043D\u0443\u043B\
+    \u044F\u0440\u043D\u043E\u0441\u0442\u044C ---\n  grainMeta: {\n    m: { label:\
+    \ '\u041C\u0435\u0441\u044F\u0446', unit: '\u043C\u0435\u0441', colHdr: function(n){\
+    \ return n + '\u041C'; } },\n    q: { label: '\u041A\u0432\u0430\u0440\u0442\u0430\
+    \u043B', unit: '\u043A\u0432', colHdr: function(n){ return n + '\u041A\u0412';\
+    \ } },\n    y: { label: '\u0413\u043E\u0434',   unit: '\u0433',  colHdr: function(n){\
+    \ return n + '\u0413'; } }\n  },\n\n  monthsRu: ['\u044F\u043D\u0432','\u0444\u0435\
+    \u0432','\u043C\u0430\u0440','\u0430\u043F\u0440','\u043C\u0430\u0439','\u0438\
+    \u044E\u043D','\u0438\u044E\u043B','\u0430\u0432\u0433','\u0441\u0435\u043D','\u043E\
+    \u043A\u0442','\u043D\u043E\u044F','\u0434\u0435\u043A'],\n\n  // ============================================================================\n\
+    \  // \u0426\u0412\u0415\u0422\u0410 (RGBA \u0444\u043E\u0440\u043C\u0430\u0442\
+    \ \u0434\u043B\u044F \u0443\u0434\u043E\u0431\u043D\u043E\u0433\u043E \u0440\u0435\
+    \u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F)\n  //\
+    \ ============================================================================\n\
+    \  // \u0414\u0438\u0432\u0435\u0440\u0433\u0435\u043D\u0442\u043D\u0430\u044F\
+    \ \u0448\u043A\u0430\u043B\u0430: \u043D\u0438\u0436\u0435 \u043C\u0435\u0434\u0438\
+    \u0430\u043D\u044B \u2192 \u0436\u0451\u043B\u0442\u044B\u0439, \u0432\u044B\u0448\
+    \u0435 \u2192 \u0441\u0438\u043D\u0438\u0439.\n  // \u0417\u043D\u0430\u0447\u0435\
+    \u043D\u0438\u044F \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 [R, G, B,\
+    \ Alpha] \u0438\u043B\u0438 [R, G, B] (alpha=1 \u043F\u043E \u0443\u043C\u043E\
+    \u043B\u0447\u0430\u043D\u0438\u044E)\n  colors: {\n    // ==========================================================================\n\
+    \    // \u0414\u0418\u0412\u0415\u0420\u0413\u0415\u041D\u0422\u041D\u0410\u042F\
+    \ \u041F\u0410\u041B\u0418\u0422\u0420\u0410 (\u044F\u0447\u0435\u0439\u043A\u0438\
+    \ \u0442\u0430\u0431\u043B\u0438\u0446\u044B + \u043B\u0435\u0433\u0435\u043D\u0434\
+    \u0430)\n    // \u041C\u0435\u043D\u044F\u0439\u0442\u0435 \u0442\u043E\u043B\u044C\
+    \u043A\u043E \u044D\u0442\u0438 3 \u0446\u0432\u0435\u0442\u0430 \u2014 \u043B\
+    \u0435\u0433\u0435\u043D\u0434\u0430 \u043E\u0431\u043D\u043E\u0432\u0438\u0442\
+    \u0441\u044F \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\
+    \u043A\u0438!\n    // ==========================================================================\n\
+    \    divLow:   [255, 218, 122],  // \u043C\u044F\u0433\u043A\u0438\u0439 \u0436\
+    \u0451\u043B\u0442\u044B\u0439 (\u043D\u0438\u0436\u0435 \u043C\u0435\u0434\u0438\
+    \u0430\u043D\u044B)\n    divMid:   [255, 255, 255, 1.0],  // \u0431\u0435\u043B\
+    \u044B\u0439 (\u043D\u0430 \u043C\u0435\u0434\u0438\u0430\u043D\u0435)\n    divHigh:\
+    \  [160, 222, 255],  // \u043C\u044F\u0433\u043A\u0438\u0439 \u0433\u043E\u043B\
+    \u0443\u0431\u043E\u0439 (\u0432\u044B\u0448\u0435 \u043C\u0435\u0434\u0438\u0430\
+    \u043D\u044B)\n\n    // ==========================================================================\n\
+    \    // \u041E\u0421\u0422\u0410\u041B\u042C\u041D\u042B\u0415 \u0426\u0412\u0415\
+    \u0422\u0410\n    // ==========================================================================\n\
+    \    // \u041D\u0435\u0437\u0440\u0435\u043B\u044B\u0439 \u043F\u043E\u0441\u043B\
+    \u0435\u0434\u043D\u0438\u0439 \u043F\u0435\u0440\u0438\u043E\u0434\n    greyLast:\
+    \ [237, 238, 240, 1.0],  // \u0441\u0432\u0435\u0442\u043B\u043E-\u0441\u0435\u0440\
+    \u044B\u0439\n\n    // \u0424\u043E\u043D \u0438 \u0442\u0435\u043A\u0441\u0442\
+    \ (\u043E\u0441\u043D\u043E\u0432\u043D\u044B\u0435)\n    bgRoot:   [255, 255,\
+    \ 255, 1.0],  // \u0444\u043E\u043D \u043A\u043E\u0440\u043D\u0435\u0432\u043E\
+    \u0433\u043E \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\u0430\n  \
+    \  textMain: [31, 35, 40, 1.0],     // \u043E\u0441\u043D\u043E\u0432\u043D\u043E\
+    \u0439 \u0442\u0435\u043A\u0441\u0442 (#1F2328)\n    textSub:  [138, 144, 153,\
+    \ 1.0],  // \u043F\u043E\u0434\u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\
+    \u043A (#8A9099)\n    textMuted:[102, 102, 102, 1.0],  // \u043F\u0440\u0438\u0433\
+    \u043B\u0443\u0448\u0451\u043D\u043D\u044B\u0439 \u0442\u0435\u043A\u0441\u0442\
+    \ \u043B\u0435\u0433\u0435\u043D\u0434\u044B (#666)\n\n    // \u0428\u0430\u043F\
+    \u043A\u0430 \u0442\u0430\u0431\u043B\u0438\u0446\u044B\n    thBg:     [250, 250,\
+    \ 250, 1.0],  // \u0444\u043E\u043D \u0437\u0430\u0433\u043E\u043B\u043E\u0432\
+    \u043A\u043E\u0432 (#FAFAFA)\n    thText:   [66, 72, 79, 1.0],     // \u0442\u0435\
+    \u043A\u0441\u0442 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u043E\u0432\
+    \ (#42484F)\n    thMed:    [95, 168, 200, 1.0],   // \u0442\u0435\u043A\u0441\u0442\
+    \ \u043C\u0435\u0434\u0438\u0430\u043D\u044B (#5FA8C8)\n    thMedCap: [169, 175,\
+    \ 182, 1.0],  // \u043F\u043E\u0434\u043F\u0438\u0441\u044C \u043C\u0435\u0434\
+    \u0438\u0430\u043D\u044B (#A9AFB6)\n    thBorder: [231, 234, 238, 1.0],  // \u0433\
+    \u0440\u0430\u043D\u0438\u0446\u0430 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\
+    \u043A\u043E\u0432 (#E7EAEE)\n\n    // \u042F\u0447\u0435\u0439\u043A\u0438 \u0442\
+    \u0430\u0431\u043B\u0438\u0446\u044B\n    tdBorder: [240, 240, 240, 1.0],  //\
+    \ \u0433\u0440\u0430\u043D\u0438\u0446\u044B \u044F\u0447\u0435\u0435\u043A (#F0F0F0)\n\
+    \    tdText:   [31, 35, 40, 1.0],     // \u0442\u0435\u043A\u0441\u0442 \u044F\
+    \u0447\u0435\u0435\u043A (#1F2328)\n    tdHover:  [245, 249, 254, 1.0],  // \u0444\
+    \u043E\u043D \u0441\u0442\u0440\u043E\u043A\u0438 \u043F\u0440\u0438 hover (#F5F9FE)\n\
+    \    hlCol:    'rgba(30, 90, 130, 0.06)',   // \u043F\u043E\u0434\u0441\u0432\u0435\
+    \u0442\u043A\u0430 \u0441\u0442\u043E\u043B\u0431\u0446\u0430 (hover)\n    hlColStrong:\
+    \ 'rgba(30, 90, 130, 0.10)', // \u0441\u0438\u043B\u044C\u043D\u0430\u044F \u043F\
+    \u043E\u0434\u0441\u0432\u0435\u0442\u043A\u0430 (hover \u044F\u0447\u0435\u0439\
+    \u043A\u0438)\n\n    // \u0420\u0430\u0437\u043C\u0435\u0440-\u0431\u0430\u0440\
+    \ (\u0433\u043E\u0440\u0438\u0437\u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\
+    \u0439 \u0431\u0430\u0440 \u0432 \u043A\u043E\u043B\u043E\u043D\u043A\u0435 Size)\n\
+    \    sizeBar:  [188, 233, 255, 1.0],  // \u0444\u043E\u043D \u0431\u0430\u0440\
+    \u0430 (#BCE9FF)\n    sizeText: [51, 65, 77, 1.0],     // \u0442\u0435\u043A\u0441\
+    \u0442 \u0447\u0438\u0441\u043B\u0430 \u0440\u0430\u0437\u043C\u0435\u0440\u0430\
+    \ (#33414D)\n\n    // \u0421\u0435\u0433\u043C\u0435\u043D\u0442-\u043F\u0435\u0440\
+    \u0435\u043A\u043B\u044E\u0447\u0430\u0442\u0435\u043B\u044C (\u041C\u0435\u0441\
+    \u044F\u0446/\u041A\u0432\u0430\u0440\u0442\u0430\u043B/\u0413\u043E\u0434)\n\
+    \    segBorder:[229, 229, 229, 1.0],  // \u0433\u0440\u0430\u043D\u0438\u0446\u0430\
+    \ \u0441\u0435\u0433\u043C\u0435\u043D\u0442\u0430 (#E5E5E5)\n    segBg:    [255,\
+    \ 255, 255, 1.0],  // \u0444\u043E\u043D \u043A\u043D\u043E\u043F\u043A\u0438\
+    \ (#FFF)\n    segHover: [245, 245, 245, 1.0],  // \u0444\u043E\u043D \u043F\u0440\
+    \u0438 hover (#F5F5F5)\n    segActive:[231, 241, 251, 1.0],  // \u0444\u043E\u043D\
+    \ \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0439 \u043A\u043D\u043E\u043F\u043A\
+    \u0438 (#E7F1FB)\n    segText:  [11, 74, 138, 1.0],    // \u0442\u0435\u043A\u0441\
+    \u0442 \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0439 \u043A\u043D\u043E\u043F\
+    \u043A\u0438 (#0B4A8A)\n\n    // \u041B\u0435\u0433\u0435\u043D\u0434\u0430 (\u0441\
+    \u043B\u0430\u0439\u0434\u0435\u0440) \u2014 \u0446\u0432\u0435\u0442\u0430 \u0431\
+    \u0435\u0440\u0443\u0442\u0441\u044F \u0438\u0437 divLow/divMid/divHigh \u0430\
+    \u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438!\n  \
+    \  lgHandleBg:  [255, 255, 255, 1.0],  // \u0444\u043E\u043D \u0440\u0443\u0447\
+    \u043A\u0438 (#FFF)\n    lgHandleBorder: [154, 163, 171, 1.0], // \u0433\u0440\
+    \u0430\u043D\u0438\u0446\u0430 \u0440\u0443\u0447\u043A\u0438 (#9AA3AB)\n    lgHandleActive:\
+    \ [27, 154, 209, 1.0], // \u0433\u0440\u0430\u043D\u0438\u0446\u0430 \u0430\u043A\
+    \u0442\u0438\u0432\u043D\u043E\u0439 \u0440\u0443\u0447\u043A\u0438 (#1B9AD1)\n\
+    \    lgRangeText: [51, 65, 77, 1.0],     // \u0442\u0435\u043A\u0441\u0442 \u0434\
+    \u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430 (#33414D)\n    lgResetBg:   [255,\
+    \ 255, 255, 1.0],  // \u0444\u043E\u043D \u043A\u043D\u043E\u043F\u043A\u0438\
+    \ \u0441\u0431\u0440\u043E\u0441\u0430 (#FFF)\n    lgResetBorder: [224, 224, 224,\
+    \ 1.0],// \u0433\u0440\u0430\u043D\u0438\u0446\u0430 \u043A\u043D\u043E\u043F\u043A\
+    \u0438 \u0441\u0431\u0440\u043E\u0441\u0430 (#E0E0E0)\n    lgResetHover:[243,\
+    \ 243, 243, 1.0],  // \u0444\u043E\u043D \u043A\u043D\u043E\u043F\u043A\u0438\
+    \ \u0441\u0431\u0440\u043E\u0441\u0430 \u043F\u0440\u0438 hover (#F3F3F3)\n\n\
+    \    // \u0422\u0443\u043B\u0442\u0438\u043F (\u0431\u0435\u043B\u0430\u044F \u043F\
+    \u043B\u0438\u0442\u043A\u0430 \u0441 \u0442\u0435\u043D\u044C\u044E)\n    tipBg:\
+    \       [255, 255, 255, 1.0],  // \u0431\u0435\u043B\u044B\u0439 \u0444\u043E\u043D\
+    \ (#FFFFFF)\n    tipText:     [51, 51, 51, 1.0],     // \u0442\u0451\u043C\u043D\
+    \u043E-\u0441\u0435\u0440\u044B\u0439 \u0442\u0435\u043A\u0441\u0442 (#333)\n\
+    \    tipCaption:  [102, 102, 102, 1.0],  // \u043F\u043E\u0434\u043F\u0438\u0441\
+    \u044C (#666)\n    tipStrong:   [0, 0, 0, 1.0],        // \u0436\u0438\u0440\u043D\
+    \u044B\u0439 \u0442\u0435\u043A\u0441\u0442 \u0447\u0451\u0440\u043D\u044B\u0439\
+    \ (#000)\n    tipGrey:     [102, 102, 102, 1.0],  // \u0442\u0435\u043A\u0441\u0442\
+    \ \u043D\u0435\u0437\u0440\u0435\u043B\u043E\u0433\u043E \u043F\u0435\u0440\u0438\
+    \u043E\u0434\u0430 (\u0442\u0451\u043C\u043D\u043E-\u0441\u0435\u0440\u044B\u0439\
+    , \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442\u043D\u044B\u0439)\n\n    //\
+    \ \u041F\u0440\u043E\u0447\u0435\u0435\n    cellDimBg:   [244, 245, 246, 1.0],\
+    \  // \u0444\u043E\u043D \u043F\u0440\u0438\u0442\u0443\u0445\u0448\u0435\u0439\
+    \ \u044F\u0447\u0435\u0439\u043A\u0438 (#F4F5F6)\n    cellDimText: [196, 201,\
+    \ 206, 1.0],  // \u0442\u0435\u043A\u0441\u0442 \u043F\u0440\u0438\u0442\u0443\
+    \u0445\u0448\u0435\u0439 \u044F\u0447\u0435\u0439\u043A\u0438 (#C4C9CE)\n    cellPeekShadow:\
+    \ 'rgba(20, 60, 90, 0.28)', // \u0442\u0435\u043D\u044C \u043F\u0440\u0435\u0432\
+    \u044C\u044E-\u044F\u0447\u0435\u0439\u043A\u0438\n    tipShadow:   'rgba(0, 0,\
+    \ 0, 0.25)', // \u0442\u0435\u043D\u044C \u0442\u0443\u043B\u0442\u0438\u043F\u0430\
+    \n    tipShadowStrong: 'rgba(0, 0, 0, 0.4)' // \u0441\u0438\u043B\u044C\u043D\u0430\
+    \u044F \u0442\u0435\u043D\u044C\n  },\n\n  // ============================================================================\n\
+    \  // \u0428\u0420\u0418\u0424\u0422\u042B (\u0440\u0430\u0437\u043C\u0435\u0440\
+    \u044B \u0432 \u043F\u0438\u043A\u0441\u0435\u043B\u044F\u0445)\n  // ============================================================================\n\
+    \  fonts: {\n    root: 13,              // \u0431\u0430\u0437\u043E\u0432\u044B\
+    \u0439 \u0440\u0430\u0437\u043C\u0435\u0440 \u0448\u0440\u0438\u0444\u0442\u0430\
+    \ \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\u0430\n    title: 15,\
+    \             // \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u0433\
+    \u0440\u0430\u0444\u0438\u043A\u0430\n    subtitle: 12,          // \u043F\u043E\
+    \u0434\u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u0433\u0440\u0430\
+    \u0444\u0438\u043A\u0430\n    th: 12,                // \u0437\u0430\u0433\u043E\
+    \u043B\u043E\u0432\u043E\u043A \u0442\u0430\u0431\u043B\u0438\u0446\u044B (\u0432\
+    \u0435\u0440\u0445\u043D\u044F\u044F \u0441\u0442\u0440\u043E\u043A\u0430)\n \
+    \   thMed: 10,             // \u0442\u0435\u043A\u0441\u0442 \u043C\u0435\u0434\
+    \u0438\u0430\u043D\u044B \u0432 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\
+    \u0435\n    thMedCap: 10,          // \u043F\u043E\u0434\u043F\u0438\u0441\u044C\
+    \ \u043C\u0435\u0434\u0438\u0430\u043D\u044B (cap)\n    thLbl: 12,           \
+    \  // \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u043B\u0435\u0432\
+    \u043E\u0433\u043E \u0441\u0442\u043E\u043B\u0431\u0446\u0430 (cohort)\n    thSize:\
+    \ 12,            // \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u043A\
+    \u043E\u043B\u043E\u043D\u043A\u0438 Size\n    td: 12,                // \u044F\
+    \u0447\u0435\u0439\u043A\u0430 \u0442\u0430\u0431\u043B\u0438\u0446\u044B (\u0447\
+    \u0438\u0441\u043B\u043E %)\n    tdLbl: 12,             // \u0442\u0435\u043A\u0441\
+    \u0442 \u043B\u0435\u0432\u043E\u0433\u043E \u0441\u0442\u043E\u043B\u0431\u0446\
+    \u0430 (\u043D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043A\u043E\u0433\u043E\
+    \u0440\u0442\u044B)\n    sizeNum: 12,           // \u0447\u0438\u0441\u043B\u043E\
+    \ \u0440\u0430\u0437\u043C\u0435\u0440\u0430 (\u0441\u043F\u0440\u0430\u0432\u0430\
+    \ \u043E\u0442 \u0431\u0430\u0440\u0430)\n    legend: 11,            // \u0442\
+    \u0435\u043A\u0441\u0442 \u043B\u0435\u0433\u0435\u043D\u0434\u044B\n    lgRange:\
+    \ 11,           // \u0442\u0435\u043A\u0441\u0442 \u0434\u0438\u0430\u043F\u0430\
+    \u0437\u043E\u043D\u0430 (\u0441\u043B\u0430\u0439\u0434\u0435\u0440)\n    lgReset:\
+    \ 11,           // \u043A\u043D\u043E\u043F\u043A\u0430 \u0441\u0431\u0440\u043E\
+    \u0441\u0430\n    lgNote: 11,            // \u0437\u0430\u043C\u0435\u0442\u043A\
+    \u0430 \u043B\u0435\u0433\u0435\u043D\u0434\u044B\n    tip: 12,              \
+    \ // \u0442\u0435\u043A\u0441\u0442 \u0442\u0443\u043B\u0442\u0438\u043F\u0430\
+    \n    segBtn: 12             // \u0442\u0435\u043A\u0441\u0442 \u043A\u043D\u043E\
+    \u043F\u043A\u0438 \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0430\u0442\
+    \u0435\u043B\u044F\n  },\n\n  // ============================================================================\n\
+    \  // \u041E\u0422\u0421\u0422\u0423\u041F\u042B \u0418 \u0420\u0410\u0417\u041C\
+    \u0415\u0420\u042B (\u0432 \u043F\u0438\u043A\u0441\u0435\u043B\u044F\u0445)\n\
+    \  // ============================================================================\n\
+    \  spacing: {\n    headPadding: '10px 8px 16px 8px',  // \u043E\u0442\u0441\u0442\
+    \u0443\u043F\u044B \u0433\u043E\u043B\u043E\u0432\u044B\n    legendPadding: '10px\
+    \ 14px 10px 14px', // \u043E\u0442\u0441\u0442\u0443\u043F\u044B \u043B\u0435\u0433\
+    \u0435\u043D\u0434\u044B\n    scrollPadding: '0 8px 8px 8px',  // \u043E\u0442\
+    \u0441\u0442\u0443\u043F\u044B \u0441\u043A\u0440\u043E\u043B\u043B-\u043E\u0431\
+    \u043B\u0430\u0441\u0442\u0438\n    thPadding: '6px 4px',               // \u043E\
+    \u0442\u0441\u0442\u0443\u043F\u044B \u0437\u0430\u0433\u043E\u043B\u043E\u0432\
+    \u043A\u0430\n    thLblPadding: '0 8px',              // \u043E\u0442\u0441\u0442\
+    \u0443\u043F\u044B \u043B\u0435\u0432\u043E\u0433\u043E \u0437\u0430\u0433\u043E\
+    \u043B\u043E\u0432\u043A\u0430\n    tdPadding: '0 8px',                 // \u043E\
+    \u0442\u0441\u0442\u0443\u043F\u044B \u044F\u0447\u0435\u0439\u043A\u0438\n  \
+    \  cellHeight: 28,                     // \u0432\u044B\u0441\u043E\u0442\u0430\
+    \ \u044F\u0447\u0435\u0439\u043A\u0438\n    sizeBarHeight: 18,               \
+    \   // \u0432\u044B\u0441\u043E\u0442\u0430 \u0431\u0430\u0440\u0430 \u0440\u0430\
+    \u0437\u043C\u0435\u0440\u0430\n    sliderWidth: 150,                   // \u0448\
+    \u0438\u0440\u0438\u043D\u0430 \u0441\u043B\u0430\u0439\u0434\u0435\u0440\u0430\
+    \n    sliderHeight: 14,                   // \u0432\u044B\u0441\u043E\u0442\u0430\
+    \ \u0441\u043B\u0430\u0439\u0434\u0435\u0440\u0430\n    tipPadding: '10px 12px',\
+    \            // \u043E\u0442\u0441\u0442\u0443\u043F\u044B \u0442\u0443\u043B\u0442\
+    \u0438\u043F\u0430\n    tipMaxWidth: 260                    // \u043C\u0430\u043A\
+    \u0441. \u0448\u0438\u0440\u0438\u043D\u0430 \u0442\u0443\u043B\u0442\u0438\u043F\
+    \u0430\n  }\n};\n\n// ---------- \u0411\u041B\u041E\u041A 2: \u0412\u0425\u041E\
+    \u0414 + \u0425\u0415\u041B\u041F\u0415\u0420\u042B ----------\n// \u0412\u0445\
+    \u043E\u0434: \u041C\u0415\u0421\u042F\u0427\u041D\u042B\u0419 \u0430\u0433\u0440\
+    \u0435\u0433\u0430\u0442 \u0438\u0437 SQL: (cohort_month, age, active_users, cohort_size).\n\
+    // \u041C\u0435\u0441\u044F\u0446 \u2014 \u0442\u043E\u0447\u043D\u044B\u0439\
+    \ (SQL uniqExact). \u041A\u0432\u0430\u0440\u0442\u0430\u043B/\u0433\u043E\u0434\
+    \ JS \u0430\u0433\u0440\u0435\u0433\u0438\u0440\u0443\u0435\u0442 \u0438\u0437\
+    \ \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u0445 \u043A\u043E\u0433\u043E\u0440\
+    \u0442.\nvar rawData = (typeof data !== 'undefined' && Array.isArray(data)) ?\
+    \ data : [];\n\nfunction num(v) {\n  if (v === null || v === undefined || v ===\
+    \ '') return null;\n  var n = Number(String(v).replace(',', '.'));\n  return isNaN(n)\
+    \ ? null : n;\n}\n// \u041F\u0430\u0440\u0441\u0438\u043D\u0433 \u0434\u0430\u0442\
+    \u044B: epoch-ms, epoch-s, 'YYYY-MM-DD', 'YYYY-MM'. \u0412\u043E\u0437\u0432\u0440\
+    \u0430\u0449\u0430\u0435\u0442 {y, m} (m: 0..11) \u0438\u043B\u0438 null.\nfunction\
+    \ toYM(raw) {\n  if (raw === null || raw === undefined || raw === '') return null;\n\
+    \  var s = String(raw).trim();\n  var d = null;\n  if (/^\\d{11,}$/.test(s)) {\
+    \ var ms = Number(s); d = new Date(ms > 1e12 ? ms : ms * 1000); }\n  else if (/^\\\
+    d{10}$/.test(s)) d = new Date(Number(s) * 1000);\n  else {\n    var mm = /^(\\\
+    d{4})-(\\d{2})/.exec(s);\n    if (mm) return { y: parseInt(mm[1],10), m: parseInt(mm[2],10)\
+    \ - 1 };\n    d = new Date(s);\n  }\n  if (!d || isNaN(d.getTime())) return null;\n\
+    \  return { y: d.getUTCFullYear(), m: d.getUTCMonth() };\n}\nfunction ymIndex(ym)\
+    \ { return ym.y * 12 + ym.m; }\nfunction idxToYM(idx) { return { y: Math.floor(idx\
+    \ / 12), m: idx % 12 }; }\n\nfunction periodKey(ym, grain) {\n  if (grain ===\
+    \ 'y') return ym.y;\n  if (grain === 'q') return ym.y * 4 + Math.floor(ym.m /\
+    \ 3);\n  return ym.y * 12 + ym.m;\n}\nfunction periodLabelFromKey(key, grain)\
+    \ {\n  if (grain === 'y') return String(key);\n  if (grain === 'q') { var y =\
+    \ Math.floor(key / 4), q = key % 4; return 'Q' + (q + 1) + ' ' + y; }\n  var yy\
+    \ = Math.floor(key / 12), mo = key % 12; return CFG.monthsRu[mo] + ' ' + yy;\n\
+    }\n\n// ---------- \u0411\u041B\u041E\u041A 3: \u0421\u0411\u041E\u0420\u041A\u0410\
+    \ \u041C\u0415\u0421\u042F\u0427\u041D\u041E\u0413\u041E \u0410\u0413\u0420\u0415\
+    \u0413\u0410\u0422\u0410 + \u041F\u0415\u0420\u0415\u0421\u0427\u0401\u0422 GRAIN\
+    \ ----------\n// mCohorts[cohIdx] = { size, points: { age(\u043C\u0435\u0441):\
+    \ active } }, cohIdx = ym-\u0438\u043D\u0434\u0435\u043A\u0441 \u043C\u0435\u0441\
+    \u044F\u0446\u0430 \u043A\u043E\u0433\u043E\u0440\u0442\u044B\nvar mCohorts =\
+    \ {};\nvar maxActIdx = -Infinity;\n\nrawData.forEach(function(r) {\n  if (!r)\
+    \ return;\n  var coh = toYM(r[CFG.fields.cohort]); if (!coh) return;\n  var age\
+    \ = num(r[CFG.fields.age]); if (age === null) return;\n  age = Math.round(age);\n\
+    \  var active = num(r[CFG.fields.active]); if (active === null) active = 0;\n\
+    \  var size = num(r[CFG.fields.size]);\n  var ci = ymIndex(coh);\n  if (!mCohorts[ci])\
+    \ mCohorts[ci] = { size: null, points: {} };\n  mCohorts[ci].points[age] = active;\n\
+    \  if (size !== null && mCohorts[ci].size === null) mCohorts[ci].size = size;\n\
+    \  if (age === 0 && (mCohorts[ci].size === null)) mCohorts[ci].size = active;\n\
+    \  var actIdx = ci + age;                 // \u043C\u0435\u0441\u044F\u0446 \u0430\
+    \u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u0438 = \u043A\u043E\u0433\u043E\
+    \u0440\u0442\u0430 + \u0432\u043E\u0437\u0440\u0430\u0441\u0442\n  if (actIdx\
+    \ > maxActIdx) maxActIdx = actIdx;\n});\n// \u0413\u0430\u0440\u0430\u043D\u0442\
+    \u0438\u0440\u0443\u0435\u043C size \u0434\u043B\u044F \u043A\u0430\u0436\u0434\
+    \u043E\u0439 \u043C\u0435\u0441\u044F\u0447\u043D\u043E\u0439 \u043A\u043E\u0433\
+    \u043E\u0440\u0442\u044B (\u0435\u0441\u043B\u0438 \u043D\u0435 \u043F\u0440\u0438\
+    \u0448\u0451\u043B \u2014 \u0431\u0435\u0440\u0451\u043C active \u043F\u0440\u0438\
+    \ age=0)\nObject.keys(mCohorts).forEach(function(ci) {\n  var c = mCohorts[ci];\n\
+    \  if (c.size === null) c.size = (c.points[0] != null ? c.points[0] : 0);\n});\n\
+    \n// buildGrain: \u0434\u043B\u044F 'm' \u2014 \u0442\u043E\u0447\u043D\u044B\u0435\
+    \ \u0447\u0438\u0441\u043B\u0430; \u0434\u043B\u044F 'q'/'y' \u2014 \u0432\u0437\
+    \u0432\u0435\u0448\u0435\u043D\u043D\u043E\u0435 \u043F\u043E \u0440\u0430\u0437\
+    \u043C\u0435\u0440\u0443 \u0441\u0440\u0435\u0434\u043D\u0435\u0435\n// \u043F\
+    \u043E \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u043C \u043A\u043E\u0433\u043E\
+    \u0440\u0442\u0430\u043C \u0432\u043D\u0443\u0442\u0440\u0438 \u043F\u0435\u0440\
+    \u0438\u043E\u0434\u0430. \u0420\u0430\u0437\u043C\u0435\u0440 \u043A\u0440\u0443\
+    \u043F\u043D\u043E\u0439 \u043A\u043E\u0433\u043E\u0440\u0442\u044B = \u0421\u0423\
+    \u041C\u041C\u0410 \u0440\u0430\u0437\u043C\u0435\u0440\u043E\u0432\n// \u043C\
+    \u0435\u0441\u044F\u0447\u043D\u044B\u0445 (\u043F\u0440\u0438\u0431\u043B\u0438\
+    \u0436\u0451\u043D\u043D\u043E: \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\
+    \u0442\u0435\u043B\u044C \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442 \u0432\
+    \ \u0441\u0432\u043E\u0451\u043C \u043C\u0435\u0441\u044F\u0446\u0435 first_action\
+    \ \u2014 \u0434\u0432\u043E\u0439\u043D\u043E\u0433\u043E\n// \u0441\u0447\u0451\
+    \u0442\u0430 \u043F\u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0443 \u043D\u0435\
+    \u0442, \u0442.\u043A. \u043A\u043E\u0433\u043E\u0440\u0442\u0430 = \u043C\u0435\
+    \u0441\u044F\u0446 \u041F\u0415\u0420\u0412\u041E\u0413\u041E \u0434\u0435\u0439\
+    \u0441\u0442\u0432\u0438\u044F, \u043E\u043D \u0443 \u044E\u0437\u0435\u0440\u0430\
+    \ \u043E\u0434\u0438\u043D).\nfunction buildGrain(grain) {\n  var cohIdxs = Object.keys(mCohorts).map(Number).sort(function(a,b){return\
+    \ a-b;});\n  var maxActYM = idxToYM(maxActIdx);\n  var maxActPeriod = periodKey(maxActYM,\
+    \ grain);\n\n  if (grain === 'm') {\n    var cohortsM = {};\n    var maxAgeM =\
+    \ 0;\n    cohIdxs.forEach(function(ci) {\n      var c = mCohorts[ci];\n      var\
+    \ cohYM = idxToYM(ci);\n      var pk = periodKey(cohYM, 'm');\n      var lastObservable\
+    \ = maxActPeriod - pk;\n      var cells = {};\n      for (var age = 1; age <=\
+    \ CFG.maxAge; age++) {\n        if (age > lastObservable) break;\n        var\
+    \ active = c.points[age] != null ? c.points[age] : 0;\n        var rate = c.size\
+    \ > 0 ? active / c.size : null;\n        cells[age] = { active: active, rate:\
+    \ rate, isLast: (age === lastObservable) };\n        if (age > maxAgeM) maxAgeM\
+    \ = age;\n      }\n      cohortsM[pk] = { label: periodLabelFromKey(pk, 'm'),\
+    \ order: pk, size: c.size, cells: cells };\n    });\n    return { cohorts: cohortsM,\
+    \ maxAge: maxAgeM };\n  }\n\n  // q / y: \u0433\u0440\u0443\u043F\u043F\u0438\u0440\
+    \u0443\u0435\u043C \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u0435 \u043A\u043E\
+    \u0433\u043E\u0440\u0442\u044B \u0432 \u043A\u0440\u0443\u043F\u043D\u044B\u0435\
+    \ \u043F\u0435\u0440\u0438\u043E\u0434\u044B.\n  // \u0414\u043B\u044F \u043A\u0430\
+    \u0436\u0434\u043E\u0439 \u043A\u0440\u0443\u043F\u043D\u043E\u0439 \u043A\u043E\
+    \u0433\u043E\u0440\u0442\u044B \u0438 \u043A\u0440\u0443\u043F\u043D\u043E\u0433\
+    \u043E \u0432\u043E\u0437\u0440\u0430\u0441\u0442\u0430:\n  //   active(\u043A\
+    \u0440\u0443\u043F\u043D\u044B\u0439) = \u0441\u0443\u043C\u043C\u0430 \u043F\u043E\
+    \ \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u043C \u043A\u043E\u0433\u043E\u0440\
+    \u0442\u0430\u043C: active \u0432 \u041F\u041E\u0421\u041B\u0415\u0414\u041D\u0415\
+    \u041C \u043C\u0435\u0441\u044F\u0446\u0435\n  //   \u043A\u0440\u0443\u043F\u043D\
+    \u043E\u0433\u043E \u0432\u043E\u0437\u0440\u0430\u0441\u0442\u043D\u043E\u0433\
+    \u043E \u043E\u043A\u043D\u0430 (\xAB\u0432\u0435\u0440\u043D\u0443\u043B\u0441\
+    \u044F \u043B\u0438 \u043A \u043A\u043E\u043D\u0446\u0443 \u043A\u0432\u0430\u0440\
+    \u0442\u0430\u043B\u0430/\u0433\u043E\u0434\u0430\xBB) \u2014 stock-\u043F\u043E\
+    \u0434\u0445\u043E\u0434,\n  //   \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\
+    \u0430\u043D \u0441 \u043E\u043F\u0440\u0435\u0434\u0435\u043B\u0435\u043D\u0438\
+    \u0435\u043C retention \xAB\u0430\u043A\u0442\u0438\u0432\u0435\u043D \u0432 \u043F\
+    \u0435\u0440\u0438\u043E\u0434\u0435 N\xBB.\n  var step = (grain === 'y') ? 12\
+    \ : 3;\n  var groups = {};   // bigKey -> { size, sizeByMonthCohort:{ci:size},\
+    \ cells:{bigAge:{active}} }\n  cohIdxs.forEach(function(ci) {\n    var c = mCohorts[ci];\n\
+    \    var cohYM = idxToYM(ci);\n    var bigKey = periodKey(cohYM, grain);\n   \
+    \ if (!groups[bigKey]) groups[bigKey] = { size: 0, monthCohorts: [] };\n    groups[bigKey].size\
+    \ += (c.size || 0);\n    groups[bigKey].monthCohorts.push(ci);\n  });\n\n  var\
+    \ cohorts = {};\n  var maxAge = 0;\n  Object.keys(groups).forEach(function(bk)\
+    \ {\n    var bigKey = Number(bk);\n    var grp = groups[bk];\n    var lastObservable\
+    \ = maxActPeriod - bigKey;\n    var cells = {};\n    for (var bigAge = 1; bigAge\
+    \ <= CFG.maxAge; bigAge++) {\n      if (bigAge > lastObservable) break;\n    \
+    \  // \u041A\u0440\u0443\u043F\u043D\u044B\u0439 \u0432\u043E\u0437\u0440\u0430\
+    \u0441\u0442 bigAge \u043F\u043E\u043A\u0440\u044B\u0432\u0430\u0435\u0442 \u043C\
+    \u0435\u0441\u044F\u0446\u044B \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\
+    \u0442\u0438 \u0432 \u043E\u043A\u043D\u0435 [\u043D\u0430\u0447\u0430\u043B\u043E\
+    ..\u043A\u043E\u043D\u0435\u0446].\n      // \u0414\u043B\u044F \u043A\u0430\u0436\
+    \u0434\u043E\u0439 \u043C\u0435\u0441\u044F\u0447\u043D\u043E\u0439 \u043A\u043E\
+    \u0433\u043E\u0440\u0442\u044B \u0431\u0435\u0440\u0451\u043C active \u0432 \u041F\
+    \u041E\u0421\u041B\u0415\u0414\u041D\u0418\u0419 \u043C\u0435\u0441\u044F\u0446\
+    \ \u044D\u0442\u043E\u0433\u043E \u043E\u043A\u043D\u0430\n      // (\u043E\u0442\
+    \u043D\u043E\u0441\u0438\u0442\u0435\u043B\u044C\u043D\u043E \u0441\u0442\u0430\
+    \u0440\u0442\u0430 \u043A\u0440\u0443\u043F\u043D\u043E\u0439 \u043A\u043E\u0433\
+    \u043E\u0440\u0442\u044B), \u0441\u0443\u043C\u043C\u0438\u0440\u0443\u0435\u043C\
+    \ \u043F\u043E \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u043C \u043A\u043E\u0433\
+    \u043E\u0440\u0442\u0430\u043C.\n      var bigStartIdx = bigKey * step;   // \u043D\
+    \u0435\u0432\u0435\u0440\u043D\u043E \u0434\u043B\u044F y (bigKey=\u0433\u043E\
+    \u0434) \u2014 \u043A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u0443\u0435\
+    \u043C \u043D\u0438\u0436\u0435\n      var active = 0;\n      grp.monthCohorts.forEach(function(ci)\
+    \ {\n        // \u043C\u0435\u0441\u044F\u0446 \u043A\u043E\u043D\u0446\u0430\
+    \ \u043E\u043A\u043D\u0430 bigAge \u0434\u043B\u044F \u044D\u0442\u043E\u0439\
+    \ \u043A\u0440\u0443\u043F\u043D\u043E\u0439 \u043A\u043E\u0433\u043E\u0440\u0442\
+    \u044B (\u0430\u0431\u0441. ym-\u0438\u043D\u0434\u0435\u043A\u0441)\n       \
+    \ var winEndIdx = firstMonthIdxOfBig(bigKey, grain) + bigAge * step + (step -\
+    \ 1);\n        var ageForThisMonthCoh = winEndIdx - ci;\n        if (ageForThisMonthCoh\
+    \ < 0) return;\n        var pts = mCohorts[ci].points;\n        // \u0431\u0435\
+    \u0440\u0451\u043C \u0431\u043B\u0438\u0436\u0430\u0439\u0448\u0438\u0439 \u0434\
+    \u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0439 \u0432\u043E\u0437\u0440\u0430\
+    \u0441\u0442 \u2264 ageForThisMonthCoh \u0432\u043D\u0443\u0442\u0440\u0438 \u043E\
+    \u043A\u043D\u0430\n        var best = null;\n        for (var a = ageForThisMonthCoh;\
+    \ a > ageForThisMonthCoh - step && a >= 0; a--) {\n          if (pts[a] != null)\
+    \ { best = pts[a]; break; }\n        }\n        if (best != null) active += best;\n\
+    \      });\n      var rate = grp.size > 0 ? active / grp.size : null;\n      cells[bigAge]\
+    \ = { active: active, rate: rate, isLast: (bigAge === lastObservable) };\n   \
+    \   if (bigAge > maxAge) maxAge = bigAge;\n    }\n    cohorts[bigKey] = { label:\
+    \ periodLabelFromKey(bigKey, grain), order: bigKey, size: grp.size, cells: cells\
+    \ };\n  });\n  return { cohorts: cohorts, maxAge: maxAge };\n}\n\n// \u041F\u0435\
+    \u0440\u0432\u044B\u0439 \u0430\u0431\u0441\u043E\u043B\u044E\u0442\u043D\u044B\
+    \u0439 ym-\u0438\u043D\u0434\u0435\u043A\u0441 \u043C\u0435\u0441\u044F\u0446\u0430\
+    \ \u0434\u043B\u044F \u043A\u0440\u0443\u043F\u043D\u043E\u0433\u043E \u043F\u0435\
+    \u0440\u0438\u043E\u0434\u0430.\nfunction firstMonthIdxOfBig(bigKey, grain) {\n\
+    \  if (grain === 'y') return bigKey * 12;                 // bigKey = \u0433\u043E\
+    \u0434\n  if (grain === 'q') { var y = Math.floor(bigKey / 4), q = bigKey % 4;\
+    \ return y * 12 + q * 3; }\n  return bigKey;\n}\n\nvar byGrain = { m: null, q:\
+    \ null, y: null };\n['m','q','y'].forEach(function(g) { byGrain[g] = buildGrain(g);\
+    \ });\n\nvar availableGrains = ['m','q'].filter(function(g) { return byGrain[g]\
+    \ && Object.keys(byGrain[g].cohorts).length; });\nvar currentGrain = (byGrain[CFG.defaultGrain]\
+    \ ? CFG.defaultGrain : (availableGrains[0] || 'm'));\n\n// ---------- \u0411\u041B\
+    \u041E\u041A 4: \u041C\u0415\u0414\u0418\u0410\u041D\u0410 \u0421\u0422\u041E\u041B\
+    \u0411\u0426\u0410 + \u0426\u0412\u0415\u0422 ----------\nfunction median(arr)\
+    \ {\n  if (!arr.length) return null;\n  var s = arr.slice().sort(function(a,b){\
+    \ return a-b; });\n  var mid = Math.floor(s.length / 2);\n  return s.length %\
+    \ 2 ? s[mid] : (s[mid-1] + s[mid]) / 2;\n}\n// \u041C\u0435\u0434\u0438\u0430\u043D\
+    \u0430 \u043F\u043E \u0441\u0442\u043E\u043B\u0431\u0446\u0443: \u0442\u043E\u043B\
+    \u044C\u043A\u043E \u0417\u0420\u0415\u041B\u042B\u0415 \u044F\u0447\u0435\u0439\
+    \u043A\u0438 (\u043D\u0435 isLast, rate!=null).\nfunction computeColMedians(grainObj)\
+    \ {\n  var med = {};\n  if (!grainObj) return med;\n  var cks = Object.keys(grainObj.cohorts);\n\
+    \  for (var age = 1; age <= grainObj.maxAge; age++) {\n    var vals = [];\n  \
+    \  cks.forEach(function(ck) {\n      var c = grainObj.cohorts[ck].cells[age];\n\
+    \      if (c && !c.isLast && c.rate !== null) vals.push(c.rate);\n    });\n  \
+    \  med[age] = median(vals);\n  }\n  return med;\n}\n\n// ---------- \u0411\u041B\
+    \u041E\u041A 4.1: \u0423\u0422\u0418\u041B\u0418\u0422\u042B \u0426\u0412\u0415\
+    \u0422\u0410 (\u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u044E\u0442 CFG.colors)\
+    \ ----------\n// \u041F\u0440\u0435\u043E\u0431\u0440\u0430\u0437\u0443\u0435\u0442\
+    \ [R,G,B,A] \u0432 rgba() \u0441\u0442\u0440\u043E\u043A\u0443\nfunction rgba(c)\
+    \ {\n  if (!c) return 'rgba(0,0,0,1)';\n  if (typeof c === 'string') return c;\
+    \ // \u0443\u0436\u0435 \u0441\u0442\u0440\u043E\u043A\u0430\n  var r = Math.round(c[0]),\
+    \ g = Math.round(c[1]), b = Math.round(c[2]);\n  var a = (c.length >= 4) ? c[3]\
+    \ : 1.0;\n  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';\n}\n// \u041B\
+    \u0438\u043D\u0435\u0439\u043D\u0430\u044F \u0438\u043D\u0442\u0435\u0440\u043F\
+    \u043E\u043B\u044F\u0446\u0438\u044F \u043C\u0435\u0436\u0434\u0443 \u0434\u0432\
+    \u0443\u043C\u044F \u0446\u0432\u0435\u0442\u0430\u043C\u0438 [R,G,B] \u0438\u043B\
+    \u0438 [R,G,B,A]\nfunction lerp(a, b, t) {\n  var r = Math.round(a[0] + (b[0]\
+    \ - a[0]) * t);\n  var g = Math.round(a[1] + (b[1] - a[1]) * t);\n  var b2 = Math.round(a[2]\
+    \ + (b[2] - a[2]) * t);\n  return [r, g, b2];\n}\n// \u0421\u043C\u0435\u0448\u0438\
+    \u0432\u0430\u0435\u0442 \u0434\u0432\u0430 \u0446\u0432\u0435\u0442\u0430, \u0432\
+    \u043E\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442 rgb() \u0441\u0442\u0440\
+    \u043E\u043A\u0443\nfunction mix(c1, c2, t) {\n  var r = lerp(c1, c2, t);\n  return\
+    \ 'rgb(' + r[0] + ',' + r[1] + ',' + r[2] + ')';\n}\n// \u041C\u0430\u043A\u0441\
+    . \u043E\u0442\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435 \u043E\u0442 \u043C\
+    \u0435\u0434\u0438\u0430\u043D\u044B \u043F\u043E \u0412\u0421\u0415\u041C \u0437\
+    \u0440\u0435\u043B\u044B\u043C \u044F\u0447\u0435\u0439\u043A\u0430\u043C \u2014\
+    \ \u044D\u0442\u043E \u043A\u0440\u0430\u0439 \u043F\u0430\u043B\u0438\u0442\u0440\
+    \u044B.\nfunction computeMaxDev(grainObj, medians) {\n  if (!grainObj) return\
+    \ 0.2;\n  var maxDev = 0;\n  Object.keys(grainObj.cohorts).forEach(function(ck)\
+    \ {\n    var cells = grainObj.cohorts[ck].cells;\n    for (var age = 1; age <=\
+    \ grainObj.maxAge; age++) {\n      var c = cells[age];\n      if (c && !c.isLast\
+    \ && c.rate !== null && medians[age] != null) {\n        var dev = Math.abs(c.rate\
+    \ - medians[age]);\n        if (dev > maxDev) maxDev = dev;\n      }\n    }\n\
+    \  });\n  return maxDev > 0.001 ? maxDev : 0.2;\n}\n// \u0414\u0438\u0432\u0435\
+    \u0440\u0433\u0435\u043D\u0442\u043D\u044B\u0439 \u0446\u0432\u0435\u0442: d =\
+    \ (rate - median) / span, \u0433\u0434\u0435 span = \u043C\u0430\u043A\u0441.\
+    \ \u043E\u0442\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435 \u0432 \u0434\u0430\
+    \u043D\u043D\u044B\u0445.\nfunction divColor(rate, med, span) {\n  if (rate ===\
+    \ null || med === null || isNaN(rate) || isNaN(med)) return rgba(CFG.colors.divMid);\n\
+    \  var d = (rate - med) / (span || 0.2);\n  d = Math.max(-1, Math.min(1, d));\n\
+    \  if (d >= 0) return mix(CFG.colors.divMid, CFG.colors.divHigh, d);\n  return\
+    \ mix(CFG.colors.divMid, CFG.colors.divLow, -d);\n}\nfunction textColorFor(rate,\
+    \ med) {\n  return rgba(CFG.colors.textMain); // \u0442\u0451\u043C\u043D\u044B\
+    \u0439 \u0442\u0435\u043A\u0441\u0442 \u2014 \u0447\u0438\u0442\u0430\u0435\u043C\
+    \ \u043D\u0430 \u0433\u043E\u043B\u0443\u0431\u043E\u043C \u0438 \u0436\u0451\u043B\
+    \u0442\u043E\u043C\n}\nfunction fmtPct(rate) { if (rate === null || isNaN(rate))\
+    \ return ''; return (Math.round(rate*1000)/10).toString().replace('.', ',') +\
+    \ '%'; }\nfunction fmtInt(v) { if (v === null || isNaN(v)) return ''; return String(Math.round(v)).replace(/\\\
+    B(?=(\\d{3})+(?!\\d))/g, '\\u00A0'); }\n// \u041A\u043E\u043C\u043F\u0430\u043A\
+    \u0442: >=1000 -> \xAB1\u041A\xBB, >=1 000 000 -> \xAB1\u041C\xBB.\nfunction fmtK(v)\
+    \ {\n  if (v === null || isNaN(v)) return '';\n  v = Math.round(v);\n  if (v >=\
+    \ 1000000) { var m = v / 1000000; return (m >= 10 ? Math.round(m) : Math.round(m*10)/10).toString().replace('.',\
+    \ ',') + '\u041C'; }\n  if (v >= 1000) { var k = v / 1000; return (k >= 10 ? Math.round(k)\
+    \ : Math.round(k*10)/10).toString().replace('.', ',') + '\u041A'; }\n  return\
+    \ String(v);\n}\n\n// ---------- \u0411\u041B\u041E\u041A 5: HTML \u041E\u0412\
+    \u0415\u0420\u041B\u0415\u0419 ----------\nfunction buildHTML(grain, cssColor)\
+    \ {\n  var G = byGrain[grain];\n  var meta = CFG.grainMeta[grain];\n  var C =\
+    \ CFG.colors;\n  var F = CFG.fonts;\n  var S = CFG.spacing;\n\n  var css = [\n\
+    \    '<style>',\n    // \u041A\u043E\u0440\u043D\u0435\u0432\u043E\u0439 \u043A\
+    \u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\n    '.rt-root{width:100%;height:100%;font-family:\"\
+    Segoe UI\",system-ui,-apple-system,sans-serif;color:' + cssColor(C.textMain) +\
+    \ ';background:' + cssColor(C.bgRoot) + ';display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;font-size:'\
+    \ + F.root + 'px;}',\n    '.rt-root *{box-sizing:border-box;}',\n    // \u0413\
+    \u043E\u043B\u043E\u0432\u0430: \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\
+    \u043A \u0441\u043B\u0435\u0432\u0430, \u043B\u0435\u0433\u0435\u043D\u0434\u0430\
+    \ \u0438 \u043A\u043D\u043E\u043F\u043A\u0438 \u0441\u043F\u0440\u0430\u0432\u0430\
+    \n    '.rt-head{display:flex;align-items:flex-start;gap:16px;padding:' + S.headPadding\
+    \ + ';flex-shrink:0;}',\n    '.rt-titlewrap{flex:1;display:flex;flex-direction:column;justify-content:center;}',\n\
+    \    '.rt-title{font-size:' + F.title + 'px;font-weight:600;}',\n    '.rt-sub{font-size:'\
+    \ + F.subtitle + 'px;color:' + cssColor(C.textSub) + ';font-weight:400;margin-top:2px;}',\n\
+    \    // \u041F\u0440\u0430\u0432\u0430\u044F \u0447\u0430\u0441\u0442\u044C: \u043B\
+    \u0435\u0433\u0435\u043D\u0434\u0430 + \u043A\u043D\u043E\u043F\u043A\u0438 (\u0432\
+    \u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u043E)\n    '.rt-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}',\n\
+    \    '.rt-right-top{display:flex;align-items:center;gap:10px;}',\n    // \u041E\
+    \u0431\u0451\u0440\u0442\u043A\u0430 \u043B\u0435\u0433\u0435\u043D\u0434\u044B\
+    : relative \u0434\u043B\u044F \u043F\u043E\u0437\u0438\u0446\u0438\u043E\u043D\
+    \u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F \u0434\u0438\u0430\u043F\u0430\
+    \u0437\u043E\u043D\u0430 \u0438 \u043A\u043D\u043E\u043F\u043A\u0438\n    '.rt-legend-wrap{position:relative;display:flex;align-items:center;gap:8px;height:20px;}',\n\
+    \    // \u041B\u0435\u0433\u0435\u043D\u0434\u0430 (\u0441\u043B\u0435\u0432\u0430\
+    \ \u043E\u0442 \u043A\u043D\u043E\u043F\u043E\u043A \u0432 \u0432\u0435\u0440\u0445\
+    \u043D\u0435\u043C \u0440\u044F\u0434\u0443)\n    '.rt-legend{display:flex;align-items:center;gap:8px;font-size:'\
+    \ + F.legend + 'px;color:' + cssColor(C.textMuted) + ';}',\n    // \u0414\u0438\
+    \u0430\u043F\u0430\u0437\u043E\u043D \u0438 \u043A\u043D\u043E\u043F\u043A\u0430\
+    \ \u0441\u0431\u0440\u043E\u0441\u0430 \u2014 \u0430\u0431\u0441\u043E\u043B\u044E\
+    \u0442\u043D\u043E \u043F\u043E\u0434 \u043B\u0435\u0433\u0435\u043D\u0434\u043E\
+    \u0439, \u043D\u0435 \u0432\u043B\u0438\u044F\u044E\u0442 \u043D\u0430 \u0440\u0430\
+    \u0437\u043C\u0435\u0440\n    '.lg-range-wrap{position:absolute;left:0;top:100%;display:flex;align-items:center;gap:6px;font-size:'\
+    \ + F.lgRange + 'px;color:' + cssColor(C.lgRangeText) + ';white-space:nowrap;}',\n\
+    \    '.lg-reset{border:1px solid ' + cssColor(C.lgResetBorder) + ';background:'\
+    \ + cssColor(C.lgResetBg) + ';border-radius:4px;font-size:' + F.lgReset + 'px;color:#555;padding:1px\
+    \ 6px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s;}',\n\
+    \    '.lg-reset.on{opacity:1;pointer-events:auto;}',\n    '.lg-reset:hover{background:'\
+    \ + cssColor(C.lgResetHover) + ';}',\n    // \u0421\u0435\u0433\u043C\u0435\u043D\
+    \u0442-\u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0430\u0442\u0435\u043B\
+    \u044C (\u0441\u043F\u0440\u0430\u0432\u0430 \u043E\u0442 \u043B\u0435\u0433\u0435\
+    \u043D\u0434\u044B \u0432 \u0432\u0435\u0440\u0445\u043D\u0435\u043C \u0440\u044F\
+    \u0434\u0443)\n    '.rt-seg{display:inline-flex;border:1px solid ' + cssColor(C.segBorder)\
+    \ + ';border-radius:6px;overflow:hidden;}',\n    '.rt-seg button{border:none;background:'\
+    \ + cssColor(C.segBg) + ';padding:5px 12px;font:400 ' + F.segBtn + 'px \"Segoe\
+    \ UI\",sans-serif;color:' + cssColor(C.textMain) + ';cursor:pointer;border-right:1px\
+    \ solid ' + cssColor(C.segBorder) + ';}',\n    '.rt-seg button:last-child{border-right:none;}',\n\
+    \    '.rt-seg button:hover{background:' + cssColor(C.segHover) + ';}',\n    '.rt-seg\
+    \ button.active{background:' + cssColor(C.segActive) + ';color:' + cssColor(C.segText)\
+    \ + ';font-weight:600;}',\n    '.rt-legend .lg-cap{white-space:nowrap;}',\n  \
+    \  '.lg-slider{position:relative;width:' + S.sliderWidth + 'px;height:' + S.sliderHeight\
+    \ + 'px;flex-shrink:0;cursor:pointer;}',\n    '.lg-track{position:absolute;inset:2px\
+    \ 0;border-radius:3px;background:linear-gradient(90deg,' + cssColor(C.divLow)\
+    \ + ',' + cssColor(C.divMid) + ',' + cssColor(C.divHigh) + ');}',\n    '.lg-mask{position:absolute;top:2px;bottom:2px;background:rgba(250,250,250,.78);pointer-events:none;}',\n\
+    \    '.lg-mask-l{left:0;width:0;border-radius:3px 0 0 3px;}',\n    '.lg-mask-r{right:0;width:0;border-radius:0\
+    \ 3px 3px 0;}',\n    '.lg-h{position:absolute;top:-2px;width:10px;height:18px;margin-left:-5px;border-radius:3px;background:'\
+    \ + cssColor(C.lgHandleBg) + ';border:1px solid ' + cssColor(C.lgHandleBorder)\
+    \ + ';box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:ew-resize;z-index:2;}',\n   \
+    \ '.lg-h:hover,.lg-h.drag{border-color:' + cssColor(C.lgHandleActive) + ';}',\n\
+    \    '.lg-range{font-variant-numeric:tabular-nums;color:' + cssColor(C.lgRangeText)\
+    \ + ';min-width:96px;}',\n    '.lg-reset{border:1px solid ' + cssColor(C.lgResetBorder)\
+    \ + ';background:' + cssColor(C.lgResetBg) + ';border-radius:4px;font-size:' +\
+    \ F.lgReset + 'px;color:#555;padding:2px 7px;cursor:pointer;display:none;}',\n\
+    \    '.lg-reset.on{display:inline-block;}',\n    '.lg-note{margin-left:6px;color:#999;}',\n\
+    \    '.lg-reset:hover{background:' + cssColor(C.lgResetHover) + ';}',\n    //\
+    \ \u042F\u0447\u0435\u0439\u043A\u0438\n    '.rt-cell.dim{background:' + cssColor(C.cellDimBg)\
+    \ + '!important;color:' + cssColor(C.cellDimText) + '!important;}',\n    '.rt-cell.peek{position:relative;z-index:5;transform:scale(1.04);box-shadow:0\
+    \ 4px 12px ' + C.cellPeekShadow + ';border-radius:3px;transition:transform .08s,box-shadow\
+    \ .08s;}',\n    // \u0421\u043A\u0440\u043E\u043B\u043B \u0438 \u0442\u0430\u0431\
+    \u043B\u0438\u0446\u0430\n    '.rt-scroll{flex:1;overflow:auto;padding:' + S.scrollPadding\
+    \ + ';}',\n    '.rt-tbl{width:100%;border-collapse:separate;border-spacing:0;white-space:nowrap;font-variant-numeric:tabular-nums;table-layout:fixed;}',\n\
+    \    '.rt-tbl col.c-lbl{width:100px;} .rt-tbl col.c-size{width:118px;} .rt-tbl\
+    \ col.c-age{width:auto;}',\n    '.rt-tbl th.rt-age,.rt-tbl td[data-age]{min-width:64px;}',\n\
+    \    // \u0428\u0430\u043F\u043A\u0430 \u0442\u0430\u0431\u043B\u0438\u0446\u044B\
+    \n    '.rt-tbl th{position:sticky;top:0;z-index:2;background:' + cssColor(C.thBg)\
+    \ + ';color:' + cssColor(C.thText) + ';font-size:' + F.th + 'px;font-weight:600;padding:'\
+    \ + S.thPadding + ';text-align:center;border-bottom:1px solid ' + cssColor(C.thBorder)\
+    \ + ';}',\n    '.rt-tbl th.rt-age .h-top{font-size:' + F.th + 'px;font-weight:600;color:'\
+    \ + cssColor(C.thText) + ';}',\n    '.rt-tbl th.rt-age .h-med{display:block;margin-top:2px;font-size:'\
+    \ + F.thMed + 'px;font-weight:600;color:' + cssColor(C.thMed) + ';}',\n    '.rt-tbl\
+    \ th.rt-age .h-med .cap{color:' + cssColor(C.thMedCap) + ';font-weight:500;}',\n\
+    \    '.rt-tbl th.rt-lbl{left:0;z-index:4;text-align:left;vertical-align:bottom;background:'\
+    \ + cssColor(C.thBg) + ';padding-left:8px;font-size:' + F.thLbl + 'px;white-space:normal;line-height:1.25;}',\n\
+    \    '.rt-tbl th.rt-size{position:static;text-align:left;vertical-align:bottom;background:'\
+    \ + cssColor(C.thBg) + ';padding-left:8px;font-size:' + F.thSize + 'px;white-space:normal;line-height:1.25;}',\n\
+    \    // \u042F\u0447\u0435\u0439\u043A\u0438 \u0442\u0430\u0431\u043B\u0438\u0446\
+    \u044B\n    '.rt-tbl td{padding:0;text-align:center;font-size:' + F.td + 'px;}',\n\
+    \    '.rt-tbl td.rt-lbl{position:sticky;left:0;z-index:1;background:' + cssColor(C.bgRoot)\
+    \ + ';text-align:left;font-weight:400;color:' + cssColor(C.tdText) + ';border-right:1px\
+    \ solid ' + cssColor(C.tdBorder) + ';overflow:hidden;text-overflow:ellipsis;padding:'\
+    \ + S.tdPadding + ';}',\n    '.rt-tbl td.rt-size{background:' + cssColor(C.bgRoot)\
+    \ + ';padding:0;border-right:1px solid ' + cssColor(C.tdBorder) + ';}',\n    '.rt-size-wrap{display:flex;align-items:center;height:'\
+    \ + S.cellHeight + 'px;padding:0 8px 0 0;overflow:hidden;}',\n    '.rt-size-bar{height:'\
+    \ + S.sizeBarHeight + 'px;background:' + cssColor(C.sizeBar) + ';border-radius:0\
+    \ 2px 2px 0;flex-shrink:0;}',\n    '.rt-size-num{margin-left:4px;font-size:' +\
+    \ F.sizeNum + 'px;color:' + cssColor(C.sizeText) + ';font-weight:400;white-space:nowrap;}',\n\
+    \    '.rt-tbl tr:hover td.rt-lbl,.rt-tbl tr:hover td.rt-size{background:' + cssColor(C.tdHover)\
+    \ + ';}',\n    '.rt-cell{height:' + S.cellHeight + 'px;line-height:' + S.cellHeight\
+    \ + 'px;cursor:default;}',\n    '.rt-tbl td.hl .rt-cell{box-shadow:inset 0 0 0\
+    \ 999px ' + C.hlCol + ';}',\n    '.rt-tbl th.hl{background:' + cssColor(C.tdHover)\
+    \ + ';}',\n    '.rt-cellwrap:hover .rt-cell{box-shadow:inset 0 0 0 999px ' + C.hlColStrong\
+    \ + ';}',\n    // \u0422\u0443\u043B\u0442\u0438\u043F (\u0431\u0435\u043B\u0430\
+    \u044F \u043F\u043B\u0438\u0442\u043A\u0430 \u0441 \u0442\u0435\u043D\u044C\u044E\
+    , \u0442\u0435\u043A\u0441\u0442 \u0432 \u0441\u0442\u0440\u043E\u043A\u0443)\n\
+    \    '.rt-tip{position:fixed;z-index:99999;pointer-events:none;background:' +\
+    \ cssColor(C.tipBg) + ';color:' + cssColor(C.tipText) + ';font-family:Inter,\"\
+    Segoe UI\",system-ui,sans-serif;font-size:' + F.tip + 'px;line-height:1.4;padding:'\
+    \ + S.tipPadding + ';border-radius:8px;box-shadow:0 4px 8px ' + C.tipShadowStrong\
+    \ + ';opacity:0;transition:opacity .08s;min-width:160px;white-space:nowrap;}',\n\
+    \    '.rt-tip.on{opacity:1;}',\n    '.rt-tip .t-row{display:flex;align-items:center;margin-bottom:4px;}',\n\
+    \    '.rt-tip .t-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;}',\n\
+    \    '.rt-tip .t-strong{font-weight:700;color:' + cssColor(C.tipStrong) + ';}',\n\
+    \    '.rt-tip .t-grey{color:' + cssColor(C.tipGrey) + ';font-style:italic;}',\n\
+    \    '.rt-tip .t-cap{color:' + cssColor(C.tipCaption) + ';}',\n    '</style>'\n\
+    \  ].join('');\n\n  if (!G || Object.keys(G.cohorts).length === 0) {\n    return\
+    \ css + '<div class=\"rt-root\"><div class=\"rt-head\"><div class=\"rt-title\"\
+    >' + CFG.text.title + '</div></div><div style=\"padding:20px;color:' + cssColor(C.divLow)\
+    \ + ';font-weight:600;\">' + CFG.text.noData + '</div></div>';\n  }\n\n  var cks\
+    \ = Object.keys(G.cohorts).sort(function(a,b){ return G.cohorts[a].order - G.cohorts[b].order;\
+    \ });\n  var AGES = G.maxAge;\n  var medians = computeColMedians(G);\n  var colorSpan\
+    \ = computeMaxDev(G, medians);\n  var maxSize = 0;\n  cks.forEach(function(ck){\
+    \ var s = G.cohorts[ck].size || 0; if (s > maxSize) maxSize = s; });\n\n  var\
+    \ h = [];\n  h.push('<div class=\"rt-root\">');\n  // \u0433\u043E\u043B\u043E\
+    \u0432\u0430: \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u0441\u043B\
+    \u0435\u0432\u0430, \u043B\u0435\u0433\u0435\u043D\u0434\u0430 \u0438 \u043A\u043D\
+    \u043E\u043F\u043A\u0438 \u0441\u043F\u0440\u0430\u0432\u0430\n  var spanPP =\
+    \ Math.round(colorSpan * 1000) / 10; // \u043A\u0440\u0430\u0439 \u0448\u043A\u0430\
+    \u043B\u044B \u0432 \u043F.\u043F.\n  h.push('<div class=\"rt-head\"><div class=\"\
+    rt-titlewrap\"><div class=\"rt-title\">' + CFG.text.title + '</div>' + (CFG.text.subtitle\
+    \ ? '<div class=\"rt-sub\">' + CFG.text.subtitle + '</div>' : '') + '</div>'\n\
+    \    + '<div class=\"rt-right\"><div class=\"rt-right-top\"><div class=\"rt-legend-wrap\"\
+    >'\n    + '<div class=\"rt-legend\" data-span=\"' + spanPP + '\">'\n    + '<span\
+    \ class=\"lg-cap\">\u041D\u0438\u0436\u0435 \u043C\u0435\u0434\u0438\u0430\u043D\
+    \u044B</span>'\n    + '<div class=\"lg-slider\" title=\"\u041F\u0435\u0440\u0435\
+    \u0442\u0430\u0449\u0438\u0442\u0435 \u0440\u0443\u0447\u043A\u0438, \u0447\u0442\
+    \u043E\u0431\u044B \u043E\u0441\u0442\u0430\u0432\u0438\u0442\u044C \u0442\u043E\
+    \u043B\u044C\u043A\u043E \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u044B\u0439\
+    \ \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\">'\n    +   '<div class=\"\
+    lg-track\"></div>'\n    +   '<div class=\"lg-mask lg-mask-l\"></div><div class=\"\
+    lg-mask lg-mask-r\"></div>'\n    +   '<div class=\"lg-h lg-h-lo\" data-h=\"lo\"\
+    ></div><div class=\"lg-h lg-h-hi\" data-h=\"hi\"></div>'\n    + '</div>'\n   \
+    \ + '<span class=\"lg-cap\">\u0412\u044B\u0448\u0435 \u043C\u0435\u0434\u0438\u0430\
+    \u043D\u044B</span>'\n    + '</div>'\n    + '<div class=\"lg-range-wrap\"><span\
+    \ class=\"lg-range\"></span><button class=\"lg-reset\" title=\"\u0421\u0431\u0440\
+    \u043E\u0441\u0438\u0442\u044C \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\
+    \">\u0441\u0431\u0440\u043E\u0441</button></div>'\n    + '</div><div class=\"\
+    rt-seg\">');\n  availableGrains.forEach(function(g){\n    h.push('<button data-grain=\"\
+    ' + g + '\"' + (g === grain ? ' class=\"active\"' : '') + '>' + CFG.grainMeta[g].label\
+    \ + '</button>');\n  });\n  h.push('</div></div></div></div>');\n  // \u0442\u0430\
+    \u0431\u043B\u0438\u0446\u0430\n  h.push('<div class=\"rt-scroll\"><table class=\"\
+    rt-tbl\"><colgroup><col class=\"c-lbl\"><col class=\"c-size\">');\n  for (var\
+    \ a = 1; a <= AGES; a++) h.push('<col class=\"c-age\">');\n  h.push('</colgroup><thead>');\n\
+    \  // \u0435\u0434\u0438\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430\
+    \ \u0448\u0430\u043F\u043A\u0438: \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\
+    \u043A + \u043C\u0435\u0434\u0438\u0430\u043D\u0430 \u043F\u043E\u0434\u043F\u0438\
+    \u0441\u044C\u044E \u0432\u043D\u0443\u0442\u0440\u0438 \u044F\u0447\u0435\u0439\
+    \u043A\u0438\n  h.push('<tr><th class=\"rt-lbl\">' + CFG.text.cohortCol + '</th><th\
+    \ class=\"rt-size\">' + CFG.text.sizeCol + '</th>');\n  for (var a = 1; a <= AGES;\
+    \ a++) {\n    var medTxt = (medians[a] !== null && medians[a] !== undefined)\n\
+    \      ? '<span class=\"h-med\">' + fmtPct(medians[a]) + '</span>'\n      : '<span\
+    \ class=\"h-med\">&nbsp;</span>';\n    h.push('<th class=\"rt-age\" data-age=\"\
+    ' + a + '\"><span class=\"h-top\">' + meta.colHdr(a) + '</span>' + medTxt + '</th>');\n\
+    \  }\n  h.push('</tr></thead><tbody>');\n\n  cks.forEach(function(ck){\n    var\
+    \ row = G.cohorts[ck];\n    h.push('<tr>');\n    h.push('<td class=\"rt-lbl\"\
+    >' + row.label + '</td>');\n    var bw = maxSize > 0 ? Math.max(3, Math.round((row.size\
+    \ || 0) / maxSize * 70)) : 3;\n    h.push('<td class=\"rt-size\"><div class=\"\
+    rt-size-wrap\"><span class=\"rt-size-bar\" style=\"width:' + bw + '%;\"></span><span\
+    \ class=\"rt-size-num\">' + fmtK(row.size) + '</span></div></td>');\n    for (var\
+    \ a = 1; a <= AGES; a++) {\n      var cell = row.cells[a];\n      if (!cell ||\
+    \ cell.rate === null) { h.push('<td data-age=\"' + a + '\"></td>'); continue;\
+    \ }\n      var bg, fg, extra = '';\n      if (cell.isLast) { bg = cssColor(C.greyLast);\
+    \ fg = cssColor(C.textSub); extra = ';font-style:italic'; }\n      else { bg =\
+    \ divColor(cell.rate, medians[a], colorSpan); fg = textColorFor(cell.rate, medians[a]);\
+    \ }\n      var medV = (medians[a] !== null && medians[a] !== undefined) ? fmtPct(medians[a])\
+    \ : '';\n      // \u043D\u043E\u0440\u043C\u0430\u043B\u0438\u0437\u043E\u0432\
+    \u0430\u043D\u043D\u043E\u0435 \u043E\u0442\u043A\u043B\u043E\u043D\u0435\u043D\
+    \u0438\u0435 \u043E\u0442 \u043C\u0435\u0434\u0438\u0430\u043D\u044B (-1..1) \u2014\
+    \ \u0434\u043B\u044F \u0441\u043B\u0430\u0439\u0434\u0435\u0440-\u0444\u0438\u043B\
+    \u044C\u0442\u0440\u0430\n      var devN = '';\n      if (!cell.isLast && medians[a]\
+    \ != null && colorSpan) {\n        var dv = (cell.rate - medians[a]) / colorSpan;\n\
+    \        devN = Math.max(-1, Math.min(1, dv)).toFixed(3);\n      }\n      // \u0434\
+    \u0430\u043D\u043D\u044B\u0435 \u0434\u043B\u044F \u043A\u0430\u0441\u0442\u043E\
+    \u043C\u043D\u043E\u0433\u043E \u0442\u0443\u043B\u0442\u0438\u043F\u0430 (\u0431\
+    \u0435\u0437 native title \u2014 \u043E\u043D \u0442\u043E\u0440\u043C\u043E\u0437\
+    \u0438\u0442)\n      h.push('<td data-age=\"' + a + '\" class=\"rt-cellwrap\"\
+    '\n        + ' data-label=\"' + row.label + '\" data-n=\"' + a + '\" data-unit=\"\
+    ' + meta.unit + '\"'\n        + ' data-size=\"' + fmtInt(row.size) + '\" data-active=\"\
+    ' + fmtInt(cell.active) + '\"'\n        + ' data-rate=\"' + fmtPct(cell.rate)\
+    \ + '\" data-med=\"' + medV + '\"'\n        + ' data-dev=\"' + devN + '\" data-grey=\"\
+    ' + (cell.isLast ? '1' : '') + '\">'\n        + '<div class=\"rt-cell\" style=\"\
+    background:' + bg + ';color:' + fg + extra + ';\">' + fmtPct(cell.rate) + '</div></td>');\n\
+    \    }\n    h.push('</tr>');\n  });\n\n  h.push('</tbody></table></div></div>');\n\
+    \  return css + h.join('');\n}\n\n// ---------- \u0411\u041B\u041E\u041A 6: \u041C\
+    \u041E\u041D\u0422\u0418\u0420\u041E\u0412\u0410\u041D\u0418\u0415 + \u0418\u041D\
+    \u0422\u0415\u0420\u0410\u041A\u0422\u0418\u0412 ----------\n(function mountOverlay()\
+    \ {\n  try {\n    // \u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043A\u043E\
+    \u043D\u0444\u0438\u0433 \u0434\u043B\u044F \u0438\u0441\u043F\u043E\u043B\u044C\
+    \u0437\u043E\u0432\u0430\u043D\u0438\u044F \u0432\u043D\u0443\u0442\u0440\u0438\
+    \ render\n    var C = CFG.colors;\n    var F = CFG.fonts;\n    var S = CFG.spacing;\n\
+    \n    // \u0412\u0441\u043F\u043E\u043C\u043E\u0433\u0430\u0442\u0435\u043B\u044C\
+    \u043D\u0430\u044F \u0444\u0443\u043D\u043A\u0446\u0438\u044F \u0434\u043B\u044F\
+    \ \u043F\u0440\u0435\u043E\u0431\u0440\u0430\u0437\u043E\u0432\u0430\u043D\u0438\
+    \u044F [R,G,B,A] \u0432 rgba() \u0441\u0442\u0440\u043E\u043A\u0443\n    function\
+    \ cssColor(c) {\n      if (!c) return '#000';\n      if (typeof c === 'string')\
+    \ return c;\n      var r = Math.round(c[0]), g = Math.round(c[1]), b = Math.round(c[2]);\n\
+    \      var a = (c.length >= 4) ? c[3] : 1.0;\n      return 'rgba(' + r + ',' +\
+    \ g + ',' + b + ',' + a + ')';\n    }\n\n    var hosts = document.querySelectorAll('[_echarts_instance_]');\n\
+    \    if (!hosts || hosts.length === 0) return;\n    var host = hosts[hosts.length\
+    \ - 1];\n    var cvs = host.querySelectorAll('canvas');\n    for (var i = 0; i\
+    \ < cvs.length; i++) cvs[i].style.display = 'none';\n    var prev = host.querySelector('.rt-overlay');\n\
+    \    if (prev) prev.parentNode.removeChild(prev);\n\n    var overlay = document.createElement('div');\n\
+    \    overlay.className = 'rt-overlay';\n    overlay.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:10;background:#fff;';\n\
+    \    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';\n\
+    \    host.appendChild(overlay);\n\n    function render(grain) {\n      overlay.innerHTML\
+    \ = buildHTML(grain, cssColor);\n      // \u043F\u0435\u0440\u0435\u043A\u043B\
+    \u044E\u0447\u0430\u0442\u0435\u043B\u044C \u0433\u0440\u0430\u043D\u0443\u043B\
+    \u044F\u0440\u043D\u043E\u0441\u0442\u0438\n      var btns = overlay.querySelectorAll('.rt-seg\
+    \ button');\n      for (var i = 0; i < btns.length; i++) {\n        btns[i].addEventListener('click',\
+    \ function() {\n          var g = this.getAttribute('data-grain');\n         \
+    \ if (g && byGrain[g]) { currentGrain = g; render(g); }\n        });\n      }\n\
+    \      // hover-\u043F\u043E\u0434\u0441\u0432\u0435\u0442\u043A\u0430 \u0441\u0442\
+    \u043E\u043B\u0431\u0446\u0430 + \u043A\u0430\u0441\u0442\u043E\u043C\u043D\u044B\
+    \u0439 \u0442\u0443\u043B\u0442\u0438\u043F\n      var tbl = overlay.querySelector('.rt-tbl');\n\
+    \      var oldTip = document.querySelector('body > .rt-tip'); if (oldTip) oldTip.parentNode.removeChild(oldTip);\n\
+    \      var tip = document.createElement('div'); tip.className = 'rt-tip';\n  \
+    \    // \u0442\u0443\u043B\u0442\u0438\u043F \u0432 body: position:fixed \u043E\
+    \u0442 viewport, \u0447\u0442\u043E\u0431\u044B \u043D\u0435 \u0440\u0435\u0437\
+    \u0430\u043B\u0441\u044F overflow-\u043E\u043C \u0442\u0430\u0431\u043B\u0438\u0446\
+    \u044B.\n      // \u0421\u0442\u0438\u043B\u0438 .rt-tip \u0436\u0438\u0432\u0443\
+    \u0442 \u0432 <style> \u0432\u043D\u0443\u0442\u0440\u0438 overlay, \u043F\u043E\
+    \u044D\u0442\u043E\u043C\u0443 \u0434\u0443\u0431\u043B\u0438\u0440\u0443\u0435\
+    \u043C \u0438\u0445 \u0438\u043D\u043B\u0430\u0439\u043D.\n      tip.style.cssText\
+    \ = 'position:fixed;z-index:99999;pointer-events:none;background:' + cssColor(C.tipBg)\
+    \ + ';color:' + cssColor(C.tipText) + ';font-family:Inter,\"Segoe UI\",system-ui,sans-serif;font-size:'\
+    \ + F.tip + 'px;line-height:1.5;padding:' + S.tipPadding + ';border-radius:8px;box-shadow:0\
+    \ 4px 8px ' + C.tipShadowStrong + ';opacity:0;transition:opacity .08s;max-width:'\
+    \ + S.tipMaxWidth + 'px;white-space:normal;';\n      document.body.appendChild(tip);\n\
+    \      var curCol = null;\n      function clearCol() { if (curCol) { var p = tbl.querySelectorAll('[data-age=\"\
+    ' + curCol + '\"]'); for (var k=0;k<p.length;k++) p[k].classList.remove('hl');\
+    \ curCol = null; } }\n      if (tbl) {\n        tbl.addEventListener('mousemove',\
+    \ function(e) {\n          var td = e.target.closest ? e.target.closest('.rt-cellwrap')\
+    \ : null;\n          if (!td) { clearCol(); tip.style.opacity = '0'; return; }\n\
+    \          var age = td.getAttribute('data-age');\n          if (age !== curCol)\
+    \ { clearCol(); var all = tbl.querySelectorAll('[data-age=\"' + age + '\"]');\
+    \ for (var k=0;k<all.length;k++) all[k].classList.add('hl'); curCol = age; }\n\
+    \          var grey = td.getAttribute('data-grey') === '1';\n          var html\
+    \ = '<div class=\"t-row\"><span class=\"t-strong\">' + td.getAttribute('data-active')\
+    \ + '</span><span style=\"margin:0 4px;\">\u0438\u0437</span><span class=\"t-strong\"\
+    >' + td.getAttribute('data-size') + '</span></div>'\n            + '<div class=\"\
+    t-row\">\u043F\u043E\u0441\u0435\u0442\u0438\u043B\u0438 \u043E\u0442\u0447\u0451\
+    \u0442 \u0447\u0435\u0440\u0435\u0437 ' + td.getAttribute('data-n') + ' ' + td.getAttribute('data-unit')\
+    \ + '</div>'\n            + (grey ? '<div class=\"t-row t-grey\">\u041D\u0435\u0437\
+    \u0440\u0435\u043B\u044B\u0439 \u043F\u0435\u0440\u0438\u043E\u0434</div>' : '');\n\
+    \          tip.innerHTML = html;\n          tip.style.opacity = '1';\n       \
+    \   var tw = tip.offsetWidth, th = tip.offsetHeight;\n          var x = e.clientX\
+    \ + 14, y = e.clientY + 14;\n          if (x + tw > window.innerWidth - 8) x =\
+    \ e.clientX - tw - 14;\n          if (y + th > window.innerHeight - 8) y = e.clientY\
+    \ - th - 14;\n          tip.style.left = x + 'px'; tip.style.top = y + 'px';\n\
+    \        });\n        tbl.addEventListener('mouseleave', function() { clearCol();\
+    \ tip.style.opacity = '0'; });\n      }\n      // \u0441\u0442\u0440\u0430\u0445\
+    \u043E\u0432\u043A\u0430: \u043B\u044E\u0431\u043E\u0435 \u0434\u0432\u0438\u0436\
+    \u0435\u043D\u0438\u0435 \u0432\u043D\u0435 \u044F\u0447\u0435\u0435\u043A \u2014\
+    \ \u0433\u0430\u0441\u0438\u043C \u0442\u0443\u043B\u0442\u0438\u043F\n      overlay.addEventListener('mousemove',\
+    \ function(e){\n        var inCell = e.target.closest && e.target.closest('.rt-cellwrap');\n\
+    \        if (!inCell) { clearCol(); tip.style.opacity = '0'; }\n      });\n  \
+    \    overlay.addEventListener('mouseleave', function(){ clearCol(); tip.style.opacity\
+    \ = '0'; });\n\n      // ---- \u0438\u043D\u0442\u0435\u0440\u0430\u043A\u0442\
+    \u0438\u0432\u043D\u0430\u044F \u043B\u0435\u0433\u0435\u043D\u0434\u0430-\u0441\
+    \u043B\u0430\u0439\u0434\u0435\u0440 (\u0444\u0438\u043B\u044C\u0442\u0440 \u043F\
+    \u043E \u043E\u0442\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u044E \u043E\u0442\
+    \ \u043C\u0435\u0434\u0438\u0430\u043D\u044B) ----\n      var slider = overlay.querySelector('.lg-slider');\n\
+    \      if (slider && tbl) {\n        var legendWrap = overlay.querySelector('.rt-legend-wrap');\n\
+    \        var spanPP = parseFloat(legendWrap.getAttribute('data-span')) || 20;\n\
+    \        var hLo = slider.querySelector('.lg-h-lo'), hHi = slider.querySelector('.lg-h-hi');\n\
+    \        var maskL = slider.querySelector('.lg-mask-l'), maskR = slider.querySelector('.lg-mask-r');\n\
+    \        var rangeLbl = overlay.querySelector('.lg-range-wrap .lg-range');\n \
+    \       var resetBtn = overlay.querySelector('.lg-range-wrap .lg-reset');\n  \
+    \      var lo = -1, hi = 1; // \u043D\u043E\u0440\u043C\u0430\u043B\u0438\u0437\
+    \u043E\u0432\u0430\u043D\u043D\u044B\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\
+    \u044B\n        var cells = tbl.querySelectorAll('.rt-cellwrap .rt-cell');\n \
+    \       function n2ratio(v){ return (v + 1) / 2; } // -1..1 -> 0..1\n        function\
+    \ fmtDev(v){ var pp = Math.round(v * spanPP * 10) / 10; var s = (pp>0?'+':'')\
+    \ + pp.toString().replace('.',','); return s + ' \u043F.\u043F.'; }\n        function\
+    \ applyFilter() {\n          hLo.style.left = (n2ratio(lo) * 100) + '%';\n   \
+    \       hHi.style.left = (n2ratio(hi) * 100) + '%';\n          maskL.style.width\
+    \ = (n2ratio(lo) * 100) + '%';\n          maskR.style.width = ((1 - n2ratio(hi))\
+    \ * 100) + '%';\n          var full = (lo <= -0.999 && hi >= 0.999);\n       \
+    \   rangeLbl.textContent = full ? '' : (fmtDev(lo) + ' \u2026 ' + fmtDev(hi));\n\
+    \          var rb = overlay.querySelector('.lg-reset'); if (rb) rb.classList.toggle('on',\
+    \ !full);\n          for (var i=0;i<cells.length;i++){\n            var td = cells[i].parentNode;\n\
+    \            var dv = td.getAttribute('data-dev');\n            if (dv === ''\
+    \ || dv === null) { cells[i].classList.remove('dim'); continue; } // \u043D\u0435\
+    \u0437\u0440\u0435\u043B\u044B\u0435 \u043D\u0435 \u0442\u0440\u043E\u0433\u0430\
+    \u0435\u043C\n            var v = parseFloat(dv);\n            if (v < lo - 0.0001\
+    \ || v > hi + 0.0001) cells[i].classList.add('dim');\n            else cells[i].classList.remove('dim');\n\
+    \          }\n        }\n        function clientToNorm(clientX){\n          var\
+    \ r = slider.getBoundingClientRect();\n          var t = (clientX - r.left) /\
+    \ r.width; t = Math.max(0, Math.min(1, t));\n          return t * 2 - 1;\n   \
+    \     }\n        var dragH = null;\n        function onMove(e){\n          if\
+    \ (!dragH) return;\n          var v = clientToNorm(e.clientX);\n          if (dragH\
+    \ === hLo) { lo = Math.min(v, hi - 0.02); }\n          else { hi = Math.max(v,\
+    \ lo + 0.02); }\n          applyFilter();\n        }\n        function onUp(){\
+    \ if(dragH){ dragH.classList.remove('drag'); dragH=null; document.removeEventListener('mousemove',onMove);\
+    \ document.removeEventListener('mouseup',onUp); } }\n        [hLo, hHi].forEach(function(hnd){\n\
+    \          hnd.addEventListener('mousedown', function(e){ dragH = hnd; hnd.classList.add('drag');\
+    \ document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);\
+    \ e.preventDefault(); });\n        });\n        // \u043F\u0440\u0435\u0432\u044C\
+    \u044E-\u043F\u043E\u0434\u0441\u0432\u0435\u0442\u043A\u0430 \u043F\u0440\u0438\
+    \ \u043D\u0430\u0432\u0435\u0434\u0435\u043D\u0438\u0438 \u043D\u0430 \u0433\u0440\
+    \u0430\u0434\u0438\u0435\u043D\u0442 (\u0431\u043B\u0438\u0437\u043A\u0438\u0435\
+    \ \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F)\n        slider.addEventListener('mousemove',\
+    \ function(e){\n          if (dragH) return;\n          var v = clientToNorm(e.clientX),\
+    \ w = 0.12;\n          for (var i=0;i<cells.length;i++){\n            var dv =\
+    \ cells[i].parentNode.getAttribute('data-dev');\n            if (dv==='' || dv===null){\
+    \ cells[i].classList.remove('peek'); continue; }\n            var d = parseFloat(dv);\n\
+    \            if (Math.abs(d - v) <= w && !cells[i].classList.contains('dim'))\
+    \ cells[i].classList.add('peek');\n            else cells[i].classList.remove('peek');\n\
+    \          }\n        });\n        slider.addEventListener('mouseleave', function(){\
+    \ for (var i=0;i<cells.length;i++) cells[i].classList.remove('peek'); });\n  \
+    \      if (resetBtn) resetBtn.addEventListener('click', function(){ lo=-1; hi=1;\
+    \ applyFilter(); });\n        applyFilter();\n      }\n    }\n    render(currentGrain);\n\
+    \n    if (typeof ResizeObserver !== 'undefined') {\n      var ro = new ResizeObserver(function()\
+    \ { overlay.style.width = '100%'; overlay.style.height = '100%'; });\n      ro.observe(host);\n\
+    \    }\n  } catch (e) {}\n})();\n\n// ---------- \u0411\u041B\u041E\u041A 7: \u041F\
+    \u0423\u0421\u0422\u041E\u0419 OPTION (\u041E\u0411\u042F\u0417\u0410\u0422\u0415\
+    \u041B\u042C\u041D\u041E) ----------\noption = {\n  animation: false,\n  xAxis:\
+    \ { show: false, type: 'value' },\n  yAxis: { show: false, type: 'value' },\n\
+    \  series: [{ type: 'scatter', data: [] }]\n};"
+  extra_form_data: {}
+query_context: "{\"datasource\":{\"id\":153285,\"type\":\"table\"},\"force\":false,\"\
+  queries\":[{\"filters\":[],\"extras\":{\"having\":\"\",\"where\":\"(cohort_month\
+  \ >= toStartOfMonth(max_date) - INTERVAL 11 MONTH\\n)\"},\"applied_time_extras\"\
+  :{},\"columns\":[\"cohort_month\",\"active_users\",\"cohort_size\",\"age\"],\"metrics\"\
+  :[],\"orderby\":[[{\"aggregate\":\"MAX\",\"column\":{\"advanced_data_type\":null,\"\
+  certification_details\":null,\"certified_by\":null,\"column_name\":\"cohort_month\"\
+  ,\"description\":null,\"expression\":null,\"filterable\":true,\"groupby\":true,\"\
+  id\":2510721,\"is_certified\":false,\"is_dttm\":true,\"python_date_format\":null,\"\
+  type\":\"Date\",\"type_generic\":2,\"verbose_name\":null,\"warning_markdown\":null},\"\
+  datasourceWarning\":false,\"expressionType\":\"SIMPLE\",\"hasCustomLabel\":false,\"\
+  label\":\"MAX(cohort_month)\",\"optionName\":\"metric_nit70pdveuf_iq2ndkk26cd\"\
+  ,\"sqlExpression\":null},true]],\"annotation_layers\":[],\"row_limit\":10000,\"\
+  series_limit\":0,\"series_limit_metric\":{\"aggregate\":\"MAX\",\"column\":{\"advanced_data_type\"\
+  :null,\"certification_details\":null,\"certified_by\":null,\"column_name\":\"cohort_month\"\
+  ,\"description\":null,\"expression\":null,\"filterable\":true,\"groupby\":true,\"\
+  id\":2510721,\"is_certified\":false,\"is_dttm\":true,\"python_date_format\":null,\"\
+  type\":\"Date\",\"type_generic\":2,\"verbose_name\":null,\"warning_markdown\":null},\"\
+  datasourceWarning\":false,\"expressionType\":\"SIMPLE\",\"hasCustomLabel\":false,\"\
+  label\":\"MAX(cohort_month)\",\"optionName\":\"metric_nit70pdveuf_iq2ndkk26cd\"\
+  ,\"sqlExpression\":null},\"order_desc\":false,\"url_params\":{},\"custom_params\"\
+  :{},\"custom_form_data\":{}}],\"form_data\":{\"datasource\":\"153285__table\",\"\
+  viz_type\":\"react_sanbbox\",\"slice_id\":711333,\"groupby\":[\"cohort_month\",\"\
+  active_users\",\"cohort_size\",\"age\"],\"percent_metrics\":[],\"timeseries_limit_metric\"\
+  :{\"aggregate\":\"MAX\",\"column\":{\"advanced_data_type\":null,\"certification_details\"\
+  :null,\"certified_by\":null,\"column_name\":\"cohort_month\",\"description\":null,\"\
+  expression\":null,\"filterable\":true,\"groupby\":true,\"id\":2510721,\"is_certified\"\
+  :false,\"is_dttm\":true,\"python_date_format\":null,\"type\":\"Date\",\"type_generic\"\
+  :2,\"verbose_name\":null,\"warning_markdown\":null},\"datasourceWarning\":false,\"\
+  expressionType\":\"SIMPLE\",\"hasCustomLabel\":false,\"label\":\"MAX(cohort_month)\"\
+  ,\"optionName\":\"metric_nit70pdveuf_iq2ndkk26cd\",\"sqlExpression\":null},\"order_by_cols\"\
+  :[],\"order_desc\":false,\"server_pagination\":false,\"row_limit\":10000,\"server_page_length\"\
+  :10,\"show_totals\":false,\"adhoc_filters\":[{\"clause\":\"WHERE\",\"comparator\"\
+  :null,\"datasourceWarning\":false,\"expressionType\":\"SQL\",\"filterOptionName\"\
+  :\"filter_g2sxq58nzq6_assmq03obxj\",\"isExtra\":false,\"isNew\":false,\"operator\"\
+  :\"TEMPORAL_RANGE\",\"sqlExpression\":\"cohort_month >= toStartOfMonth(max_date)\
+  \ - INTERVAL 11 MONTH\\n\",\"subject\":\"cohort_month\"}],\"jsx\":\"// ============================================================================\\\
+  n// RETENTION COHORT HEATMAP (Proteus/Superset sandbox)\\n// \u0421\u0442\u0440\u043E\
+  \u043A\u0438 = \u043A\u043E\u0433\u043E\u0440\u0442\u044B (\u043F\u0435\u0440\u0438\
+  \u043E\u0434 \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u0434\u0435\u0439\u0441\
+  \u0442\u0432\u0438\u044F), \u043A\u043E\u043B\u043E\u043D\u043A\u0438 = \xAB\u0447\
+  \u0435\u0440\u0435\u0437 N \u043F\u0435\u0440\u0438\u043E\u0434\u043E\u0432\xBB\
+  .\\n// \u0426\u0432\u0435\u0442 \u2014 \u0434\u0438\u0432\u0435\u0440\u0433\u0435\
+  \u043D\u0442\u043D\u044B\u0439 \u043E\u0442\u043D\u043E\u0441\u0438\u0442\u0435\u043B\
+  \u044C\u043D\u043E \u041C\u0415\u0414\u0418\u0410\u041D\u042B \u0441\u0442\u043E\
+  \u043B\u0431\u0446\u0430 (\u0436\u0451\u043B\u0442\u044B\u0439 \u2190 \u043D\u0438\
+  \u0436\u0435 | \u0432\u044B\u0448\u0435 \u2192 \u0441\u0438\u043D\u0438\u0439).\\\
+  n// \u0413\u0440\u0430\u043D\u0443\u043B\u044F\u0440\u043D\u043E\u0441\u0442\u044C\
+  \ m/q/y \u2014 \u0433\u043E\u0442\u043E\u0432\u044B\u0435 \u0440\u0430\u0437\u0440\
+  \u0435\u0437\u044B \u0438\u0437 SQL (\u043A\u043E\u043B\u043E\u043D\u043A\u0430\
+  \ grain), JS \u0442\u043E\u043B\u044C\u043A\u043E \u043F\u0435\u0440\u0435\u043A\
+  \u043B\u044E\u0447\u0430\u0435\u0442.\\n//\\n// \u041A\u041E\u041D\u0422\u0420\u0410\
+  \u041A\u0422 SANDBOX: \u0445\u043E\u0441\u0442 = \u043F\u043E\u0441\u043B\u0435\u0434\
+  \u043D\u0438\u0439 [_echarts_instance_]; canvas \u043F\u0440\u044F\u0447\u0435\u043C\
+  ;\\n// \u043E\u0432\u0435\u0440\u043B\u0435\u0439 appendChild; \u0432 \u043A\u043E\
+  \u043D\u0446\u0435 \u041E\u0411\u042F\u0417\u0410\u0422\u0415\u041B\u042C\u041D\u041E\
+  \ option = {...} \u0441 \u043F\u0443\u0441\u0442\u044B\u043C scatter.\\n// ============================================================================\\\
+  n\\n// ============================================================================\\\
+  n// \u0411\u041B\u041E\u041A 1: \u041A\u041E\u041D\u0424\u0418\u0413 (\u0432\u0441\
+  \u0435 \u0446\u0432\u0435\u0442\u0430 \u0438 \u0448\u0440\u0438\u0444\u0442\u044B\
+  \ \u0432 \u043E\u0434\u043D\u043E\u043C \u043C\u0435\u0441\u0442\u0435)\\n// ============================================================================\\\
+  nvar CFG = {\\n  // --- \u041F\u043E\u043B\u044F \u0438\u0437 SQL ---\\n  fields:\
+  \ {\\n    cohort: 'cohort_month',   // \u043C\u0435\u0441\u044F\u0446 \u043F\u0435\
+  \u0440\u0432\u043E\u0433\u043E \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044F\
+  \ (\u043A\u043E\u0433\u043E\u0440\u0442\u0430)\\n    age:    'age',            //\
+  \ \u0432\u043E\u0437\u0440\u0430\u0441\u0442 \u0432 \u043C\u0435\u0441\u044F\u0446\
+  \u0430\u0445 (0 = \u0441\u0442\u0430\u0440\u0442\u043E\u0432\u044B\u0439)\\n   \
+  \ active: 'active_users',   // uniqExact(user_id) \u0432 \u0442\u043E\u0447\u043A\
+  \u0435\\n    size:   'cohort_size'     // \u0440\u0430\u0437\u043C\u0435\u0440 \u043A\
+  \u043E\u0433\u043E\u0440\u0442\u044B (age=0)\\n  },\\n  defaultGrain: 'm',\\n  maxAge:\
+  \ 24,                 // \u0432\u0435\u0440\u0445\u043D\u044F\u044F \u0433\u0440\
+  \u0430\u043D\u0438\u0446\u0430 \u0432\u043E\u0437\u0440\u0430\u0441\u0442\u0430\
+  \ \u043A\u043E\u0433\u043E\u0440\u0442\u044B (\u0432 \u043C\u0435\u0441\u044F\u0446\
+  \u0430\u0445)\\n\\n  // --- \u0422\u0435\u043A\u0441\u0442\u044B ---\\n  text: {\\\
+  n    title: '\u0417\u0430\u043A\u0440\u0435\u043F\u043B\u044F\u0435\u043C\u043E\u0441\
+  \u0442\u044C (retention) \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\
+  \u0438\u0435 12 \u043C\u0435\u0441\u044F\u0446\u0435\u0432',\\n    subtitle: '\u043D\
+  \u0430 \u0433\u0440\u0430\u0444\u0438\u043A \u043D\u0435 \u0434\u0435\u0439\u0441\
+  \u0442\u0432\u0443\u0435\u0442 \u0444\u0438\u043B\u044C\u0442\u0440 \\\"\u043F\u0435\
+  \u0440\u0438\u043E\u0434\\\"',\\n    cohortCol: '\u041C\u0435\u0441\u044F\u0446\
+  \ \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u043F\u043E\u0441\u0435\u0449\u0435\
+  \u043D\u0438\u044F',\\n    sizeCol: '\u041A\u043E\u043B\u0438\u0447\u0435\u0441\u0442\
+  \u0432\u043E \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0435\
+  \u0439',\\n    noData: '\u041D\u0435\u0442 \u0434\u0430\u043D\u043D\u044B\u0445\
+  '\\n  },\\n\\n  // --- \u0413\u0440\u0430\u043D\u0443\u043B\u044F\u0440\u043D\u043E\
+  \u0441\u0442\u044C ---\\n  grainMeta: {\\n    m: { label: '\u041C\u0435\u0441\u044F\
+  \u0446', unit: '\u043C\u0435\u0441', colHdr: function(n){ return n + '\u041C'; }\
+  \ },\\n    q: { label: '\u041A\u0432\u0430\u0440\u0442\u0430\u043B', unit: '\u043A\
+  \u0432', colHdr: function(n){ return n + '\u041A\u0412'; } },\\n    y: { label:\
+  \ '\u0413\u043E\u0434',   unit: '\u0433',  colHdr: function(n){ return n + '\u0413\
+  '; } }\\n  },\\n\\n  monthsRu: ['\u044F\u043D\u0432','\u0444\u0435\u0432','\u043C\
+  \u0430\u0440','\u0430\u043F\u0440','\u043C\u0430\u0439','\u0438\u044E\u043D','\u0438\
+  \u044E\u043B','\u0430\u0432\u0433','\u0441\u0435\u043D','\u043E\u043A\u0442','\u043D\
+  \u043E\u044F','\u0434\u0435\u043A'],\\n\\n  // ============================================================================\\\
+  n  // \u0426\u0412\u0415\u0422\u0410 (RGBA \u0444\u043E\u0440\u043C\u0430\u0442\
+  \ \u0434\u043B\u044F \u0443\u0434\u043E\u0431\u043D\u043E\u0433\u043E \u0440\u0435\
+  \u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F)\\n  //\
+  \ ============================================================================\\\
+  n  // \u0414\u0438\u0432\u0435\u0440\u0433\u0435\u043D\u0442\u043D\u0430\u044F \u0448\
+  \u043A\u0430\u043B\u0430: \u043D\u0438\u0436\u0435 \u043C\u0435\u0434\u0438\u0430\
+  \u043D\u044B \u2192 \u0436\u0451\u043B\u0442\u044B\u0439, \u0432\u044B\u0448\u0435\
+  \ \u2192 \u0441\u0438\u043D\u0438\u0439.\\n  // \u0417\u043D\u0430\u0447\u0435\u043D\
+  \u0438\u044F \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 [R, G, B, Alpha]\
+  \ \u0438\u043B\u0438 [R, G, B] (alpha=1 \u043F\u043E \u0443\u043C\u043E\u043B\u0447\
+  \u0430\u043D\u0438\u044E)\\n  colors: {\\n    // ==========================================================================\\\
+  n    // \u0414\u0418\u0412\u0415\u0420\u0413\u0415\u041D\u0422\u041D\u0410\u042F\
+  \ \u041F\u0410\u041B\u0418\u0422\u0420\u0410 (\u044F\u0447\u0435\u0439\u043A\u0438\
+  \ \u0442\u0430\u0431\u043B\u0438\u0446\u044B + \u043B\u0435\u0433\u0435\u043D\u0434\
+  \u0430)\\n    // \u041C\u0435\u043D\u044F\u0439\u0442\u0435 \u0442\u043E\u043B\u044C\
+  \u043A\u043E \u044D\u0442\u0438 3 \u0446\u0432\u0435\u0442\u0430 \u2014 \u043B\u0435\
+  \u0433\u0435\u043D\u0434\u0430 \u043E\u0431\u043D\u043E\u0432\u0438\u0442\u0441\u044F\
+  \ \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438\
+  !\\n    // ==========================================================================\\\
+  n    divLow:   [255, 218, 122],  // \u043C\u044F\u0433\u043A\u0438\u0439 \u0436\u0451\
+  \u043B\u0442\u044B\u0439 (\u043D\u0438\u0436\u0435 \u043C\u0435\u0434\u0438\u0430\
+  \u043D\u044B)\\n    divMid:   [255, 255, 255, 1.0],  // \u0431\u0435\u043B\u044B\
+  \u0439 (\u043D\u0430 \u043C\u0435\u0434\u0438\u0430\u043D\u0435)\\n    divHigh:\
+  \  [160, 222, 255],  // \u043C\u044F\u0433\u043A\u0438\u0439 \u0433\u043E\u043B\u0443\
+  \u0431\u043E\u0439 (\u0432\u044B\u0448\u0435 \u043C\u0435\u0434\u0438\u0430\u043D\
+  \u044B)\\n\\n    // ==========================================================================\\\
+  n    // \u041E\u0421\u0422\u0410\u041B\u042C\u041D\u042B\u0415 \u0426\u0412\u0415\
+  \u0422\u0410\\n    // ==========================================================================\\\
+  n    // \u041D\u0435\u0437\u0440\u0435\u043B\u044B\u0439 \u043F\u043E\u0441\u043B\
+  \u0435\u0434\u043D\u0438\u0439 \u043F\u0435\u0440\u0438\u043E\u0434\\n    greyLast:\
+  \ [237, 238, 240, 1.0],  // \u0441\u0432\u0435\u0442\u043B\u043E-\u0441\u0435\u0440\
+  \u044B\u0439\\n\\n    // \u0424\u043E\u043D \u0438 \u0442\u0435\u043A\u0441\u0442\
+  \ (\u043E\u0441\u043D\u043E\u0432\u043D\u044B\u0435)\\n    bgRoot:   [255, 255,\
+  \ 255, 1.0],  // \u0444\u043E\u043D \u043A\u043E\u0440\u043D\u0435\u0432\u043E\u0433\
+  \u043E \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\u0430\\n    textMain:\
+  \ [31, 35, 40, 1.0],     // \u043E\u0441\u043D\u043E\u0432\u043D\u043E\u0439 \u0442\
+  \u0435\u043A\u0441\u0442 (#1F2328)\\n    textSub:  [138, 144, 153, 1.0],  // \u043F\
+  \u043E\u0434\u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A (#8A9099)\\n\
+  \    textMuted:[102, 102, 102, 1.0],  // \u043F\u0440\u0438\u0433\u043B\u0443\u0448\
+  \u0451\u043D\u043D\u044B\u0439 \u0442\u0435\u043A\u0441\u0442 \u043B\u0435\u0433\
+  \u0435\u043D\u0434\u044B (#666)\\n\\n    // \u0428\u0430\u043F\u043A\u0430 \u0442\
+  \u0430\u0431\u043B\u0438\u0446\u044B\\n    thBg:     [250, 250, 250, 1.0],  // \u0444\
+  \u043E\u043D \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u043E\u0432 (#FAFAFA)\\\
+  n    thText:   [66, 72, 79, 1.0],     // \u0442\u0435\u043A\u0441\u0442 \u0437\u0430\
+  \u0433\u043E\u043B\u043E\u0432\u043A\u043E\u0432 (#42484F)\\n    thMed:    [95,\
+  \ 168, 200, 1.0],   // \u0442\u0435\u043A\u0441\u0442 \u043C\u0435\u0434\u0438\u0430\
+  \u043D\u044B (#5FA8C8)\\n    thMedCap: [169, 175, 182, 1.0],  // \u043F\u043E\u0434\
+  \u043F\u0438\u0441\u044C \u043C\u0435\u0434\u0438\u0430\u043D\u044B (#A9AFB6)\\\
+  n    thBorder: [231, 234, 238, 1.0],  // \u0433\u0440\u0430\u043D\u0438\u0446\u0430\
+  \ \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u043E\u0432 (#E7EAEE)\\n\\n \
+  \   // \u042F\u0447\u0435\u0439\u043A\u0438 \u0442\u0430\u0431\u043B\u0438\u0446\
+  \u044B\\n    tdBorder: [240, 240, 240, 1.0],  // \u0433\u0440\u0430\u043D\u0438\u0446\
+  \u044B \u044F\u0447\u0435\u0435\u043A (#F0F0F0)\\n    tdText:   [31, 35, 40, 1.0],\
+  \     // \u0442\u0435\u043A\u0441\u0442 \u044F\u0447\u0435\u0435\u043A (#1F2328)\\\
+  n    tdHover:  [245, 249, 254, 1.0],  // \u0444\u043E\u043D \u0441\u0442\u0440\u043E\
+  \u043A\u0438 \u043F\u0440\u0438 hover (#F5F9FE)\\n    hlCol:    'rgba(30, 90, 130,\
+  \ 0.06)',   // \u043F\u043E\u0434\u0441\u0432\u0435\u0442\u043A\u0430 \u0441\u0442\
+  \u043E\u043B\u0431\u0446\u0430 (hover)\\n    hlColStrong: 'rgba(30, 90, 130, 0.10)',\
+  \ // \u0441\u0438\u043B\u044C\u043D\u0430\u044F \u043F\u043E\u0434\u0441\u0432\u0435\
+  \u0442\u043A\u0430 (hover \u044F\u0447\u0435\u0439\u043A\u0438)\\n\\n    // \u0420\
+  \u0430\u0437\u043C\u0435\u0440-\u0431\u0430\u0440 (\u0433\u043E\u0440\u0438\u0437\
+  \u043E\u043D\u0442\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u0440 \u0432\
+  \ \u043A\u043E\u043B\u043E\u043D\u043A\u0435 Size)\\n    sizeBar:  [188, 233, 255,\
+  \ 1.0],  // \u0444\u043E\u043D \u0431\u0430\u0440\u0430 (#BCE9FF)\\n    sizeText:\
+  \ [51, 65, 77, 1.0],     // \u0442\u0435\u043A\u0441\u0442 \u0447\u0438\u0441\u043B\
+  \u0430 \u0440\u0430\u0437\u043C\u0435\u0440\u0430 (#33414D)\\n\\n    // \u0421\u0435\
+  \u0433\u043C\u0435\u043D\u0442-\u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0430\
+  \u0442\u0435\u043B\u044C (\u041C\u0435\u0441\u044F\u0446/\u041A\u0432\u0430\u0440\
+  \u0442\u0430\u043B/\u0413\u043E\u0434)\\n    segBorder:[229, 229, 229, 1.0],  //\
+  \ \u0433\u0440\u0430\u043D\u0438\u0446\u0430 \u0441\u0435\u0433\u043C\u0435\u043D\
+  \u0442\u0430 (#E5E5E5)\\n    segBg:    [255, 255, 255, 1.0],  // \u0444\u043E\u043D\
+  \ \u043A\u043D\u043E\u043F\u043A\u0438 (#FFF)\\n    segHover: [245, 245, 245, 1.0],\
+  \  // \u0444\u043E\u043D \u043F\u0440\u0438 hover (#F5F5F5)\\n    segActive:[231,\
+  \ 241, 251, 1.0],  // \u0444\u043E\u043D \u0430\u043A\u0442\u0438\u0432\u043D\u043E\
+  \u0439 \u043A\u043D\u043E\u043F\u043A\u0438 (#E7F1FB)\\n    segText:  [11, 74, 138,\
+  \ 1.0],    // \u0442\u0435\u043A\u0441\u0442 \u0430\u043A\u0442\u0438\u0432\u043D\
+  \u043E\u0439 \u043A\u043D\u043E\u043F\u043A\u0438 (#0B4A8A)\\n\\n    // \u041B\u0435\
+  \u0433\u0435\u043D\u0434\u0430 (\u0441\u043B\u0430\u0439\u0434\u0435\u0440) \u2014\
+  \ \u0446\u0432\u0435\u0442\u0430 \u0431\u0435\u0440\u0443\u0442\u0441\u044F \u0438\
+  \u0437 divLow/divMid/divHigh \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\
+  \u0435\u0441\u043A\u0438!\\n    lgHandleBg:  [255, 255, 255, 1.0],  // \u0444\u043E\
+  \u043D \u0440\u0443\u0447\u043A\u0438 (#FFF)\\n    lgHandleBorder: [154, 163, 171,\
+  \ 1.0], // \u0433\u0440\u0430\u043D\u0438\u0446\u0430 \u0440\u0443\u0447\u043A\u0438\
+  \ (#9AA3AB)\\n    lgHandleActive: [27, 154, 209, 1.0], // \u0433\u0440\u0430\u043D\
+  \u0438\u0446\u0430 \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0439 \u0440\u0443\
+  \u0447\u043A\u0438 (#1B9AD1)\\n    lgRangeText: [51, 65, 77, 1.0],     // \u0442\
+  \u0435\u043A\u0441\u0442 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430\
+  \ (#33414D)\\n    lgResetBg:   [255, 255, 255, 1.0],  // \u0444\u043E\u043D \u043A\
+  \u043D\u043E\u043F\u043A\u0438 \u0441\u0431\u0440\u043E\u0441\u0430 (#FFF)\\n  \
+  \  lgResetBorder: [224, 224, 224, 1.0],// \u0433\u0440\u0430\u043D\u0438\u0446\u0430\
+  \ \u043A\u043D\u043E\u043F\u043A\u0438 \u0441\u0431\u0440\u043E\u0441\u0430 (#E0E0E0)\\\
+  n    lgResetHover:[243, 243, 243, 1.0],  // \u0444\u043E\u043D \u043A\u043D\u043E\
+  \u043F\u043A\u0438 \u0441\u0431\u0440\u043E\u0441\u0430 \u043F\u0440\u0438 hover\
+  \ (#F3F3F3)\\n\\n    // \u0422\u0443\u043B\u0442\u0438\u043F (\u0431\u0435\u043B\
+  \u0430\u044F \u043F\u043B\u0438\u0442\u043A\u0430 \u0441 \u0442\u0435\u043D\u044C\
+  \u044E)\\n    tipBg:       [255, 255, 255, 1.0],  // \u0431\u0435\u043B\u044B\u0439\
+  \ \u0444\u043E\u043D (#FFFFFF)\\n    tipText:     [51, 51, 51, 1.0],     // \u0442\
+  \u0451\u043C\u043D\u043E-\u0441\u0435\u0440\u044B\u0439 \u0442\u0435\u043A\u0441\
+  \u0442 (#333)\\n    tipCaption:  [102, 102, 102, 1.0],  // \u043F\u043E\u0434\u043F\
+  \u0438\u0441\u044C (#666)\\n    tipStrong:   [0, 0, 0, 1.0],        // \u0436\u0438\
+  \u0440\u043D\u044B\u0439 \u0442\u0435\u043A\u0441\u0442 \u0447\u0451\u0440\u043D\
+  \u044B\u0439 (#000)\\n    tipGrey:     [102, 102, 102, 1.0],  // \u0442\u0435\u043A\
+  \u0441\u0442 \u043D\u0435\u0437\u0440\u0435\u043B\u043E\u0433\u043E \u043F\u0435\
+  \u0440\u0438\u043E\u0434\u0430 (\u0442\u0451\u043C\u043D\u043E-\u0441\u0435\u0440\
+  \u044B\u0439, \u043A\u043E\u043D\u0442\u0440\u0430\u0441\u0442\u043D\u044B\u0439\
+  )\\n\\n    // \u041F\u0440\u043E\u0447\u0435\u0435\\n    cellDimBg:   [244, 245,\
+  \ 246, 1.0],  // \u0444\u043E\u043D \u043F\u0440\u0438\u0442\u0443\u0445\u0448\u0435\
+  \u0439 \u044F\u0447\u0435\u0439\u043A\u0438 (#F4F5F6)\\n    cellDimText: [196, 201,\
+  \ 206, 1.0],  // \u0442\u0435\u043A\u0441\u0442 \u043F\u0440\u0438\u0442\u0443\u0445\
+  \u0448\u0435\u0439 \u044F\u0447\u0435\u0439\u043A\u0438 (#C4C9CE)\\n    cellPeekShadow:\
+  \ 'rgba(20, 60, 90, 0.28)', // \u0442\u0435\u043D\u044C \u043F\u0440\u0435\u0432\
+  \u044C\u044E-\u044F\u0447\u0435\u0439\u043A\u0438\\n    tipShadow:   'rgba(0, 0,\
+  \ 0, 0.25)', // \u0442\u0435\u043D\u044C \u0442\u0443\u043B\u0442\u0438\u043F\u0430\
+  \\n    tipShadowStrong: 'rgba(0, 0, 0, 0.4)' // \u0441\u0438\u043B\u044C\u043D\u0430\
+  \u044F \u0442\u0435\u043D\u044C\\n  },\\n\\n  // ============================================================================\\\
+  n  // \u0428\u0420\u0418\u0424\u0422\u042B (\u0440\u0430\u0437\u043C\u0435\u0440\
+  \u044B \u0432 \u043F\u0438\u043A\u0441\u0435\u043B\u044F\u0445)\\n  // ============================================================================\\\
+  n  fonts: {\\n    root: 13,              // \u0431\u0430\u0437\u043E\u0432\u044B\
+  \u0439 \u0440\u0430\u0437\u043C\u0435\u0440 \u0448\u0440\u0438\u0444\u0442\u0430\
+  \ \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\u0440\u0430\\n    title: 15,\
+  \             // \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u0433\u0440\
+  \u0430\u0444\u0438\u043A\u0430\\n    subtitle: 12,          // \u043F\u043E\u0434\
+  \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u0433\u0440\u0430\u0444\u0438\
+  \u043A\u0430\\n    th: 12,                // \u0437\u0430\u0433\u043E\u043B\u043E\
+  \u0432\u043E\u043A \u0442\u0430\u0431\u043B\u0438\u0446\u044B (\u0432\u0435\u0440\
+  \u0445\u043D\u044F\u044F \u0441\u0442\u0440\u043E\u043A\u0430)\\n    thMed: 10,\
+  \             // \u0442\u0435\u043A\u0441\u0442 \u043C\u0435\u0434\u0438\u0430\u043D\
+  \u044B \u0432 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0435\\n    thMedCap:\
+  \ 10,          // \u043F\u043E\u0434\u043F\u0438\u0441\u044C \u043C\u0435\u0434\u0438\
+  \u0430\u043D\u044B (cap)\\n    thLbl: 12,             // \u0437\u0430\u0433\u043E\
+  \u043B\u043E\u0432\u043E\u043A \u043B\u0435\u0432\u043E\u0433\u043E \u0441\u0442\
+  \u043E\u043B\u0431\u0446\u0430 (cohort)\\n    thSize: 12,            // \u0437\u0430\
+  \u0433\u043E\u043B\u043E\u0432\u043E\u043A \u043A\u043E\u043B\u043E\u043D\u043A\u0438\
+  \ Size\\n    td: 12,                // \u044F\u0447\u0435\u0439\u043A\u0430 \u0442\
+  \u0430\u0431\u043B\u0438\u0446\u044B (\u0447\u0438\u0441\u043B\u043E %)\\n    tdLbl:\
+  \ 12,             // \u0442\u0435\u043A\u0441\u0442 \u043B\u0435\u0432\u043E\u0433\
+  \u043E \u0441\u0442\u043E\u043B\u0431\u0446\u0430 (\u043D\u0430\u0437\u0432\u0430\
+  \u043D\u0438\u0435 \u043A\u043E\u0433\u043E\u0440\u0442\u044B)\\n    sizeNum: 12,\
+  \           // \u0447\u0438\u0441\u043B\u043E \u0440\u0430\u0437\u043C\u0435\u0440\
+  \u0430 (\u0441\u043F\u0440\u0430\u0432\u0430 \u043E\u0442 \u0431\u0430\u0440\u0430\
+  )\\n    legend: 11,            // \u0442\u0435\u043A\u0441\u0442 \u043B\u0435\u0433\
+  \u0435\u043D\u0434\u044B\\n    lgRange: 11,           // \u0442\u0435\u043A\u0441\
+  \u0442 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\u0430 (\u0441\u043B\u0430\
+  \u0439\u0434\u0435\u0440)\\n    lgReset: 11,           // \u043A\u043D\u043E\u043F\
+  \u043A\u0430 \u0441\u0431\u0440\u043E\u0441\u0430\\n    lgNote: 11,            //\
+  \ \u0437\u0430\u043C\u0435\u0442\u043A\u0430 \u043B\u0435\u0433\u0435\u043D\u0434\
+  \u044B\\n    tip: 12,               // \u0442\u0435\u043A\u0441\u0442 \u0442\u0443\
+  \u043B\u0442\u0438\u043F\u0430\\n    segBtn: 12             // \u0442\u0435\u043A\
+  \u0441\u0442 \u043A\u043D\u043E\u043F\u043A\u0438 \u043F\u0435\u0440\u0435\u043A\
+  \u043B\u044E\u0447\u0430\u0442\u0435\u043B\u044F\\n  },\\n\\n  // ============================================================================\\\
+  n  // \u041E\u0422\u0421\u0422\u0423\u041F\u042B \u0418 \u0420\u0410\u0417\u041C\
+  \u0415\u0420\u042B (\u0432 \u043F\u0438\u043A\u0441\u0435\u043B\u044F\u0445)\\n\
+  \  // ============================================================================\\\
+  n  spacing: {\\n    headPadding: '10px 8px 16px 8px',  // \u043E\u0442\u0441\u0442\
+  \u0443\u043F\u044B \u0433\u043E\u043B\u043E\u0432\u044B\\n    legendPadding: '10px\
+  \ 14px 10px 14px', // \u043E\u0442\u0441\u0442\u0443\u043F\u044B \u043B\u0435\u0433\
+  \u0435\u043D\u0434\u044B\\n    scrollPadding: '0 8px 8px 8px',  // \u043E\u0442\u0441\
+  \u0442\u0443\u043F\u044B \u0441\u043A\u0440\u043E\u043B\u043B-\u043E\u0431\u043B\
+  \u0430\u0441\u0442\u0438\\n    thPadding: '6px 4px',               // \u043E\u0442\
+  \u0441\u0442\u0443\u043F\u044B \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043A\u0430\
+  \\n    thLblPadding: '0 8px',              // \u043E\u0442\u0441\u0442\u0443\u043F\
+  \u044B \u043B\u0435\u0432\u043E\u0433\u043E \u0437\u0430\u0433\u043E\u043B\u043E\
+  \u0432\u043A\u0430\\n    tdPadding: '0 8px',                 // \u043E\u0442\u0441\
+  \u0442\u0443\u043F\u044B \u044F\u0447\u0435\u0439\u043A\u0438\\n    cellHeight:\
+  \ 28,                     // \u0432\u044B\u0441\u043E\u0442\u0430 \u044F\u0447\u0435\
+  \u0439\u043A\u0438\\n    sizeBarHeight: 18,                  // \u0432\u044B\u0441\
+  \u043E\u0442\u0430 \u0431\u0430\u0440\u0430 \u0440\u0430\u0437\u043C\u0435\u0440\
+  \u0430\\n    sliderWidth: 150,                   // \u0448\u0438\u0440\u0438\u043D\
+  \u0430 \u0441\u043B\u0430\u0439\u0434\u0435\u0440\u0430\\n    sliderHeight: 14,\
+  \                   // \u0432\u044B\u0441\u043E\u0442\u0430 \u0441\u043B\u0430\u0439\
+  \u0434\u0435\u0440\u0430\\n    tipPadding: '10px 12px',            // \u043E\u0442\
+  \u0441\u0442\u0443\u043F\u044B \u0442\u0443\u043B\u0442\u0438\u043F\u0430\\n   \
+  \ tipMaxWidth: 260                    // \u043C\u0430\u043A\u0441. \u0448\u0438\u0440\
+  \u0438\u043D\u0430 \u0442\u0443\u043B\u0442\u0438\u043F\u0430\\n  }\\n};\\n\\n//\
+  \ ---------- \u0411\u041B\u041E\u041A 2: \u0412\u0425\u041E\u0414 + \u0425\u0415\
+  \u041B\u041F\u0415\u0420\u042B ----------\\n// \u0412\u0445\u043E\u0434: \u041C\u0415\
+  \u0421\u042F\u0427\u041D\u042B\u0419 \u0430\u0433\u0440\u0435\u0433\u0430\u0442\
+  \ \u0438\u0437 SQL: (cohort_month, age, active_users, cohort_size).\\n// \u041C\u0435\
+  \u0441\u044F\u0446 \u2014 \u0442\u043E\u0447\u043D\u044B\u0439 (SQL uniqExact).\
+  \ \u041A\u0432\u0430\u0440\u0442\u0430\u043B/\u0433\u043E\u0434 JS \u0430\u0433\u0440\
+  \u0435\u0433\u0438\u0440\u0443\u0435\u0442 \u0438\u0437 \u043C\u0435\u0441\u044F\
+  \u0447\u043D\u044B\u0445 \u043A\u043E\u0433\u043E\u0440\u0442.\\nvar rawData = (typeof\
+  \ data !== 'undefined' && Array.isArray(data)) ? data : [];\\n\\nfunction num(v)\
+  \ {\\n  if (v === null || v === undefined || v === '') return null;\\n  var n =\
+  \ Number(String(v).replace(',', '.'));\\n  return isNaN(n) ? null : n;\\n}\\n//\
+  \ \u041F\u0430\u0440\u0441\u0438\u043D\u0433 \u0434\u0430\u0442\u044B: epoch-ms,\
+  \ epoch-s, 'YYYY-MM-DD', 'YYYY-MM'. \u0412\u043E\u0437\u0432\u0440\u0430\u0449\u0430\
+  \u0435\u0442 {y, m} (m: 0..11) \u0438\u043B\u0438 null.\\nfunction toYM(raw) {\\\
+  n  if (raw === null || raw === undefined || raw === '') return null;\\n  var s =\
+  \ String(raw).trim();\\n  var d = null;\\n  if (/^\\\\d{11,}$/.test(s)) { var ms\
+  \ = Number(s); d = new Date(ms > 1e12 ? ms : ms * 1000); }\\n  else if (/^\\\\d{10}$/.test(s))\
+  \ d = new Date(Number(s) * 1000);\\n  else {\\n    var mm = /^(\\\\d{4})-(\\\\d{2})/.exec(s);\\\
+  n    if (mm) return { y: parseInt(mm[1],10), m: parseInt(mm[2],10) - 1 };\\n   \
+  \ d = new Date(s);\\n  }\\n  if (!d || isNaN(d.getTime())) return null;\\n  return\
+  \ { y: d.getUTCFullYear(), m: d.getUTCMonth() };\\n}\\nfunction ymIndex(ym) { return\
+  \ ym.y * 12 + ym.m; }\\nfunction idxToYM(idx) { return { y: Math.floor(idx / 12),\
+  \ m: idx % 12 }; }\\n\\nfunction periodKey(ym, grain) {\\n  if (grain === 'y') return\
+  \ ym.y;\\n  if (grain === 'q') return ym.y * 4 + Math.floor(ym.m / 3);\\n  return\
+  \ ym.y * 12 + ym.m;\\n}\\nfunction periodLabelFromKey(key, grain) {\\n  if (grain\
+  \ === 'y') return String(key);\\n  if (grain === 'q') { var y = Math.floor(key /\
+  \ 4), q = key % 4; return 'Q' + (q + 1) + ' ' + y; }\\n  var yy = Math.floor(key\
+  \ / 12), mo = key % 12; return CFG.monthsRu[mo] + ' ' + yy;\\n}\\n\\n// ----------\
+  \ \u0411\u041B\u041E\u041A 3: \u0421\u0411\u041E\u0420\u041A\u0410 \u041C\u0415\u0421\
+  \u042F\u0427\u041D\u041E\u0413\u041E \u0410\u0413\u0420\u0415\u0413\u0410\u0422\u0410\
+  \ + \u041F\u0415\u0420\u0415\u0421\u0427\u0401\u0422 GRAIN ----------\\n// mCohorts[cohIdx]\
+  \ = { size, points: { age(\u043C\u0435\u0441): active } }, cohIdx = ym-\u0438\u043D\
+  \u0434\u0435\u043A\u0441 \u043C\u0435\u0441\u044F\u0446\u0430 \u043A\u043E\u0433\
+  \u043E\u0440\u0442\u044B\\nvar mCohorts = {};\\nvar maxActIdx = -Infinity;\\n\\\
+  nrawData.forEach(function(r) {\\n  if (!r) return;\\n  var coh = toYM(r[CFG.fields.cohort]);\
+  \ if (!coh) return;\\n  var age = num(r[CFG.fields.age]); if (age === null) return;\\\
+  n  age = Math.round(age);\\n  var active = num(r[CFG.fields.active]); if (active\
+  \ === null) active = 0;\\n  var size = num(r[CFG.fields.size]);\\n  var ci = ymIndex(coh);\\\
+  n  if (!mCohorts[ci]) mCohorts[ci] = { size: null, points: {} };\\n  mCohorts[ci].points[age]\
+  \ = active;\\n  if (size !== null && mCohorts[ci].size === null) mCohorts[ci].size\
+  \ = size;\\n  if (age === 0 && (mCohorts[ci].size === null)) mCohorts[ci].size =\
+  \ active;\\n  var actIdx = ci + age;                 // \u043C\u0435\u0441\u044F\
+  \u0446 \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u0438 = \u043A\u043E\
+  \u0433\u043E\u0440\u0442\u0430 + \u0432\u043E\u0437\u0440\u0430\u0441\u0442\\n \
+  \ if (actIdx > maxActIdx) maxActIdx = actIdx;\\n});\\n// \u0413\u0430\u0440\u0430\
+  \u043D\u0442\u0438\u0440\u0443\u0435\u043C size \u0434\u043B\u044F \u043A\u0430\u0436\
+  \u0434\u043E\u0439 \u043C\u0435\u0441\u044F\u0447\u043D\u043E\u0439 \u043A\u043E\
+  \u0433\u043E\u0440\u0442\u044B (\u0435\u0441\u043B\u0438 \u043D\u0435 \u043F\u0440\
+  \u0438\u0448\u0451\u043B \u2014 \u0431\u0435\u0440\u0451\u043C active \u043F\u0440\
+  \u0438 age=0)\\nObject.keys(mCohorts).forEach(function(ci) {\\n  var c = mCohorts[ci];\\\
+  n  if (c.size === null) c.size = (c.points[0] != null ? c.points[0] : 0);\\n});\\\
+  n\\n// buildGrain: \u0434\u043B\u044F 'm' \u2014 \u0442\u043E\u0447\u043D\u044B\u0435\
+  \ \u0447\u0438\u0441\u043B\u0430; \u0434\u043B\u044F 'q'/'y' \u2014 \u0432\u0437\
+  \u0432\u0435\u0448\u0435\u043D\u043D\u043E\u0435 \u043F\u043E \u0440\u0430\u0437\
+  \u043C\u0435\u0440\u0443 \u0441\u0440\u0435\u0434\u043D\u0435\u0435\\n// \u043F\u043E\
+  \ \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u043C \u043A\u043E\u0433\u043E\u0440\
+  \u0442\u0430\u043C \u0432\u043D\u0443\u0442\u0440\u0438 \u043F\u0435\u0440\u0438\
+  \u043E\u0434\u0430. \u0420\u0430\u0437\u043C\u0435\u0440 \u043A\u0440\u0443\u043F\
+  \u043D\u043E\u0439 \u043A\u043E\u0433\u043E\u0440\u0442\u044B = \u0421\u0423\u041C\
+  \u041C\u0410 \u0440\u0430\u0437\u043C\u0435\u0440\u043E\u0432\\n// \u043C\u0435\u0441\
+  \u044F\u0447\u043D\u044B\u0445 (\u043F\u0440\u0438\u0431\u043B\u0438\u0436\u0451\
+  \u043D\u043D\u043E: \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\
+  \u043B\u044C \u043F\u0440\u0438\u0445\u043E\u0434\u0438\u0442 \u0432 \u0441\u0432\
+  \u043E\u0451\u043C \u043C\u0435\u0441\u044F\u0446\u0435 first_action \u2014 \u0434\
+  \u0432\u043E\u0439\u043D\u043E\u0433\u043E\\n// \u0441\u0447\u0451\u0442\u0430 \u043F\
+  \u043E \u0440\u0430\u0437\u043C\u0435\u0440\u0443 \u043D\u0435\u0442, \u0442.\u043A\
+  . \u043A\u043E\u0433\u043E\u0440\u0442\u0430 = \u043C\u0435\u0441\u044F\u0446 \u041F\
+  \u0415\u0420\u0412\u041E\u0413\u041E \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044F\
+  , \u043E\u043D \u0443 \u044E\u0437\u0435\u0440\u0430 \u043E\u0434\u0438\u043D).\\\
+  nfunction buildGrain(grain) {\\n  var cohIdxs = Object.keys(mCohorts).map(Number).sort(function(a,b){return\
+  \ a-b;});\\n  var maxActYM = idxToYM(maxActIdx);\\n  var maxActPeriod = periodKey(maxActYM,\
+  \ grain);\\n\\n  if (grain === 'm') {\\n    var cohortsM = {};\\n    var maxAgeM\
+  \ = 0;\\n    cohIdxs.forEach(function(ci) {\\n      var c = mCohorts[ci];\\n   \
+  \   var cohYM = idxToYM(ci);\\n      var pk = periodKey(cohYM, 'm');\\n      var\
+  \ lastObservable = maxActPeriod - pk;\\n      var cells = {};\\n      for (var age\
+  \ = 1; age <= CFG.maxAge; age++) {\\n        if (age > lastObservable) break;\\\
+  n        var active = c.points[age] != null ? c.points[age] : 0;\\n        var rate\
+  \ = c.size > 0 ? active / c.size : null;\\n        cells[age] = { active: active,\
+  \ rate: rate, isLast: (age === lastObservable) };\\n        if (age > maxAgeM) maxAgeM\
+  \ = age;\\n      }\\n      cohortsM[pk] = { label: periodLabelFromKey(pk, 'm'),\
+  \ order: pk, size: c.size, cells: cells };\\n    });\\n    return { cohorts: cohortsM,\
+  \ maxAge: maxAgeM };\\n  }\\n\\n  // q / y: \u0433\u0440\u0443\u043F\u043F\u0438\
+  \u0440\u0443\u0435\u043C \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u0435 \u043A\
+  \u043E\u0433\u043E\u0440\u0442\u044B \u0432 \u043A\u0440\u0443\u043F\u043D\u044B\
+  \u0435 \u043F\u0435\u0440\u0438\u043E\u0434\u044B.\\n  // \u0414\u043B\u044F \u043A\
+  \u0430\u0436\u0434\u043E\u0439 \u043A\u0440\u0443\u043F\u043D\u043E\u0439 \u043A\
+  \u043E\u0433\u043E\u0440\u0442\u044B \u0438 \u043A\u0440\u0443\u043F\u043D\u043E\
+  \u0433\u043E \u0432\u043E\u0437\u0440\u0430\u0441\u0442\u0430:\\n  //   active(\u043A\
+  \u0440\u0443\u043F\u043D\u044B\u0439) = \u0441\u0443\u043C\u043C\u0430 \u043F\u043E\
+  \ \u043C\u0435\u0441\u044F\u0447\u043D\u044B\u043C \u043A\u043E\u0433\u043E\u0440\
+  \u0442\u0430\u043C: active \u0432 \u041F\u041E\u0421\u041B\u0415\u0414\u041D\u0415\
+  \u041C \u043C\u0435\u0441\u044F\u0446\u0435\\n  //   \u043A\u0440\u0443\u043F\u043D\
+  \u043E\u0433\u043E \u0432\u043E\u0437\u0440\u0430\u0441\u0442\u043D\u043E\u0433\u043E\
+  \ \u043E\u043A\u043D\u0430 (\xAB\u0432\u0435\u0440\u043D\u0443\u043B\u0441\u044F\
+  \ \u043B\u0438 \u043A \u043A\u043E\u043D\u0446\u0443 \u043A\u0432\u0430\u0440\u0442\
+  \u0430\u043B\u0430/\u0433\u043E\u0434\u0430\xBB) \u2014 stock-\u043F\u043E\u0434\
+  \u0445\u043E\u0434,\\n  //   \u0441\u043E\u0433\u043B\u0430\u0441\u043E\u0432\u0430\
+  \u043D \u0441 \u043E\u043F\u0440\u0435\u0434\u0435\u043B\u0435\u043D\u0438\u0435\
+  \u043C retention \xAB\u0430\u043A\u0442\u0438\u0432\u0435\u043D \u0432 \u043F\u0435\
+  \u0440\u0438\u043E\u0434\u0435 N\xBB.\\n  var step = (grain === 'y') ? 12 : 3;\\\
+  n  var groups = {};   // bigKey -> { size, sizeByMonthCohort:{ci:size}, cells:{bigAge:{active}}\
+  \ }\\n  cohIdxs.forEach(function(ci) {\\n    var c = mCohorts[ci];\\n    var cohYM\
+  \ = idxToYM(ci);\\n    var bigKey = periodKey(cohYM, grain);\\n    if (!groups[bigKey])\
+  \ groups[bigKey] = { size: 0, monthCohorts: [] };\\n    groups[bigKey].size += (c.size\
+  \ || 0);\\n    groups[bigKey].monthCohorts.push(ci);\\n  });\\n\\n  var cohorts\
+  \ = {};\\n  var maxAge = 0;\\n  Object.keys(groups).forEach(function(bk) {\\n  \
+  \  var bigKey = Number(bk);\\n    var grp = groups[bk];\\n    var lastObservable\
+  \ = maxActPeriod - bigKey;\\n    var cells = {};\\n    for (var bigAge = 1; bigAge\
+  \ <= CFG.maxAge; bigAge++) {\\n      if (bigAge > lastObservable) break;\\n    \
+  \  // \u041A\u0440\u0443\u043F\u043D\u044B\u0439 \u0432\u043E\u0437\u0440\u0430\u0441\
+  \u0442 bigAge \u043F\u043E\u043A\u0440\u044B\u0432\u0430\u0435\u0442 \u043C\u0435\
+  \u0441\u044F\u0446\u044B \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u0438\
+  \ \u0432 \u043E\u043A\u043D\u0435 [\u043D\u0430\u0447\u0430\u043B\u043E..\u043A\u043E\
+  \u043D\u0435\u0446].\\n      // \u0414\u043B\u044F \u043A\u0430\u0436\u0434\u043E\
+  \u0439 \u043C\u0435\u0441\u044F\u0447\u043D\u043E\u0439 \u043A\u043E\u0433\u043E\
+  \u0440\u0442\u044B \u0431\u0435\u0440\u0451\u043C active \u0432 \u041F\u041E\u0421\
+  \u041B\u0415\u0414\u041D\u0418\u0419 \u043C\u0435\u0441\u044F\u0446 \u044D\u0442\
+  \u043E\u0433\u043E \u043E\u043A\u043D\u0430\\n      // (\u043E\u0442\u043D\u043E\
+  \u0441\u0438\u0442\u0435\u043B\u044C\u043D\u043E \u0441\u0442\u0430\u0440\u0442\u0430\
+  \ \u043A\u0440\u0443\u043F\u043D\u043E\u0439 \u043A\u043E\u0433\u043E\u0440\u0442\
+  \u044B), \u0441\u0443\u043C\u043C\u0438\u0440\u0443\u0435\u043C \u043F\u043E \u043C\
+  \u0435\u0441\u044F\u0447\u043D\u044B\u043C \u043A\u043E\u0433\u043E\u0440\u0442\u0430\
+  \u043C.\\n      var bigStartIdx = bigKey * step;   // \u043D\u0435\u0432\u0435\u0440\
+  \u043D\u043E \u0434\u043B\u044F y (bigKey=\u0433\u043E\u0434) \u2014 \u043A\u043E\
+  \u0440\u0440\u0435\u043A\u0442\u0438\u0440\u0443\u0435\u043C \u043D\u0438\u0436\u0435\
+  \\n      var active = 0;\\n      grp.monthCohorts.forEach(function(ci) {\\n    \
+  \    // \u043C\u0435\u0441\u044F\u0446 \u043A\u043E\u043D\u0446\u0430 \u043E\u043A\
+  \u043D\u0430 bigAge \u0434\u043B\u044F \u044D\u0442\u043E\u0439 \u043A\u0440\u0443\
+  \u043F\u043D\u043E\u0439 \u043A\u043E\u0433\u043E\u0440\u0442\u044B (\u0430\u0431\
+  \u0441. ym-\u0438\u043D\u0434\u0435\u043A\u0441)\\n        var winEndIdx = firstMonthIdxOfBig(bigKey,\
+  \ grain) + bigAge * step + (step - 1);\\n        var ageForThisMonthCoh = winEndIdx\
+  \ - ci;\\n        if (ageForThisMonthCoh < 0) return;\\n        var pts = mCohorts[ci].points;\\\
+  n        // \u0431\u0435\u0440\u0451\u043C \u0431\u043B\u0438\u0436\u0430\u0439\u0448\
+  \u0438\u0439 \u0434\u043E\u0441\u0442\u0443\u043F\u043D\u044B\u0439 \u0432\u043E\
+  \u0437\u0440\u0430\u0441\u0442 \u2264 ageForThisMonthCoh \u0432\u043D\u0443\u0442\
+  \u0440\u0438 \u043E\u043A\u043D\u0430\\n        var best = null;\\n        for (var\
+  \ a = ageForThisMonthCoh; a > ageForThisMonthCoh - step && a >= 0; a--) {\\n   \
+  \       if (pts[a] != null) { best = pts[a]; break; }\\n        }\\n        if (best\
+  \ != null) active += best;\\n      });\\n      var rate = grp.size > 0 ? active\
+  \ / grp.size : null;\\n      cells[bigAge] = { active: active, rate: rate, isLast:\
+  \ (bigAge === lastObservable) };\\n      if (bigAge > maxAge) maxAge = bigAge;\\\
+  n    }\\n    cohorts[bigKey] = { label: periodLabelFromKey(bigKey, grain), order:\
+  \ bigKey, size: grp.size, cells: cells };\\n  });\\n  return { cohorts: cohorts,\
+  \ maxAge: maxAge };\\n}\\n\\n// \u041F\u0435\u0440\u0432\u044B\u0439 \u0430\u0431\
+  \u0441\u043E\u043B\u044E\u0442\u043D\u044B\u0439 ym-\u0438\u043D\u0434\u0435\u043A\
+  \u0441 \u043C\u0435\u0441\u044F\u0446\u0430 \u0434\u043B\u044F \u043A\u0440\u0443\
+  \u043F\u043D\u043E\u0433\u043E \u043F\u0435\u0440\u0438\u043E\u0434\u0430.\\nfunction\
+  \ firstMonthIdxOfBig(bigKey, grain) {\\n  if (grain === 'y') return bigKey * 12;\
+  \                 // bigKey = \u0433\u043E\u0434\\n  if (grain === 'q') { var y\
+  \ = Math.floor(bigKey / 4), q = bigKey % 4; return y * 12 + q * 3; }\\n  return\
+  \ bigKey;\\n}\\n\\nvar byGrain = { m: null, q: null, y: null };\\n['m','q','y'].forEach(function(g)\
+  \ { byGrain[g] = buildGrain(g); });\\n\\nvar availableGrains = ['m','q'].filter(function(g)\
+  \ { return byGrain[g] && Object.keys(byGrain[g].cohorts).length; });\\nvar currentGrain\
+  \ = (byGrain[CFG.defaultGrain] ? CFG.defaultGrain : (availableGrains[0] || 'm'));\\\
+  n\\n// ---------- \u0411\u041B\u041E\u041A 4: \u041C\u0415\u0414\u0418\u0410\u041D\
+  \u0410 \u0421\u0422\u041E\u041B\u0411\u0426\u0410 + \u0426\u0412\u0415\u0422 ----------\\\
+  nfunction median(arr) {\\n  if (!arr.length) return null;\\n  var s = arr.slice().sort(function(a,b){\
+  \ return a-b; });\\n  var mid = Math.floor(s.length / 2);\\n  return s.length %\
+  \ 2 ? s[mid] : (s[mid-1] + s[mid]) / 2;\\n}\\n// \u041C\u0435\u0434\u0438\u0430\u043D\
+  \u0430 \u043F\u043E \u0441\u0442\u043E\u043B\u0431\u0446\u0443: \u0442\u043E\u043B\
+  \u044C\u043A\u043E \u0417\u0420\u0415\u041B\u042B\u0415 \u044F\u0447\u0435\u0439\
+  \u043A\u0438 (\u043D\u0435 isLast, rate!=null).\\nfunction computeColMedians(grainObj)\
+  \ {\\n  var med = {};\\n  if (!grainObj) return med;\\n  var cks = Object.keys(grainObj.cohorts);\\\
+  n  for (var age = 1; age <= grainObj.maxAge; age++) {\\n    var vals = [];\\n  \
+  \  cks.forEach(function(ck) {\\n      var c = grainObj.cohorts[ck].cells[age];\\\
+  n      if (c && !c.isLast && c.rate !== null) vals.push(c.rate);\\n    });\\n  \
+  \  med[age] = median(vals);\\n  }\\n  return med;\\n}\\n\\n// ---------- \u0411\u041B\
+  \u041E\u041A 4.1: \u0423\u0422\u0418\u041B\u0418\u0422\u042B \u0426\u0412\u0415\u0422\
+  \u0410 (\u0438\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u044E\u0442 CFG.colors)\
+  \ ----------\\n// \u041F\u0440\u0435\u043E\u0431\u0440\u0430\u0437\u0443\u0435\u0442\
+  \ [R,G,B,A] \u0432 rgba() \u0441\u0442\u0440\u043E\u043A\u0443\\nfunction rgba(c)\
+  \ {\\n  if (!c) return 'rgba(0,0,0,1)';\\n  if (typeof c === 'string') return c;\
+  \ // \u0443\u0436\u0435 \u0441\u0442\u0440\u043E\u043A\u0430\\n  var r = Math.round(c[0]),\
+  \ g = Math.round(c[1]), b = Math.round(c[2]);\\n  var a = (c.length >= 4) ? c[3]\
+  \ : 1.0;\\n  return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';\\n}\\n// \u041B\
+  \u0438\u043D\u0435\u0439\u043D\u0430\u044F \u0438\u043D\u0442\u0435\u0440\u043F\u043E\
+  \u043B\u044F\u0446\u0438\u044F \u043C\u0435\u0436\u0434\u0443 \u0434\u0432\u0443\
+  \u043C\u044F \u0446\u0432\u0435\u0442\u0430\u043C\u0438 [R,G,B] \u0438\u043B\u0438\
+  \ [R,G,B,A]\\nfunction lerp(a, b, t) {\\n  var r = Math.round(a[0] + (b[0] - a[0])\
+  \ * t);\\n  var g = Math.round(a[1] + (b[1] - a[1]) * t);\\n  var b2 = Math.round(a[2]\
+  \ + (b[2] - a[2]) * t);\\n  return [r, g, b2];\\n}\\n// \u0421\u043C\u0435\u0448\
+  \u0438\u0432\u0430\u0435\u0442 \u0434\u0432\u0430 \u0446\u0432\u0435\u0442\u0430\
+  , \u0432\u043E\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u0442 rgb() \u0441\u0442\
+  \u0440\u043E\u043A\u0443\\nfunction mix(c1, c2, t) {\\n  var r = lerp(c1, c2, t);\\\
+  n  return 'rgb(' + r[0] + ',' + r[1] + ',' + r[2] + ')';\\n}\\n// \u041C\u0430\u043A\
+  \u0441. \u043E\u0442\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435 \u043E\u0442\
+  \ \u043C\u0435\u0434\u0438\u0430\u043D\u044B \u043F\u043E \u0412\u0421\u0415\u041C\
+  \ \u0437\u0440\u0435\u043B\u044B\u043C \u044F\u0447\u0435\u0439\u043A\u0430\u043C\
+  \ \u2014 \u044D\u0442\u043E \u043A\u0440\u0430\u0439 \u043F\u0430\u043B\u0438\u0442\
+  \u0440\u044B.\\nfunction computeMaxDev(grainObj, medians) {\\n  if (!grainObj) return\
+  \ 0.2;\\n  var maxDev = 0;\\n  Object.keys(grainObj.cohorts).forEach(function(ck)\
+  \ {\\n    var cells = grainObj.cohorts[ck].cells;\\n    for (var age = 1; age <=\
+  \ grainObj.maxAge; age++) {\\n      var c = cells[age];\\n      if (c && !c.isLast\
+  \ && c.rate !== null && medians[age] != null) {\\n        var dev = Math.abs(c.rate\
+  \ - medians[age]);\\n        if (dev > maxDev) maxDev = dev;\\n      }\\n    }\\\
+  n  });\\n  return maxDev > 0.001 ? maxDev : 0.2;\\n}\\n// \u0414\u0438\u0432\u0435\
+  \u0440\u0433\u0435\u043D\u0442\u043D\u044B\u0439 \u0446\u0432\u0435\u0442: d = (rate\
+  \ - median) / span, \u0433\u0434\u0435 span = \u043C\u0430\u043A\u0441. \u043E\u0442\
+  \u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435 \u0432 \u0434\u0430\u043D\u043D\
+  \u044B\u0445.\\nfunction divColor(rate, med, span) {\\n  if (rate === null || med\
+  \ === null || isNaN(rate) || isNaN(med)) return rgba(CFG.colors.divMid);\\n  var\
+  \ d = (rate - med) / (span || 0.2);\\n  d = Math.max(-1, Math.min(1, d));\\n  if\
+  \ (d >= 0) return mix(CFG.colors.divMid, CFG.colors.divHigh, d);\\n  return mix(CFG.colors.divMid,\
+  \ CFG.colors.divLow, -d);\\n}\\nfunction textColorFor(rate, med) {\\n  return rgba(CFG.colors.textMain);\
+  \ // \u0442\u0451\u043C\u043D\u044B\u0439 \u0442\u0435\u043A\u0441\u0442 \u2014\
+  \ \u0447\u0438\u0442\u0430\u0435\u043C \u043D\u0430 \u0433\u043E\u043B\u0443\u0431\
+  \u043E\u043C \u0438 \u0436\u0451\u043B\u0442\u043E\u043C\\n}\\nfunction fmtPct(rate)\
+  \ { if (rate === null || isNaN(rate)) return ''; return (Math.round(rate*1000)/10).toString().replace('.',\
+  \ ',') + '%'; }\\nfunction fmtInt(v) { if (v === null || isNaN(v)) return ''; return\
+  \ String(Math.round(v)).replace(/\\\\B(?=(\\\\d{3})+(?!\\\\d))/g, '\\\\u00A0');\
+  \ }\\n// \u041A\u043E\u043C\u043F\u0430\u043A\u0442: >=1000 -> \xAB1\u041A\xBB,\
+  \ >=1 000 000 -> \xAB1\u041C\xBB.\\nfunction fmtK(v) {\\n  if (v === null || isNaN(v))\
+  \ return '';\\n  v = Math.round(v);\\n  if (v >= 1000000) { var m = v / 1000000;\
+  \ return (m >= 10 ? Math.round(m) : Math.round(m*10)/10).toString().replace('.',\
+  \ ',') + '\u041C'; }\\n  if (v >= 1000) { var k = v / 1000; return (k >= 10 ? Math.round(k)\
+  \ : Math.round(k*10)/10).toString().replace('.', ',') + '\u041A'; }\\n  return String(v);\\\
+  n}\\n\\n// ---------- \u0411\u041B\u041E\u041A 5: HTML \u041E\u0412\u0415\u0420\u041B\
+  \u0415\u0419 ----------\\nfunction buildHTML(grain, cssColor) {\\n  var G = byGrain[grain];\\\
+  n  var meta = CFG.grainMeta[grain];\\n  var C = CFG.colors;\\n  var F = CFG.fonts;\\\
+  n  var S = CFG.spacing;\\n\\n  var css = [\\n    '<style>',\\n    // \u041A\u043E\
+  \u0440\u043D\u0435\u0432\u043E\u0439 \u043A\u043E\u043D\u0442\u0435\u0439\u043D\u0435\
+  \u0440\\n    '.rt-root{width:100%;height:100%;font-family:\\\"Segoe UI\\\",system-ui,-apple-system,sans-serif;color:'\
+  \ + cssColor(C.textMain) + ';background:' + cssColor(C.bgRoot) + ';display:flex;flex-direction:column;overflow:hidden;box-sizing:border-box;font-size:'\
+  \ + F.root + 'px;}',\\n    '.rt-root *{box-sizing:border-box;}',\\n    // \u0413\
+  \u043E\u043B\u043E\u0432\u0430: \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\
+  \u043A \u0441\u043B\u0435\u0432\u0430, \u043B\u0435\u0433\u0435\u043D\u0434\u0430\
+  \ \u0438 \u043A\u043D\u043E\u043F\u043A\u0438 \u0441\u043F\u0440\u0430\u0432\u0430\
+  \\n    '.rt-head{display:flex;align-items:flex-start;gap:16px;padding:' + S.headPadding\
+  \ + ';flex-shrink:0;}',\\n    '.rt-titlewrap{flex:1;display:flex;flex-direction:column;justify-content:center;}',\\\
+  n    '.rt-title{font-size:' + F.title + 'px;font-weight:600;}',\\n    '.rt-sub{font-size:'\
+  \ + F.subtitle + 'px;color:' + cssColor(C.textSub) + ';font-weight:400;margin-top:2px;}',\\\
+  n    // \u041F\u0440\u0430\u0432\u0430\u044F \u0447\u0430\u0441\u0442\u044C: \u043B\
+  \u0435\u0433\u0435\u043D\u0434\u0430 + \u043A\u043D\u043E\u043F\u043A\u0438 (\u0432\
+  \u0435\u0440\u0442\u0438\u043A\u0430\u043B\u044C\u043D\u043E)\\n    '.rt-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;}',\\\
+  n    '.rt-right-top{display:flex;align-items:center;gap:10px;}',\\n    // \u041E\
+  \u0431\u0451\u0440\u0442\u043A\u0430 \u043B\u0435\u0433\u0435\u043D\u0434\u044B\
+  : relative \u0434\u043B\u044F \u043F\u043E\u0437\u0438\u0446\u0438\u043E\u043D\u0438\
+  \u0440\u043E\u0432\u0430\u043D\u0438\u044F \u0434\u0438\u0430\u043F\u0430\u0437\u043E\
+  \u043D\u0430 \u0438 \u043A\u043D\u043E\u043F\u043A\u0438\\n    '.rt-legend-wrap{position:relative;display:flex;align-items:center;gap:8px;height:20px;}',\\\
+  n    // \u041B\u0435\u0433\u0435\u043D\u0434\u0430 (\u0441\u043B\u0435\u0432\u0430\
+  \ \u043E\u0442 \u043A\u043D\u043E\u043F\u043E\u043A \u0432 \u0432\u0435\u0440\u0445\
+  \u043D\u0435\u043C \u0440\u044F\u0434\u0443)\\n    '.rt-legend{display:flex;align-items:center;gap:8px;font-size:'\
+  \ + F.legend + 'px;color:' + cssColor(C.textMuted) + ';}',\\n    // \u0414\u0438\
+  \u0430\u043F\u0430\u0437\u043E\u043D \u0438 \u043A\u043D\u043E\u043F\u043A\u0430\
+  \ \u0441\u0431\u0440\u043E\u0441\u0430 \u2014 \u0430\u0431\u0441\u043E\u043B\u044E\
+  \u0442\u043D\u043E \u043F\u043E\u0434 \u043B\u0435\u0433\u0435\u043D\u0434\u043E\
+  \u0439, \u043D\u0435 \u0432\u043B\u0438\u044F\u044E\u0442 \u043D\u0430 \u0440\u0430\
+  \u0437\u043C\u0435\u0440\\n    '.lg-range-wrap{position:absolute;left:0;top:100%;display:flex;align-items:center;gap:6px;font-size:'\
+  \ + F.lgRange + 'px;color:' + cssColor(C.lgRangeText) + ';white-space:nowrap;}',\\\
+  n    '.lg-reset{border:1px solid ' + cssColor(C.lgResetBorder) + ';background:'\
+  \ + cssColor(C.lgResetBg) + ';border-radius:4px;font-size:' + F.lgReset + 'px;color:#555;padding:1px\
+  \ 6px;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .15s;}',\\\
+  n    '.lg-reset.on{opacity:1;pointer-events:auto;}',\\n    '.lg-reset:hover{background:'\
+  \ + cssColor(C.lgResetHover) + ';}',\\n    // \u0421\u0435\u0433\u043C\u0435\u043D\
+  \u0442-\u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0430\u0442\u0435\u043B\u044C\
+  \ (\u0441\u043F\u0440\u0430\u0432\u0430 \u043E\u0442 \u043B\u0435\u0433\u0435\u043D\
+  \u0434\u044B \u0432 \u0432\u0435\u0440\u0445\u043D\u0435\u043C \u0440\u044F\u0434\
+  \u0443)\\n    '.rt-seg{display:inline-flex;border:1px solid ' + cssColor(C.segBorder)\
+  \ + ';border-radius:6px;overflow:hidden;}',\\n    '.rt-seg button{border:none;background:'\
+  \ + cssColor(C.segBg) + ';padding:5px 12px;font:400 ' + F.segBtn + 'px \\\"Segoe\
+  \ UI\\\",sans-serif;color:' + cssColor(C.textMain) + ';cursor:pointer;border-right:1px\
+  \ solid ' + cssColor(C.segBorder) + ';}',\\n    '.rt-seg button:last-child{border-right:none;}',\\\
+  n    '.rt-seg button:hover{background:' + cssColor(C.segHover) + ';}',\\n    '.rt-seg\
+  \ button.active{background:' + cssColor(C.segActive) + ';color:' + cssColor(C.segText)\
+  \ + ';font-weight:600;}',\\n    '.rt-legend .lg-cap{white-space:nowrap;}',\\n  \
+  \  '.lg-slider{position:relative;width:' + S.sliderWidth + 'px;height:' + S.sliderHeight\
+  \ + 'px;flex-shrink:0;cursor:pointer;}',\\n    '.lg-track{position:absolute;inset:2px\
+  \ 0;border-radius:3px;background:linear-gradient(90deg,' + cssColor(C.divLow) +\
+  \ ',' + cssColor(C.divMid) + ',' + cssColor(C.divHigh) + ');}',\\n    '.lg-mask{position:absolute;top:2px;bottom:2px;background:rgba(250,250,250,.78);pointer-events:none;}',\\\
+  n    '.lg-mask-l{left:0;width:0;border-radius:3px 0 0 3px;}',\\n    '.lg-mask-r{right:0;width:0;border-radius:0\
+  \ 3px 3px 0;}',\\n    '.lg-h{position:absolute;top:-2px;width:10px;height:18px;margin-left:-5px;border-radius:3px;background:'\
+  \ + cssColor(C.lgHandleBg) + ';border:1px solid ' + cssColor(C.lgHandleBorder) +\
+  \ ';box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:ew-resize;z-index:2;}',\\n    '.lg-h:hover,.lg-h.drag{border-color:'\
+  \ + cssColor(C.lgHandleActive) + ';}',\\n    '.lg-range{font-variant-numeric:tabular-nums;color:'\
+  \ + cssColor(C.lgRangeText) + ';min-width:96px;}',\\n    '.lg-reset{border:1px solid\
+  \ ' + cssColor(C.lgResetBorder) + ';background:' + cssColor(C.lgResetBg) + ';border-radius:4px;font-size:'\
+  \ + F.lgReset + 'px;color:#555;padding:2px 7px;cursor:pointer;display:none;}',\\\
+  n    '.lg-reset.on{display:inline-block;}',\\n    '.lg-note{margin-left:6px;color:#999;}',\\\
+  n    '.lg-reset:hover{background:' + cssColor(C.lgResetHover) + ';}',\\n    // \u042F\
+  \u0447\u0435\u0439\u043A\u0438\\n    '.rt-cell.dim{background:' + cssColor(C.cellDimBg)\
+  \ + '!important;color:' + cssColor(C.cellDimText) + '!important;}',\\n    '.rt-cell.peek{position:relative;z-index:5;transform:scale(1.04);box-shadow:0\
+  \ 4px 12px ' + C.cellPeekShadow + ';border-radius:3px;transition:transform .08s,box-shadow\
+  \ .08s;}',\\n    // \u0421\u043A\u0440\u043E\u043B\u043B \u0438 \u0442\u0430\u0431\
+  \u043B\u0438\u0446\u0430\\n    '.rt-scroll{flex:1;overflow:auto;padding:' + S.scrollPadding\
+  \ + ';}',\\n    '.rt-tbl{width:100%;border-collapse:separate;border-spacing:0;white-space:nowrap;font-variant-numeric:tabular-nums;table-layout:fixed;}',\\\
+  n    '.rt-tbl col.c-lbl{width:100px;} .rt-tbl col.c-size{width:118px;} .rt-tbl col.c-age{width:auto;}',\\\
+  n    '.rt-tbl th.rt-age,.rt-tbl td[data-age]{min-width:64px;}',\\n    // \u0428\u0430\
+  \u043F\u043A\u0430 \u0442\u0430\u0431\u043B\u0438\u0446\u044B\\n    '.rt-tbl th{position:sticky;top:0;z-index:2;background:'\
+  \ + cssColor(C.thBg) + ';color:' + cssColor(C.thText) + ';font-size:' + F.th + 'px;font-weight:600;padding:'\
+  \ + S.thPadding + ';text-align:center;border-bottom:1px solid ' + cssColor(C.thBorder)\
+  \ + ';}',\\n    '.rt-tbl th.rt-age .h-top{font-size:' + F.th + 'px;font-weight:600;color:'\
+  \ + cssColor(C.thText) + ';}',\\n    '.rt-tbl th.rt-age .h-med{display:block;margin-top:2px;font-size:'\
+  \ + F.thMed + 'px;font-weight:600;color:' + cssColor(C.thMed) + ';}',\\n    '.rt-tbl\
+  \ th.rt-age .h-med .cap{color:' + cssColor(C.thMedCap) + ';font-weight:500;}',\\\
+  n    '.rt-tbl th.rt-lbl{left:0;z-index:4;text-align:left;vertical-align:bottom;background:'\
+  \ + cssColor(C.thBg) + ';padding-left:8px;font-size:' + F.thLbl + 'px;white-space:normal;line-height:1.25;}',\\\
+  n    '.rt-tbl th.rt-size{position:static;text-align:left;vertical-align:bottom;background:'\
+  \ + cssColor(C.thBg) + ';padding-left:8px;font-size:' + F.thSize + 'px;white-space:normal;line-height:1.25;}',\\\
+  n    // \u042F\u0447\u0435\u0439\u043A\u0438 \u0442\u0430\u0431\u043B\u0438\u0446\
+  \u044B\\n    '.rt-tbl td{padding:0;text-align:center;font-size:' + F.td + 'px;}',\\\
+  n    '.rt-tbl td.rt-lbl{position:sticky;left:0;z-index:1;background:' + cssColor(C.bgRoot)\
+  \ + ';text-align:left;font-weight:400;color:' + cssColor(C.tdText) + ';border-right:1px\
+  \ solid ' + cssColor(C.tdBorder) + ';overflow:hidden;text-overflow:ellipsis;padding:'\
+  \ + S.tdPadding + ';}',\\n    '.rt-tbl td.rt-size{background:' + cssColor(C.bgRoot)\
+  \ + ';padding:0;border-right:1px solid ' + cssColor(C.tdBorder) + ';}',\\n    '.rt-size-wrap{display:flex;align-items:center;height:'\
+  \ + S.cellHeight + 'px;padding:0 8px 0 0;overflow:hidden;}',\\n    '.rt-size-bar{height:'\
+  \ + S.sizeBarHeight + 'px;background:' + cssColor(C.sizeBar) + ';border-radius:0\
+  \ 2px 2px 0;flex-shrink:0;}',\\n    '.rt-size-num{margin-left:4px;font-size:' +\
+  \ F.sizeNum + 'px;color:' + cssColor(C.sizeText) + ';font-weight:400;white-space:nowrap;}',\\\
+  n    '.rt-tbl tr:hover td.rt-lbl,.rt-tbl tr:hover td.rt-size{background:' + cssColor(C.tdHover)\
+  \ + ';}',\\n    '.rt-cell{height:' + S.cellHeight + 'px;line-height:' + S.cellHeight\
+  \ + 'px;cursor:default;}',\\n    '.rt-tbl td.hl .rt-cell{box-shadow:inset 0 0 0\
+  \ 999px ' + C.hlCol + ';}',\\n    '.rt-tbl th.hl{background:' + cssColor(C.tdHover)\
+  \ + ';}',\\n    '.rt-cellwrap:hover .rt-cell{box-shadow:inset 0 0 0 999px ' + C.hlColStrong\
+  \ + ';}',\\n    // \u0422\u0443\u043B\u0442\u0438\u043F (\u0431\u0435\u043B\u0430\
+  \u044F \u043F\u043B\u0438\u0442\u043A\u0430 \u0441 \u0442\u0435\u043D\u044C\u044E\
+  , \u0442\u0435\u043A\u0441\u0442 \u0432 \u0441\u0442\u0440\u043E\u043A\u0443)\\\
+  n    '.rt-tip{position:fixed;z-index:99999;pointer-events:none;background:' + cssColor(C.tipBg)\
+  \ + ';color:' + cssColor(C.tipText) + ';font-family:Inter,\\\"Segoe UI\\\",system-ui,sans-serif;font-size:'\
+  \ + F.tip + 'px;line-height:1.4;padding:' + S.tipPadding + ';border-radius:8px;box-shadow:0\
+  \ 4px 8px ' + C.tipShadowStrong + ';opacity:0;transition:opacity .08s;min-width:160px;white-space:nowrap;}',\\\
+  n    '.rt-tip.on{opacity:1;}',\\n    '.rt-tip .t-row{display:flex;align-items:center;margin-bottom:4px;}',\\\
+  n    '.rt-tip .t-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;}',\\\
+  n    '.rt-tip .t-strong{font-weight:700;color:' + cssColor(C.tipStrong) + ';}',\\\
+  n    '.rt-tip .t-grey{color:' + cssColor(C.tipGrey) + ';font-style:italic;}',\\\
+  n    '.rt-tip .t-cap{color:' + cssColor(C.tipCaption) + ';}',\\n    '</style>'\\\
+  n  ].join('');\\n\\n  if (!G || Object.keys(G.cohorts).length === 0) {\\n    return\
+  \ css + '<div class=\\\"rt-root\\\"><div class=\\\"rt-head\\\"><div class=\\\"rt-title\\\
+  \">' + CFG.text.title + '</div></div><div style=\\\"padding:20px;color:' + cssColor(C.divLow)\
+  \ + ';font-weight:600;\\\">' + CFG.text.noData + '</div></div>';\\n  }\\n\\n  var\
+  \ cks = Object.keys(G.cohorts).sort(function(a,b){ return G.cohorts[a].order - G.cohorts[b].order;\
+  \ });\\n  var AGES = G.maxAge;\\n  var medians = computeColMedians(G);\\n  var colorSpan\
+  \ = computeMaxDev(G, medians);\\n  var maxSize = 0;\\n  cks.forEach(function(ck){\
+  \ var s = G.cohorts[ck].size || 0; if (s > maxSize) maxSize = s; });\\n\\n  var\
+  \ h = [];\\n  h.push('<div class=\\\"rt-root\\\">');\\n  // \u0433\u043E\u043B\u043E\
+  \u0432\u0430: \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A \u0441\u043B\
+  \u0435\u0432\u0430, \u043B\u0435\u0433\u0435\u043D\u0434\u0430 \u0438 \u043A\u043D\
+  \u043E\u043F\u043A\u0438 \u0441\u043F\u0440\u0430\u0432\u0430\\n  var spanPP = Math.round(colorSpan\
+  \ * 1000) / 10; // \u043A\u0440\u0430\u0439 \u0448\u043A\u0430\u043B\u044B \u0432\
+  \ \u043F.\u043F.\\n  h.push('<div class=\\\"rt-head\\\"><div class=\\\"rt-titlewrap\\\
+  \"><div class=\\\"rt-title\\\">' + CFG.text.title + '</div>' + (CFG.text.subtitle\
+  \ ? '<div class=\\\"rt-sub\\\">' + CFG.text.subtitle + '</div>' : '') + '</div>'\\\
+  n    + '<div class=\\\"rt-right\\\"><div class=\\\"rt-right-top\\\"><div class=\\\
+  \"rt-legend-wrap\\\">'\\n    + '<div class=\\\"rt-legend\\\" data-span=\\\"' + spanPP\
+  \ + '\\\">'\\n    + '<span class=\\\"lg-cap\\\">\u041D\u0438\u0436\u0435 \u043C\u0435\
+  \u0434\u0438\u0430\u043D\u044B</span>'\\n    + '<div class=\\\"lg-slider\\\" title=\\\
+  \"\u041F\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u0440\u0443\u0447\
+  \u043A\u0438, \u0447\u0442\u043E\u0431\u044B \u043E\u0441\u0442\u0430\u0432\u0438\
+  \u0442\u044C \u0442\u043E\u043B\u044C\u043A\u043E \u0432\u044B\u0431\u0440\u0430\
+  \u043D\u043D\u044B\u0439 \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\\\">'\\\
+  n    +   '<div class=\\\"lg-track\\\"></div>'\\n    +   '<div class=\\\"lg-mask\
+  \ lg-mask-l\\\"></div><div class=\\\"lg-mask lg-mask-r\\\"></div>'\\n    +   '<div\
+  \ class=\\\"lg-h lg-h-lo\\\" data-h=\\\"lo\\\"></div><div class=\\\"lg-h lg-h-hi\\\
+  \" data-h=\\\"hi\\\"></div>'\\n    + '</div>'\\n    + '<span class=\\\"lg-cap\\\"\
+  >\u0412\u044B\u0448\u0435 \u043C\u0435\u0434\u0438\u0430\u043D\u044B</span>'\\n\
+  \    + '</div>'\\n    + '<div class=\\\"lg-range-wrap\\\"><span class=\\\"lg-range\\\
+  \"></span><button class=\\\"lg-reset\\\" title=\\\"\u0421\u0431\u0440\u043E\u0441\
+  \u0438\u0442\u044C \u0434\u0438\u0430\u043F\u0430\u0437\u043E\u043D\\\">\u0441\u0431\
+  \u0440\u043E\u0441</button></div>'\\n    + '</div><div class=\\\"rt-seg\\\">');\\\
+  n  availableGrains.forEach(function(g){\\n    h.push('<button data-grain=\\\"' +\
+  \ g + '\\\"' + (g === grain ? ' class=\\\"active\\\"' : '') + '>' + CFG.grainMeta[g].label\
+  \ + '</button>');\\n  });\\n  h.push('</div></div></div></div>');\\n  // \u0442\u0430\
+  \u0431\u043B\u0438\u0446\u0430\\n  h.push('<div class=\\\"rt-scroll\\\"><table class=\\\
+  \"rt-tbl\\\"><colgroup><col class=\\\"c-lbl\\\"><col class=\\\"c-size\\\">');\\\
+  n  for (var a = 1; a <= AGES; a++) h.push('<col class=\\\"c-age\\\">');\\n  h.push('</colgroup><thead>');\\\
+  n  // \u0435\u0434\u0438\u043D\u0430\u044F \u0441\u0442\u0440\u043E\u043A\u0430\
+  \ \u0448\u0430\u043F\u043A\u0438: \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\
+  \u043A + \u043C\u0435\u0434\u0438\u0430\u043D\u0430 \u043F\u043E\u0434\u043F\u0438\
+  \u0441\u044C\u044E \u0432\u043D\u0443\u0442\u0440\u0438 \u044F\u0447\u0435\u0439\
+  \u043A\u0438\\n  h.push('<tr><th class=\\\"rt-lbl\\\">' + CFG.text.cohortCol + '</th><th\
+  \ class=\\\"rt-size\\\">' + CFG.text.sizeCol + '</th>');\\n  for (var a = 1; a <=\
+  \ AGES; a++) {\\n    var medTxt = (medians[a] !== null && medians[a] !== undefined)\\\
+  n      ? '<span class=\\\"h-med\\\">' + fmtPct(medians[a]) + '</span>'\\n      :\
+  \ '<span class=\\\"h-med\\\">&nbsp;</span>';\\n    h.push('<th class=\\\"rt-age\\\
+  \" data-age=\\\"' + a + '\\\"><span class=\\\"h-top\\\">' + meta.colHdr(a) + '</span>'\
+  \ + medTxt + '</th>');\\n  }\\n  h.push('</tr></thead><tbody>');\\n\\n  cks.forEach(function(ck){\\\
+  n    var row = G.cohorts[ck];\\n    h.push('<tr>');\\n    h.push('<td class=\\\"\
+  rt-lbl\\\">' + row.label + '</td>');\\n    var bw = maxSize > 0 ? Math.max(3, Math.round((row.size\
+  \ || 0) / maxSize * 70)) : 3;\\n    h.push('<td class=\\\"rt-size\\\"><div class=\\\
+  \"rt-size-wrap\\\"><span class=\\\"rt-size-bar\\\" style=\\\"width:' + bw + '%;\\\
+  \"></span><span class=\\\"rt-size-num\\\">' + fmtK(row.size) + '</span></div></td>');\\\
+  n    for (var a = 1; a <= AGES; a++) {\\n      var cell = row.cells[a];\\n     \
+  \ if (!cell || cell.rate === null) { h.push('<td data-age=\\\"' + a + '\\\"></td>');\
+  \ continue; }\\n      var bg, fg, extra = '';\\n      if (cell.isLast) { bg = cssColor(C.greyLast);\
+  \ fg = cssColor(C.textSub); extra = ';font-style:italic'; }\\n      else { bg =\
+  \ divColor(cell.rate, medians[a], colorSpan); fg = textColorFor(cell.rate, medians[a]);\
+  \ }\\n      var medV = (medians[a] !== null && medians[a] !== undefined) ? fmtPct(medians[a])\
+  \ : '';\\n      // \u043D\u043E\u0440\u043C\u0430\u043B\u0438\u0437\u043E\u0432\u0430\
+  \u043D\u043D\u043E\u0435 \u043E\u0442\u043A\u043B\u043E\u043D\u0435\u043D\u0438\u0435\
+  \ \u043E\u0442 \u043C\u0435\u0434\u0438\u0430\u043D\u044B (-1..1) \u2014 \u0434\u043B\
+  \u044F \u0441\u043B\u0430\u0439\u0434\u0435\u0440-\u0444\u0438\u043B\u044C\u0442\
+  \u0440\u0430\\n      var devN = '';\\n      if (!cell.isLast && medians[a] != null\
+  \ && colorSpan) {\\n        var dv = (cell.rate - medians[a]) / colorSpan;\\n  \
+  \      devN = Math.max(-1, Math.min(1, dv)).toFixed(3);\\n      }\\n      // \u0434\
+  \u0430\u043D\u043D\u044B\u0435 \u0434\u043B\u044F \u043A\u0430\u0441\u0442\u043E\
+  \u043C\u043D\u043E\u0433\u043E \u0442\u0443\u043B\u0442\u0438\u043F\u0430 (\u0431\
+  \u0435\u0437 native title \u2014 \u043E\u043D \u0442\u043E\u0440\u043C\u043E\u0437\
+  \u0438\u0442)\\n      h.push('<td data-age=\\\"' + a + '\\\" class=\\\"rt-cellwrap\\\
+  \"'\\n        + ' data-label=\\\"' + row.label + '\\\" data-n=\\\"' + a + '\\\"\
+  \ data-unit=\\\"' + meta.unit + '\\\"'\\n        + ' data-size=\\\"' + fmtInt(row.size)\
+  \ + '\\\" data-active=\\\"' + fmtInt(cell.active) + '\\\"'\\n        + ' data-rate=\\\
+  \"' + fmtPct(cell.rate) + '\\\" data-med=\\\"' + medV + '\\\"'\\n        + ' data-dev=\\\
+  \"' + devN + '\\\" data-grey=\\\"' + (cell.isLast ? '1' : '') + '\\\">'\\n     \
+  \   + '<div class=\\\"rt-cell\\\" style=\\\"background:' + bg + ';color:' + fg +\
+  \ extra + ';\\\">' + fmtPct(cell.rate) + '</div></td>');\\n    }\\n    h.push('</tr>');\\\
+  n  });\\n\\n  h.push('</tbody></table></div></div>');\\n  return css + h.join('');\\\
+  n}\\n\\n// ---------- \u0411\u041B\u041E\u041A 6: \u041C\u041E\u041D\u0422\u0418\
+  \u0420\u041E\u0412\u0410\u041D\u0418\u0415 + \u0418\u041D\u0422\u0415\u0420\u0410\
+  \u041A\u0422\u0418\u0412 ----------\\n(function mountOverlay() {\\n  try {\\n  \
+  \  // \u0421\u0441\u044B\u043B\u043A\u0438 \u043D\u0430 \u043A\u043E\u043D\u0444\
+  \u0438\u0433 \u0434\u043B\u044F \u0438\u0441\u043F\u043E\u043B\u044C\u0437\u043E\
+  \u0432\u0430\u043D\u0438\u044F \u0432\u043D\u0443\u0442\u0440\u0438 render\\n  \
+  \  var C = CFG.colors;\\n    var F = CFG.fonts;\\n    var S = CFG.spacing;\\n\\\
+  n    // \u0412\u0441\u043F\u043E\u043C\u043E\u0433\u0430\u0442\u0435\u043B\u044C\
+  \u043D\u0430\u044F \u0444\u0443\u043D\u043A\u0446\u0438\u044F \u0434\u043B\u044F\
+  \ \u043F\u0440\u0435\u043E\u0431\u0440\u0430\u0437\u043E\u0432\u0430\u043D\u0438\
+  \u044F [R,G,B,A] \u0432 rgba() \u0441\u0442\u0440\u043E\u043A\u0443\\n    function\
+  \ cssColor(c) {\\n      if (!c) return '#000';\\n      if (typeof c === 'string')\
+  \ return c;\\n      var r = Math.round(c[0]), g = Math.round(c[1]), b = Math.round(c[2]);\\\
+  n      var a = (c.length >= 4) ? c[3] : 1.0;\\n      return 'rgba(' + r + ',' +\
+  \ g + ',' + b + ',' + a + ')';\\n    }\\n\\n    var hosts = document.querySelectorAll('[_echarts_instance_]');\\\
+  n    if (!hosts || hosts.length === 0) return;\\n    var host = hosts[hosts.length\
+  \ - 1];\\n    var cvs = host.querySelectorAll('canvas');\\n    for (var i = 0; i\
+  \ < cvs.length; i++) cvs[i].style.display = 'none';\\n    var prev = host.querySelector('.rt-overlay');\\\
+  n    if (prev) prev.parentNode.removeChild(prev);\\n\\n    var overlay = document.createElement('div');\\\
+  n    overlay.className = 'rt-overlay';\\n    overlay.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;z-index:10;background:#fff;';\\\
+  n    if (getComputedStyle(host).position === 'static') host.style.position = 'relative';\\\
+  n    host.appendChild(overlay);\\n\\n    function render(grain) {\\n      overlay.innerHTML\
+  \ = buildHTML(grain, cssColor);\\n      // \u043F\u0435\u0440\u0435\u043A\u043B\u044E\
+  \u0447\u0430\u0442\u0435\u043B\u044C \u0433\u0440\u0430\u043D\u0443\u043B\u044F\u0440\
+  \u043D\u043E\u0441\u0442\u0438\\n      var btns = overlay.querySelectorAll('.rt-seg\
+  \ button');\\n      for (var i = 0; i < btns.length; i++) {\\n        btns[i].addEventListener('click',\
+  \ function() {\\n          var g = this.getAttribute('data-grain');\\n         \
+  \ if (g && byGrain[g]) { currentGrain = g; render(g); }\\n        });\\n      }\\\
+  n      // hover-\u043F\u043E\u0434\u0441\u0432\u0435\u0442\u043A\u0430 \u0441\u0442\
+  \u043E\u043B\u0431\u0446\u0430 + \u043A\u0430\u0441\u0442\u043E\u043C\u043D\u044B\
+  \u0439 \u0442\u0443\u043B\u0442\u0438\u043F\\n      var tbl = overlay.querySelector('.rt-tbl');\\\
+  n      var oldTip = document.querySelector('body > .rt-tip'); if (oldTip) oldTip.parentNode.removeChild(oldTip);\\\
+  n      var tip = document.createElement('div'); tip.className = 'rt-tip';\\n   \
+  \   // \u0442\u0443\u043B\u0442\u0438\u043F \u0432 body: position:fixed \u043E\u0442\
+  \ viewport, \u0447\u0442\u043E\u0431\u044B \u043D\u0435 \u0440\u0435\u0437\u0430\
+  \u043B\u0441\u044F overflow-\u043E\u043C \u0442\u0430\u0431\u043B\u0438\u0446\u044B\
+  .\\n      // \u0421\u0442\u0438\u043B\u0438 .rt-tip \u0436\u0438\u0432\u0443\u0442\
+  \ \u0432 <style> \u0432\u043D\u0443\u0442\u0440\u0438 overlay, \u043F\u043E\u044D\
+  \u0442\u043E\u043C\u0443 \u0434\u0443\u0431\u043B\u0438\u0440\u0443\u0435\u043C\
+  \ \u0438\u0445 \u0438\u043D\u043B\u0430\u0439\u043D.\\n      tip.style.cssText =\
+  \ 'position:fixed;z-index:99999;pointer-events:none;background:' + cssColor(C.tipBg)\
+  \ + ';color:' + cssColor(C.tipText) + ';font-family:Inter,\\\"Segoe UI\\\",system-ui,sans-serif;font-size:'\
+  \ + F.tip + 'px;line-height:1.5;padding:' + S.tipPadding + ';border-radius:8px;box-shadow:0\
+  \ 4px 8px ' + C.tipShadowStrong + ';opacity:0;transition:opacity .08s;max-width:'\
+  \ + S.tipMaxWidth + 'px;white-space:normal;';\\n      document.body.appendChild(tip);\\\
+  n      var curCol = null;\\n      function clearCol() { if (curCol) { var p = tbl.querySelectorAll('[data-age=\\\
+  \"' + curCol + '\\\"]'); for (var k=0;k<p.length;k++) p[k].classList.remove('hl');\
+  \ curCol = null; } }\\n      if (tbl) {\\n        tbl.addEventListener('mousemove',\
+  \ function(e) {\\n          var td = e.target.closest ? e.target.closest('.rt-cellwrap')\
+  \ : null;\\n          if (!td) { clearCol(); tip.style.opacity = '0'; return; }\\\
+  n          var age = td.getAttribute('data-age');\\n          if (age !== curCol)\
+  \ { clearCol(); var all = tbl.querySelectorAll('[data-age=\\\"' + age + '\\\"]');\
+  \ for (var k=0;k<all.length;k++) all[k].classList.add('hl'); curCol = age; }\\n\
+  \          var grey = td.getAttribute('data-grey') === '1';\\n          var html\
+  \ = '<div class=\\\"t-row\\\"><span class=\\\"t-strong\\\">' + td.getAttribute('data-active')\
+  \ + '</span><span style=\\\"margin:0 4px;\\\">\u0438\u0437</span><span class=\\\"\
+  t-strong\\\">' + td.getAttribute('data-size') + '</span></div>'\\n            +\
+  \ '<div class=\\\"t-row\\\">\u043F\u043E\u0441\u0435\u0442\u0438\u043B\u0438 \u043E\
+  \u0442\u0447\u0451\u0442 \u0447\u0435\u0440\u0435\u0437 ' + td.getAttribute('data-n')\
+  \ + ' ' + td.getAttribute('data-unit') + '</div>'\\n            + (grey ? '<div\
+  \ class=\\\"t-row t-grey\\\">\u041D\u0435\u0437\u0440\u0435\u043B\u044B\u0439 \u043F\
+  \u0435\u0440\u0438\u043E\u0434</div>' : '');\\n          tip.innerHTML = html;\\\
+  n          tip.style.opacity = '1';\\n          var tw = tip.offsetWidth, th = tip.offsetHeight;\\\
+  n          var x = e.clientX + 14, y = e.clientY + 14;\\n          if (x + tw >\
+  \ window.innerWidth - 8) x = e.clientX - tw - 14;\\n          if (y + th > window.innerHeight\
+  \ - 8) y = e.clientY - th - 14;\\n          tip.style.left = x + 'px'; tip.style.top\
+  \ = y + 'px';\\n        });\\n        tbl.addEventListener('mouseleave', function()\
+  \ { clearCol(); tip.style.opacity = '0'; });\\n      }\\n      // \u0441\u0442\u0440\
+  \u0430\u0445\u043E\u0432\u043A\u0430: \u043B\u044E\u0431\u043E\u0435 \u0434\u0432\
+  \u0438\u0436\u0435\u043D\u0438\u0435 \u0432\u043D\u0435 \u044F\u0447\u0435\u0435\
+  \u043A \u2014 \u0433\u0430\u0441\u0438\u043C \u0442\u0443\u043B\u0442\u0438\u043F\
+  \\n      overlay.addEventListener('mousemove', function(e){\\n        var inCell\
+  \ = e.target.closest && e.target.closest('.rt-cellwrap');\\n        if (!inCell)\
+  \ { clearCol(); tip.style.opacity = '0'; }\\n      });\\n      overlay.addEventListener('mouseleave',\
+  \ function(){ clearCol(); tip.style.opacity = '0'; });\\n\\n      // ---- \u0438\
+  \u043D\u0442\u0435\u0440\u0430\u043A\u0442\u0438\u0432\u043D\u0430\u044F \u043B\u0435\
+  \u0433\u0435\u043D\u0434\u0430-\u0441\u043B\u0430\u0439\u0434\u0435\u0440 (\u0444\
+  \u0438\u043B\u044C\u0442\u0440 \u043F\u043E \u043E\u0442\u043A\u043B\u043E\u043D\
+  \u0435\u043D\u0438\u044E \u043E\u0442 \u043C\u0435\u0434\u0438\u0430\u043D\u044B\
+  ) ----\\n      var slider = overlay.querySelector('.lg-slider');\\n      if (slider\
+  \ && tbl) {\\n        var legendWrap = overlay.querySelector('.rt-legend-wrap');\\\
+  n        var spanPP = parseFloat(legendWrap.getAttribute('data-span')) || 20;\\\
+  n        var hLo = slider.querySelector('.lg-h-lo'), hHi = slider.querySelector('.lg-h-hi');\\\
+  n        var maskL = slider.querySelector('.lg-mask-l'), maskR = slider.querySelector('.lg-mask-r');\\\
+  n        var rangeLbl = overlay.querySelector('.lg-range-wrap .lg-range');\\n  \
+  \      var resetBtn = overlay.querySelector('.lg-range-wrap .lg-reset');\\n    \
+  \    var lo = -1, hi = 1; // \u043D\u043E\u0440\u043C\u0430\u043B\u0438\u0437\u043E\
+  \u0432\u0430\u043D\u043D\u044B\u0435 \u0433\u0440\u0430\u043D\u0438\u0446\u044B\\\
+  n        var cells = tbl.querySelectorAll('.rt-cellwrap .rt-cell');\\n        function\
+  \ n2ratio(v){ return (v + 1) / 2; } // -1..1 -> 0..1\\n        function fmtDev(v){\
+  \ var pp = Math.round(v * spanPP * 10) / 10; var s = (pp>0?'+':'') + pp.toString().replace('.',',');\
+  \ return s + ' \u043F.\u043F.'; }\\n        function applyFilter() {\\n        \
+  \  hLo.style.left = (n2ratio(lo) * 100) + '%';\\n          hHi.style.left = (n2ratio(hi)\
+  \ * 100) + '%';\\n          maskL.style.width = (n2ratio(lo) * 100) + '%';\\n  \
+  \        maskR.style.width = ((1 - n2ratio(hi)) * 100) + '%';\\n          var full\
+  \ = (lo <= -0.999 && hi >= 0.999);\\n          rangeLbl.textContent = full ? ''\
+  \ : (fmtDev(lo) + ' \u2026 ' + fmtDev(hi));\\n          var rb = overlay.querySelector('.lg-reset');\
+  \ if (rb) rb.classList.toggle('on', !full);\\n          for (var i=0;i<cells.length;i++){\\\
+  n            var td = cells[i].parentNode;\\n            var dv = td.getAttribute('data-dev');\\\
+  n            if (dv === '' || dv === null) { cells[i].classList.remove('dim'); continue;\
+  \ } // \u043D\u0435\u0437\u0440\u0435\u043B\u044B\u0435 \u043D\u0435 \u0442\u0440\
+  \u043E\u0433\u0430\u0435\u043C\\n            var v = parseFloat(dv);\\n        \
+  \    if (v < lo - 0.0001 || v > hi + 0.0001) cells[i].classList.add('dim');\\n \
+  \           else cells[i].classList.remove('dim');\\n          }\\n        }\\n\
+  \        function clientToNorm(clientX){\\n          var r = slider.getBoundingClientRect();\\\
+  n          var t = (clientX - r.left) / r.width; t = Math.max(0, Math.min(1, t));\\\
+  n          return t * 2 - 1;\\n        }\\n        var dragH = null;\\n        function\
+  \ onMove(e){\\n          if (!dragH) return;\\n          var v = clientToNorm(e.clientX);\\\
+  n          if (dragH === hLo) { lo = Math.min(v, hi - 0.02); }\\n          else\
+  \ { hi = Math.max(v, lo + 0.02); }\\n          applyFilter();\\n        }\\n   \
+  \     function onUp(){ if(dragH){ dragH.classList.remove('drag'); dragH=null; document.removeEventListener('mousemove',onMove);\
+  \ document.removeEventListener('mouseup',onUp); } }\\n        [hLo, hHi].forEach(function(hnd){\\\
+  n          hnd.addEventListener('mousedown', function(e){ dragH = hnd; hnd.classList.add('drag');\
+  \ document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);\
+  \ e.preventDefault(); });\\n        });\\n        // \u043F\u0440\u0435\u0432\u044C\
+  \u044E-\u043F\u043E\u0434\u0441\u0432\u0435\u0442\u043A\u0430 \u043F\u0440\u0438\
+  \ \u043D\u0430\u0432\u0435\u0434\u0435\u043D\u0438\u0438 \u043D\u0430 \u0433\u0440\
+  \u0430\u0434\u0438\u0435\u043D\u0442 (\u0431\u043B\u0438\u0437\u043A\u0438\u0435\
+  \ \u0437\u043D\u0430\u0447\u0435\u043D\u0438\u044F)\\n        slider.addEventListener('mousemove',\
+  \ function(e){\\n          if (dragH) return;\\n          var v = clientToNorm(e.clientX),\
+  \ w = 0.12;\\n          for (var i=0;i<cells.length;i++){\\n            var dv =\
+  \ cells[i].parentNode.getAttribute('data-dev');\\n            if (dv==='' || dv===null){\
+  \ cells[i].classList.remove('peek'); continue; }\\n            var d = parseFloat(dv);\\\
+  n            if (Math.abs(d - v) <= w && !cells[i].classList.contains('dim')) cells[i].classList.add('peek');\\\
+  n            else cells[i].classList.remove('peek');\\n          }\\n        });\\\
+  n        slider.addEventListener('mouseleave', function(){ for (var i=0;i<cells.length;i++)\
+  \ cells[i].classList.remove('peek'); });\\n        if (resetBtn) resetBtn.addEventListener('click',\
+  \ function(){ lo=-1; hi=1; applyFilter(); });\\n        applyFilter();\\n      }\\\
+  n    }\\n    render(currentGrain);\\n\\n    if (typeof ResizeObserver !== 'undefined')\
+  \ {\\n      var ro = new ResizeObserver(function() { overlay.style.width = '100%';\
+  \ overlay.style.height = '100%'; });\\n      ro.observe(host);\\n    }\\n  } catch\
+  \ (e) {}\\n})();\\n\\n// ---------- \u0411\u041B\u041E\u041A 7: \u041F\u0423\u0421\
+  \u0422\u041E\u0419 OPTION (\u041E\u0411\u042F\u0417\u0410\u0422\u0415\u041B\u042C\
+  \u041D\u041E) ----------\\noption = {\\n  animation: false,\\n  xAxis: { show: false,\
+  \ type: 'value' },\\n  yAxis: { show: false, type: 'value' },\\n  series: [{ type:\
+  \ 'scatter', data: [] }]\\n};\",\"extra_form_data\":{},\"force\":false,\"result_format\"\
+  :\"json\",\"result_type\":\"full\"},\"result_format\":\"json\",\"result_type\":\"\
+  full\"}"
+cache_timeout: null
+uuid: 42e732d6-0fa5-4d6b-a60c-9a29fda48a78
+version: 1.0.0
+dataset_uuid: 7a08e052-a7d7-4b13-8303-14cab141e4ad

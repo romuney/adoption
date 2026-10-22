@@ -3953,6 +3953,12 @@ function pvModel(p) {
 function pvPendView(v) {
   return !!MODEL.preview && (v === 'who' || v === 'path' || v === 'coh' || (v === 'cal' && !Object.keys(MODEL.cal).length));
 }
+// Ключ анимации: что выбрано (эхо фильтров), без людской шины; нет эха — отпечаток данных
+var ANIM_COLS = ['mode_param', 'sel_f', 'aud_org_f', 'aud_spec_f', 'aud_stream_f', 'aud_hq_f', 'aud_it_f', 'aud_head_f'].concat(PV_COLS);
+function animKey() {
+  var f = MODEL.flt;
+  return f ? 'f|' + paKey(ANIM_COLS, function (c) { return f[c] || []; }) : 's|' + MODEL.sig;
+}
 // Заглушка вкладки, которой в мгновенной панели нет
 function pvPendHtml(what) {
   var sec = MODEL.preview ? Math.max(0, Math.round((Date.now() - MODEL.preview.t) / 1000)) : 0;
@@ -4320,8 +4326,11 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
       // overlay — скролл-контейнер: без сохранения позиции клик внизу прыгал наверх.
       // Первый рендер после перезапуска (панель ещё пуста) — позиция из state.
       var scr = overlay.firstChild ? scrSnap() : state.scr;
-      ANIM = MODEL.sig !== state.animSig;     // новые данные → анимация только в этом рендере
-      state.animSig = MODEL.sig;
+      // анимация — один раз на смену выбора (отчёт, период, опции, ЦА): мгновенная панель из каталога и пришедший следом
+      // ответ под тот же выбор — один показ, второй раз «Динамика» не перерисовывается с нуля (владелец 2026-10-22)
+      var ak = animKey();
+      ANIM = ak !== state.animSig;
+      state.animSig = ak;
       syncOvr();
       overlay.innerHTML = buildHTML();
       var ch1 = syncSvgWidth(), ch2 = syncDynH(), ch4 = syncFnH(), ch5 = syncCalH();

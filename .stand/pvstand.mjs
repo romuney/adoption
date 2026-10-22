@@ -93,9 +93,17 @@ await click('cat', '[data-rep]', 2); await p.waitForTimeout(300);
 await log('P2. клик X=' + x + ', через 0,7 с Y=' + y + ' (pv: ' + pvUsers(x) + ' / ' + pvUsers(y) + ')');
 await p.waitForTimeout(2300); await log('P2. ответ под X пришёл — на экране всё ещё Y');
 await p.waitForTimeout(3500); await log('P2. ответ под Y пришёл');
+// P4. Стоим на «Динамике»: клик по отчёту — анимация один раз (блок каталога); ответ панели следом её не повторяет.
+const anims = async () => (await fr('pan')).evaluate(() => document.getAnimations ? document.getAnimations().length : -1);
+plan.pan = [{ delay: 2000 }];
+const z = await repAt(5);
+await click('cat', '[data-rep]', 5); await p.waitForTimeout(60);
+out.push({ step: 'P4. клик по отчёту ' + z + ' на «Динамике» — анимаций сразу', anims: await anims() });
+await p.waitForTimeout(2050);
+out.push({ step: 'P4. ответ панели пришёл — анимаций (0 — не повторилась)', anims: await anims() });
 // P3. Снять выбор — весь Proteus (блока нет: обычное ожидание с плашкой).
 plan.pan = [{ delay: 1500 }];
-await click('cat', '[data-rep]', 2); await p.waitForTimeout(700);
+await click('cat', '[data-rep]', 5); await p.waitForTimeout(700);
 await log('P3. снят выбор, 0,7 с');
 await p.waitForTimeout(1200); await log('P3. ответ пришёл');
 console.log(JSON.stringify({ errs, out }, null, 1));

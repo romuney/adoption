@@ -1,4 +1,6 @@
-// ЛЕНТА СОБЫТИЙ БОРДА (DevTools), версия 4 (2026-10-22): что на самом деле происходит при кликах — по секундам, в одной ленте.
+// ЛЕНТА СОБЫТИЙ БОРДА (DevTools), версия 5 (2026-10-22): что на самом деле происходит при кликах — по секундам, в одной ленте.
+//   v5: paTimes() — из чего сложилось время каждого запроса: отправка (код чарта едет в каждом запросе), расчёт на
+//   сервере (очередь + разбор SQL + ClickHouse), забор ответа, размеры в КБ, «из кэша».
 //   ФИЛЬТР   — чарт отдал Proteus кросс-фильтр (applyCrossFilter): какие столбцы и значения, метка повтора;
 //   СВЕРКА   — служебные сообщения наших чартов (нужен JS 4, 6, 8 от 22.10 и позже): каталог «держу выбор / отправил /
 //              повтор не дублирую», панель «пришли данные под …», «прошу повторить»;
@@ -9,15 +11,16 @@
 //    allow pasting — наберите, Enter, вставьте снова).
 // 2. Сценарий: быстро кликнуть 3 разных отчёта в каталоге (по ~0,5 с) и дождаться, пока всё досчитается. Потом — применить
 //    другую целевую аудиторию и сразу кликнуть отчёт; дождаться.
-// 3. Набрать  paLog()  и Enter — лента целиком;  paReqs()  — задания сервера таблицей. Прислать обе (текстом или скрином).
+// 3. Набрать  paTimes()  и Enter — время по частям (главное);  paLog()  — лента;  paReqs()  — задания. Прислать скрином.
+//    Кликать отчёты, которые сегодня ещё НЕ открывались: открытые раньше Proteus отдаёт из кэша («из кэша: да»).
 // Только записывает события этой страницы: ничего не меняет и никуда не отправляет. Снять — обновить страницу.
 //
 // Proteus Adoption, единый лист. id чартов — тестовый борд; на другом — Ctrl+H id в NAMES.
 (function () {
   var NAMES = { '803089': 'шапка', '803049': 'каталог', '803057': 'панель' };
   var NS = { phead: 'шапка', prb: 'каталог', pone: 'панель' };
-  if (window.__paLog4) { console.log('Запись уже идёт — набери paLog() или paReqs()'); return; }
-  window.__paLog4 = true;
+  if (window.__paLog5) { console.log('Запись уже идёт — набери paTimes(), paLog() или paReqs()'); return; }
+  window.__paLog5 = true;
   var t0 = performance.now(), ev = [], log = [], jobs = {}, byUrl = {}, nonces = {}, orig = window.fetch;
   var sec = function (t) { return Math.round((t - t0) / 100) / 10; };
   var dur = function (a, b) { return Math.round((b - a) / 100) / 10; };
@@ -104,7 +107,7 @@
     (list || []).forEach(function (x) {
       var r = jobs[x && x.job_id];
       if (!r) return;
-      if (x.status === 'done') done(r, 'событие');
+      if (x.status === 'done') { if (r.tev == null) r.tev = performance.now(); done(r, 'событие'); }
       else if (x.status === 'error') done(r, 'ошибка');
     });
   }
@@ -118,7 +121,13 @@
     if (url.indexOf('/api/v1/chart/data') < 0) return p;
     var km = /\/chart\/data\/([^/?#]+)/.exec(url), key = km ? km[1] : '';
     if (method === 'GET' && key) {
-      if (byUrl[key]) done(byUrl[key], 'забрали данные');
+      var g = byUrl[key];
+      if (g) {
+        if (g.tev == null) g.tev = performance.now();
+        g.tg0 = performance.now();
+        done(g, 'забрали данные');
+        p.then(function (res) { readBody(res, g); }, function () {});
+      }
       return p;
     }
     if (method !== 'POST') return p;
@@ -126,18 +135,24 @@
     if (f.nonce && !nonces[f.nonce]) nonces[f.nonce] = now;
     var resend = !!f.nonce && now - nonces[f.nonce] < 1500;
     var same = log.filter(function (x) { return x.id === id && x.done == null; }).map(function (x) { return '#' + x.n; });
-    var r = { n: log.length + 1, id: id, chart: NAMES[id] || id, start: now, done: null, how: '', filters: f.filters, resend: resend, same: same.join(' ') };
+    var r = { n: log.length + 1, id: id, chart: NAMES[id] || id, start: now, done: null, how: '', filters: f.filters, resend: resend, same: same.join(' '),
+      kb: body ? new Blob([body]).size / 1024 : 0 };
     log.push(r);
     add('ЗАДАНИЕ', r.chart, '#' + r.n + ' ушло' + (resend ? ' (ПОВТОР)' : '') + (same.length ? ', у чарта ещё считается ' + same.join(' ') : '') + ' · ' + short(f.filters, 90));
     p.then(function (res) {
       r.code = res.status;
+      r.t202 = performance.now();
       if (res.status === 202) {
         res.clone().json().then(function (j) {
           if (j && j.job_id) jobs[j.job_id] = r;
           var rk = j && j.result_url ? /\/chart\/data\/([^/?#]+)/.exec(String(j.result_url)) : null;
           if (rk) byUrl[rk[1]] = r;
         }, function () {});
-      } else done(r, res.ok ? 'сразу, ' + res.status : 'ошибка ' + res.status);
+      } else {
+        r.tev = r.tg0 = r.t202;
+        readBody(res, r);
+        done(r, res.ok ? 'сразу, ' + res.status : 'ошибка ' + res.status);
+      }
     }, function (err) { done(r, err && err.name === 'AbortError' ? 'ОТМЕНЕНО' : 'сбой'); });
     return p;
   };
@@ -152,6 +167,28 @@
     ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach(function (k) { Wrap[k] = WS[k]; });
     window.WebSocket = Wrap;
   }
+  // ответ с данными: размер, «из кэша», когда дочитан
+  function readBody(res, r) {
+    res.clone().text().then(function (tx) {
+      r.tg1 = performance.now();
+      r.rkb = new Blob([tx]).size / 1024;
+      try {
+        var j = JSON.parse(tx), q = (j.result || [])[0] || {};
+        r.cached = q.is_cached ? 'да' : 'нет';
+        r.rows = q.rowcount;
+      } catch (e) { r.cached = '?'; }
+    }, function () {});
+  }
+  var s1 = function (a, b) { return a == null || b == null ? '—' : dur(a, b); };
+  window.paTimes = function () {
+    console.table(log.map(function (r) {
+      return { '#': r.n, 'чарт': r.chart, 'клик → запрос ушёл, с': sec(r.start), 'отправка, КБ': Math.round(r.kb),
+        'отправка и приём сервером, с': s1(r.start, r.t202), 'расчёт на сервере, с': s1(r.t202, r.tev),
+        'забор ответа, с': s1(r.tg0, r.tg1), 'ответ, КБ': r.rkb == null ? '—' : Math.round(r.rkb), 'строк': r.rows == null ? '—' : r.rows,
+        'из кэша': r.cached || '—', 'всего, с': s1(r.start, r.tg1) };
+    }));
+    return log.length + ' запросов';
+  };
   window.paLog = function () {
     console.table(ev.map(function (e) { return { 'с': sec(e.t), 'что': e.kind, 'чарт': e.chart, 'подробно': e.text }; }));
     return ev.length + ' событий';
@@ -164,5 +201,5 @@
     }));
     return log.length + ' заданий';
   };
-  console.log('Лента событий включена (версия 4). Сделай сценарий, потом набери paLog() и paReqs()');
+  console.log('Лента событий включена (версия 5). Кликни 2–3 отчёта, которые сегодня не открывал, по одному, дожидаясь ответа; потом набери paTimes()');
 })();

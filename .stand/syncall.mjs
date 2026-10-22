@@ -118,6 +118,33 @@ if (AUD) {
     await click('pan', '[data-view="whoMode:freq"]');
     await p.waitForTimeout(600); await log('A6. режим частоты — без эмита');
   }
+  if (HEAD) {
+    // A8 (владелец 22.10): ЦА применили — панель считает 3 с; через 1 с клик по отчёту — новый расчёт панели 15 с.
+    // Старый ответ (только ЦА) приходит раньше нового: ждём нужный от клика, без повтора — повтор оборвал бы его
+    // (было: через 10 с после старого ответа — PA_RESEND, Proteus запускал запрос заново).
+    await click('cat', '[data-mode="report"]'); await p.waitForTimeout(300);
+    plan.cat = [{ delay: 600 }]; plan.pan = [{ delay: 3000 }, { delay: 15000 }];
+    await click('ca', '[data-cadd="spec"]'); await p.waitForTimeout(200);
+    await click('ca', 'input[data-cack^="spec|"]', 1); await p.waitForTimeout(200);
+    await click('ca', '[data-caapply]'); await p.waitForTimeout(1000);
+    plan.pan = [{ delay: 15000 }];
+    await click('cat', '[data-rep]', 1);
+    await p.waitForTimeout(2500); await log('A8. старый ответ (только ЦА) пришёл, нужный считается');
+    await p.waitForTimeout(11000); await log('A8. 13,5 с от клика — ждём, без повтора');
+    await p.waitForTimeout(2500); await log('A8. нужный ответ пришёл');
+    // A9. Как A8, но нужный ответ потерян (Proteus не перезапросил): старый пришёл, нужного нет — автоповтор, когда обычное
+    // время ответа борда прошло с запасом: max(30 с, 3 × ≈15 с) ≈ 46 с от клика. Без старого ответа — только кнопка (60 с).
+    plan.cat = [{ delay: 600 }]; plan.pan = [{ delay: 2000 }];
+    await click('ca', '[data-cadd="spec"]'); await p.waitForTimeout(200);
+    await click('ca', 'input[data-cack^="spec|"]', 2); await p.waitForTimeout(200);
+    await click('ca', '[data-caapply]'); await p.waitForTimeout(1000);
+    plan.pan = [{ drop: true }];
+    await click('cat', '[data-rep]', 2);
+    await p.waitForTimeout(30000); await log('A9. потерян, 30 с — ждём, без повтора');
+    plan.pan = [{ delay: 500 }];
+    await p.waitForTimeout(19000); await log('A9. 49 с — автоповтор');
+    await p.waitForTimeout(1500); await log('A9. после повторного ответа');
+  }
   if (shot) await p.screenshot({ path: shot + 'aud.png' });
   console.log(JSON.stringify({ errs, out }, null, 1));
   await b.close();

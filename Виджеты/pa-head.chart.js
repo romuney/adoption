@@ -403,7 +403,8 @@ function calHtml() {
 function cpButtonHtml() {
   var N = CFG.ns, c = state.cp, op = state.dd === 'cal';
   var ico = '<svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="3" width="12" height="11" rx="2"/><path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3"/></svg>';
-  if (!c) return '<button type="button" class="' + N + '-cpb' + (op ? ' open' : '') + '" data-cadd="cal" aria-expanded="' + op + '"' +
+  // календарь открыт — «Свой» уже выбран (белым), готовый период погашен; «Отмена» / клик мимо — обратно (владелец 22.10)
+  if (!c) return '<button type="button" class="' + N + '-cpb' + (op ? ' on open' : '') + '" data-cadd="cal" aria-expanded="' + op + '"' +
     tip({ title: 'Свой период', text: 'Любые даты из истории — по дням, неделям или месяцам. Сравнение — со столько же днями перед ним.' }) + '>' + ico + 'Свой</button>';
   var pr = cpPrev(c), longOk = window.innerWidth >= 1560;
   return '<button type="button" class="' + N + '-cpb on' + (op ? ' open' : '') + '" data-cadd="cal" aria-expanded="' + op + '" aria-label="' + esc('Свой период: ' + dnFull(c.a) + ' — ' + dnFull(c.b)) + '"' +
@@ -741,7 +742,7 @@ function buildHTML() {
   h.push('<div class="' + N + '-strip"><div class="' + N + '-strip-seg" role="group" aria-label="Период">');
   for (var gi = 0; gi < CFG.grains.length; gi++) {
     var gr = CFG.grains[gi];
-    h.push('<button type="button" data-grain="' + esc(gr.id) + '"' + (gr.id === state.grain && !state.cp ? ' class="on"' : '') + '>' + esc(gr.label) + '</button>');
+    h.push('<button type="button" data-grain="' + esc(gr.id) + '"' + (gr.id === state.grain && !state.cp && state.dd !== 'cal' ? ' class="on"' : '') + '>' + esc(gr.label) + '</button>');
   }
   h.push(cpButtonHtml());
   h.push('</div><span class="' + N + '-sep" aria-hidden="true"></span><span class="' + N + '-lbl"' +

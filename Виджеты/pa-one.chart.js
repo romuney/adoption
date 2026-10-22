@@ -1345,6 +1345,7 @@ function buildCSS() {
     P + '-selg-box b{font-weight:700;color:#23272e;}',
     P + '-selg-box span{color:#8a909c;line-height:1.4;}',
     P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:400;padding:6px 12px;cursor:pointer;}',
+    P + '-tab-spin{display:inline-block;width:9px;height:9px;border-width:1.5px;margin-left:6px;vertical-align:-1px;}',
     P + '-pend{display:flex;align-items:flex-start;gap:10px;margin:28px auto;max-width:460px;font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;line-height:1.45;}',
     P + '-pend b{display:block;font-weight:700;color:#23272e;margin-bottom:2px;}',
     P + '-pend span{color:#8a909c;}',
@@ -2505,6 +2506,7 @@ function tabsHtml(tabKey, tabs) {
       '" role="tab" aria-selected="' + (tabs[i].on ? 'true' : 'false') +
       '" data-view="' + esc(tabKey) + ':' + esc(tabs[i].key) + '" type="button">' + esc(tabs[i].label) +
       (tabs[i].cnt ? '<span class="' + CFG.ns + '-sub-cnt ppl"' + tip({ text: 'Условий людской шины из «Кто смотрит»: ' + tabs[i].cnt + ' — каталог слева сужен' }) + '>' + tabs[i].cnt + '</span>' : '') +
+      (tabs[i].pend ? '<i class="' + CFG.ns + '-selg-spin ' + CFG.ns + '-tab-spin"' + tip({ text: 'Догружается: данные по выбранному отчёту ещё в пути' }) + '></i>' : '') +
       '</button>';
   }
   return h;
@@ -2992,7 +2994,7 @@ function buildHTML() {
   var N = CFG.ns, ai = areaInfo();
   var view = state.view === 'who' || state.view === 'coh' || state.view === 'cal' || state.view === 'path' ? state.view : 'dyn';
   var body, bodyCls, title;
-  var pend = MODEL.preview && (view === 'who' || view === 'path' || view === 'coh' || (view === 'cal' && !Object.keys(MODEL.cal).length));
+  var pend = pvPendView(view);
   if (pend) {
     title = view === 'who' ? 'Кто смотрит' : (view === 'path' ? 'Путь ЦА' : (view === 'coh' ? 'Закрепляемость' : 'Календарь посещений'));
     body = pvPendHtml(title); bodyCls = 'pend-wrap';
@@ -3015,7 +3017,7 @@ function buildHTML() {
     bodyCls = 'coh-wrap'; title = 'Закрепляемость';
   }
   var tabs = [];
-  for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key, cnt: CFG.views[t].key === 'who' ? whoFilterCount() : 0 });
+  for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key, cnt: CFG.views[t].key === 'who' ? whoFilterCount() : 0, pend: pvPendView(CFG.views[t].key) });
   var h = [];
   h.push('<div class="' + N + '-root">');
   // Верхняя строка (вровень с «Выбранными фильтрами» каталога, 2026-10-09): слева — свои пилюли панели, справа —
@@ -3933,6 +3935,11 @@ function pvModel(p) {
   m.preview = { id: p.id, name: p.name || '', t: Date.now() };
   m.sig = 'pv|' + p.key + '|' + p.grain;
   return m;
+}
+// Вкладка, данных которой в мгновенной панели нет (ждёт свой ответ): «Кто смотрит», «Путь ЦА», «Закрепляемость»,
+// «Календарь» у недель / месяцев / кварталов
+function pvPendView(v) {
+  return !!MODEL.preview && (v === 'who' || v === 'path' || v === 'coh' || (v === 'cal' && !Object.keys(MODEL.cal).length));
 }
 // Заглушка вкладки, которой в мгновенной панели нет
 function pvPendHtml(what) {

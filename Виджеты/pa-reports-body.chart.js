@@ -444,7 +444,7 @@ function buildModelV2(M) {
     } else if (sec === 'pv') {
       (M.pv = M.pv || {})[String(r[F.g] || '')] = txt;   // мгновенная панель: строка отчёта топа (шлём панели по клику, pvSend)
     } else if (sec === 'pvh') {
-      M.pvh = { grain: String(r[F.g] || 'd'), kt: int(r[F.n]) - 1 };
+      M.pvh = { grain: String(r[F.g] || 'd'), kt: int(r[F.n]) - 1, cs: txt };   // cs — первый день окна календаря (не у «30 дней»)
     } else if (sec === 'aud') {
       // значение|родитель|людей заходило|просмотров|постоянных|сотрудников
       var d = String(r[F.g] || ''), A = M.aud[d] = M.aud[d] || {};
@@ -2572,7 +2572,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       var id = String(sel[0]), k = MODEL.pv[id];
       if (!k) return;
       paBcast({ type: 'PA_PREV', src: 'cat', key: paKey(CFG.paCols, g), id: id, name: (MODEL.meta[id] || {}).dash_nm || '',
-        grain: MODEL.pvh.grain, kt: MODEL.pvh.kt, k: k, flt: (MODEL.stateJ && MODEL.stateJ.flt) || {} });
+        grain: MODEL.pvh.grain, kt: MODEL.pvh.kt, cs: MODEL.pvh.cs, k: k, flt: (MODEL.stateJ && MODEL.stateJ.flt) || {} });
     }
     state.pvSend = pvSend;
     function catKeys(fl) { var g = paMaskGet(fl); return { a: paKey(['mode_param', 'sel_f'], g), r: paKey(AUDCOLS_P, g) }; }

@@ -3912,6 +3912,15 @@ function pvRows(p) {
   if (p.grain === 'd') {
     for (i = 0; i < tu.length; i++) if (tu[i] > 0) cal.push(i + '|' + tu[i] + '|' + (tn[i] || 0) + '|' + (tv[i] || 0));
     for (i = 0; i < cu.length; i++) if (cu[i] > 0) cal.push((tu.length + i) + '|' + cu[i] + '|' + (cn[i] || 0) + '|0');
+  } else if (L[5]) {
+    // календарь по периоду: «[день:]людей|новых|просмотров» через «;», день — только после пропуска (иначе предыдущий + 1)
+    var it = L[5].split(';'), dk = -1;
+    for (i = 0; i < it.length; i++) {
+      var c0 = it[i].indexOf(':');
+      dk = c0 >= 0 ? +it[i].slice(0, c0) : dk + 1;
+      var cf = (c0 >= 0 ? it[i].slice(c0 + 1) : it[i]).split('|');
+      cal.push(dk + '|' + (+cf[0] || 0) + '|' + (+cf[1] || 0) + '|' + (+cf[2] || 0));
+    }
   }
   var flt = {}, src = p.flt || {};
   for (i = 0; i < PV_COLS.length; i++) if (src[PV_COLS[i]] && src[PV_COLS[i]].length) flt[PV_COLS[i]] = src[PV_COLS[i]];
@@ -3925,7 +3934,7 @@ function pvRows(p) {
   rows.push(row('flt', '', JSON.stringify(flt), '', 0));
   rows.push(row('total', '', L[0] || '', '', 0));
   rows.push(row('ts', '', ts.join('\n'), '', ts.length));
-  if (p.grain === 'd') rows.push(row('cal', '', cal.join('\n'), '', cal.length));
+  if (cal.length) rows.push(row('cal', '', cal.join('\n'), p.grain === 'd' ? '' : String(p.cs || ''), cal.length));
   return rows;
 }
 // Мгновенная модель (без перерисовки): MODEL — из блока каталога, REAL — по-прежнему ответ датасета

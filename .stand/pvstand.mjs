@@ -1,7 +1,7 @@
 // Стенд «мгновенной панели по клику» (2026-10-22): шапка · каталог · панель единого листа — соседние iframe, родитель
 // играет Proteus (кросс-фильтры с задержкой ответа). Каталог по клику на отчёт из топа шлёт панели блок pv (PA_PREV) —
 // панель обязана нарисовать KPI / «Динамику» сразу, до своего ответа; свой ответ — заменить, числа те же.
-// NODE_PATH=$(npm root -g) node .stand/pvstand.mjs <папка ответов> [скрин-префикс]
+// NODE_PATH=$(npm root -g) [GRAIN=w|m|q] node .stand/pvstand.mjs <папка ответов> [скрин-префикс]
 //   в папке: head.json, cat.json (каталог с WITH_CA), one.json (панель без выбора), one_<id>.json (панель по отчёту id)
 import { createRequire } from 'module';
 const { chromium } = createRequire(import.meta.url)('playwright');
@@ -67,6 +67,8 @@ const log = async (step) => { out.push({ step, ...(await pan()), sent: sent.spli
 const click = async (id, sel, i) => (await fr(id)).locator(sel).nth(i || 0).click();
 const pvUsers = (id) => { const r = MOCK.cat.find(x => x.section === 'pv' && x.g === String(id)); return r ? r.k.split('|')[0] : null; };
 const repAt = async (i) => (await fr('cat')).evaluate((i) => document.querySelectorAll('[data-rep]')[i].getAttribute('data-rep'), i);
+// GRAIN=m — сначала период в шапке (ответы в папке — под этот период)
+if (process.env.GRAIN) { plan.cat = [{ delay: 300 }]; plan.pan = [{ delay: 300 }]; await click('strip', '[data-grain="' + process.env.GRAIN + '"]'); await p.waitForTimeout(1500); }
 await log('0. весь Proteus');
 // P1. Клик по отчёту из топа: ответ панели через 4 с — KPI и «Динамика» сразу, «Кто смотрит» — «догружается».
 let id = await repAt(0);

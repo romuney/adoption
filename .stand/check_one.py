@@ -539,9 +539,17 @@ def pv_unpack(k, grain, kt):
             if tu[i] > 0: cal.add(f'{i}|{tu[i]}|{tn[i]}|{tv[i] if i < len(tv) else 0}')
         for j in range(len(cu)):
             if cu[j] > 0: cal.add(f'{n + j}|{cu[j]}|{cn[j]}|0')
+    elif len(L) > 5 and L[5]:
+        dk = -1
+        for it in L[5].split(';'):
+            k0, _, rest = it.rpartition(':')
+            dk = int(k0) if k0 else dk + 1
+            u, nn, v = (int(x) if x else 0 for x in rest.split('|'))
+            cal.add(f'{dk}|{u}|{nn}|{v}')
     return tot, ts, cal
 PV_IDX = list(range(0, 12)) + list(range(16, 20))   # поля total, которые панель берёт из блока (ЦА — нет)
-for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'}, {'exc_f': ['0']}, {'pub_f': ['0'], 'act_f': ['0']}]:
+for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'}, {'exc_f': ['0']}, {'pub_f': ['0'], 'act_f': ['0']},
+          {'period_param': 'm', 'exc_f': ['0']}]:
     cat = run(CAT, c, with_ca=True)
     pv = sorted([r for r in cat if r['section'] == 'pv'], key=lambda r: (-int(r['n']), int(r['g'])))
     ph = [r for r in cat if r['section'] == 'pvh']
@@ -559,15 +567,17 @@ for c in [{}, {'period_param': 'w'}, {'period_param': 'm'}, {'period_param': 'q'
         for x in one: sec.setdefault(x['section'], []).append(x)
         ptot = str(sec['total'][0]['k']).split('|') if sec.get('total') else []
         pts = set(l for x in sec.get('ts', []) for l in str(x['k']).split('\n') if l)
-        pcal = set(l for x in sec.get('cal', []) for l in str(x['k']).split('\n') if l) if grain == 'd' else set()
+        pcal = set(l for x in sec.get('cal', []) for l in str(x['k']).split('\n') if l)
+        pcs = str(sec['cal'][0]['parent']) if sec.get('cal') else ''
         pkt = int(sec['area'][0]['n']) - 1 if sec.get('area') else None
         d = []
         if [ptot[i] if i < len(ptot) else '0' for i in PV_IDX] != [tot[i] for i in PV_IDX]: d.append(f'total {"|".join(ptot)} / {"|".join(tot)}')
         if pts != ts: d.append(f'ts −{sorted(pts - ts)[:3]} +{sorted(ts - pts)[:3]}')
         if pcal != cal: d.append(f'cal −{sorted(pcal - cal)[:3]} +{sorted(cal - pcal)[:3]}')
+        if grain != 'd' and pcs != str(ph[0]['k']): d.append(f'cal parent {pcs} / {ph[0]["k"]}')
         if pkt != kt: d.append(f'kt {pkt} / {kt}')
         if d: bad_l.append(f'{r["g"]}: ' + '; '.join(d))
-    ok(not bad_l, f'pv {c}: блок каталога == панель по одному отчёту — {len(sample)} из {len(pv)} отчётов (total, ts{", cal" if grain == "d" else ""}, kt)' +
+    ok(not bad_l, f'pv {c}: блок каталога == панель по одному отчёту — {len(sample)} из {len(pv)} отчётов (total, ts, cal, kt)' +
        ('' if not bad_l else '\n       ' + '\n       '.join(bad_l[:5])))
 ok(not [r for r in run(CAT, {'login_f': ['u1']}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: при людской шине блока нет')
 ok(not [r for r in run(CAT, {'ca_it_f': ['IT']}, with_ca=True) if r['section'] in ('pv', 'pvh')], 'pv: при ЦА по условиям блока нет')

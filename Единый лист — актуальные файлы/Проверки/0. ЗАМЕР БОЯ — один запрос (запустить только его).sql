@@ -107,10 +107,11 @@ WITH
       arrayMap(i -> ('o', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › ')), range(1, ol + 1)),
       array(('s', sp, ''), ('t', st, ''), ('q', hqc, ''), ('i', itc, ''), ('h', toString(hdf), ''))) AS kk
     GROUP BY ad, ak0, ap
-  ),pvd AS (
-    SELECT [tuple(toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1),
-      toInt64(dateDiff('day', dt, toDate(md))))][1] AS h
-    FROM (SELECT md, [addDays(toDate(ds0), 90)][1] AS dt FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+  ),pvd AS (SELECT [tuple(toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1),
+      toInt64(dateDiff('day', dt, toDate(md))), cs, toInt64(dateDiff('day', cs, toDate(md)) + 1))][1] AS h
+    FROM (SELECT md, [addDays(toDate(ds0), 90)][1] AS dt,
+        [greatest(toDate(toStartOfDay(md) - toIntervalDay(29)), toDate(ds0))][1] AS cs
+      FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
   ),
   pvt AS (
     SELECT did FROM evd GROUP BY did ORDER BY countIf(bitAnd(msk, 1073741823) != 0) DESC, did LIMIT 500

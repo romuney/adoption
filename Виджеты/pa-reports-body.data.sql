@@ -161,9 +161,14 @@ SELECT lg FROM (
     область из одного отчёта); равенство — check_one §14. Только без условий ЦА, людской шины и своего периода: там панель
     считает по другим людям или из подневного факта. Числа «Охвата ЦА» здесь не считаются (у панели — по штату и доступам).
     Строка pv: g = id, k — строки: total (20 полей, поля ЦА — 0) | людей по шагам 0…n−1 | новых | вернувшихся | просмотров |
-    людей по дням n…59 | новых по дням n…59 (последние два — только у «30 дней»); числа через запятую, 0 — пусто;
-    pvh: n = kt + 1 (надёжных шагов для новых). -#}
+    у «30 дней»: людей по дням n…59 | новых по дням n…59, у остальных: календарь по дням (PV_CAL_N); числа через запятую,
+    0 — пусто; pvh: n = kt + 1 (надёжных шагов для новых), k — первый день окна календаря (у «30 дней» — пусто). -#}
 {% set PV_N = 500 %}
+{#- «Календарь» у 20 недель / 12 месяцев / 8 кварталов — весь период по дням из подневного факта (как calf панели): на день с
+    визитами «[день:]людей|новых|просмотров» (день — только после пропуска, иначе предыдущий + 1; новых 0 — пусто), дни
+    через «;» по возрастанию — у PV_CAL_N первых отчётов топа.
+    У «30 дней» календарь — из маски дней (строки 5–6 блока). -#}
+{% set PV_CAL_N = {'d': 0, 'w': 500, 'm': 500, 'q': 500}[grain] %}
 {% set PVON = not cper and not pplf %}
 {% set CAL_N = 60 %}
 {% set GAPM = 2 ** {'d': 7, 'w': 1, 'm': 1, 'q': 1}[grain] - 1 %}
@@ -330,9 +335,12 @@ WITH
   ){% if PVON %},
   {#- даты начала истории — как maxd панели: kt — самый старый шаг, где новых можно отличить от давно не заходивших (≥ 90 дней истории) -#}
   pvd AS (
+    {#- kt, ktd; у календаря по периоду — первый день окна cs (не раньше начала истории) и число дней cd — как CS / CD панели -#}
     SELECT tuple(toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(dt), {{ g.sf }}(md))) - if(toDate({{ g.sf }}(dt)) = dt, 0, 1),
-      toInt64(dateDiff('day', dt, toDate(md)))) AS h
-    FROM (SELECT md, addDays(toDate(ds0), 90) AS dt FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+      toInt64(dateDiff('day', dt, toDate(md))), cs, toInt64(dateDiff('day', cs, toDate(md)) + 1)) AS h
+    FROM (SELECT md, addDays(toDate(ds0), 90) AS dt,
+        greatest(toDate({{ g.sf }}(md) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] }}({{ g.n - 1 }})), toDate(ds0)) AS cs
+      FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
   ),
   pvt AS (
     SELECT did FROM evd GROUP BY did ORDER BY countIf({{ mcur('msk') }}) DESC, did LIMIT {{ PV_N }}
@@ -373,7 +381,39 @@ WITH
     FROM prod_proteus.pa_dash_bkt
     WHERE grain = '{{ grain }}' AND dashboard_id IN (SELECT did FROM pvt) AND k >= 0 AND k < {{ g.n }}
     GROUP BY did
-  ){% endif %}
+  ){% if PV_CAL_N %},
+  pvct AS (
+    SELECT did FROM evd GROUP BY did ORDER BY countIf({{ mcur('msk') }}) DESC, did LIMIT {{ PV_CAL_N }}
+  ),
+  pvc AS (
+    {#- календарь по периоду — как calf + cf панели: люди и просмотры дня — подневный факт (без пар владельцев), новые — день
+        первого визита пары (kmax_d), если он в окне и до него ≥ 90 дней истории; день — дней назад от даты свежести -#}
+    {#- дни по возрастанию; номер дня пишется, только если он не следующий за предыдущим («k:») — у популярных отчётов
+        визиты почти каждый день, номера почти не нужны -#}
+    SELECT did, arrayStringConcat(arrayMap((x, i) -> concat(if(i > 1 AND x.1 = arrayElement(t, i - 1).1 + 1, '', concat(toString(x.1), ':')),
+        toString(x.2), '|', if(x.3 = 0, '', toString(x.3)), '|', toString(x.4)), t, arrayEnumerate(t)), ';') AS cl
+    FROM (SELECT did, arraySort(groupArray((ck, cu, cn, cv))) AS t FROM (
+      SELECT toInt32(ifNull(f.dashboard_id, 0)) AS did, f.ck AS ck, f.cu AS cu, f.cv AS cv, ifNull(nw.cn, toUInt64(0)) AS cn
+      FROM (
+        SELECT e.dashboard_id AS dashboard_id, toInt64(dateDiff('day', toDate(e.log_dttm), toDate((SELECT md FROM maxd)))) AS ck,
+          toUInt64(uniqExact(e.login)) AS cu, toUInt64(sum(e.views)) AS cv
+        FROM prod_proteus.pa_evd_day e
+        WHERE e.dashboard_id IN (SELECT did FROM pvct) AND isNotNull(e.login)
+          AND e.log_dttm >= toDateTime(tupleElement((SELECT h FROM pvd), 3))
+          AND e.log_dttm < toDateTime((SELECT md FROM maxd)) + toIntervalDay(1)
+          {%- if excv == '1' %} AND (e.dashboard_id, e.login) NOT IN (SELECT dashboard_id, login FROM prod_proteus.pa_pair WHERE own_flg = 1){% endif %}
+        GROUP BY dashboard_id, ck
+      ) f
+      LEFT JOIN (
+        SELECT toInt32(ifNull(p.dashboard_id, 0)) AS did, ifNull(p.kmax_d, 0) AS ck, toUInt64(count()) AS cn
+        FROM prod_proteus.pa_pair p
+        WHERE p.dashboard_id IN (SELECT did FROM pvct) AND isNotNull(p.login){% if excv == '1' %} AND ifNull(p.own_flg, 0) = 0{% endif %}
+          AND ifNull(p.kmax_d, 0) < tupleElement((SELECT h FROM pvd), 4) AND ifNull(p.kmax_d, 0) <= tupleElement((SELECT h FROM pvd), 2)
+        GROUP BY did, ck
+      ) nw ON nw.did = toInt32(ifNull(f.dashboard_id, 0)) AND nw.ck = f.ck
+    )
+    GROUP BY did)
+  ){% endif %}{% endif %}
 SELECT CAST(section AS String) AS section, CAST(g AS String) AS g, CAST(k AS String) AS k, CAST(parent AS String) AS parent, CAST(n AS Int64) AS n
 FROM (
   {# Строки agg — упаковкой: отчёты порциями по 1000 (по id), группы — строкой на разрез, ИТОГО — отдельно. Строки в k — arraySort:
@@ -439,11 +479,13 @@ FROM (
       toString(a.f1), '|', toString(a.f2), '|', toString(a.f3), '|', toString(a.f4), '\n',
       arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tn), ','), '\n',
       arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tr), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), b.tv), ','){% if grain == 'd' %}, '\n',
-      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cn), ','){% endif %}) AS k,
+      arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cn), ','){% elif PV_CAL_N %}, '\n',
+      ifNull(c.cl, ''){% endif %}) AS k,
     '' AS parent, toInt64(a.u) AS n
   FROM pva a
-  LEFT JOIN pvb b ON b.did = a.did
+  LEFT JOIN pvb b ON b.did = a.did{% if PV_CAL_N %}
+  LEFT JOIN pvc c ON c.did = a.did{% endif %}
   UNION ALL
-  SELECT 'pvh' AS section, '{{ grain }}' AS g, '' AS k, '' AS parent, toInt64(greatest(tupleElement((SELECT h FROM pvd), 1) + 1, 0)) AS n
+  SELECT 'pvh' AS section, '{{ grain }}' AS g, {% if grain != 'd' %}toString(tupleElement((SELECT h FROM pvd), 3)){% else %}''{% endif %} AS k, '' AS parent, toInt64(greatest(tupleElement((SELECT h FROM pvd), 1) + 1, 0)) AS n
   {% endif %}
 )

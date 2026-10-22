@@ -3957,7 +3957,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
           '<span>Числа здесь могут быть для прежнего выбора.</span>' +
           '<button type="button" data-selretry="1">Повторить запрос</button></div>'
         : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>' +
-          (tried ? 'Пересчитываем под новый выбор — запрос отправлен ещё раз…' : 'Пересчитываем под новый выбор…') + '</div>';
+          'Пересчитываем под новый выбор…' + '</div>';
     }
     if (!giveUp && next < Infinity) state.selT = setTimeout(function () { sync(false); }, Math.max(100, next + 60));
   }

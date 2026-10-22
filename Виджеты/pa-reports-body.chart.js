@@ -36,6 +36,10 @@
 var CFG = {
   ns: 'prb',
   selDelay: 300,              // мс: быстрые клики (Shift) уходят в Proteus одним фильтром — последним
+  // мс: пока панель считает прошлый выбор каталога, новый не отправляем (Proteus занятому чарту фильтр не передаёт или
+  // ставит в очередь — лишний расчёт; владелец 22.10: «нажал 1, 2, 3 — посчитал 2, потом 3»). Держим последний выбор и
+  // отправляем, как только панель ответила; дольше этого — отправляем всё равно (панель скрыта, ответ потерян)
+  selHoldMax: 45000,
   audWait: 8000,              // мс: сколько вкладка «Аудитория» ждёт от панели числа по выбору, дальше — весь Proteus с пометкой
   selShowAfter: 400,          // мс: плашку «Пересчитываем…» показываем, только если ждём дольше (без мигания)
   // мс: пришёл ответ под ПРЕЖНИЙ выбор — сразу переспрашиваем источник (2026-10-22, сниппет 11 на борде 60260: пока чарт
@@ -1992,6 +1996,7 @@ function paResendOn(src, sheetFn, cols, maskFn) {
     if (d.type !== 'PA_RESEND' || d.src !== src || !(sh === '*' || d.sheet === sh) || typeof applyCrossFilter !== 'function') return;
     var fl = maskFn();
     paOut(src, sh, cols, fl);
+    if (state.catResend && state.catResend(fl)) return;   // каталог: этот выбор только что ушёл — второй раз не шлём
     applyCrossFilter(fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]));
   };
   window.addEventListener('message', state.onResend);
@@ -2052,7 +2057,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
           '<span>Числа здесь могут быть для прежнего выбора.</span>' +
           '<button type="button" data-selretry="1">Повторить запрос</button></div>'
         : '<div class="' + CFG.ns + '-selg-box"><i class="' + CFG.ns + '-selg-spin" aria-hidden="true"></i>' +
-          (tried ? 'Пересчитываем под новый выбор — запрос отправлен ещё раз…' : 'Пересчитываем под новый выбор…') + '</div>';
+          'Пересчитываем под новый выбор…' + '</div>';
     }
     if (!giveUp && next < Infinity) state.selT = setTimeout(function () { sync(false); }, Math.max(100, next + 60));
   }
@@ -2541,8 +2546,39 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       paOut('cat', sheetOf(), CFG.paCols, fl);
       state.pendMask = fl;
       clearTimeout(state.emitT);
-      state.emitT = setTimeout(function () { applyCrossFilter(state.pendMask); }, CFG.selDelay);
+      state.emitT = setTimeout(function () { catSend(state.pendMask); }, CFG.selDelay);
     }
+    // Выбор каталога — в Proteus, но не пока панель считает прошлый (CFG.selHoldMax): ключи выбора — как в её ответах
+    // (PA_AUD — mode_param + sel_f, PA_REP — группа «Аудитории»). Держим последний и шлём, как только панель ответила.
+    var AUDCOLS_P = ['aud_org_f', 'aud_spec_f', 'aud_stream_f', 'aud_hq_f', 'aud_it_f', 'aud_head_f'];   // = AUD_COLS панели
+    function catKeys(fl) { var g = paMaskGet(fl); return { a: paKey(['mode_param', 'sel_f'], g), r: paKey(AUDCOLS_P, g) }; }
+    function panelBusy() {
+      var s = state.catSent, h = state.audHeard;
+      if (!s || !h || h.noflt || Date.now() - s.t >= CFG.selHoldMax) return false;   // панель ни разу не ответила — не держим
+      return h.key !== s.a || !!(state.repExt && state.repExt.key !== s.r);
+    }
+    function catSendNow(fl, nonce) {
+      clearTimeout(state.holdT); state.held = null;
+      var k = catKeys(fl);
+      state.catSent = { a: k.a, r: k.r, t: Date.now() };
+      applyCrossFilter(nonce ? fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]) : fl);
+    }
+    function catSend(fl) {
+      if (!panelBusy()) { catSendNow(fl); return; }
+      state.held = fl;
+      clearTimeout(state.holdT);
+      state.holdT = setTimeout(function () { if (state.held) catSendNow(state.held); }, Math.max(100, state.catSent.t + CFG.selHoldMax - Date.now()));
+    }
+    // панель ответила — отпускаем придержанный выбор
+    state.catRelease = function () { if (state.held && !panelBusy()) catSendNow(state.held); };
+    // «повтори» от панели: этот же выбор ушёл меньше 2 с назад (отпустили по её ответу) — второй раз не шлём;
+    // иначе — шлём с меткой (панель досчитала другое и ждёт этот)
+    state.catResend = function (fl) {
+      var k = catKeys(fl), s = state.catSent;
+      if (s && s.a === k.a && s.r === k.r && Date.now() - s.t < 2000) return true;
+      catSendNow(fl, true);
+      return true;
+    };
     // Переключение разреза выбор НЕ трогает (правка владельца 2026-09-18:
     // «если я перехожу между вкладками, фильтр сбрасывается, а не должен»).
     // Прежний translatePicks стирал/переносил пики — семантика v3-эпохи.
@@ -2821,6 +2857,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
         for (var j = 0; j < L.length; j++) { var f = L[j].split('|'); D0[unz(f[0])] = { users: int(f[1]), views: int(f[2]), regular: int(f[3]) }; }
       }
       state.audHeard = { v: d.v || 1, noflt: !!d.noflt, key: String(d.key || ''), t: Date.now() };
+      if (state.catRelease) state.catRelease();
       if (d.noflt) { if (state.mode === 'aud') render(); return; }
       // rows нет — в ответе панели нет секции aa (в pa_one старый SQL): не «никто не смотрел», а «чисел нет»
       state.audExt = { key: String(d.key || ''), aud: d.rows ? A : null, noaa: !d.rows };
@@ -2840,6 +2877,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       if (!d.rows) sig += '|-';
       if (state.repExt && state.repExt.sig === sig) return;    // тот же ответ (панель шлёт при каждом монтаже и на ASK)
       state.repExt = { key: key, sig: sig, noar: !d.rows, rows: d.rows || [] };
+      if (state.catRelease) state.catRelease();
       if (state.mode !== 'aud' && key === repGrpKey()) render();
     };
     window.addEventListener('message', state.onRep);

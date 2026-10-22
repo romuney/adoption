@@ -137,6 +137,15 @@ if (AUD) {
     await click('cat', '[data-rep]', 2);
     await p.waitForTimeout(6000); await log('A9. долгий ответ, 6 с — ждём, без повтора');
     await p.waitForTimeout(2500); await log('A9. пришёл');
+    // A10 (владелец 22.10): быстро кликнул отчёты 1, 2, 3 (по 0,7 с), расчёт панели 3 с. Каталог держит выбор, пока панель
+    // считает прошлый: уходят только 1-й и (после ответа панели) 3-й — без лишнего расчёта 2-го.
+    plan.pan = [{ delay: 3000 }, { delay: 3000 }, { delay: 3000 }];
+    await click('cat', '[data-rep]', 3); await p.waitForTimeout(700);
+    await click('cat', '[data-rep]', 4); await p.waitForTimeout(700);
+    await click('cat', '[data-rep]', 5);
+    await p.waitForTimeout(1000); await log('A10. клики 1, 2, 3 — ушёл только 1-й');
+    await p.waitForTimeout(1800); await log('A10. панель досчитала 1-й — сразу ушёл 3-й');
+    await p.waitForTimeout(3500); await log('A10. 3-й пришёл');
   }
   if (shot) await p.screenshot({ path: shot + 'aud.png' });
   console.log(JSON.stringify({ errs, out }, null, 1));

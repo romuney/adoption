@@ -358,4 +358,7 @@ Helicopter-нода (id 844437) → Greenplum-стейджинг → витри�
   ПРЕДСТАВЛЕНИЕ С ПАРАМЕТРАМИ в ClickHouse (24.8 умеет: массивы, CTE, UNION ALL, обёртка Superset — проверено в chdb), датасет —
   одна строка вызова: путь 0,016 с; нужны права CREATE VIEW в prod_proteus (кто создаёт — шаг Python / владелец) и переписать
   джиню в параметры; (B) «диета» текста без прав: без sv…s3 путь 6,8 → 4,3 с. Инструмент — .stand/superset_path.py.
+- 2026-10-22: SQL Lab Proteus — CREATE запрещён («SQL запрос должен только получать данные (через select или describe).
+  Использование "CREATE" запрещено»). Следующая проба — python-параграф Helicopter (файл 12, способ 2: список функций
+  proteus_py.database.clickhouse и попытка CREATE / SELECT / DROP VIEW).
 

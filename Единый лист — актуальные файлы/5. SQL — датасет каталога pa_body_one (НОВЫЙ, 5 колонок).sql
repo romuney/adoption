@@ -1,4 +1,4 @@
-{# Proteus Adoption — единый лист · поставка 22.10 · 2026-10-22 · pa-reports-body.data.sql 8b47d6064ea6 · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-reports-body.data.sql, сборка — python3 .stand/pack.py #}
+{# Proteus Adoption — единый лист · поставка 22.10 · 2026-10-22 · pa-reports-body.data.sql 09f515d30463 · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-reports-body.data.sql, сборка — python3 .stand/pack.py #}
 {%- set PA_H = namespace(d=0) -%}{%- macro H() -%}{%- if PA_NOHIDE is defined -%}{{ caller() }}{%- else -%}{%- set PA_H.d = PA_H.d + 1 -%}{%- set x = caller() -%}{%- set PA_H.d = PA_H.d - 1 -%}{%- if PA_H.d > 0 -%}{{ x }}{%- elif '[' in x or ']' in x -%}{{ caller() }}{%- else -%}{%- if PA_MARK is defined -%}{{ PA_MARK[0] }}{%- endif -%}[{{ x }}][1]{%- if PA_MARK is defined -%}{{ PA_MARK[1] }}{%- endif -%}{%- endif -%}{%- endif -%}{%- endmacro -%}{#- H — сборка .stand/hidesql.py: «[выражение][1]» Superset разбирает одним словом (быстрее в разы), ClickHouse читает как само выражение. Исходник — без H, в Виджеты/. -#}{#- pa_cube v7 — каталог (левый чарт): отчёты / коллекции / владельцы + ИТОГО + аудитория (разрезы людей).
     Источник — предагрегат пар prod_proteus.pa_pair (GP-параграф «PA · пары отчёт×логин»):
     у пары «отчёт × логин» уже лежат 64-битная маска активных бакетов, суммы окна и v_life
@@ -360,8 +360,8 @@ FROM (
   {# Текущий пользователь борда актуальным логином: k — логин (пусто — неизвестен). #}
   SELECT 'me' AS section, '' AS g,
     ifNull(nullIf((SELECT any(toString(lm.canon)) FROM prod_proteus.pa_login_map lm
-      WHERE lm.login = lower(trim('{{ cache_key_wrapper(current_username()) }}'))), ''),
-      {% call H() %}lower(trim('{{ cache_key_wrapper(current_username()) }}')){% endcall %}) AS k,
+      WHERE lm.login = lower(trim('{{ cache_key_wrapper(current_username())|string|replace('\\', '\\\\')|replace("'", "''") }}'))), ''),
+      {% call H() %}lower(trim('{{ cache_key_wrapper(current_username())|string|replace('\\', '\\\\')|replace("'", "''") }}')){% endcall %}) AS k,
     '' AS parent, toInt64(0) AS n
 
   UNION ALL

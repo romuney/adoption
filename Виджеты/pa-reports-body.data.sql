@@ -359,8 +359,8 @@ FROM (
   {# Текущий пользователь борда актуальным логином: k — логин (пусто — неизвестен). #}
   SELECT 'me' AS section, '' AS g,
     ifNull(nullIf((SELECT any(toString(lm.canon)) FROM prod_proteus.pa_login_map lm
-      WHERE lm.login = lower(trim('{{ cache_key_wrapper(current_username()) }}'))), ''),
-      lower(trim('{{ cache_key_wrapper(current_username()) }}'))) AS k,
+      WHERE lm.login = lower(trim('{{ cache_key_wrapper(current_username())|string|replace('\\', '\\\\')|replace("'", "''") }}'))), ''),
+      lower(trim('{{ cache_key_wrapper(current_username())|string|replace('\\', '\\\\')|replace("'", "''") }}'))) AS k,
     '' AS parent, toInt64(0) AS n
 
   UNION ALL

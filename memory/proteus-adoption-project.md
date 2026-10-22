@@ -362,3 +362,21 @@ Helicopter-нода (id 844437) → Greenplum-стейджинг → витри�
   Использование "CREATE" запрещено»). Следующая проба — python-параграф Helicopter (файл 12, способ 2: список функций
   proteus_py.database.clickhouse и попытка CREATE / SELECT / DROP VIEW).
 
+- 2026-10-22 (проба файла 12 в Helicopter): click_execute выполнил CREATE VIEW и SELECT из представления с параметрами, DROP —
+  «запрещено… EOL click_execute». Вики trueBI «EOL click_execute» (фото владельца): 09.11.2026 click_execute отключают
+  совсем; DROP VIEW «не будет предоставлена — View не поддерживаются в Proteus»; CREATE TABLE → df_to_click / gp_to_click /
+  dlh_to_click; есть click_delete, click_modify, click_add, click_truncate_table, click_describe_table, click_drop_table.
+  ВАРИАНТ A (представления) ЗАКРЫТ. В ClickHouse осталось пустое prod_proteus.pa_view_probe — файл 12 переделан в уборку
+  (click_drop_table / drop_ch_table), ждём вывод.
+- 2026-10-22 (ВАРИАНТ B — сборка .stand/hidesql.py, файлы 3, 5, 7): лексер sqlparse 0.4.3/0.4.4 читает «[…]» без «[» и «]»
+  внутри ОДНИМ токеном Name (keywords.py: (?<![\w\])])(\[[^\]\[]+\]) — проверено и на 0.4.3 из PyPI); ClickHouse читает
+  «[x][1]» как x (оба анализатора; агрегаты, arrayJoin, лямбды, скалярные подзапросы, .1 и [i] после — проверено). Сборка
+  (pack.py) оборачивает вызовы функций в списках SELECT шаблона в {% call H() %}…{% endcall %}; H: без скобок в рендере →
+  «[…][1]», со скобками (значение «a]b») → как есть, вложенные H при пробе внешнего — как есть (namespace-счётчик),
+  PA_NOHIDE → как есть (verify: текст == исходник на 14 наборах фильтров; PA_MARK — перед «[» не буква/«)»/«]»/«.»:
+  иначе индексация). Не прячет WHERE/ON/GROUP BY/ORDER BY/FROM/ARRAY JOIN (ключ таблицы), ссылки на prod_*, OVER.
+  Предложение у тел макросов — по местам вызова (fixpoint); функция array( — не ARRAY JOIN. Исходники SQL — БЕЗ «[»/«]»:
+  array(…), arrayElement(…), регулярка кириллицы cz — CZRX (concat с char(91)/char(93)). Путь Superset (стенд):
+  панель 7–9,7 → 0,9–1,4 с, ЦА 10–12 → 1,4 с, каталог 2,4–2,9 → 0,45–0,5 с, шапка 0,3 → 0,15 с. Ответ CH тот же
+  (cmp: 14 наборов × 3 датасета × оба анализатора; у исходника порядок строк в упаковке list/ctx плавает — сверка по
+  строкам k). Цена в CH ≈ 0,05–0,1 с на малом стенде (шум).

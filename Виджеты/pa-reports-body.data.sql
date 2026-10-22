@@ -58,12 +58,15 @@
     табуляция и переводы строк — пробел. Буква кириллицы в JSON Superset: 6 байт → 1. -#}
 {% set CYR = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя' %}
 {% set TGT = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%' %}
-{% macro cz(x) %}translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate({{ x }}, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), '([А-Яа-яЁё][А-Яа-яЁё ]*)', '`\\1`'), '{{ CYR }}', '{{ TGT }}'){% endmacro %}
+{#- Шаблон отрезка кириллицы «([А-Яа-яЁё][А-Яа-яЁё ]*)» — без квадратных скобок в тексте (char(91) = «[», char(93) = «]»):
+    так выражения с cz Superset разбирает одним словом (сборка .stand/hidesql.py). -#}
+{% set CZRX = "concat('(', char(91), 'А-Яа-яЁё', char(93), char(91), 'А-Яа-яЁё ', char(93), '*)')" %}
+{% macro cz(x) %}translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate({{ x }}, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), {{ CZRX }}, '`\\1`'), '{{ CYR }}', '{{ TGT }}'){% endmacro %}
 {#- Владельцы отчёта (все, а не автор, 2026-10-02): owners_string без пустых, в нижнем регистре, без повторов;
     пустой список — запасной owner_login. Одно выражение на датасет — для вкладки «Владельцы» и для выбора владельца. -#}
 {% macro owns(p) -%}
 arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '') != '', {{ p }}owners_string)),
-  arrayMap(x -> lower(trim(toString(ifNull(x, '')))), {{ p }}owners_string), [lower(trim(toString(ifNull({{ p }}owner_login, ''))))])))
+  arrayMap(x -> lower(trim(toString(ifNull(x, '')))), {{ p }}owners_string), array(lower(trim(toString(ifNull({{ p }}owner_login, ''))))))))
 {%- endmacro %}
 {% macro fx(x) %}translate({{ x }}, '|\t\n\r', '    '){% endmacro %}
 {% macro jes(s) -%}{{ s|string|replace('\\', '\\\\')|replace('"', '\\"')|replace("'", "''") }}{%- endmacro %}
@@ -131,7 +134,7 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
 {% macro caset() -%}
 SELECT lg FROM (
       SELECT lower(toString(s.login)) AS lg,
-        [{{ ou('s.lvl3_management_unit_nm') }}, {{ ou('s.lvl4_management_unit_nm') }}, {{ ou('s.lvl5_management_unit_nm') }}, {{ ou('s.lvl6_management_unit_nm') }}, {{ ou('s.lvl7_management_unit_nm') }}] AS lvz,
+        array({{ ou('s.lvl3_management_unit_nm') }}, {{ ou('s.lvl4_management_unit_nm') }}, {{ ou('s.lvl5_management_unit_nm') }}, {{ ou('s.lvl6_management_unit_nm') }}, {{ ou('s.lvl7_management_unit_nm') }}) AS lvz,
         arrayStringConcat(arraySlice(lvz, 1, if(arrayFirstIndex(x -> x = '', lvz) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', lvz) - 1))), ' › ') AS op,
         toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
         toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf
@@ -223,7 +226,7 @@ WITH
           {# Все элементы — строго Tuple(UInt8, String): arrayConcat в CH 24 приводит массивы к типу
              первого, и Nullable-значение с NULL (owner_login меты) роняло запрос — Code 349.
              Владелец — КАЖДЫЙ из владельцев отчёта: зритель отчёта с двумя владельцами считается у обоих. #}
-          [(toUInt8(0), '')],
+          array((toUInt8(0), '')),
           arrayMap(o -> (toUInt8(2), o), {{ owns('mm.') }}),
           arrayMap(c -> (toUInt8(3), toString(ifNull(c, ''))), arrayFilter(c -> isNotNull(c) AND c != '', mm.collection_names))
         )) AS kk, kk.1 AS kd, kk.2 AS k0,
@@ -244,7 +247,7 @@ WITH
        корзина частоты (freq_f) — фильтр по маске пары, как HAVING у kx. #}
     SELECT toUInt8(1) AS kd, toString(did) AS k0, {{ mets() }},
       {#- Ритм отчёта: людей каждого ритма «Daily, Weekly, Monthly, Rare»; «0,0,0,0» — Dead. -#}
-      arrayStringConcat([toString(countIf({{ RC }} = 4)), toString(countIf({{ RC }} = 3)), toString(countIf({{ RC }} = 2)), toString(countIf({{ RC }} = 1))], ',') AS rhythm
+      arrayStringConcat(array(toString(countIf({{ RC }} = 4)), toString(countIf({{ RC }} = 3)), toString(countIf({{ RC }} = 2)), toString(countIf({{ RC }} = 1))), ',') AS rhythm
       {%- if WITH_CA %},
       {#- зрители за период, входящие в ЦА отчёта — числитель «Охвата ЦА» (посторонние зрители не в счёт) -#}
       countIf({{ mcur('msk') }} AND acc = 1) AS ca_u{% endif %}
@@ -279,7 +282,7 @@ WITH
       countIf(ifNull(x.vl, '') != '' AND {% if LONG %}{{ mnb('x.vm') }}{% else %}bitCount(bitAnd(ifNull(x.vm, toUInt64(0)), {{ CUR }})){% endif %} >= {{ REG }}) AS rg
     FROM (
       SELECT lower(toString(s.login)) AS lg,
-        [{{ ou('s.lvl3_management_unit_nm') }}, {{ ou('s.lvl4_management_unit_nm') }}, {{ ou('s.lvl5_management_unit_nm') }}, {{ ou('s.lvl6_management_unit_nm') }}, {{ ou('s.lvl7_management_unit_nm') }}] AS lv,
+        array({{ ou('s.lvl3_management_unit_nm') }}, {{ ou('s.lvl4_management_unit_nm') }}, {{ ou('s.lvl5_management_unit_nm') }}, {{ ou('s.lvl6_management_unit_nm') }}, {{ ou('s.lvl7_management_unit_nm') }}) AS lv,
         if(arrayFirstIndex(z -> z = '', lv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(z -> z = '', lv) - 1)) AS ol,
         arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS op,
         toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
@@ -307,7 +310,7 @@ WITH
     FROM va
     ARRAY JOIN arrayConcat(
       arrayMap(i -> ('o', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › ')), range(1, ol + 1)),
-      [('s', sp, ''), ('t', st, ''), ('q', hqc, ''), ('i', itc, ''), ('h', toString(hdf), '')]) AS kk
+      array(('s', sp, ''), ('t', st, ''), ('q', hqc, ''), ('i', itc, ''), ('h', toString(hdf), ''))) AS kk
     GROUP BY ad, ak0, ap
   )
 SELECT CAST(section AS String) AS section, CAST(g AS String) AS g, CAST(k AS String) AS k, CAST(parent AS String) AS parent, CAST(n AS Int64) AS n

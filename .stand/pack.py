@@ -29,6 +29,9 @@ import sys
 import tempfile
 import unicodedata
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import hidesql   # noqa: E402
+
 # ─────────────────────────────── НАСТРОЙКИ ───────────────────────────────
 REPORT = 'Proteus Adoption — единый лист'
 DELIVERY = '22.10'                    # поставка — по дате (единый лист живёт одной папкой, без номеров поставок)
@@ -61,7 +64,7 @@ KEEP = ['0. Что куда и как проверить.md',
         '9. CSS борда — весь, одним куском (id шапки 803089).css',
         '10. Сниппет DevTools — разметка борда и число высоты ряда.js',
         '11. Сниппет DevTools — запросы чартов при быстрых кликах.js',
-        '12. Проба — можно ли создать представление в ClickHouse.py',
+        '12. Уборка — пробное представление в ClickHouse.py',
         'JSON', 'Проверки']
 # ───────────────────────────────────────────────────────────────────────────────────────
 
@@ -301,7 +304,13 @@ def build_one(src, name, kind, subs, extra=()):
         m = re.findall(r"\{% set BUILD = '[^']*' %\}", text)
         if len(m) == 1:   # штамп и в ответ (meta.build), если датасет его эхом отдаёт
             text = text.replace(m[0], "{% set BUILD = '" + '%s/%s/%s' % (DELIVERY, DATE, sha12(text)) + "' %}")
-        out = '{# %s #}\n%s' % (st, text)
+        try:   # выражения SELECT — в «[…][1]»: Superset разбирает их одним словом (.stand/hidesql.py)
+            built, n, chars = hidesql.hide_template(text)
+            hidesql.verify(text, built)
+        except Exception as ex:
+            raise BuildError('%s: hidesql: %s' % (name, ex))
+        notes.append('hidesql: %d выражений (%d знаков) — одним словом для Superset' % (n, chars))
+        out = '{# %s #}\n%s' % (st, built)
         if re.search(r'(?i)system', text):
             notes.append('слово «system» в датасете — в SQL Lab его не запустить')
     elif kind == 'sqllab':

@@ -21,8 +21,8 @@
 {% macro hid(x) %}lower(hex(toUInt32(cityHash64({{ x }}) % 4294967296))){% endmacro %}
 WITH
   st AS (
-    SELECT toString(login) AS lg, [{{ ou('lvl3_management_unit_nm') }}, {{ ou('lvl4_management_unit_nm') }}, {{ ou('lvl5_management_unit_nm') }},
-        {{ ou('lvl6_management_unit_nm') }}, {{ ou('lvl7_management_unit_nm') }}] AS lv,
+    SELECT toString(login) AS lg, array({{ ou('lvl3_management_unit_nm') }}, {{ ou('lvl4_management_unit_nm') }}, {{ ou('lvl5_management_unit_nm') }},
+        {{ ou('lvl6_management_unit_nm') }}, {{ ou('lvl7_management_unit_nm') }}) AS lv,
       if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
       arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
       toString(ifNull(emp_specialization_desc, '')) AS spec, toString(ifNull(emp_stream_desc, '')) AS stream,
@@ -37,12 +37,12 @@ WITH
     GROUP BY opath, sid, tid, hd, qid, iid
   )
 SELECT CAST('s' AS String) AS section, CAST('' AS String) AS g,
-  arrayStringConcat(arraySort(groupArray(arrayStringConcat([sid, tid, toString(hd), qid, iid, toString(c)], '\t'))), '\n') AS k,
+  arrayStringConcat(arraySort(groupArray(arrayStringConcat(array(sid, tid, toString(hd), qid, iid, toString(c)), '\t'))), '\n') AS k,
   CAST(opath AS String) AS parent, toInt64(sum(c)) AS n
 FROM gg GROUP BY opath
 UNION ALL
 SELECT 'd' AS section, dg AS g, {{ hid('dv') }} AS k, dv AS parent, toInt64(0) AS n
-FROM (SELECT DISTINCT arrayJoin([('spec', spec), ('stream', stream), ('hq', hq), ('it', it)]) AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
+FROM (SELECT DISTINCT arrayJoin(array(('spec', spec), ('stream', stream), ('hq', hq), ('it', it))) AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
 UNION ALL
 {# AD-группы — только имена для выбора (без численности: владелец 2026-09-30); пустые/«-» — выкинуты #}
 {# алиас таблицы обязателен: «AS n» ниже иначе подменяет колонку n в WHERE (все группы отсеивались) #}

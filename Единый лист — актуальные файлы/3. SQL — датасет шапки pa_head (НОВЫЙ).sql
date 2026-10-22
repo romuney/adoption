@@ -1,5 +1,5 @@
-{# Proteus Adoption — единый лист · поставка 22.10 · 2026-10-22 · pa-head.data.sql d86502f89758 · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-head.data.sql, сборка — python3 .stand/pack.py #}
-{#- pa_head — ШАПКА единого листа (2026-09-30): период и «Считать» + строка «Целевая аудитория» одним чартом.
+{# Proteus Adoption — единый лист · поставка 22.10 · 2026-10-22 · pa-head.data.sql 9588b849223e · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-head.data.sql, сборка — python3 .stand/pack.py #}
+{%- set PA_H = namespace(d=0) -%}{%- macro H() -%}{%- if PA_NOHIDE is defined -%}{{ caller() }}{%- else -%}{%- set PA_H.d = PA_H.d + 1 -%}{%- set x = caller() -%}{%- set PA_H.d = PA_H.d - 1 -%}{%- if PA_H.d > 0 -%}{{ x }}{%- elif '[' in x or ']' in x -%}{{ caller() }}{%- else -%}{%- if PA_MARK is defined -%}{{ PA_MARK[0] }}{%- endif -%}[{{ x }}][1]{%- if PA_MARK is defined -%}{{ PA_MARK[1] }}{%- endif -%}{%- endif -%}{%- endif -%}{%- endmacro -%}{#- H — сборка .stand/hidesql.py: «[выражение][1]» Superset разбирает одним словом (быстрее в разы), ClickHouse читает как само выражение. Исходник — без H, в Виджеты/. -#}{#- pa_head — ШАПКА единого листа (2026-09-30): период и «Считать» + строка «Целевая аудитория» одним чартом.
     Фильтров НЕ читает (ни каталога, ни панели) — ответ одинаковый для всех, считается один раз при открытии и кэшируется.
     Секции — как у pa_ca_dict (s / d / adg / total — справочник для выпадашек условий ЦА) плюс
       section = 'md' — k = дата свежести данных (последний день витрины, YYYY-MM-DD): «данные на ДД.ММ» в шапке;
@@ -18,16 +18,16 @@
       section = 'd' — словарь: g = spec | stream | hq | it, k = id, parent = значение;
       section = 'adg' — AD-группы прав Proteus: k = группа (только имя: численности и составов нет — пересечение считает сервер после «Применить»);
       section = 'total' — n = сотрудников. -#}
-{% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
-{% macro hid(x) %}lower(hex(toUInt32(cityHash64({{ x }}) % 4294967296))){% endmacro %}
+{% macro ou(col) %}{% call H() %}if(match(toString(ifNull({{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull({{ col }}, ''))){% endcall %}{% endmacro %}
+{% macro hid(x) %}{% call H() %}lower(hex(toUInt32(cityHash64({{ x }}) % 4294967296))){% endcall %}{% endmacro %}
 WITH
   st AS (
-    SELECT toString(login) AS lg, [{{ ou('lvl3_management_unit_nm') }}, {{ ou('lvl4_management_unit_nm') }}, {{ ou('lvl5_management_unit_nm') }},
-        {{ ou('lvl6_management_unit_nm') }}, {{ ou('lvl7_management_unit_nm') }}] AS lv,
-      if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
-      arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
-      toString(ifNull(emp_specialization_desc, '')) AS spec, toString(ifNull(emp_stream_desc, '')) AS stream,
-      toUInt8(ifNull(management_head_flg, 0) = 1) AS hd, toString(ifNull(hq_code, '')) AS hq, toString(ifNull(it_code, '')) AS it
+    SELECT toString(login) AS lg, {% call H() %}array({{ ou('lvl3_management_unit_nm') }}, {{ ou('lvl4_management_unit_nm') }}, {{ ou('lvl5_management_unit_nm') }},
+        {{ ou('lvl6_management_unit_nm') }}, {{ ou('lvl7_management_unit_nm') }}){% endcall %} AS lv,
+      {% call H() %}if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)){% endcall %} AS ol,
+      {% call H() %}arrayStringConcat(arraySlice(lv, 1, ol), ' › '){% endcall %} AS opath,
+      {% call H() %}toString(ifNull(emp_specialization_desc, '')){% endcall %} AS spec, {% call H() %}toString(ifNull(emp_stream_desc, '')){% endcall %} AS stream,
+      {% call H() %}toUInt8(ifNull(management_head_flg, 0) = 1){% endcall %} AS hd, {% call H() %}toString(ifNull(hq_code, '')){% endcall %} AS hq, {% call H() %}toString(ifNull(it_code, '')){% endcall %} AS it
     FROM prod_proteus.pa_staff
   ),
   gg AS (
@@ -38,12 +38,12 @@ WITH
     GROUP BY opath, sid, tid, hd, qid, iid
   )
 SELECT CAST('s' AS String) AS section, CAST('' AS String) AS g,
-  arrayStringConcat(arraySort(groupArray(arrayStringConcat([sid, tid, toString(hd), qid, iid, toString(c)], '\t'))), '\n') AS k,
+  {% call H() %}arrayStringConcat(arraySort(groupArray(arrayStringConcat(array(sid, tid, toString(hd), qid, iid, toString(c)), '\t'))), '\n'){% endcall %} AS k,
   CAST(opath AS String) AS parent, toInt64(sum(c)) AS n
 FROM gg GROUP BY opath
 UNION ALL
 SELECT 'd' AS section, dg AS g, {{ hid('dv') }} AS k, dv AS parent, toInt64(0) AS n
-FROM (SELECT DISTINCT arrayJoin([('spec', spec), ('stream', stream), ('hq', hq), ('it', it)]) AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
+FROM (SELECT DISTINCT {% call H() %}arrayJoin(array(('spec', spec), ('stream', stream), ('hq', hq), ('it', it))){% endcall %} AS dd, dd.1 AS dg, dd.2 AS dv FROM st)
 UNION ALL
 {# AD-группы — только имена для выбора (без численности: владелец 2026-09-30); пустые/«-» — выкинуты #}
 {# алиас таблицы обязателен: «AS n» ниже иначе подменяет колонку n в WHERE (все группы отсеивались) #}

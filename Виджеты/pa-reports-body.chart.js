@@ -1984,6 +1984,12 @@ function paBcast(msg) {
       }
     })(window.top, 0);
   } catch (e) { /* нет window.top — стенд без родителя */ }
+  if (/^PA_(SEL|RESEND|AUD|REP)$/.test(msg.type)) paDiag({ t: msg.type, src: msg.src, key: msg.key, noflt: msg.noflt });
+}
+// Диагностика (2026-10-22): копия служебных сообщений сверки — странице борда (сниппет 11 их пишет в ленту). Proteus
+// чужие типы сообщений не разбирает; уходит только тип, источник, ключ — без данных.
+function paDiag(o) {
+  try { if (window.top && window.top !== window) window.top.postMessage({ type: 'PA_DIAG', from: CFG.ns, o: o }, '*'); } catch (e) { /* нет родителя */ }
 }
 
 // Источник: сообщить новый ключ фильтра и отвечать на «повтори» (фильтр + метка pa_nonce: колонки нет
@@ -2561,11 +2567,13 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       clearTimeout(state.holdT); state.held = null;
       var k = catKeys(fl);
       state.catSent = { a: k.a, r: k.r, t: Date.now() };
+      paDiag({ t: nonce ? 'SEND_RESEND' : 'SEND', key: k.a, r: k.r });
       applyCrossFilter(nonce ? fl.concat([{ column: 'pa_nonce', operator: 'IN', value: [String(Date.now())] }]) : fl);
     }
     function catSend(fl) {
       if (!panelBusy()) { catSendNow(fl); return; }
       state.held = fl;
+      paDiag({ t: 'HOLD', key: catKeys(fl).a, busy: state.catSent.a, panel: state.audHeard ? state.audHeard.key : '' });
       clearTimeout(state.holdT);
       state.holdT = setTimeout(function () { if (state.held) catSendNow(state.held); }, Math.max(100, state.catSent.t + CFG.selHoldMax - Date.now()));
     }
@@ -2575,7 +2583,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
     // иначе — шлём с меткой (панель досчитала другое и ждёт этот)
     state.catResend = function (fl) {
       var k = catKeys(fl), s = state.catSent;
-      if (s && s.a === k.a && s.r === k.r && Date.now() - s.t < 2000) return true;
+      if (s && s.a === k.a && s.r === k.r && Date.now() - s.t < 2000) { paDiag({ t: 'RESEND_SKIP', key: k.a }); return true; }
       catSendNow(fl, true);
       return true;
     };
@@ -2886,6 +2894,7 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       MODEL.hasCa ? ['strip', 'ppl', 'ca'] : ['strip', 'ppl']);
     render();
     paSync(true);   // новый ответ датасета
+    paDiag({ t: 'DATA' });
 
     // ResizeObserver только правит габариты. НЕ вызывать render() — зациклит.
     // Старый observer отключаем: иначе он держит удалённый overlay.

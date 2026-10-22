@@ -50,6 +50,11 @@ const errs = [];
 p.on('pageerror', e => errs.push(String(e)));
 await p.setContent(page);
 const load = async (k, mock) => { await p.evaluate(([k, s]) => { document.querySelector('iframe[data-f="' + k + '"]').srcdoc = s; }, [k, inner(SRC[k][0], mock || SRC[k][1])]); };
+// SNIP=<файл> — вставить скрипт в страницу-родителя (как сниппет в консоль DevTools борда); её console — в вывод
+if (process.env.SNIP) {
+  p.on('console', (m) => { if (m.type() !== 'table') process.stderr.write('[борд] ' + m.text() + '\n'); });
+  await p.addScriptTag({ content: fs.readFileSync(process.env.SNIP, 'utf8') });
+}
 for (const k of Object.keys(SRC)) await load(k);
 await p.waitForTimeout(1200);
 const frameOf = async (k) => (await (await p.$('iframe[data-f="' + k + '"]')).contentFrame());

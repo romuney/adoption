@@ -3885,6 +3885,12 @@ function paBcast(msg) {
       }
     })(window.top, 0);
   } catch (e) { /* нет window.top — стенд без родителя */ }
+  if (/^PA_(SEL|RESEND|AUD|REP)$/.test(msg.type)) paDiag({ t: msg.type, src: msg.src, key: msg.key, noflt: msg.noflt });
+}
+// Диагностика (2026-10-22): копия служебных сообщений сверки — странице борда (сниппет 11 их пишет в ленту). Proteus
+// чужие типы сообщений не разбирает; уходит только тип, источник, ключ — без данных.
+function paDiag(o) {
+  try { if (window.top && window.top !== window) window.top.postMessage({ type: 'PA_DIAG', from: CFG.ns, o: o }, '*'); } catch (e) { /* нет родителя */ }
 }
 
 // Источник: сообщить новый ключ фильтра и отвечать на «повтори» (фильтр + метка pa_nonce: колонки нет
@@ -4896,6 +4902,7 @@ function paGuardMount(host, echoFn, sheetFn, accept) {
     paResendOn('ppl', function () { return CFG.sheet; }, CFG.paCols, maskOf);
     render();
     paSync(true);   // новый ответ датасета
+    paDiag({ t: 'DATA', key: MODEL.flt ? paKey(['mode_param', 'sel_f'], function (c) { return MODEL.flt[c] || []; }) : '(нет эха)' });
     // Вкладка «Аудитория» каталога: каталог свой выбор не видит (самовлияние выключено) — разрезы по выбранной
     // области считает этот датасет (секция aa) и шлёт их каталогу с ключом выбора (mode_param + sel_f из эха).
     paAudSend();

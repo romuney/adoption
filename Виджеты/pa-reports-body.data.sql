@@ -132,15 +132,19 @@ arrayDistinct(arrayFilter(o -> o != '', if(notEmpty(arrayFilter(x -> ifNull(x, '
 {% set segv = filter_values('seg_f')|first|default('', true) %}{% set segv = segv if WITH_CA and segv in ['reach', 'never', 'out'] else '' %}
 {#- Нормализация уровня УС — как в панели (заглушки «-», «…» = пусто, путь обрывается на них). -#}
 {% macro ou(col) %}if(match(toString(ifNull({{ col }}, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull({{ col }}, ''))){% endmacro %}
+{#- Атрибуты штата — готовые (GP-витрина pa_staffx, поставка 2026-10-23; путь оргструктуры — по правилу ou, как в
+    панели): lg, путь op и его уровни lv / ol, спец, стрим, HQ, IT, руководитель. Раньше — регулярка на каждого сотрудника
+    в каждом запросе. -#}
+{% macro sattrs() -%}
+toString(ifNull(s.login, '')) AS lg, arrayMap(x -> toString(ifNull(x, '')), s.slv) AS lv, toUInt32(ifNull(s.sol, 0)) AS ol, toString(ifNull(s.op, '')) AS op,
+        toString(ifNull(s.sp, '')) AS sp, toString(ifNull(s.st, '')) AS st,
+        toString(ifNull(s.hqc, '')) AS hqc, toString(ifNull(s.itc, '')) AS itc, toUInt8(ifNull(s.hdf, 0) = 1) AS hdf
+{%- endmacro %}
 {#- Логины ЦА «по условиям»: те же условия и тот же нормализованный путь, что в SQL панели. -#}
 {% macro caset() -%}
 SELECT lg FROM (
-      SELECT lower(toString(s.login)) AS lg,
-        array({{ ou('s.lvl3_management_unit_nm') }}, {{ ou('s.lvl4_management_unit_nm') }}, {{ ou('s.lvl5_management_unit_nm') }}, {{ ou('s.lvl6_management_unit_nm') }}, {{ ou('s.lvl7_management_unit_nm') }}) AS lvz,
-        arrayStringConcat(arraySlice(lvz, 1, if(arrayFirstIndex(x -> x = '', lvz) = 0, toUInt32(5), toUInt32(arrayFirstIndex(x -> x = '', lvz) - 1))), ' › ') AS op,
-        toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
-        toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf
-      FROM prod_proteus.pa_staff s) WHERE 1
+      SELECT {{ sattrs() }}
+      FROM prod_proteus.pa_staffx s) WHERE 1
       {%- if caorg %} AND arrayExists(pz -> op = pz OR startsWith(op, concat(pz, ' › ')), {{ qa(caorg) }}){% endif %}
       {%- if caspec %} AND sp IN {{ q(caspec) }}{% endif %}{% if castrm %} AND st IN {{ q(castrm) }}{% endif %}
       {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
@@ -148,6 +152,13 @@ SELECT lg FROM (
       {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
 {%- endmacro %}
 {% set pplf = loginf or exlf or attrson or freqf or custom or segv %}
+{#- Готовые строки (GP-витрины pa_cat_rep / pa_cat_grp / pa_cat_aud, поставка 2026-10-23): без людских условий и своего
+    периода (так борд открывается и пересчитывается на период и переключатели шапки) отчёты, владельцы, коллекции, ИТОГО и
+    «Аудитория» не считаются по парам, а читаются: колонки витрины — по сочетанию переключателей CB и периоду. С любым людским
+    условием — расчёт ниже, как раньше (правила те же — стенд same: ответ из витрин == расчёту). -#}
+{% set DEF = not (pplf or cper) %}
+{% set CB = (1 if pubv == '1' else 0) + (2 if actv == '1' else 0) + (4 if excv == '1' else 0) %}
+{% set EB = 1 if excv == '1' else 0 %}
 {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n В ОТЧЁТАХ СТРОКИ каталога:
     у строки отчёта — заходы в этот отчёт, у коллекции / владельца — в их отчёты, у ИТОГО — во все
     (= корзина правой панели без выбора). Фильтр — HAVING по маске человека внутри строки (kx; маска пары внутри — m0, не msk: боевой CH 24.8 в HAVING берёт msk как колонку — Code 215). -#}
@@ -222,7 +233,7 @@ countIf({{ mcur('msk') }}) AS users, sum(v_cur) AS views,
 {% set RC = "multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0)" %}
 WITH
   {# Дата свежести: md пары; запасной источник — последний визит (при пустом md gp_to_click). #}
-  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
+  maxd AS (SELECT max(assumeNotNull(md)) AS md FROM prod_proteus.pa_md),
   dash_ok AS (
     SELECT dashboard_id
     FROM prod_proteus.pa_dash_meta
@@ -271,6 +282,22 @@ WITH
     {%- endif %}
   ),
   agg AS (
+    {%- if DEF %}
+    {#- готовые строки: владельцы / коллекции / ИТОГО — по сочетанию переключателей CB, отчёты — по «без владельцев» EB -#}
+    SELECT toUInt8(ifNull(kd, 0)) AS kd, toString(ifNull(k0, '')) AS k0, toUInt64(ifNull(u_{{ CB }}_{{ grain }}, 0)) AS users,
+      toInt64(ifNull(v_{{ CB }}_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ CB }}_{{ grain }}, 0)) AS regular_users,
+      toInt64(ifNull(l_{{ CB }}, 0)) AS last_view_days, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
+    FROM prod_proteus.pa_cat_grp
+    WHERE ifNull(n_{{ CB }}, 0) > 0
+    UNION ALL
+    SELECT toUInt8(1) AS kd, toString(ifNull(dashboard_id, 0)) AS k0, toUInt64(ifNull(u_{{ EB }}_{{ grain }}, 0)) AS users,
+      toInt64(ifNull(v_{{ EB }}_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ EB }}_{{ grain }}, 0)) AS regular_users,
+      toInt64(ifNull(l_{{ EB }}, 0)) AS last_view_days,
+      arrayStringConcat(array(toString(ifNull(h4_{{ EB }}, 0)), toString(ifNull(h3_{{ EB }}, 0)), toString(ifNull(h2_{{ EB }}, 0)), toString(ifNull(h1_{{ EB }}, 0))), ',') AS rhythm
+      {%- if WITH_CA %}, toUInt64(ifNull(a_{{ EB }}_{{ grain }}, 0)) AS ca_u{% endif %}
+    FROM prod_proteus.pa_cat_rep
+    WHERE ifNull(n_{{ EB }}, 0) > 0 AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    {%- else %}
     SELECT kd, k0, {{ mets() }}, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
     FROM kx GROUP BY kd, k0
     UNION ALL
@@ -296,6 +323,7 @@ WITH
       {%- endif %}
     )
     GROUP BY did
+    {%- endif %}
   ),
   {#- Аудитория (вкладка каталога «Аудитория»): зрители периода среди действующих сотрудников (pa_staff) и сам штат —
       по разрезам. Штат — знаменатель «охвата» группы; сужается теми же условиями, что зрители (ЦА по условиям,
@@ -312,13 +340,8 @@ WITH
       countIf(ifNull(x.vl, '') != '') AS u, sum(ifNull(x.vv, 0)) AS vw,
       countIf(ifNull(x.vl, '') != '' AND {% if LONG %}{{ mnb('x.vm') }}{% else %}bitCount(bitAnd(ifNull(x.vm, toUInt64(0)), {{ CUR }})){% endif %} >= {{ REG }}) AS rg
     FROM (
-      SELECT lower(toString(s.login)) AS lg,
-        array({{ ou('s.lvl3_management_unit_nm') }}, {{ ou('s.lvl4_management_unit_nm') }}, {{ ou('s.lvl5_management_unit_nm') }}, {{ ou('s.lvl6_management_unit_nm') }}, {{ ou('s.lvl7_management_unit_nm') }}) AS lv,
-        if(arrayFirstIndex(z -> z = '', lv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(z -> z = '', lv) - 1)) AS ol,
-        arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS op,
-        toString(ifNull(s.emp_specialization_desc, '')) AS sp, toString(ifNull(s.emp_stream_desc, '')) AS st,
-        toString(ifNull(s.hq_code, '')) AS hqc, toString(ifNull(s.it_code, '')) AS itc, toUInt8(ifNull(s.management_head_flg, 0) = 1) AS hdf
-      FROM prod_proteus.pa_staff s
+      SELECT {{ sattrs() }}
+      FROM prod_proteus.pa_staffx s
     ) t
     LEFT JOIN vz x ON x.vl = t.lg
     WHERE 1
@@ -337,12 +360,18 @@ WITH
     GROUP BY lv, ol, sp, st, hqc, itc, hdf
   ),
   ak AS (
+    {%- if DEF %}
+    SELECT toString(ifNull(ad, '')) AS ad, toString(ifNull(ak0, '')) AS ak0, toString(ifNull(ap, '')) AS ap, toUInt64(ifNull(u_{{ CB }}_{{ grain }}, 0)) AS users,
+      toInt64(ifNull(v_{{ CB }}_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ CB }}_{{ grain }}, 0)) AS regular, toUInt64(ifNull(staff, 0)) AS staff
+    FROM prod_proteus.pa_cat_aud
+    {%- else %}
     SELECT kk.1 AS ad, kk.2 AS ak0, kk.3 AS ap, sum(u) AS users, sum(vw) AS views, sum(rg) AS regular, sum(sn) AS staff
     FROM va
     ARRAY JOIN arrayConcat(
       arrayMap(i -> ('o', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › ')), range(1, ol + 1)),
       array(('s', sp, ''), ('t', st, ''), ('q', hqc, ''), ('i', itc, ''), ('h', toString(hdf), ''))) AS kk
     GROUP BY ad, ak0, ap
+    {%- endif %}
   ){% if PVON %},
   {#- даты начала истории — как maxd панели: kt — самый старый шаг, где новых можно отличить от давно не заходивших (≥ 90 дней истории) -#}
   pvd AS (
@@ -351,10 +380,14 @@ WITH
       toInt64(dateDiff('day', dt, toDate(md))), cs, toInt64(dateDiff('day', cs, toDate(md)) + 1)) AS h
     FROM (SELECT md, addDays(toDate(ds0), 90) AS dt,
         greatest(toDate({{ g.sf }}(md) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] }}({{ g.n - 1 }})), toDate(ds0)) AS cs
-      FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+      FROM (SELECT max(assumeNotNull(md)) AS md, min(assumeNotNull(ds)) AS ds0 FROM prod_proteus.pa_md))
   ),
   pvt AS (
+    {%- if DEF %}
+    SELECT toInt32(k0) AS did FROM agg WHERE kd = 1 ORDER BY users DESC, did LIMIT {{ PV_N }}
+    {%- else %}
     SELECT did FROM evd GROUP BY did ORDER BY countIf({{ mcur('msk') }}) DESC, did LIMIT {{ PV_N }}
+    {%- endif %}
   ),
   pva AS (
     {#- пара отчёта = строка зрителя области панели (evd панели по одному отчёту) -#}
@@ -372,9 +405,7 @@ WITH
       sumForEach(arrayMap(i -> toUInt64(bitTest(msk, i) AND i != fk AND bitAnd(msk, toUInt64(bitShiftLeft(toUInt64({{ GAPM }}), toUInt8(i + 1)))) = 0), range({{ g.n }}))) AS tr
       {%- if grain == 'd' %},
       sumForEach(arrayMap(i -> toUInt64(bitTest(mskd, i)), range({{ g.n }}, {{ CAL_N }}))) AS cu,
-      sumForEach(arrayMap(i -> toUInt64(i = fdd AND fdd <= ktd AND bitTest(mskd, i)), range({{ g.n }}, {{ CAL_N }}))) AS cn{% else %},
-      {#- календарь по периоду: дни первого визита пар (новые дня) — в окне и не раньше 90 дней истории, как cf панели -#}
-      arraySort(groupArrayIf(toInt64(fdd), fdd < cd AND fdd <= ktd)) AS nfd{% endif %}
+      sumForEach(arrayMap(i -> toUInt64(i = fdd AND fdd <= ktd AND bitTest(mskd, i)), range({{ g.n }}, {{ CAL_N }}))) AS cn{% endif %}
     FROM (
       {#- пары отчёта из evd: те же «без владельцев» и, при ЦА по условиям, только люди ЦА -#}
       SELECT did, msk, v_cur AS vc, vp_cur AS vpv, fk, mon, pd AS mskd, fdd,
@@ -408,10 +439,30 @@ WITH
     GROUP BY did
   ){% if PV_CAL %},
   pvc AS (
-    {#- календарь по периоду — как calf панели: люди и просмотры дня — подневный факт пар блока (PVPAIR); день — дней назад
-        от даты свежести; новые дня — nfd в pva -#}
-    SELECT did, arraySort(groupArray((ck, cu, cv))) AS t
+    {#- календарь по периоду — как calf панели: люди и просмотры дня; день — дней назад от даты свежести; новые дня — nfd в pva.
+        Без ЦА по условиям — готовые дни отчёта (GP-витрина pa_dash_day: все зрители / без владельцев), с ЦА — подневный факт
+        пар блока (PVPAIR: только люди ЦА). -#}
+    {#- строка календаря — здесь, до соединения с pva (при join_use_nulls = 1 массив после LEFT JOIN — Nullable, и лямбда над
+        ним на старом анализаторе расходилась по длине): дни по возрастанию; номер дня — только если он не следующий за
+        предыдущим («k:»): у популярных отчётов визиты почти каждый день, номера почти не нужны. Предыдущий день — отдельным
+        массивом-аргументом лямбды: обращение к t внутри неё ClickHouse копирует на каждый элемент (квадратично: 8 кварталов —
+        4,5 с на блок). -#}
+    SELECT did, arrayStringConcat(arrayMap((x, pd) -> concat(if(x.1 = pd + 1, '', concat(toString(x.1), ':')),
+        toString(x.2), '|', if(x.4 = 0, '', toString(x.4)), '|', toString(x.3)), t, arrayPushFront(arrayPopBack(arrayMap(y -> y.1, t)), toInt64(-2))), ';') AS cal
     FROM (
+    SELECT did, arraySort(groupArray((ck, su, sv, sn))) AS t
+    {# суммы — под другими именами: с prefer_column_name_to_alias = 1 (бой) «sum(cu) AS cu» в HAVING — колонка cu, Code 215 #}
+    FROM (SELECT did, ck, sum(cu) AS su, sum(cv) AS sv, sum(cn) AS sn FROM (
+      SELECT did, ck, cu, cv, toUInt64(0) AS cn FROM (
+      {%- if not custom %}
+      SELECT toInt32(ifNull(dashboard_id, 0)) AS did, toInt64(dateDiff('day', toDate(dt), toDate((SELECT md FROM maxd)))) AS ck,
+        toUInt64(ifNull(users{{ '_nown' if excv == '1' else '' }}, 0)) AS cu, toUInt64(ifNull(views{{ '_nown' if excv == '1' else '' }}, 0)) AS cv
+      FROM prod_proteus.pa_dash_day
+      WHERE dashboard_id IN (SELECT did FROM pvt)
+        AND toDate(dt) >= tupleElement((SELECT h FROM pvd), 3) AND toDate(dt) <= toDate((SELECT md FROM maxd))
+        {#- день, когда заходили только владельцы, при «без владельцев» — не день календаря (как в факте: строк нет) -#}
+        AND ifNull(users{{ '_nown' if excv == '1' else '' }}, 0) > 0
+      {%- else %}
       SELECT toInt32(ifNull(e.dashboard_id, 0)) AS did, toInt64(dateDiff('day', toDate(e.log_dttm), toDate((SELECT md FROM maxd)))) AS ck,
         toUInt64(uniqExact(e.login)) AS cu, toUInt64(sum(e.views)) AS cv
       FROM prod_proteus.pa_evd_day e
@@ -420,8 +471,20 @@ WITH
         AND e.log_dttm < toDateTime((SELECT md FROM maxd)) + toIntervalDay(1)
         AND {{ PVPAIR }}
       GROUP BY did, ck
+      {%- endif %}
+      )
+      UNION ALL
+      {# новые дня: дни первого визита пар (в окне и не раньше 90 дней истории, как cf панели) — счётом по дню и сложением с днём
+          календаря (раньше countEqual по списку всех новых на каждый день — квадратично: 8 кварталов, 4,5 с на блок) #}
+      SELECT did, toInt64(fdd) AS ck, toUInt64(0) AS cu, toUInt64(0) AS cv, toUInt64(count()) AS cn
+      FROM (SELECT did, fdd, tupleElement((SELECT h FROM pvd), 2) AS ktd, tupleElement((SELECT h FROM pvd), 4) AS cd FROM evd WHERE did IN (SELECT did FROM pvt))
+      WHERE fdd < cd AND fdd <= ktd
+      GROUP BY did, ck
     )
-    GROUP BY did
+    GROUP BY did, ck
+    {# только дни календаря (с зрителями) — как раньше #}
+    HAVING su > 0)
+    GROUP BY did)
   ){% endif %}{% endif %}
 SELECT CAST(section AS String) AS section, CAST(g AS String) AS g, CAST(k AS String) AS k, CAST(parent AS String) AS parent, CAST(n AS Int64) AS n
 FROM (
@@ -463,6 +526,9 @@ FROM (
     arrayStringConcat(arraySort(groupArray(concat({{ cz('ak0') }}, '|', {{ cz('ap') }}, '|', toString(users), '|', toString(views), '|', toString(regular), '|', toString(staff)))), '\n') AS k,
     '' AS parent, toInt64(count()) AS n
   FROM ak
+  {%- if DEF %}
+  WHERE ad != 'all'
+  {%- endif %}
   GROUP BY ad
 
   UNION ALL
@@ -476,9 +542,14 @@ FROM (
   UNION ALL
   {# Все зрители периода (и не сотрудники: увол., служебные) — ИТОГО вкладки «Аудитория» = «Польз.» ИТОГО каталога.
      Строка разреза «*||людей|просмотров|постоянных|0». #}
+  {%- if DEF %}
+  SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(users), '|', toString(views), '|', toString(regular), '|0') AS k, '' AS parent, toInt64(users) AS n
+  FROM ak WHERE ad = 'all'
+  {%- else %}
   SELECT 'aud' AS section, 'all' AS g, concat('*||', toString(count()), '|', toString(sum(vv)), '|',
     toString(countIf({{ mnb('vm') }} >= {{ REG }})), '|0') AS k, '' AS parent, toInt64(count()) AS n
   FROM vz
+  {%- endif %}
   {% if PVON %}
   UNION ALL
   {# Мгновенная панель: строка на отчёт топа (формат — в шапке блока PV_N). #}
@@ -489,10 +560,7 @@ FROM (
       arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tn), ','), '\n',
       arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.tr), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), b.tv), ','){% if grain == 'd' %}, '\n',
       arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cu), ','), '\n', arrayStringConcat(arrayMap(x -> if(x = 0, '', toString(x)), a.cn), ','){% elif PV_CAL %}, '\n',
-      {#- дни по возрастанию; номер дня — только если он не следующий за предыдущим («k:»): у популярных отчётов визиты почти
-          каждый день, номера почти не нужны -#}
-      arrayStringConcat(arrayMap((x, i) -> concat(if(i > 1 AND x.1 = arrayElement(c.t, i - 1).1 + 1, '', concat(toString(x.1), ':')),
-        toString(x.2), '|', if(countEqual(a.nfd, x.1) = 0, '', toString(countEqual(a.nfd, x.1))), '|', toString(x.3)), c.t, arrayEnumerate(c.t)), ';'){% endif %}) AS k,
+      toString(ifNull(c.cal, '')){% endif %}) AS k,
     '' AS parent, toInt64(a.u) AS n
   FROM pva a
   LEFT JOIN pvb b ON b.did = a.did{% if PV_CAL %}

@@ -158,15 +158,23 @@ def _aud(n_dash, n_login):
     S.query("""CREATE TABLE prod_proteus.pa_adg_size ENGINE=MergeTree ORDER BY ad_group AS
       SELECT ad_group, toInt64(uniqExact(login)) AS n FROM prod_proteus.pa_adg_member
       WHERE login IN (SELECT login FROM prod_proteus.pa_staff) GROUP BY ad_group""")
-    # ЦА отчёта по правам: поимённые ∪ члены групп, только штат, без владельцев отчёта; wide — ЦА ≥ 30 % штата
-    S.query(f"""CREATE TABLE prod_proteus.pa_dash_ca ENGINE=MergeTree ORDER BY dashboard_id AS
-      SELECT dashboard_id, toInt64(uniqExact(login)) AS ca_n, toUInt8(uniqExact(login) >= 0.3 * (SELECT count() FROM prod_proteus.pa_staff)) AS ca_wide
-      FROM (SELECT a.dashboard_id AS dashboard_id, a.principal AS login FROM prod_proteus.pa_dash_acl a WHERE a.kind = 'user'
-            UNION ALL
-            SELECT a.dashboard_id, m.login FROM prod_proteus.pa_dash_acl a INNER JOIN prod_proteus.pa_adg_member m ON m.ad_group = a.principal WHERE a.kind = 'group')
-      WHERE login IN (SELECT login FROM prod_proteus.pa_staff)
-        AND (dashboard_id, login) NOT IN (SELECT dashboard_id, arrayJoin(owners_string) FROM prod_proteus.pa_dash_meta)
-      GROUP BY dashboard_id""")
+    # ЦА отчёта по правам: поимённые ∪ члены групп, только штат, без владельцев отчёта; wide — ЦА ≥ 30 % штата.
+    # Битовыми картами по номерам сотрудников: разворот «отчёт × член группы» на большом стенде — 156 млн пар, в память
+    # не влезал (стенд падал на этой таблице). Ответ тот же (сверено на малом стенде).
+    S.query("""CREATE TABLE prod_proteus.pa_dash_ca (dashboard_id Int32, ca_n Int64, ca_wide UInt8) ENGINE=MergeTree ORDER BY dashboard_id""")
+    S.query("""INSERT INTO prod_proteus.pa_dash_ca
+      WITH sid AS (SELECT login, toUInt32(rowNumberInAllBlocks() + 1) AS id FROM (SELECT login FROM prod_proteus.pa_staff ORDER BY login)),
+      gb AS (SELECT m.ad_group AS g, groupBitmapState(s.id) AS b FROM prod_proteus.pa_adg_member m INNER JOIN sid s ON s.login = m.login GROUP BY g),
+      ub AS (SELECT a.dashboard_id AS d, groupBitmapState(s.id) AS b FROM prod_proteus.pa_dash_acl a INNER JOIN sid s ON s.login = a.principal WHERE a.kind = 'user' GROUP BY d),
+      dg AS (SELECT a.dashboard_id AS d, groupBitmapOrState(gb.b) AS b FROM prod_proteus.pa_dash_acl a INNER JOIN gb ON gb.g = a.principal WHERE a.kind = 'group' GROUP BY d),
+      ob AS (SELECT m.dashboard_id AS d, groupBitmapState(s.id) AS b FROM (SELECT dashboard_id, arrayJoin(owners_string) AS o FROM prod_proteus.pa_dash_meta) m
+             INNER JOIN sid s ON s.login = m.o GROUP BY d),
+      al AS (SELECT d, groupBitmapOrState(b) AS b FROM (SELECT d, b FROM ub UNION ALL SELECT d, b FROM dg) GROUP BY d)
+      SELECT toInt32(al.d), toInt64(bitmapCardinality(if(ob.d = 0, al.b, bitmapAndnot(al.b, ob.b)))) AS ca_n,
+        toUInt8(ca_n >= 0.3 * (SELECT count() FROM prod_proteus.pa_staff))
+      FROM al LEFT JOIN ob ON ob.d = al.d
+      WHERE ca_n > 0
+      SETTINGS join_use_nulls = 0""")
     # доступ зрителей: пары pa_pair, где зритель — сотрудник с правом на отчёт (поимённо или через группу)
     S.query("""CREATE TABLE prod_proteus.pa_pair_acc ENGINE=MergeTree ORDER BY (dashboard_id, login) AS
       SELECT DISTINCT did AS dashboard_id, lg AS login FROM (

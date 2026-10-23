@@ -21,13 +21,11 @@
 {% macro hid(x) %}lower(hex(toUInt32(cityHash64({{ x }}) % 4294967296))){% endmacro %}
 WITH
   st AS (
-    SELECT toString(login) AS lg, array({{ ou('lvl3_management_unit_nm') }}, {{ ou('lvl4_management_unit_nm') }}, {{ ou('lvl5_management_unit_nm') }},
-        {{ ou('lvl6_management_unit_nm') }}, {{ ou('lvl7_management_unit_nm') }}) AS lv,
-      if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1)) AS ol,
-      arrayStringConcat(arraySlice(lv, 1, ol), ' › ') AS opath,
-      toString(ifNull(emp_specialization_desc, '')) AS spec, toString(ifNull(emp_stream_desc, '')) AS stream,
-      toUInt8(ifNull(management_head_flg, 0) = 1) AS hd, toString(ifNull(hq_code, '')) AS hq, toString(ifNull(it_code, '')) AS it
-    FROM prod_proteus.pa_staff
+    {#- атрибуты штата — готовые (GP-витрина pa_staffx, поставка 2026-10-23): путь оргструктуры тем же правилом ou, что раньше здесь -#}
+    SELECT toString(ifNull(login, '')) AS lg, toString(ifNull(op, '')) AS opath,
+      toString(ifNull(sp, '')) AS spec, toString(ifNull(st, '')) AS stream,
+      toUInt8(ifNull(hdf, 0) = 1) AS hd, toString(ifNull(hqc, '')) AS hq, toString(ifNull(itc, '')) AS it
+    FROM prod_proteus.pa_staffx
   ),
   gg AS (
     {#- 2026-09-30: наборов AD-групп у людей больше нет (на бою 1,8 млн членств → ответ 7,9 МБ); пересечение групп
@@ -51,7 +49,6 @@ WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^(?:\\
 UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL
-{# Дата свежести: одна строка pa_pair (md одинаков у всех пар), а не скан таблицы. #}
-SELECT 'md' AS section, '' AS g, ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), '') AS k,
-  {#- начало истории событий — нижняя граница календаря «Свой период» (2026-10-21) -#}
-  ifNull(toString(toDate((SELECT min(dmin) FROM prod_proteus.pa_pair))), '') AS parent, toInt64(0) AS n
+{# Дата свежести и начало истории событий (нижняя граница календаря «Свой период») — одна строка GP-витрины pa_md. #}
+SELECT 'md' AS section, '' AS g, ifNull(toString(toDate(md)), '') AS k, ifNull(toString(toDate(ds)), '') AS parent, toInt64(0) AS n
+FROM prod_proteus.pa_md

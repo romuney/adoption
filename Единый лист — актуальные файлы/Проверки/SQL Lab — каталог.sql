@@ -2,7 +2,7 @@
 -- Каталог единого листа (pa_body_one) — дефолт, ЦА по правам; строки section = 'aud' — вкладка «Аудитория».
 -- Рендер без джини (для SQL Lab, база CROSS). Цифру в первой строке меняйте для повторного замера: SQL Lab кэширует результат.
 WITH
-  maxd AS (SELECT max(ifNull(md, dmax)) AS md FROM prod_proteus.pa_pair),
+  maxd AS (SELECT max(assumeNotNull(md)) AS md FROM prod_proteus.pa_md),
   dash_ok AS (
     SELECT dashboard_id
     FROM prod_proteus.pa_dash_meta
@@ -27,20 +27,18 @@ WITH
     )
     GROUP BY kd, k0, login
   ),
-  agg AS (
-    SELECT kd, k0, [countIf(bitAnd(msk, 1073741823) != 0)][1] AS users, sum(v_cur) AS views,
-      [countIf(bitCount(bitAnd(msk, 1073741823)) >= 6)][1] AS regular_users,
-      [dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd)))][1] AS last_view_days, '' AS rhythm, toUInt64(0) AS ca_u
-    FROM kx GROUP BY kd, k0
+  agg AS (SELECT toUInt8(ifNull(kd, 0)) AS kd, [toString(ifNull(k0, ''))][1] AS k0, [toUInt64(ifNull(u_7_d, 0))][1] AS users,
+      [toInt64(ifNull(v_7_d, 0))][1] AS views, [toUInt64(ifNull(r_7_d, 0))][1] AS regular_users,
+      [toInt64(ifNull(l_7, 0))][1] AS last_view_days, '' AS rhythm, toUInt64(0) AS ca_u
+    FROM prod_proteus.pa_cat_grp
+    WHERE ifNull(n_7, 0) > 0
     UNION ALL
-    SELECT toUInt8(1) AS kd, toString(did) AS k0, [countIf(bitAnd(msk, 1073741823) != 0)][1] AS users, sum(v_cur) AS views,
-      [countIf(bitCount(bitAnd(msk, 1073741823)) >= 6)][1] AS regular_users,
-      [dateDiff('day', toStartOfDay(max(dmax)), toStartOfDay((SELECT md FROM maxd)))][1] AS last_view_days,[arrayStringConcat(array(toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 4)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 3)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 2)), toString(countIf(multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0) = 1))), ',')][1] AS rhythm,[countIf(bitAnd(msk, 1073741823) != 0 AND acc = 1)][1] AS ca_u
-    FROM (
-      SELECT did, msk, v_cur, dmax, pd, pw, pm,toUInt8((did, lower(login)) IN (SELECT [toInt32(ifNull(dashboard_id, 0))][1], [toString(ifNull(login, ''))][1] FROM prod_proteus.pa_pair_acc)) AS acc
-      FROM evd
-    )
-    GROUP BY did
+    SELECT toUInt8(1) AS kd, [toString(ifNull(dashboard_id, 0))][1] AS k0, [toUInt64(ifNull(u_1_d, 0))][1] AS users,
+      [toInt64(ifNull(v_1_d, 0))][1] AS views, [toUInt64(ifNull(r_1_d, 0))][1] AS regular_users,
+      [toInt64(ifNull(l_1, 0))][1] AS last_view_days,
+      [arrayStringConcat(array(toString(ifNull(h4_1, 0)), toString(ifNull(h3_1, 0)), toString(ifNull(h2_1, 0)), toString(ifNull(h1_1, 0))), ',')][1] AS rhythm, [toUInt64(ifNull(a_1_d, 0))][1] AS ca_u
+    FROM prod_proteus.pa_cat_rep
+    WHERE ifNull(n_1, 0) > 0 AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
   ),vz AS (
     SELECT lower(toString(login)) AS vl, groupBitOr(msk) AS vm, sum(v_cur) AS vv
     FROM evd
@@ -51,33 +49,27 @@ WITH
       [countIf(ifNull(x.vl, '') != '')][1] AS u, sum(ifNull(x.vv, 0)) AS vw,
       [countIf(ifNull(x.vl, '') != '' AND bitCount(bitAnd(ifNull(x.vm, toUInt64(0)), 1073741823)) >= 6)][1] AS rg
     FROM (
-      SELECT [lower(toString(s.login))][1] AS lg,
-        [array(if(match(toString(ifNull(s.lvl3_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl3_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl4_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl4_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl5_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl5_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl6_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl6_management_unit_nm, ''))), if(match(toString(ifNull(s.lvl7_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(s.lvl7_management_unit_nm, ''))))][1] AS lv,
-        [if(arrayFirstIndex(z -> z = '', lv) = 0, toUInt32(5), toUInt32(arrayFirstIndex(z -> z = '', lv) - 1))][1] AS ol,
-        [arrayStringConcat(arraySlice(lv, 1, ol), ' › ')][1] AS op,
-        [toString(ifNull(s.emp_specialization_desc, ''))][1] AS sp, [toString(ifNull(s.emp_stream_desc, ''))][1] AS st,
-        [toString(ifNull(s.hq_code, ''))][1] AS hqc, [toString(ifNull(s.it_code, ''))][1] AS itc, [toUInt8(ifNull(s.management_head_flg, 0) = 1)][1] AS hdf
-      FROM prod_proteus.pa_staff s
+      SELECT [toString(ifNull(s.login, ''))][1] AS lg, [arrayMap(x -> toString(ifNull(x, '')), s.slv)][1] AS lv, [toUInt32(ifNull(s.sol, 0))][1] AS ol, [toString(ifNull(s.op, ''))][1] AS op,
+        [toString(ifNull(s.sp, ''))][1] AS sp, [toString(ifNull(s.st, ''))][1] AS st,
+        [toString(ifNull(s.hqc, ''))][1] AS hqc, [toString(ifNull(s.itc, ''))][1] AS itc, [toUInt8(ifNull(s.hdf, 0) = 1)][1] AS hdf
+      FROM prod_proteus.pa_staffx s
     ) t
     LEFT JOIN vz x ON x.vl = t.lg
     WHERE 1
     GROUP BY lv, ol, sp, st, hqc, itc, hdf
   ),
   ak AS (
-    SELECT kk.1 AS ad, kk.2 AS ak0, kk.3 AS ap, sum(u) AS users, sum(vw) AS views, sum(rg) AS regular, sum(sn) AS staff
-    FROM va
-    ARRAY JOIN arrayConcat(
-      arrayMap(i -> ('o', arrayStringConcat(arraySlice(lv, 1, i), ' › '), arrayStringConcat(arraySlice(lv, 1, toUInt32(i - 1)), ' › ')), range(1, ol + 1)),
-      array(('s', sp, ''), ('t', st, ''), ('q', hqc, ''), ('i', itc, ''), ('h', toString(hdf), ''))) AS kk
-    GROUP BY ad, ak0, ap
+    SELECT [toString(ifNull(ad, ''))][1] AS ad, [toString(ifNull(ak0, ''))][1] AS ak0, [toString(ifNull(ap, ''))][1] AS ap, [toUInt64(ifNull(u_7_d, 0))][1] AS users,
+      [toInt64(ifNull(v_7_d, 0))][1] AS views, [toUInt64(ifNull(r_7_d, 0))][1] AS regular, [toUInt64(ifNull(staff, 0))][1] AS staff
+    FROM prod_proteus.pa_cat_aud
   ),pvd AS (SELECT [tuple(toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1),
       toInt64(dateDiff('day', dt, toDate(md))), cs, toInt64(dateDiff('day', cs, toDate(md)) + 1))][1] AS h
     FROM (SELECT md, [addDays(toDate(ds0), 90)][1] AS dt,
         [greatest(toDate(toStartOfDay(md) - toIntervalDay(29)), toDate(ds0))][1] AS cs
-      FROM (SELECT max(ifNull(md, dmax)) AS md, min(dmin) AS ds0 FROM prod_proteus.pa_pair))
+      FROM (SELECT max(assumeNotNull(md)) AS md, min(assumeNotNull(ds)) AS ds0 FROM prod_proteus.pa_md))
   ),
   pvt AS (
-    SELECT did FROM evd GROUP BY did ORDER BY countIf(bitAnd(msk, 1073741823) != 0) DESC, did LIMIT 500
+    SELECT toInt32(k0) AS did FROM agg WHERE kd = 1 ORDER BY users DESC, did LIMIT 500
   ),
   pva AS (SELECT did,
       countIf(cur) AS u, countIf(prv) AS up, sum(vc) AS v, sum(vpv) AS vp,
@@ -134,6 +126,7 @@ FROM (
     [arrayStringConcat(arraySort(groupArray(concat(translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate(ak0, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), concat('(', char(91), 'А-Яа-яЁё', char(93), char(91), 'А-Яа-яЁё ', char(93), '*)'), '`\\1`'), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'), '|', translateUTF8(replaceRegexpAll(replaceAll(replaceAll(replaceAll(replaceAll(translate(ap, '\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), concat('(', char(91), 'А-Яа-яЁё', char(93), char(91), 'А-Яа-яЁё ', char(93), '*)'), '`\\1`'), 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя', 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!#$%'), '|', toString(users), '|', toString(views), '|', toString(regular), '|', toString(staff)))), '\n')][1] AS k,
     '' AS parent, toInt64(count()) AS n
   FROM ak
+  WHERE ad != 'all'
   GROUP BY ad
   UNION ALL
   SELECT 'me' AS section, '' AS g,
@@ -142,9 +135,8 @@ FROM (
       [lower(trim(''))][1]) AS k,
     '' AS parent, toInt64(0) AS n
   UNION ALL
-  SELECT 'aud' AS section, 'all' AS g, [concat('*||', toString(count()), '|', toString(sum(vv)), '|',
-    toString(countIf(bitCount(bitAnd(vm, 1073741823)) >= 6)), '|0')][1] AS k, '' AS parent, toInt64(count()) AS n
-  FROM vz
+  SELECT 'aud' AS section, 'all' AS g, [concat('*||', toString(users), '|', toString(views), '|', toString(regular), '|0')][1] AS k, '' AS parent, toInt64(users) AS n
+  FROM ak WHERE ad = 'all'
   UNION ALL
   SELECT 'pv' AS section, toString(a.did) AS g,
     [concat(toString(a.u), '|', toString(a.up), '|', toString(a.v), '|', toString(a.vp), '|', toString(a.nu), '|', toString(a.np), '|0|',

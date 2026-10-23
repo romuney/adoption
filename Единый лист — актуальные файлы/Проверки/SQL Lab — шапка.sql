@@ -3,14 +3,10 @@
 -- Рендер без джини (для SQL Lab, база CROSS). Цифру в первой строке меняйте для повторного замера: SQL Lab кэширует результат.
 -- Ждём: ~460 строк на синтетике (на бою — по числу сочетаний атрибутов штата), одна строка md с датой вчера.
 WITH
-  st AS (
-    SELECT toString(login) AS lg, [array(if(match(toString(ifNull(lvl3_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl3_management_unit_nm, ''))), if(match(toString(ifNull(lvl4_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl4_management_unit_nm, ''))), if(match(toString(ifNull(lvl5_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl5_management_unit_nm, ''))),
-        if(match(toString(ifNull(lvl6_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl6_management_unit_nm, ''))), if(match(toString(ifNull(lvl7_management_unit_nm, '')), '^(?:\\s|\\p{P})*$'), '', toString(ifNull(lvl7_management_unit_nm, ''))))][1] AS lv,
-      [if(arrayFirstIndex(x -> x = '', lv) = 0, toUInt32(length(lv)), toUInt32(arrayFirstIndex(x -> x = '', lv) - 1))][1] AS ol,
-      [arrayStringConcat(arraySlice(lv, 1, ol), ' › ')][1] AS opath,
-      [toString(ifNull(emp_specialization_desc, ''))][1] AS spec, [toString(ifNull(emp_stream_desc, ''))][1] AS stream,
-      [toUInt8(ifNull(management_head_flg, 0) = 1)][1] AS hd, [toString(ifNull(hq_code, ''))][1] AS hq, [toString(ifNull(it_code, ''))][1] AS it
-    FROM prod_proteus.pa_staff
+  st AS (SELECT [toString(ifNull(login, ''))][1] AS lg, [toString(ifNull(op, ''))][1] AS opath,
+      [toString(ifNull(sp, ''))][1] AS spec, [toString(ifNull(st, ''))][1] AS stream,
+      [toUInt8(ifNull(hdf, 0) = 1)][1] AS hd, [toString(ifNull(hqc, ''))][1] AS hq, [toString(ifNull(itc, ''))][1] AS it
+    FROM prod_proteus.pa_staffx
   ),
   gg AS (SELECT opath, [lower(hex(toUInt32(cityHash64(spec) % 4294967296)))][1] AS sid, [lower(hex(toUInt32(cityHash64(stream) % 4294967296)))][1] AS tid, hd, [lower(hex(toUInt32(cityHash64(hq) % 4294967296)))][1] AS qid, [lower(hex(toUInt32(cityHash64(it) % 4294967296)))][1] AS iid, count() AS c
     FROM st
@@ -29,4 +25,5 @@ WHERE ifNull(z.n, 0) > 0 AND NOT match(toString(ifNull(z.ad_group, '')), '^(?:\\
 UNION ALL
 SELECT 'total' AS section, '' AS g, '' AS k, '' AS parent, toInt64(count()) AS n FROM prod_proteus.pa_staff
 UNION ALL
-SELECT 'md' AS section, '' AS g, ifNull(toString(toDate((SELECT md FROM prod_proteus.pa_pair WHERE isNotNull(md) LIMIT 1))), '') AS k,ifNull(toString(toDate((SELECT min(dmin) FROM prod_proteus.pa_pair))), '') AS parent, toInt64(0) AS n
+SELECT 'md' AS section, '' AS g, [ifNull(toString(toDate(md)), '')][1] AS k, [ifNull(toString(toDate(ds)), '')][1] AS parent, toInt64(0) AS n
+FROM prod_proteus.pa_md

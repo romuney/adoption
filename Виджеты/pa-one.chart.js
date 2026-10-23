@@ -1086,6 +1086,8 @@ function buildCSS() {
     P + '-sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;border-radius:999px;background:var(--blue-bg);color:var(--act-ink);font-size:9px;font-weight:400;margin-left:5px;padding:0 4px;}',
     P + '-sub-cnt.ppl{background:#f3ecff;color:#5a2fc2;}',
     P + '-sub-tab.active{background:var(--card);color:var(--ink);font-weight:700;}',
+    P + '-tab-t{display:inline-flex;flex-direction:column;}',
+    P + '-tab-t::after{content:attr(data-t);font-weight:700;height:0;overflow:hidden;visibility:hidden;}',
     P + '-sub-tabs.tiny{border-radius:9px;padding:2px;}',
     P + '-sub-tabs.tiny ' + P + '-sub-tab{height:22px;padding:0 8px;font-size:var(--fs-note);border-radius:6px;}',
 
@@ -1125,8 +1127,7 @@ function buildCSS() {
     P + '-who-bar ' + P + '-psearch input{width:170px;height:30px;}',
     P + '-who-bar ' + P + '-ibtn{width:30px;height:30px;}',
     P + '-who-tbl{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;}',
-    // таблицы «Кто смотрит» не шире 1100: на широком экране от ФИО до сегмента было 1300–2600 px (ревью 09.10)
-    P + '-who-tbl ' + P + '-ptable{max-width:1100px;}',
+    // таблица «Кто смотрит» — во всю ширину панели (владелец 2026-10-23: на большом экране справа оставалась пустота; был предел 1100 px)
     P + '-who-cnt b{color:var(--ink2);font-weight:400;}',
     P + '-who-cnt .who-sel{color:var(--act-ink);font-weight:400;cursor:help;}',
 
@@ -1345,8 +1346,12 @@ function buildCSS() {
     P + '-selg-box b{font-weight:700;color:#23272e;}',
     P + '-selg-box span{color:#8a909c;line-height:1.4;}',
     P + '-selg-box button{border:0;border-radius:8px;background:#245FD4;color:#fff;font:inherit;font-weight:400;padding:6px 12px;cursor:pointer;}',
-    P + '-tab-spin{display:inline-block;width:9px;height:9px;border-width:1.5px;margin-left:6px;vertical-align:-1px;}',
-    P + '-tab-spin.off{visibility:hidden;animation:none;}',
+    P + '-sub-tab{position:relative;}',
+    P + '-tab-ld{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);display:flex;gap:3px;pointer-events:none;}',
+    P + '-tab-ld b{width:3px;height:3px;border-radius:50%;background:var(--act-ink, #245FD4);opacity:.25;animation:' + CFG.ns + '-ld 1s ease-in-out infinite;}',
+    P + '-tab-ld b:nth-child(2){animation-delay:.15s;}',
+    P + '-tab-ld b:nth-child(3){animation-delay:.3s;}',
+    '@keyframes ' + CFG.ns + '-ld{0%,80%,100%{opacity:.25;}40%{opacity:1;}}',
     P + '-pend{display:flex;align-items:flex-start;gap:10px;margin:28px auto;max-width:460px;font-family:' + CFG.fonts.family + ';font-size:12.5px;color:#454b55;line-height:1.45;}',
     P + '-pend b{display:block;font-weight:700;color:#23272e;margin-bottom:2px;}',
     P + '-pend span{color:#8a909c;}',
@@ -1477,9 +1482,10 @@ function buildCSS() {
     P + '-sig-chip.dead{background:#f0f1f3;color:var(--muted);}',
     P + '-segstrip.ca ' + P + '-seg-part.never .sp-bar{background:repeating-linear-gradient(135deg,#dfe3e8 0 4px,#eef0f3 4px 8px)!important;}',
     P + '-panel-b.path-wrap{overflow:auto;display:flex;flex-direction:column;gap:12px;}',
-    // (после базового правила — иначе оно перебивает) широкая панель: карточка ЦА слева от воронки (воронка 560 px посередине 1500+ px пустоты, ревью 09.10)
+    // (после базового правила — иначе оно перебивает) широкая панель: карточка ЦА слева от воронки (воронка 560 px посередине 1500+ px пустоты, ревью 09.10);
+    // с 2026-10-23 воронка тянется до 72 % своей колонки (funnelSvg), карточка — 26 % панели (380…480 px)
     '@media (min-width:1280px){' + P + '-panel-b.path-wrap{flex-direction:row;align-items:flex-start;gap:28px;}' +
-      P + '-panel-b.path-wrap > ' + P + '-scopebar{flex:0 0 380px;grid-template-columns:minmax(0,1fr);}' +
+      P + '-panel-b.path-wrap > ' + P + '-scopebar{flex:0 0 clamp(380px,26%,480px);grid-template-columns:minmax(0,1fr);}' +
       P + '-panel-b.path-wrap > ' + P + '-fn-box{flex:1 1 auto;min-width:0;}}',
     P + '-aud-sum{display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:var(--fs-note);color:var(--muted);margin:2px 0 8px;}',
     P + '-aud-sum b{color:var(--ink);font-weight:700;}',
@@ -2505,11 +2511,12 @@ function tabsHtml(tabKey, tabs) {
   for (var i = 0; i < tabs.length; i++) {
     h += '<button class="' + CFG.ns + '-sub-tab' + (tabs[i].on ? ' active' : '') +
       '" role="tab" aria-selected="' + (tabs[i].on ? 'true' : 'false') +
-      '" data-view="' + esc(tabKey) + ':' + esc(tabs[i].key) + '" type="button">' + esc(tabs[i].label) +
+      '" data-view="' + esc(tabKey) + ':' + esc(tabs[i].key) + '" type="button">' +
+      // ярлык держит ширину жирного начертания (-tab-t::after): выбранная вкладка не шире невыбранной (2026-10-23)
+      '<span class="' + CFG.ns + '-tab-t" data-t="' + esc(tabs[i].label) + '">' + esc(tabs[i].label) + '</span>' +
       (tabs[i].cnt ? '<span class="' + CFG.ns + '-sub-cnt ppl"' + tip({ text: 'Условий людской шины из «Кто смотрит»: ' + tabs[i].cnt + ' — каталог слева сужен' }) + '>' + tabs[i].cnt + '</span>' : '') +
-      // место под крутилку «догружается» — у вкладок, которые её показывают, всегда: ярлыки не прыгают по ширине
-      (tabs[i].slot ? '<i class="' + CFG.ns + '-selg-spin ' + CFG.ns + '-tab-spin' + (tabs[i].pend ? '' : ' off') + '"' +
-        (tabs[i].pend ? tip({ text: 'Догружается: данные по выбранному отчёту ещё в пути' }) : ' aria-hidden="true"') + '></i>' : '') +
+      // «догружается» — три точки поверх нижнего края ярлыка: ширина вкладки не меняется (владелец 2026-10-23)
+      (tabs[i].pend ? '<i class="' + CFG.ns + '-tab-ld" aria-label="догружается"><b></b><b></b><b></b></i>' : '') +
       '</button>';
   }
   return h;
@@ -3020,7 +3027,7 @@ function buildHTML() {
     bodyCls = 'coh-wrap'; title = 'Закрепляемость';
   }
   var tabs = [];
-  for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key, cnt: CFG.views[t].key === 'who' ? whoFilterCount() : 0, pend: pvPendView(CFG.views[t].key), slot: /^(who|path|coh|cal)$/.test(CFG.views[t].key) });
+  for (var t = 0; t < CFG.views.length; t++) tabs.push({ key: CFG.views[t].key, label: CFG.views[t].label, on: view === CFG.views[t].key, cnt: CFG.views[t].key === 'who' ? whoFilterCount() : 0, pend: pvPendView(CFG.views[t].key) });
   var h = [];
   h.push('<div class="' + N + '-root">');
   // Верхняя строка (вровень с «Выбранными фильтрами» каталога, 2026-10-09): слева — свои пилюли панели, справа —
@@ -3126,7 +3133,8 @@ function funnelSvg(steps, w) {
   var H = FN_H ? Math.max(n * FN_ROW_MIN, Math.min(n * FN_ROW, FN_H)) : n * FN_ROW, rowH = (H - 12) / n;
   var max = 1;
   for (i = 0; i < n; i++) if (steps[i].value > max) max = steps[i].value;
-  var cx = w / 2, sideW = 64, maxBar = Math.max(60, Math.min(FN_MAX_BAR, w - sideW * 2 - 20));
+  // ширина самого большого бара: до FN_MAX_BAR, на широкой панели — до 72 % места (владелец 2026-10-23: воронка терялась в пустоте)
+  var cx = w / 2, sideW = 64, maxBar = Math.max(60, Math.min(Math.max(FN_MAX_BAR, w * 0.72), w - sideW * 2 - 20));
   var W = wide(), body = '';
   for (i = 0; i < n; i++) {
     var st = steps[i], y = i * rowH + 16;

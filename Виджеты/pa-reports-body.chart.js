@@ -180,9 +180,10 @@ if (!__S[CFG.ns]) __S[CFG.ns] = {
   dd: null,                   // открытый дропдаун разреза
   repQuery: '',               // поиск в каталоге
   page: 0,                    // текущая страница каталога, с 0 (TABLES.md)
-  pageSize: 20                // строк на страницу: панель каталога 712px
+  pageSize: 20                // строк на страницу: не меньше PAGE_MIN, больше — сколько влезает по высоте (fitPage, 2026-10-23)
 };
 var state = __S[CFG.ns];
+var PAGE_MIN = 20;            // строк на странице каталога не меньше (fitPage)
 // Состояние прошлой версии виджета (та же вкладка браузера): добиваем новые ключи.
 if (!state.aud || !state.aud.picks) state.aud = { dim: 'o3', picks: { o: [], s: [], t: [], q: [], i: [], h: [] }, sort: { col: 'users', dir: -1 } };
 
@@ -1266,7 +1267,7 @@ function reportTableHtml() {
   }
   // Пагинация применяется ПОСЛЕДНЕЙ — после поиска и сортировки (TABLES.md);
   // в DOM живёт только текущая страница.
-  var PS = state.pageSize || 20;
+  var PS = state.pageSize || PAGE_MIN;
   var total = rows.length;
   var pages = Math.max(1, Math.ceil(total / PS));
   if ((state.page || 0) > pages - 1) state.page = pages - 1;
@@ -1739,7 +1740,7 @@ function audTableHtml() {
   }
   var t = audTotal(), qOn = !!(state.repQuery || '').trim();
   if (!rows.length && (qOn || !t.other)) return '<div class="' + N + '-empty"><b>Ничего не найдено</b>' + (qOn ? 'В поиске «' + esc(state.repQuery) + '» — очисти его.' : (ext ? 'Выбранные отчёты в этом разрезе никто не смотрел. Сними выбор или выбери другой разрез.' : 'Выбери другой разрез.')) + '</div>';
-  var PS = state.pageSize || 20, total = rows.length, pages = Math.max(1, Math.ceil(total / PS));
+  var PS = state.pageSize || PAGE_MIN, total = rows.length, pages = Math.max(1, Math.ceil(total / PS));
   if ((state.page || 0) > pages - 1) state.page = pages - 1;
   if (state.page < 0) state.page = 0;
   var pageRows = rows.slice((state.page || 0) * PS, (state.page || 0) * PS + PS), picked = state.aud.picks[dim.d] || [];
@@ -1834,7 +1835,7 @@ function barTableHtml(o) {
 // Пейджер каталога: считаем по ПОЛНОМУ набору (после поиска/сортировки),
 // в DOM — только текущая страница (TABLES.md, RETRO 30/40).
 function pagerHtml(total) {
-  var PS = state.pageSize || 20;
+  var PS = state.pageSize || PAGE_MIN;
   var pages = Math.max(1, Math.ceil(total / PS));
   if ((state.page || 0) > pages - 1) state.page = pages - 1;
   if (state.page < 0) state.page = 0;
@@ -1881,7 +1882,7 @@ function catalogTableHtml() {
       (cat.filtered ? 'Выбор в другой вкладке не оставил здесь ни одной строки — сними часть условий.' :
         'Очисти поиск или сними часть условий.') + '</div>';
   }
-  var PS = state.pageSize || 20;
+  var PS = state.pageSize || PAGE_MIN;
   var total2 = cat.rows.length;
   var pages2 = Math.max(1, Math.ceil(total2 / PS));
   if ((state.page || 0) > pages2 - 1) state.page = pages2 - 1;
@@ -2424,11 +2425,40 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       // ширина каталога — для числа колонок таблицы отчётов (узко — часть колонок прячется)
       var cw = overlay.clientWidth;
       if (cw && Math.abs(cw - (state.catW || 0)) > 4) { state.catW = cw; overlay.innerHTML = buildHTML(); }
+      if (fitPage()) overlay.innerHTML = buildHTML();
       overlay.scrollTop = st;
       overlay.scrollLeft = sl;
       catScrPut();
       renderTip();
       tourSync();
+    }
+    // Строк на странице — сколько влезает в зону строк по высоте, не меньше PAGE_MIN (владелец 2026-10-23: на большом
+    // экране «1–20 из …» и пустота под таблицей). Высота строки — средняя по строкам текущей страницы (названия
+    // переносятся до 3 строк). Пересчёт — только когда зона строк сменила высоту (state.catH): страницы и сортировки
+    // число не дёргают. Первая видимая строка остаётся на своей странице.
+    function fitPage() {
+      var z = overlay.querySelector('.' + CFG.ns + '-tscroll');
+      if (!z) return false;
+      var h = z.clientHeight;
+      if (!h || (Math.abs(h - (state.catH || 0)) < 8 && state.catHm === state.mode)) return false;
+      var trs = z.querySelectorAll('tbody tr'), th = z.querySelector('thead');
+      if (!trs.length) return false;
+      var rh = 0;
+      for (var i = 0; i < trs.length; i++) rh += trs[i].getBoundingClientRect().height;
+      rh = rh / trs.length;
+      if (rh < 20) return false;
+      state.catH = h; state.catHm = state.mode;   // у вкладок своя высота строки — пересчёт и при смене вкладки
+      var ps = Math.max(PAGE_MIN, Math.floor((h - (th ? th.getBoundingClientRect().height : 0)) / rh));
+      var old = state.pageSize || PAGE_MIN;
+      if (ps === old) return false;
+      state.page = Math.floor((state.page || 0) * old / ps);
+      state.pageSize = ps;
+      return true;
+    }
+    // после ресайза: пересборка — только если зона строк правда сменила высоту (fitPage её запомнит — второго раза нет)
+    function refit() {
+      var z = overlay.querySelector('.' + CFG.ns + '-tscroll');
+      if (z && Math.abs(z.clientHeight - (state.catH || 0)) >= 8) render();
     }
     // Прокрутка СПИСКА строк (-tscroll) тоже переживает пересборку и перезапуск скрипта (2026-10-09, ноутбук: ряд
     // ниже 20 строк, у списка своя прокрутка — клик по строке внизу уводил список к первой строке). Тот же список
@@ -2921,6 +2951,10 @@ function sheetOf() { return MODEL.hasCa ? 'aud' : 'use'; }   // лист бор�
       if (state.ro && state.ro.disconnect) state.ro.disconnect();
       var ro = new ResizeObserver(function() {
         overlay.style.width = '100%'; overlay.style.height = '100%';
+        // высота ячейки сменилась — число строк каталога пересчитать (fitPage), но не на каждый тик: пауза 300 мс,
+        // и render() — только если зона строк правда сменила высоту (иначе зациклит)
+        clearTimeout(state.fitT);
+        state.fitT = setTimeout(refit, 300);
       });
       ro.observe(host);
       state.ro = ro;

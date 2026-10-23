@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stand
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DIR = os.path.join(ROOT, 'Единый лист — актуальные файлы')
+DIR = os.path.join(ROOT, 'Единый лист — поставка 2026-10-23 (ускорение через GP)')   # поставка с частью 3 файла 1
 F1 = [f for f in os.listdir(DIR) if f.startswith('1. GP')][0]
 F2 = [f for f in os.listdir(DIR) if f.startswith('2. Python')][0]
 PGDB = os.environ.get('PA_PG', 'pa')

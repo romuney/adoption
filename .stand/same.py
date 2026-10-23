@@ -14,6 +14,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FILES = {'one': 'Виджеты/pa-one.data.sql', 'cat': 'Виджеты/pa-reports-body.data.sql', 'head': 'Виджеты/pa-head.data.sql'}
 
 
+BASE = '167c2ed'   # последний коммит ДО витрин GP (рабочая версия у владельца) — с ним сравнивается текущий SQL
+
+
 def src_of(rel, rev=None):
     t = subprocess.run(['git', '-C', ROOT, 'show', f'{rev}:{rel}'], capture_output=True, text=True, check=True).stdout if rev else open(os.path.join(ROOT, rel), encoding='utf-8').read()
     if 'reports-body' in rel:   # в поставку каталог едет с вкладкой «Аудитория»
@@ -111,7 +114,7 @@ def matrix(kind, quick=False):
 
 def main():
     a = sys.argv[1:]
-    rev = a[a.index('--rev') + 1] if '--rev' in a else 'HEAD'
+    rev = a[a.index('--rev') + 1] if '--rev' in a else BASE
     quick = '--quick' in a
     kinds = [k for k in a if k in FILES] or ['head', 'cat', 'one']
     bad = 0

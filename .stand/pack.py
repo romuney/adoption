@@ -37,7 +37,9 @@ REPORT = 'Proteus Adoption — единый лист'
 DELIVERY = '22.10'                    # поставка — по дате (единый лист живёт одной папкой, без номеров поставок)
 DATE = '2026-10-22'                    # дата поставки — руками (штамп не зависит от дня сборки)
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))   # корень репозитория
-OUT = os.path.join(ROOT, 'Единый лист — актуальные файлы')
+# 2026-10-23: исходники Виджеты/*.data.sql — уже версия «ускорение через GP»; рабочая папка «Единый лист — актуальные файлы»
+# заморожена на коммите 167c2ed (до GP), пока владелец не применит новую поставку. Сборка — в папку новой поставки.
+OUT = os.path.join(ROOT, os.environ.get('PA_OUT', 'Единый лист — поставка 2026-10-23 (ускорение через GP)'))
 KIT = os.environ.get('PLAYBOOK_KIT') or os.path.dirname(os.path.abspath(__file__))       # .stand/min.cjs — копия kit/min.cjs
 KIT_PY = os.environ.get('PLAYBOOK_PY') or os.path.expanduser('~/.venvs/proteus-kit/bin/python')  # venv из kit/setup.sh
 SEND_KBPS = 50                         # отправка у владельца ≈ 50 КБ/с (DevTools 07.10): код чарта — в каждом POST

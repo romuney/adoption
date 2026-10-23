@@ -1,4 +1,4 @@
-"""Время ClickHouse: прежняя версия SQL (git HEAD) и текущая — на типичных кликах борда (медиана 5 прогонов по очереди).
+"""Время ClickHouse: прежняя версия SQL (коммит до GP, same.BASE) и текущая — на типичных кликах борда (медиана 5 прогонов по очереди).
     PA_DB=<большой стенд> python3 .stand/speed.py [one|cat|head]
 """
 import os, sys, json, time
@@ -25,7 +25,7 @@ def main():
                 ('фильтр «Кто смотрит»: руководители', {'heads_f': ['1']})],
         'head': [('шапка', {})]}
     for kind in kinds:
-        old, new = same.src_of(same.FILES[kind], 'HEAD'), same.src_of(same.FILES[kind])
+        old, new = same.src_of(same.FILES[kind], same.BASE), same.src_of(same.FILES[kind])
         print(f'== {kind}')
         for name, f in cases[kind]:
             qa = hidesql.render(hidesql.hide_template(old)[0], dict(f)); qb = hidesql.render(hidesql.hide_template(new)[0], dict(f))

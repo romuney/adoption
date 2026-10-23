@@ -4,7 +4,7 @@
 """
 import json, os, re
 D = os.path.dirname(os.path.abspath(__file__))
-F = os.path.join(os.path.dirname(D), 'Единый лист — актуальные файлы', '1. GP — все витрины листа (параграфы Helicopter по порядку).sql')
+F = os.path.join(os.path.dirname(D), 'Единый лист — поставка 2026-10-23 (ускорение через GP)', '1. GP — все витрины листа (параграфы Helicopter по порядку).sql')
 cs = json.load(open(os.path.join(D, 'punct_ch248.json')))
 PSET = ',\n        '.join(','.join(map(str, cs[i:i + 24])) for i in range(0, len(cs), 24))
 CYR = 'АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя'

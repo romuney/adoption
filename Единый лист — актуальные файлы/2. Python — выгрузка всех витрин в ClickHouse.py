@@ -1,4 +1,4 @@
-# ЕДИНЫЙ ЛИСТ — выгрузка всех витрин в ClickHouse (prod_proteus.pa_*). Те же вызовы, что уже стоят в двух нодах
+# ЕДИНЫЙ ЛИСТ — выгрузка всех 12 витрин в ClickHouse (prod_proteus.pa_*). Те же вызовы, что уже стоят в двух нодах
 # боевого отчёта; если они работают — ничего не менять. Часть 2 — после части 1 (зависит от pa_pair).
 
 # ---------------- ЧАСТЬ 1: витрины первого листа ----------------
@@ -51,33 +51,5 @@ try:
     # НОВОЕ 2026-09-25 (вечер): доступ зрителей — числитель «Охвата ЦА» каталога вкладки.
     ppy.gp_to_click('usr_cross_data.pa_pair_acc', 'prod_proteus.pa_pair_acc',
                     order_by_columns='(dashboard_id, login)')
-except Exception:
-    sys.exit(100);
-
-# ---------------- ЧАСТЬ 3: витрины ускорения (НОВОЕ 2026-10-23, после частей 1 и 2) ----------------
-# Helicopter-нода 844437 · добавить в тот же python_condition-параграф выгрузки, ПОСЛЕ строк части 2.
-# Готовые атрибуты людей, коды, дата свежести и календари по дням — их читают датасеты листа (файлы 3, 5, 7
-# поставки 2026-10-23). pa_acc_any — служебная GP-таблица, в ClickHouse не выгружается.
-try:
-    import proteus_py.database.clickhouse as ppy
-    ppy.gp_to_click('usr_cross_data.pa_md', 'prod_proteus.pa_md',
-                    order_by_columns='(md)')
-    ppy.gp_to_click('usr_cross_data.pa_dict', 'prod_proteus.pa_dict',
-                    order_by_columns='(g, code)')
-    ppy.gp_to_click('usr_cross_data.pa_viewer', 'prod_proteus.pa_viewer',
-                    order_by_columns='(login)', array_type_cast=True)
-    ppy.gp_to_click('usr_cross_data.pa_staffx', 'prod_proteus.pa_staffx',
-                    order_by_columns='(login)', array_type_cast=True)
-    ppy.gp_to_click('usr_cross_data.pa_dash_day', 'prod_proteus.pa_dash_day',
-                    order_by_columns='(dashboard_id, dt)')
-    ppy.gp_to_click('usr_cross_data.pa_all_day', 'prod_proteus.pa_all_day',
-                    order_by_columns='(pub, act, dt)')
-    # готовые строки каталога без людских условий (открытие борда, период, переключатели)
-    ppy.gp_to_click('usr_cross_data.pa_cat_rep', 'prod_proteus.pa_cat_rep',
-                    order_by_columns='(dashboard_id)')
-    ppy.gp_to_click('usr_cross_data.pa_cat_grp', 'prod_proteus.pa_cat_grp',
-                    order_by_columns='(kd, k0)')
-    ppy.gp_to_click('usr_cross_data.pa_cat_aud', 'prod_proteus.pa_cat_aud',
-                    order_by_columns='(ad, ak0)')
 except Exception:
     sys.exit(100);

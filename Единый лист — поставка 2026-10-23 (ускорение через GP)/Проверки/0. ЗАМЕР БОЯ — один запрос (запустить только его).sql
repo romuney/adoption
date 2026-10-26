@@ -61,18 +61,18 @@ WITH
     )
     GROUP BY kd, k0, login
   ),
-  agg AS (SELECT toUInt8(ifNull(kd, 0)) AS kd, [toString(ifNull(k0, ''))][1] AS k0, [toUInt64(ifNull(u_7_d, 0))][1] AS users,
-      [toInt64(ifNull(v_7_d, 0))][1] AS views, [toUInt64(ifNull(r_7_d, 0))][1] AS regular_users,
-      [toInt64(ifNull(l_7, 0))][1] AS last_view_days, '' AS rhythm, toUInt64(0) AS ca_u
+  agg AS (SELECT toUInt8(ifNull(kd, 0)) AS kd, [toString(ifNull(k0, ''))][1] AS k0, [toUInt64(ifNull(u_d, 0))][1] AS users,
+      [toInt64(ifNull(v_d, 0))][1] AS views, [toUInt64(ifNull(r_d, 0))][1] AS regular_users,
+      toInt64(ifNull(l, 0)) AS last_view_days, '' AS rhythm, toUInt64(0) AS ca_u
     FROM prod_proteus.pa_cat_grp
-    WHERE ifNull(n_7, 0) > 0
+    WHERE ifNull(pub, -1) = 1 AND ifNull(act, -1) = 1 AND ifNull(exc, -1) = 1
     UNION ALL
-    SELECT toUInt8(1) AS kd, [toString(ifNull(dashboard_id, 0))][1] AS k0, [toUInt64(ifNull(u_1_d, 0))][1] AS users,
-      [toInt64(ifNull(v_1_d, 0))][1] AS views, [toUInt64(ifNull(r_1_d, 0))][1] AS regular_users,
-      [toInt64(ifNull(l_1, 0))][1] AS last_view_days,
-      [arrayStringConcat(array(toString(ifNull(h4_1, 0)), toString(ifNull(h3_1, 0)), toString(ifNull(h2_1, 0)), toString(ifNull(h1_1, 0))), ',')][1] AS rhythm, [toUInt64(ifNull(a_1_d, 0))][1] AS ca_u
+    SELECT toUInt8(1) AS kd, [toString(ifNull(dashboard_id, 0))][1] AS k0, [toUInt64(ifNull(u_d, 0))][1] AS users,
+      [toInt64(ifNull(v_d, 0))][1] AS views, [toUInt64(ifNull(r_d, 0))][1] AS regular_users,
+      toInt64(ifNull(l, 0)) AS last_view_days,
+      [arrayStringConcat(array(toString(ifNull(h4, 0)), toString(ifNull(h3, 0)), toString(ifNull(h2, 0)), toString(ifNull(h1, 0))), ',')][1] AS rhythm, [toUInt64(ifNull(a_d, 0))][1] AS ca_u
     FROM prod_proteus.pa_cat_rep
-    WHERE ifNull(n_1, 0) > 0 AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    WHERE ifNull(exc, -1) = 1 AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
   ),vz AS (
     SELECT lower(toString(login)) AS vl, groupBitOr(msk) AS vm, sum(v_cur) AS vv
     FROM evd
@@ -93,9 +93,10 @@ WITH
     GROUP BY lv, ol, sp, st, hqc, itc, hdf
   ),
   ak AS (
-    SELECT [toString(ifNull(ad, ''))][1] AS ad, [toString(ifNull(ak0, ''))][1] AS ak0, [toString(ifNull(ap, ''))][1] AS ap, [toUInt64(ifNull(u_7_d, 0))][1] AS users,
-      [toInt64(ifNull(v_7_d, 0))][1] AS views, [toUInt64(ifNull(r_7_d, 0))][1] AS regular, [toUInt64(ifNull(staff, 0))][1] AS staff
+    SELECT [toString(ifNull(ad, ''))][1] AS ad, [toString(ifNull(ak0, ''))][1] AS ak0, [toString(ifNull(ap, ''))][1] AS ap, [toUInt64(ifNull(u_d, 0))][1] AS users,
+      [toInt64(ifNull(v_d, 0))][1] AS views, [toUInt64(ifNull(r_d, 0))][1] AS regular, [toUInt64(ifNull(staff, 0))][1] AS staff
     FROM prod_proteus.pa_cat_aud
+    WHERE ifNull(pub, -1) = 1 AND ifNull(act, -1) = 1 AND ifNull(exc, -1) = 1
   ),pvd AS (SELECT [tuple(toInt64(dateDiff('day', toStartOfDay(dt), toStartOfDay(md))) - if(toDate(toStartOfDay(dt)) = dt, 0, 1),
       toInt64(dateDiff('day', dt, toDate(md))), cs, toInt64(dateDiff('day', cs, toDate(md)) + 1))][1] AS h
     FROM (SELECT md, [addDays(toDate(ds0), 90)][1] AS dt,

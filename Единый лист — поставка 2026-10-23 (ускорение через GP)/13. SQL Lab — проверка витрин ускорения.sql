@@ -1,4 +1,4 @@
--- Проверка витрин ускорения (GP, часть 3 файла 1) на боевых данных — ПОСЛЕ прогона ноды и выгрузки, ДО замены SQL датасетов.
+-- Проверка витрин ускорения (GP, параграфы 1a, 1b, 1c + выгрузка 2a) на боевых данных — ПОСЛЕ прогона ноды и выгрузки, ДО замены SQL датасетов.
 -- Вставить целиком в SQL Lab (база ClickHouse, где prod_proteus.pa_*), «Run». Каждая строка — одно сравнение: витрина ==
 -- тому, что датасеты раньше считали сами. Ждём ok = 1 во ВСЕХ строках. Хоть один 0 — не заменять SQL, прислать таблицу целиком.
 -- Цифру в первой строке меняйте для повторного прогона: SQL Lab кэширует результат.  1
@@ -19,22 +19,22 @@ FROM (
     toString((SELECT uniqExact(v) FROM (SELECT toString(ifNull(emp_specialization_desc, '')) AS v FROM prod_proteus.pa_staff
       UNION ALL SELECT toString(ifNull(emp_specialization_desc, '')) FROM prod_proteus.pa_emp_attrs UNION ALL SELECT '')))
   UNION ALL
-  SELECT '06. ИТОГО каталога, 30 дней (pa_cat_grp)', toString((SELECT any(u_7_d) FROM prod_proteus.pa_cat_grp WHERE kd = 0)),
+  SELECT '06. ИТОГО каталога, 30 дней (pa_cat_grp)', toString((SELECT any(u_d) FROM prod_proteus.pa_cat_grp WHERE kd = 0 AND pub = 1 AND act = 1 AND exc = 1)),
     toString((SELECT countIf(bitAnd(m, 1073741823) != 0) FROM (SELECT login, groupBitOr(toUInt64(ifNull(msk_d, 0))) AS m FROM prod_proteus.pa_pair
       WHERE isNotNull(login) AND ifNull(own_flg, 0) = 0
         AND dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE published = 1 AND actual_flg = 1) GROUP BY login)))
   UNION ALL
-  SELECT '07. ИТОГО каталога, 12 месяцев, все отчёты (pa_cat_grp)', toString((SELECT any(u_0_m) FROM prod_proteus.pa_cat_grp WHERE kd = 0)),
+  SELECT '07. ИТОГО каталога, 12 месяцев, все отчёты (pa_cat_grp)', toString((SELECT any(u_m) FROM prod_proteus.pa_cat_grp WHERE kd = 0 AND pub = 0 AND act = 0 AND exc = 0)),
     toString((SELECT countIf(bitAnd(m, 4095) != 0) FROM (SELECT login, groupBitOr(toUInt64(ifNull(msk_m, 0))) AS m FROM prod_proteus.pa_pair
       WHERE isNotNull(login) AND dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta) GROUP BY login)))
   UNION ALL
-  SELECT '08. отчёты каталога: Σ пользователей, 20 недель (pa_cat_rep)', toString((SELECT sum(u_1_w) FROM prod_proteus.pa_cat_rep)),
+  SELECT '08. отчёты каталога: Σ пользователей, 20 недель (pa_cat_rep)', toString((SELECT sum(u_w) FROM prod_proteus.pa_cat_rep WHERE exc = 1)),
     toString((SELECT countIf(bitAnd(toUInt64(ifNull(msk_w, 0)), 1048575) != 0) FROM prod_proteus.pa_pair WHERE isNotNull(login) AND ifNull(own_flg, 0) = 0))
   UNION ALL
-  SELECT '09. отчёты каталога: Σ просмотров, 8 кварталов (pa_cat_rep)', toString((SELECT sum(v_0_q) FROM prod_proteus.pa_cat_rep)),
+  SELECT '09. отчёты каталога: Σ просмотров, 8 кварталов (pa_cat_rep)', toString((SELECT sum(v_q) FROM prod_proteus.pa_cat_rep WHERE exc = 0)),
     toString((SELECT sum(ifNull(v_q, 0)) FROM prod_proteus.pa_pair WHERE isNotNull(login)))
   UNION ALL
-  SELECT '10. «Аудитория» каталога: все зрители, 30 дней (pa_cat_aud)', toString((SELECT any(u_7_d) FROM prod_proteus.pa_cat_aud WHERE ad = 'all')),
+  SELECT '10. «Аудитория» каталога: все зрители, 30 дней (pa_cat_aud)', toString((SELECT any(u_d) FROM prod_proteus.pa_cat_aud WHERE ad = 'all' AND pub = 1 AND act = 1 AND exc = 1)),
     toString((SELECT countIf(bitAnd(m, 1073741823) != 0) FROM (SELECT lower(toString(login)) AS vl, groupBitOr(toUInt64(ifNull(msk_d, 0))) AS m FROM prod_proteus.pa_pair
       WHERE isNotNull(login) AND ifNull(own_flg, 0) = 0
         AND dashboard_id IN (SELECT dashboard_id FROM prod_proteus.pa_dash_meta WHERE published = 1 AND actual_flg = 1) GROUP BY vl)))

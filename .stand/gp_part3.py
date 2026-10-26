@@ -233,34 +233,24 @@ CUR = {g: 2 ** n - 1 for g, n, _ in GR}
 REG = {g: r for g, _, r in GR}
 def pc(x):   # число единичных битов (bit_count в GP6 нет)
     return f"length(replace(({x})::bit(64)::text, '0', ''))"
-def inc(c):   # пара входит в сочетание c переключателей шапки: c = pub + 2·act + 4·exc (как CB в датасете)
-    pub, act, exc = c & 1, (c >> 1) & 1, (c >> 2) & 1
-    w = [x for x, on in [('m.published = 1', pub), ('m.actual_flg = 1', act), ('coalesce(p.own_flg, 0) = 0', exc)] if on]
-    return ' and '.join(w) if w else 'true'
 def join_(items, sep=',\n        '):
     return sep.join(items)
-lk_cols = join_([f"max(case when {inc(c)} then p.dmax end) as x_{c}" for c in range(8)] +
-                [f"bit_or(case when {inc(c)} then coalesce(p.msk_{g}, 0) end) as m_{c}_{g}" for c in range(8) for g, _, _ in GR] +
-                [f"sum(case when {inc(c)} then coalesce(p.v_{g}, 0) end) as v_{c}_{g}" for c in range(8) for g, _, _ in GR])
-grp_cols = join_([f"count(x_{c}) as n_{c}, (max(x.md)::date - max(x_{c})::date) as l_{c}" for c in range(8)] +
-                 [f"sum(case when (m_{c}_{g} & {CUR[g]}) <> 0 then 1 else 0 end) as u_{c}_{g}, coalesce(sum(v_{c}_{g}), 0) as v_{c}_{g}, "
-                  f"sum(case when {pc(f'm_{c}_{g} & {CUR[g]}')} >= {REG[g]} then 1 else 0 end) as r_{c}_{g}" for c in range(8) for g, _, _ in GR])
-E = {0: 'true', 1: 'p.own = 0'}
-rep_cols = join_([f"sum(case when {E[e]} then 1 else 0 end) as n_{e}, (max(x.md)::date - max(case when {E[e]} then p.dmax end)::date) as l_{e}, "
-                  + ', '.join(f"sum(case when {E[e]} and p.rc = {r} then 1 else 0 end) as h{r}_{e}" for r in (4, 3, 2, 1)) for e in (0, 1)] +
-                 [f"sum(case when {E[e]} and (p.m_{g} & {CUR[g]}) <> 0 then 1 else 0 end) as u_{e}_{g}, sum(case when {E[e]} then p.v_{g} else 0 end) as v_{e}_{g}, "
-                  f"sum(case when {E[e]} and {pc(f'p.m_{g} & {CUR[g]}')} >= {REG[g]} then 1 else 0 end) as r_{e}_{g}, "
-                  f"sum(case when {E[e]} and (p.m_{g} & {CUR[g]}) <> 0 and p.acc = 1 then 1 else 0 end) as a_{e}_{g}" for e in (0, 1) for g, _, _ in GR])
-vz_cols = join_([f"bit_or(case when {inc(c)} then coalesce(p.msk_{g}, 0) end) as m_{c}_{g}" for c in range(8) for g, _, _ in GR] +
-                [f"sum(case when {inc(c)} then coalesce(p.v_{g}, 0) end) as v_{c}_{g}" for c in range(8) for g, _, _ in GR])
-# зритель «заходил в периоде» (vz каталога: HAVING по маске) — u, его просмотры — w, «постоянный» — r
-sx_cols = join_([f"case when (z.m_{c}_{g} & {CUR[g]}) <> 0 then 1 else 0 end as u_{c}_{g}, "
-                 f"case when (z.m_{c}_{g} & {CUR[g]}) <> 0 then z.v_{c}_{g} else 0 end as w_{c}_{g}, "
-                 f"case when {pc(f'z.m_{c}_{g} & {CUR[g]}')} >= {REG[g]} then 1 else 0 end as r_{c}_{g}" for c in range(8) for g, _, _ in GR])
-aud_cols = join_([f"sum(u_{c}_{g}) as u_{c}_{g}, sum(w_{c}_{g}) as v_{c}_{g}, sum(r_{c}_{g}) as r_{c}_{g}" for c in range(8) for g, _, _ in GR])
-all_cols = join_([f"sum(case when (m_{c}_{g} & {CUR[g]}) <> 0 then 1 else 0 end) as u_{c}_{g}, "
-                  f"sum(case when (m_{c}_{g} & {CUR[g]}) <> 0 then v_{c}_{g} else 0 end) as v_{c}_{g}, "
-                  f"sum(case when {pc(f'm_{c}_{g} & {CUR[g]}')} >= {REG[g]} then 1 else 0 end) as r_{c}_{g}" for c in range(8) for g, _, _ in GR])
+G = [g for g, _, _ in GR]
+# Сочетания переключателей шапки — СТРОКИ (pub, act, exc = 0/1: «только опубликованные», «только актуальные», «без
+# владельцев»), а не номера в именах колонок; периоды — колонки _d / _w / _m / _q. Пара входит в сочетание по CB_ON.
+CB = """cb as (    -- 8 сочетаний переключателей «Считать» шапки
+    select a.pub, b.act, c.exc
+    from (select 0 as pub union all select 1) a cross join (select 0 as act union all select 1) b
+    cross join (select 0 as exc union all select 1) c
+)"""
+CB_ON = "(c.pub = 0 or m.published = 1) and (c.act = 0 or m.actual_flg = 1) and (c.exc = 0 or coalesce(p.own_flg, 0) = 0)"
+def cur(x, g):   # заходил в периоде g (маска текущего окна не пуста)
+    return f"({x} & {CUR[g]}) <> 0"
+def reg(x, g):   # «постоянный»: активных шагов в окне ≥ REG
+    return f"{pc(f'{x} & {CUR[g]}')} >= {REG[g]}"
+masks = join_([f"bit_or(coalesce(p.msk_{g}, 0)) as m_{g}, sum(coalesce(p.v_{g}, 0)) as v_{g}" for g in G])
+mets = join_([f"sum(case when {cur('m_' + g, g)} then 1 else 0 end) as u_{g}, sum(v_{g}) as v_{g}, "
+              f"sum(case when {reg('m_' + g, g)} then 1 else 0 end) as r_{g}" for g in G])
 OWN = f"""ox as (select dashboard_id, unnest(owners_string) as x from usr_cross_data.pa_dash_meta),
 oz as (select dashboard_id, bool_or(coalesce(x, '') <> '') as ne from ox group by dashboard_id),
 own as (    -- владельцы отчёта: все из owners_string (без пустых, латиница — строчными, без повторов), пусто — автор owner_login
@@ -271,41 +261,46 @@ own as (    -- владельцы отчёта: все из owners_string (бе�
 )"""
 part += f"""
 -- ---------------------------------------------------------------------------
--- Параграф «PA · каталог — строки отчётов» → usr_cross_data.pa_cat_rep   (НОВЫЙ 2026-10-23, после «PA · дата свежести»)
--- Отчёт × (все зрители | без владельцев) × период: строки вкладки «Отчёты» каталога, когда людских условий нет
--- (ни фильтра «Кто смотрит», ни ЦА по условиям, ни своего периода) — так открывается борд и так он пересчитывается
--- на период и переключатели. Колонки: n_e — зрителей-пар, l_e — дней с последнего визита, h4_e…h1_e — ритм
--- (Daily / Weekly / Monthly / Rare), u_e_g — пользователей, v_e_g — просмотров, r_e_g — постоянных, a_e_g — из них в ЦА
--- по правам (pa_pair_acc); e = 1 — без владельцев отчёта, g — d / w / m / q. Правила — как в SQL каталога.
+-- Параграф «PA · каталог — строки отчётов» → usr_cross_data.pa_cat_rep   (НОВЫЙ 2026-10-23)
+-- Строки вкладки «Отчёты» каталога, когда людских условий нет (ни фильтра «Кто смотрит», ни ЦА по условиям, ни своего
+-- периода) — так открывается борд и так он пересчитывается на период и переключатели. Строка — отчёт × exc (1 — без
+-- владельцев отчёта). n — зрителей, l — дней с последнего визита, h4…h1 — ритм (Daily / Weekly / Monthly / Rare);
+-- по периодам (_d / _w / _m / _q): u — пользователей, v — просмотров, r — постоянных, a — из них в ЦА по правам.
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_cat_rep;
 create table usr_cross_data.pa_cat_rep as
 with p as (
     select p.dashboard_id, coalesce(p.own_flg, 0) as own, p.dmax,
-        {join_([f"coalesce(p.msk_{g}, 0) as m_{g}, coalesce(p.v_{g}, 0) as v_{g}" for g, _, _ in GR])},
+        {join_([f"coalesce(p.msk_{g}, 0) as m_{g}, coalesce(p.v_{g}, 0) as v_{g}" for g in G])},
         case when {pc('coalesce(p.msk_d, 0) & 1073741823')} >= 12 then 4 when {pc('coalesce(p.msk_w, 0) & 255')} >= 6 then 3
              when {pc('coalesce(p.msk_m, 0) & 7')} >= 2 then 2 when (coalesce(p.msk_m, 0) & 7) <> 0 then 1 else 0 end as rc,
         case when a.login is null then 0 else 1 end as acc
     from usr_cross_data.pa_pair p
     left join usr_cross_data.pa_pair_acc a on a.dashboard_id = p.dashboard_id and a.login = {alow('p.login')}
     where p.login is not null
-)
-select p.dashboard_id,
-        {rep_cols}
-from p cross join usr_cross_data.pa_md x
-group by p.dashboard_id
+),
+ex as (select 0 as exc union all select 1)
+select e.exc, p.dashboard_id, count(*) as n, (max(x.md)::date - max(p.dmax)::date) as l,
+        {', '.join(f"sum(case when p.rc = {r} then 1 else 0 end) as h{r}" for r in (4, 3, 2, 1))},
+        {join_([f"sum(case when {cur('p.m_' + g, g)} then 1 else 0 end) as u_{g}, sum(p.v_{g}) as v_{g}, "
+                f"sum(case when {reg('p.m_' + g, g)} then 1 else 0 end) as r_{g}, "
+                f"sum(case when {cur('p.m_' + g, g)} and p.acc = 1 then 1 else 0 end) as a_{g}" for g in G])}
+from p cross join ex e cross join usr_cross_data.pa_md x
+where e.exc = 0 or p.own = 0
+group by e.exc, p.dashboard_id
 distributed by (dashboard_id);
 
 -- ---------------------------------------------------------------------------
 -- Параграф «PA · каталог — владельцы, коллекции, ИТОГО» → usr_cross_data.pa_cat_grp   (НОВЫЙ 2026-10-23)
 -- Строки вкладок «Владельцы», «Коллекции» и ИТОГО каталога без людских условий: kd = 0 — ИТОГО, 2 — владелец (каждый
--- из владельцев отчёта), 3 — коллекция; при каждом сочетании переключателей шапки c = опубл. + 2·актуал. + 4·без владельцев
--- (0…7) и периоде g: n_c — людей, l_c — дней с последнего визита, u_c_g / v_c_g / r_c_g — пользователи / просмотры /
--- постоянные. Человек строки — логин с объединёнными визитами во все её отчёты (как в SQL каталога).
+-- из владельцев отчёта), 3 — коллекция; строка — ключ × сочетание переключателей шапки (pub, act, exc). n — людей,
+-- l — дней с последнего визита, по периодам u / v / r — пользователи / просмотры / постоянные. Человек строки —
+-- логин с объединёнными визитами во все её отчёты (как в SQL каталога).
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_cat_grp;
 create table usr_cross_data.pa_cat_grp as
 with {OWN},
+{CB},
 k as (
     select dashboard_id, 0 as kd, ''::text as k0 from usr_cross_data.pa_dash_meta
     union all
@@ -313,42 +308,48 @@ k as (
     union all
     select dashboard_id, 3, c from (select dashboard_id, unnest(collection_names)::text as c from usr_cross_data.pa_dash_meta) z where coalesce(c, '') <> ''
 ),
-lk as (
-    select k.kd, k.k0, p.login,
-        {lk_cols}
+lk as (    -- человек × строка × сочетание: маски и просмотры по всем его отчётам строки
+    select c.pub, c.act, c.exc, k.kd, k.k0, p.login, max(p.dmax) as dmax,
+        {masks}
     from usr_cross_data.pa_pair p
     inner join usr_cross_data.pa_dash_meta m on m.dashboard_id = p.dashboard_id
     inner join k on k.dashboard_id = p.dashboard_id
+    inner join cb c on {CB_ON}
     where p.login is not null
-    group by k.kd, k.k0, p.login
+    group by c.pub, c.act, c.exc, k.kd, k.k0, p.login
 )
-select kd, k0,
-        {grp_cols}
+select pub, act, exc, kd, k0, count(*) as n, (max(x.md)::date - max(dmax)::date) as l,
+        {mets}
 from lk cross join usr_cross_data.pa_md x
-group by kd, k0
+group by pub, act, exc, kd, k0
 distributed by (k0);
 
 -- ---------------------------------------------------------------------------
--- Параграф «PA · каталог — аудитория» → usr_cross_data.pa_cat_aud   (НОВЫЙ 2026-10-23, после «PA · штат — готовые атрибуты»)
+-- Параграф «PA · каталог — аудитория» → usr_cross_data.pa_cat_aud   (НОВЫЙ 2026-10-23)
 -- Вкладка «Аудитория» каталога без людских условий: разрез ad (o — оргструктура, s — специализация, t — стрим, q — HQ,
--- i — IT, h — руководители) × значение ak0 (у o — путь, ap — путь уровнем выше): staff — людей штата, u / v / r_c_g —
--- заходило / их просмотров / постоянных при сочетании c и периоде g. Строка ad = 'all' — все зрители периода (и не сотрудники).
+-- i — IT, h — руководители) × значение ak0 (у o — путь, ap — путь уровнем выше) × сочетание (pub, act, exc):
+-- staff — людей штата, по периодам u / v / r — заходило / их просмотров / постоянных. Строка ad = 'all' — все зрители
+-- периода (и не сотрудники).
 -- ---------------------------------------------------------------------------
 drop table if exists usr_cross_data.pa_cat_aud;
 create table usr_cross_data.pa_cat_aud as
-with vz as (
-    select {alow('p.login')} as vl,
-        {vz_cols}
+with {CB},
+vz as (    -- зритель (логин строчными, как vz каталога) × сочетание: маски и просмотры по всем отчётам
+    select c.pub, c.act, c.exc, {alow('p.login')} as vl,
+        {masks}
     from usr_cross_data.pa_pair p
     inner join usr_cross_data.pa_dash_meta m on m.dashboard_id = p.dashboard_id
+    inner join cb c on {CB_ON}
     where p.login is not null
-    group by 1
+    group by c.pub, c.act, c.exc, {alow('p.login')}
 ),
-sx as (
-    select s.slv, s.sol, s.sp, s.st, s.hqc, s.itc, s.hdf,
-        {sx_cols}
+sx as (    -- сотрудник × сочетание: заходил ли в периоде (u), его просмотры (w), постоянный ли (r)
+    select c.pub, c.act, c.exc, s.slv, s.sol, s.sp, s.st, s.hqc, s.itc, s.hdf,
+        {join_([f"case when {cur('z.m_' + g, g)} then 1 else 0 end as u_{g}, case when {cur('z.m_' + g, g)} then z.v_{g} else 0 end as w_{g}, "
+                f"case when {reg('z.m_' + g, g)} then 1 else 0 end as r_{g}" for g in G])}
     from usr_cross_data.pa_staffx s
-    left join vz z on z.vl = s.login
+    cross join cb c
+    left join vz z on z.vl = s.login and z.pub = c.pub and z.act = c.act and z.exc = c.exc
 ),
 kt as (
     select 'o'::text as ad, i from generate_series(1, 5) i
@@ -363,14 +364,16 @@ ky as (
     from sx cross join kt
     where kt.ad <> 'o' or kt.i <= sx.sol
 )
-select ad, ak0, ap, count(*)::bigint as staff,
-        {aud_cols}
+select pub, act, exc, ad, ak0, ap, count(*)::bigint as staff,
+        {join_([f"sum(u_{g}) as u_{g}, sum(w_{g}) as v_{g}, sum(r_{g}) as r_{g}" for g in G])}
 from ky
-group by ad, ak0, ap
+group by pub, act, exc, ad, ak0, ap
 union all
-select 'all', '*', '', 0,
-        {all_cols}
+select pub, act, exc, 'all', '*', '', 0,
+        {join_([f"sum(case when {cur('m_' + g, g)} then 1 else 0 end) as u_{g}, sum(case when {cur('m_' + g, g)} then v_{g} else 0 end) as v_{g}, "
+                f"sum(case when {reg('m_' + g, g)} then 1 else 0 end) as r_{g}" for g in G])}
 from vz
+group by pub, act, exc
 distributed by (ak0);
 """
 # статистика сразу после создания: без неё планировщик видит в новой таблице 0 строк и выбирает перебор (стенд PG:
@@ -378,9 +381,61 @@ distributed by (ak0);
 def _an(m):
     return m.group(0) + f"\nanalyze usr_cross_data.{m.group(1)};"
 part = re.sub(r'create table usr_cross_data\.(\w+) as(?:.|\n)*?\ndistributed[^;]*;', _an, part)
+# ---- раскладка на параграфы Helicopter (владелец 26.10: таблицы без схемы, как collection_array / period_agg этой ноды;
+#      не один огромный параграф и не десять мелких — три gp-параграфа и отдельная выгрузка) ----
+NEW = ['pa_md', 'pa_dict', 'pa_acc_any', 'pa_viewer', 'pa_staffx', 'pa_dash_day', 'pa_all_day', 'pa_cat_rep', 'pa_cat_grp', 'pa_cat_aud']
+TEMP = {'pa_acc_any'}   # служебная: нужна только внутри параграфа 1 — temp-таблица сессии, в ClickHouse не едет
+blocks = {}
+for m in re.finditer(r'-- -{20,}\n-- Параграф «([^»]*)» → usr_cross_data\.(\w+)[^\n]*\n((?:--[^\n]*\n)*?)-- -{20,}\n(.*?)(?=\n-- -{20,}\n-- Параграф|\Z)', part, re.S):
+    title, name, doc, body = m.group(1), m.group(2), m.group(3), m.group(4).strip('\n')
+    for n in NEW:
+        body = re.sub(r'usr_cross_data\.' + n + r'\b', n, body)
+    if name in TEMP:
+        body = body.replace(f'create table {name} as', f'create temp table {name} as')
+        doc = doc.replace('; в ClickHouse НЕ выгружается)', '; temp-таблица параграфа, в ClickHouse не выгружается)')
+    blocks[name] = f"-- ---- витрина «{title}» → {name}{' (temp)' if name in TEMP else ''}\n{doc}{body}\n"
+assert list(blocks) == NEW, list(blocks)
+GROUPS = [('1a', '1 из 3', 'люди, коды, дата свежести', ['pa_md', 'pa_dict', 'pa_acc_any', 'pa_viewer', 'pa_staffx'],
+           'usr_cross_data.pa_pair, pa_staff, pa_emp_attrs, pa_dash_meta, pa_dash_acl, pa_adg_member'),
+          ('1b', '2 из 3', 'календари по дням', ['pa_dash_day', 'pa_all_day'],
+           'usr_cross_data.pa_evd_day, pa_pair, pa_dash_meta'),
+          ('1c', '3 из 3', 'каталог — готовые строки', ['pa_cat_rep', 'pa_cat_grp', 'pa_cat_aud'],
+           'usr_cross_data.pa_pair, pa_pair_acc, pa_dash_meta и pa_md, pa_staffx из параграфа 1')]
+FILES = {}
+for code, num, what, names, reads in GROUPS:
+    head = f"""-- ==============================================================================================================
+-- Helicopter-нода 844437 · НОВЫЙ gp-параграф {num}: «PA · ускорение {num.split()[0]}/3 — {what}» (2026-10-23)
+-- Вставить ЦЕЛИКОМ одним gp-параграфом в КОНЕЦ ноды — после всех существующих параграфов, включая выгрузку.
+-- Порядок новых параграфов: 1a → 1b → 1c → 2a (python, выгрузка). Таблицы — без схемы, как collection_array /
+-- period_agg этой ноды: их забирает выгрузка 2a, борды GP не читают. Сбой здесь не мешает старым витринам — они уже
+-- выгружены выше по ноде.
+-- Читает: {reads}.
+-- ==============================================================================================================
+
+"""
+    FILES[f"{code}. GP — новый параграф {num} ({what}).sql"] = head + '\n'.join(blocks[n] for n in names)
+DIRN = os.path.dirname(F)
+for old in os.listdir(DIRN):
+    if re.match(r'1[abc]\. GP — новый параграф', old) and old not in FILES:
+        os.remove(os.path.join(DIRN, old))
+for fn, txt in FILES.items():
+    open(os.path.join(DIRN, fn), 'w', encoding='utf-8').write(txt)
+# файл 1: части 1–2 как были + указатель на новые параграфы
 src = open(F, encoding='utf-8').read()
 i = src.find('\n\n-- ############################################################################################################\n-- ЧАСТЬ 3.')
 if i >= 0:
     src = src[:i]
-open(F, 'w', encoding='utf-8').write(src.rstrip('\n') + '\n' + part)
-print('часть 3 файла 1:', len(part), 'знаков')
+src = src.rstrip('\n') + """
+
+
+-- ############################################################################################################
+-- ЧАСТЬ 3. Витрины ускорения (2026-10-23) — ОТДЕЛЬНЫМИ ФАЙЛАМИ этой папки, по файлу на gp-параграф:
+--   1a. GP — новый параграф 1 из 3 (люди, коды, дата свежести)
+--   1b. GP — новый параграф 2 из 3 (календари по дням)
+--   1c. GP — новый параграф 3 из 3 (каталог — готовые строки)
+--   2a. Python — выгрузка новых витрин (отдельный параграф)
+-- В конец ноды, после существующей выгрузки, в этом порядке. Части 1–2 выше не меняются.
+-- ############################################################################################################
+"""
+open(F, 'w', encoding='utf-8').write(src)
+print('параграфы:', ', '.join(f'{k} — {len(v) // 1024} КБ' for k, v in FILES.items()))

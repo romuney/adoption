@@ -1,4 +1,4 @@
-{# Proteus Adoption — единый лист · поставка 22.10 · 2026-10-22 · pa-reports-body.data.sql 3ed8800cc083 · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-reports-body.data.sql, сборка — python3 .stand/pack.py #}
+{# Proteus Adoption — единый лист · поставка 22.10 · 2026-10-22 · pa-reports-body.data.sql ecf527df54b7 · СОБРАН АВТОМАТИЧЕСКИ: не правьте здесь — исходник Виджеты/pa-reports-body.data.sql, сборка — python3 .stand/pack.py #}
 {%- set PA_H = namespace(d=0) -%}{%- macro H() -%}{%- if PA_NOHIDE is defined -%}{{ caller() }}{%- else -%}{%- set PA_H.d = PA_H.d + 1 -%}{%- set x = caller() -%}{%- set PA_H.d = PA_H.d - 1 -%}{%- if PA_H.d > 0 -%}{{ x }}{%- elif '[' in x or ']' in x -%}{{ caller() }}{%- else -%}{%- if PA_MARK is defined -%}{{ PA_MARK[0] }}{%- endif -%}[{{ x }}][1]{%- if PA_MARK is defined -%}{{ PA_MARK[1] }}{%- endif -%}{%- endif -%}{%- endif -%}{%- endmacro -%}{#- H — сборка .stand/hidesql.py: «[выражение][1]» Superset разбирает одним словом (быстрее в разы), ClickHouse читает как само выражение. Исходник — без H, в Виджеты/. -#}{#- pa_cube v7 — каталог (левый чарт): отчёты / коллекции / владельцы + ИТОГО + аудитория (разрезы людей).
     Источник — предагрегат пар prod_proteus.pa_pair (GP-параграф «PA · пары отчёт×логин»):
     у пары «отчёт × логин» уже лежат 64-битная маска активных бакетов, суммы окна и v_life
@@ -155,11 +155,11 @@ SELECT lg FROM (
 {% set pplf = loginf or exlf or attrson or freqf or custom or segv %}
 {#- Готовые строки (GP-витрины pa_cat_rep / pa_cat_grp / pa_cat_aud, поставка 2026-10-23): без людских условий и своего
     периода (так борд открывается и пересчитывается на период и переключатели шапки) отчёты, владельцы, коллекции, ИТОГО и
-    «Аудитория» не считаются по парам, а читаются: колонки витрины — по сочетанию переключателей CB и периоду. С любым людским
-    условием — расчёт ниже, как раньше (правила те же — стенд same: ответ из витрин == расчёту). -#}
+    «Аудитория» не считаются по парам, а читаются: строка витрины — сочетание переключателей шапки (pub, act, exc = 0 / 1),
+    колонки — период (_d / _w / _m / _q). С любым людским условием — расчёт ниже, как раньше (правила те же — стенд same:
+    ответ из витрин == расчёту). -#}
 {% set DEF = not (pplf or cper) %}
-{% set CB = (1 if pubv == '1' else 0) + (2 if actv == '1' else 0) + (4 if excv == '1' else 0) %}
-{% set EB = 1 if excv == '1' else 0 %}
+{% set CBW = 'ifNull(pub, -1) = ' ~ pubv ~ ' AND ifNull(act, -1) = ' ~ actv ~ ' AND ifNull(exc, -1) = ' ~ excv %}
 {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n В ОТЧЁТАХ СТРОКИ каталога:
     у строки отчёта — заходы в этот отчёт, у коллекции / владельца — в их отчёты, у ИТОГО — во все
     (= корзина правой панели без выбора). Фильтр — HAVING по маске человека внутри строки (kx; маска пары внутри — m0, не msk: боевой CH 24.8 в HAVING берёт msk как колонку — Code 215). -#}
@@ -284,20 +284,20 @@ WITH
   ),
   agg AS (
     {%- if DEF %}
-    {#- готовые строки: владельцы / коллекции / ИТОГО — по сочетанию переключателей CB, отчёты — по «без владельцев» EB -#}
-    SELECT toUInt8(ifNull(kd, 0)) AS kd, {% call H() %}toString(ifNull(k0, '')){% endcall %} AS k0, {% call H() %}toUInt64(ifNull(u_{{ CB }}_{{ grain }}, 0)){% endcall %} AS users,
-      {% call H() %}toInt64(ifNull(v_{{ CB }}_{{ grain }}, 0)){% endcall %} AS views, {% call H() %}toUInt64(ifNull(r_{{ CB }}_{{ grain }}, 0)){% endcall %} AS regular_users,
-      {% call H() %}toInt64(ifNull(l_{{ CB }}, 0)){% endcall %} AS last_view_days, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
+    {#- готовые строки: владельцы / коллекции / ИТОГО — строка сочетания переключателей (CBW), отчёты — строка «без владельцев» -#}
+    SELECT toUInt8(ifNull(kd, 0)) AS kd, {% call H() %}toString(ifNull(k0, '')){% endcall %} AS k0, {% call H() %}toUInt64(ifNull(u_{{ grain }}, 0)){% endcall %} AS users,
+      {% call H() %}toInt64(ifNull(v_{{ grain }}, 0)){% endcall %} AS views, {% call H() %}toUInt64(ifNull(r_{{ grain }}, 0)){% endcall %} AS regular_users,
+      toInt64(ifNull(l, 0)) AS last_view_days, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
     FROM prod_proteus.pa_cat_grp
-    WHERE ifNull(n_{{ CB }}, 0) > 0
+    WHERE {{ CBW }}
     UNION ALL
-    SELECT toUInt8(1) AS kd, {% call H() %}toString(ifNull(dashboard_id, 0)){% endcall %} AS k0, {% call H() %}toUInt64(ifNull(u_{{ EB }}_{{ grain }}, 0)){% endcall %} AS users,
-      {% call H() %}toInt64(ifNull(v_{{ EB }}_{{ grain }}, 0)){% endcall %} AS views, {% call H() %}toUInt64(ifNull(r_{{ EB }}_{{ grain }}, 0)){% endcall %} AS regular_users,
-      {% call H() %}toInt64(ifNull(l_{{ EB }}, 0)){% endcall %} AS last_view_days,
-      {% call H() %}arrayStringConcat(array(toString(ifNull(h4_{{ EB }}, 0)), toString(ifNull(h3_{{ EB }}, 0)), toString(ifNull(h2_{{ EB }}, 0)), toString(ifNull(h1_{{ EB }}, 0))), ','){% endcall %} AS rhythm
-      {%- if WITH_CA %}, {% call H() %}toUInt64(ifNull(a_{{ EB }}_{{ grain }}, 0)){% endcall %} AS ca_u{% endif %}
+    SELECT toUInt8(1) AS kd, {% call H() %}toString(ifNull(dashboard_id, 0)){% endcall %} AS k0, {% call H() %}toUInt64(ifNull(u_{{ grain }}, 0)){% endcall %} AS users,
+      {% call H() %}toInt64(ifNull(v_{{ grain }}, 0)){% endcall %} AS views, {% call H() %}toUInt64(ifNull(r_{{ grain }}, 0)){% endcall %} AS regular_users,
+      toInt64(ifNull(l, 0)) AS last_view_days,
+      {% call H() %}arrayStringConcat(array(toString(ifNull(h4, 0)), toString(ifNull(h3, 0)), toString(ifNull(h2, 0)), toString(ifNull(h1, 0))), ','){% endcall %} AS rhythm
+      {%- if WITH_CA %}, {% call H() %}toUInt64(ifNull(a_{{ grain }}, 0)){% endcall %} AS ca_u{% endif %}
     FROM prod_proteus.pa_cat_rep
-    WHERE ifNull(n_{{ EB }}, 0) > 0 AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    WHERE ifNull(exc, -1) = {{ excv }} AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
     {%- else %}
     SELECT kd, k0, {{ mets() }}, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
     FROM kx GROUP BY kd, k0
@@ -362,9 +362,10 @@ WITH
   ),
   ak AS (
     {%- if DEF %}
-    SELECT {% call H() %}toString(ifNull(ad, '')){% endcall %} AS ad, {% call H() %}toString(ifNull(ak0, '')){% endcall %} AS ak0, {% call H() %}toString(ifNull(ap, '')){% endcall %} AS ap, {% call H() %}toUInt64(ifNull(u_{{ CB }}_{{ grain }}, 0)){% endcall %} AS users,
-      {% call H() %}toInt64(ifNull(v_{{ CB }}_{{ grain }}, 0)){% endcall %} AS views, {% call H() %}toUInt64(ifNull(r_{{ CB }}_{{ grain }}, 0)){% endcall %} AS regular, {% call H() %}toUInt64(ifNull(staff, 0)){% endcall %} AS staff
+    SELECT {% call H() %}toString(ifNull(ad, '')){% endcall %} AS ad, {% call H() %}toString(ifNull(ak0, '')){% endcall %} AS ak0, {% call H() %}toString(ifNull(ap, '')){% endcall %} AS ap, {% call H() %}toUInt64(ifNull(u_{{ grain }}, 0)){% endcall %} AS users,
+      {% call H() %}toInt64(ifNull(v_{{ grain }}, 0)){% endcall %} AS views, {% call H() %}toUInt64(ifNull(r_{{ grain }}, 0)){% endcall %} AS regular, {% call H() %}toUInt64(ifNull(staff, 0)){% endcall %} AS staff
     FROM prod_proteus.pa_cat_aud
+    WHERE {{ CBW }}
     {%- else %}
     SELECT kk.1 AS ad, kk.2 AS ak0, kk.3 AS ap, sum(u) AS users, sum(vw) AS views, sum(rg) AS regular, sum(sn) AS staff
     FROM va

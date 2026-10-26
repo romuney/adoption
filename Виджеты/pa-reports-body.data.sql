@@ -154,11 +154,11 @@ SELECT lg FROM (
 {% set pplf = loginf or exlf or attrson or freqf or custom or segv %}
 {#- Готовые строки (GP-витрины pa_cat_rep / pa_cat_grp / pa_cat_aud, поставка 2026-10-23): без людских условий и своего
     периода (так борд открывается и пересчитывается на период и переключатели шапки) отчёты, владельцы, коллекции, ИТОГО и
-    «Аудитория» не считаются по парам, а читаются: колонки витрины — по сочетанию переключателей CB и периоду. С любым людским
-    условием — расчёт ниже, как раньше (правила те же — стенд same: ответ из витрин == расчёту). -#}
+    «Аудитория» не считаются по парам, а читаются: строка витрины — сочетание переключателей шапки (pub, act, exc = 0 / 1),
+    колонки — период (_d / _w / _m / _q). С любым людским условием — расчёт ниже, как раньше (правила те же — стенд same:
+    ответ из витрин == расчёту). -#}
 {% set DEF = not (pplf or cper) %}
-{% set CB = (1 if pubv == '1' else 0) + (2 if actv == '1' else 0) + (4 if excv == '1' else 0) %}
-{% set EB = 1 if excv == '1' else 0 %}
+{% set CBW = 'ifNull(pub, -1) = ' ~ pubv ~ ' AND ifNull(act, -1) = ' ~ actv ~ ' AND ifNull(exc, -1) = ' ~ excv %}
 {#- Корзина частоты — число АКТИВНЫХ ПЕРИОДОВ грануляции в окне n В ОТЧЁТАХ СТРОКИ каталога:
     у строки отчёта — заходы в этот отчёт, у коллекции / владельца — в их отчёты, у ИТОГО — во все
     (= корзина правой панели без выбора). Фильтр — HAVING по маске человека внутри строки (kx; маска пары внутри — m0, не msk: боевой CH 24.8 в HAVING берёт msk как колонку — Code 215). -#}
@@ -283,20 +283,20 @@ WITH
   ),
   agg AS (
     {%- if DEF %}
-    {#- готовые строки: владельцы / коллекции / ИТОГО — по сочетанию переключателей CB, отчёты — по «без владельцев» EB -#}
-    SELECT toUInt8(ifNull(kd, 0)) AS kd, toString(ifNull(k0, '')) AS k0, toUInt64(ifNull(u_{{ CB }}_{{ grain }}, 0)) AS users,
-      toInt64(ifNull(v_{{ CB }}_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ CB }}_{{ grain }}, 0)) AS regular_users,
-      toInt64(ifNull(l_{{ CB }}, 0)) AS last_view_days, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
+    {#- готовые строки: владельцы / коллекции / ИТОГО — строка сочетания переключателей (CBW), отчёты — строка «без владельцев» -#}
+    SELECT toUInt8(ifNull(kd, 0)) AS kd, toString(ifNull(k0, '')) AS k0, toUInt64(ifNull(u_{{ grain }}, 0)) AS users,
+      toInt64(ifNull(v_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ grain }}, 0)) AS regular_users,
+      toInt64(ifNull(l, 0)) AS last_view_days, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
     FROM prod_proteus.pa_cat_grp
-    WHERE ifNull(n_{{ CB }}, 0) > 0
+    WHERE {{ CBW }}
     UNION ALL
-    SELECT toUInt8(1) AS kd, toString(ifNull(dashboard_id, 0)) AS k0, toUInt64(ifNull(u_{{ EB }}_{{ grain }}, 0)) AS users,
-      toInt64(ifNull(v_{{ EB }}_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ EB }}_{{ grain }}, 0)) AS regular_users,
-      toInt64(ifNull(l_{{ EB }}, 0)) AS last_view_days,
-      arrayStringConcat(array(toString(ifNull(h4_{{ EB }}, 0)), toString(ifNull(h3_{{ EB }}, 0)), toString(ifNull(h2_{{ EB }}, 0)), toString(ifNull(h1_{{ EB }}, 0))), ',') AS rhythm
-      {%- if WITH_CA %}, toUInt64(ifNull(a_{{ EB }}_{{ grain }}, 0)) AS ca_u{% endif %}
+    SELECT toUInt8(1) AS kd, toString(ifNull(dashboard_id, 0)) AS k0, toUInt64(ifNull(u_{{ grain }}, 0)) AS users,
+      toInt64(ifNull(v_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ grain }}, 0)) AS regular_users,
+      toInt64(ifNull(l, 0)) AS last_view_days,
+      arrayStringConcat(array(toString(ifNull(h4, 0)), toString(ifNull(h3, 0)), toString(ifNull(h2, 0)), toString(ifNull(h1, 0))), ',') AS rhythm
+      {%- if WITH_CA %}, toUInt64(ifNull(a_{{ grain }}, 0)) AS ca_u{% endif %}
     FROM prod_proteus.pa_cat_rep
-    WHERE ifNull(n_{{ EB }}, 0) > 0 AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    WHERE ifNull(exc, -1) = {{ excv }} AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
     {%- else %}
     SELECT kd, k0, {{ mets() }}, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
     FROM kx GROUP BY kd, k0
@@ -361,9 +361,10 @@ WITH
   ),
   ak AS (
     {%- if DEF %}
-    SELECT toString(ifNull(ad, '')) AS ad, toString(ifNull(ak0, '')) AS ak0, toString(ifNull(ap, '')) AS ap, toUInt64(ifNull(u_{{ CB }}_{{ grain }}, 0)) AS users,
-      toInt64(ifNull(v_{{ CB }}_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ CB }}_{{ grain }}, 0)) AS regular, toUInt64(ifNull(staff, 0)) AS staff
+    SELECT toString(ifNull(ad, '')) AS ad, toString(ifNull(ak0, '')) AS ak0, toString(ifNull(ap, '')) AS ap, toUInt64(ifNull(u_{{ grain }}, 0)) AS users,
+      toInt64(ifNull(v_{{ grain }}, 0)) AS views, toUInt64(ifNull(r_{{ grain }}, 0)) AS regular, toUInt64(ifNull(staff, 0)) AS staff
     FROM prod_proteus.pa_cat_aud
+    WHERE {{ CBW }}
     {%- else %}
     SELECT kk.1 AS ad, kk.2 AS ak0, kk.3 AS ap, sum(u) AS users, sum(vw) AS views, sum(rg) AS regular, sum(sn) AS staff
     FROM va

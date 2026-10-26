@@ -69,11 +69,12 @@ def ch_to_pg(t):
          f" CREATE TABLE usr_cross_data.{t} ({ddl});\n\\copy usr_cross_data.{t} FROM '{f}' WITH (FORMAT csv, HEADER true, NULL '\\N')\nANALYZE usr_cross_data.{t};")
 
 
-# ---- файл 2: как gp_to_click выгружает витрину ----
+# ---- файл 2a: как gp_to_click выгружает витрины (имя в GP — без схемы, как в ноде) ----
 def exports():
-    src = open(os.path.join(DIR, F2), encoding='utf-8').read()
+    f = [x for x in os.listdir(DIR) if x.startswith('2a. Python')][0]
+    src = open(os.path.join(DIR, f), encoding='utf-8').read()
     out = {}
-    for m in re.finditer(r"gp_to_click\('usr_cross_data\.(\w+)',\s*'prod_proteus\.(\w+)'(.*?)\)\n", src, re.S):
+    for m in re.finditer(r"gp_to_click\('(?:\w+\.)?(\w+)',\s*'prod_proteus\.(\w+)'(.*?)\)\n", src, re.S):
         o = re.search(r"order_by_columns='([^']*)'", m.group(3))
         out[m.group(1)] = {'order': o.group(1) if o else 'tuple()', 'arr': 'array_type_cast=True' in m.group(3)}
     return out
@@ -81,7 +82,7 @@ def exports():
 
 # ---- PostgreSQL → chdb (как gp_to_click: Nullable, массивы — Array(String)) ----
 def pg_to_ch(t, ex):
-    cols = [l.split('|') for l in psql(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = 'usr_cross_data' "
+    cols = [l.split('|') for l in psql(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_schema = current_schema() "
                                        f"AND table_name = '{t}' ORDER BY ordinal_position").split('\n') if l]
     if not cols:
         raise RuntimeError('в PostgreSQL нет usr_cross_data.' + t)
@@ -90,7 +91,7 @@ def pg_to_ch(t, ex):
     f = os.path.join(TMP, t + '.out.csv')
     sel = ', '.join(f"array_to_json({n})::text AS {n}" if ty == 'ARRAY' else
                     (f"to_char({n}, 'YYYY-MM-DD HH24:MI:SS') AS {n}" if ty.startswith('timestamp') else n) for n, ty in cols)
-    psql(f"\\copy (SELECT {sel} FROM usr_cross_data.{t}) TO '{f}' WITH (FORMAT csv, HEADER true, NULL '\\N')")
+    psql(f"\\copy (SELECT {sel} FROM {t}) TO '{f}' WITH (FORMAT csv, HEADER true, NULL '\\N')")
     ty = [(n, ch_type(p)) for n, p in cols]
     keys = set(re.findall(r'\w+', ex['order']))
     # массивы — с Nullable-элементами (строже, чем может прийти с боя: у owners_string датасеты уже делают ifNull по элементу)
@@ -104,18 +105,18 @@ def pg_to_ch(t, ex):
     return int(str(S.query(f'SELECT count() FROM prod_proteus.{t}', 'CSV')).strip())
 
 
-# ---- файл 1: параграфы ----
-def paragraphs(part='ЧАСТЬ 3'):
-    """{витрина: SQL параграфа} — блоки «Параграф «…» → usr_cross_data.X» части part файла 1, в порядке файла."""
-    src = open(os.path.join(DIR, F1), encoding='utf-8').read()
-    i = src.find('-- ' + part + '.')
-    if i < 0:
-        return {}
-    j = src.find('\n-- ЧАСТЬ ', i + 5)    # до заголовка следующей части (или до конца файла)
-    body = src[i:] if j < 0 else src[i:j]
+# ---- файлы 1a / 1b / 1c: по gp-параграфу Helicopter, в каждом — несколько витрин ----
+def para_files():
+    return sorted(x for x in os.listdir(DIR) if re.match(r'1[a-z]\. GP', x))
+
+
+def paragraphs():
+    """{витрина: её блок SQL} — блоки «-- ---- витрина «…» → X» файлов 1a…1c, в порядке параграфов."""
     out = {}
-    for m in re.finditer(r'-- Параграф «[^»]*» → usr_cross_data\.(\w+).*?\n(.*?)(?=\n-- -{20,}\n-- Параграф|\Z)', body, re.S):
-        out[m.group(1)] = m.group(2)
+    for f in para_files():
+        src = open(os.path.join(DIR, f), encoding='utf-8').read()
+        for m in re.finditer(r'-- ---- витрина «[^»]*» → (\w+)[^\n]*\n(.*?)(?=\n-- ---- витрина|\Z)', src, re.S):
+            out[m.group(1)] = m.group(2)
     return out
 
 
@@ -128,23 +129,23 @@ def reads(sql):
     return set(re.findall(r'usr_cross_data\.(\w+)', sql))
 
 
+def made(sql):
+    return re.findall(r'create (?:temp )?table (\w+) as', sql)
+
+
 def run(only=None):
-    par = paragraphs()
-    names = [n for n in par if not only or n in only]
-    made = set(par)
-    need = set()
-    for n in names:
-        need |= reads(par[n]) - made
-    for t in sorted(need):
+    """Параграфы 1a, 1b, 1c целиком (как в ноде: по psql-сессии на параграф), потом выгрузка 2a."""
+    texts = [open(os.path.join(DIR, f), encoding='utf-8').read() for f in para_files()]
+    for t in sorted(set().union(*[reads(x) for x in texts])):
         ch_to_pg(t)
     ex = exports()
     res = {}
-    for n in names:
-        psql(pg_text(par[n]))
-        if n in ex:
-            res[n] = pg_to_ch(n, ex[n])
-        else:   # служебная GP-таблица (в файле 2 её нет — в ClickHouse не выгружается)
-            res[n] = 'только GP: ' + psql(f'SELECT count(*) FROM usr_cross_data.{n}').strip()
+    for t in texts:
+        psql(pg_text(t))
+        for n in made(t):
+            if only and n not in only:
+                continue
+            res[n] = pg_to_ch(n, ex[n]) if n in ex else 'времянка параграфа (в ClickHouse не едет)'
     return res
 
 

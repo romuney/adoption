@@ -1,0 +1,15 @@
+[
+  {"name": "открыть выпадашку (клик внутри iframe первого чарта)", "click": "[data-panel] [data-k=\"mu\"]", "wait": 800, "shot": "dd.png"},
+  {"name": "клик по второму чарту ряда (--also … 000000)", "frame": "000000", "click": "[data-action=\"view\"]", "i": 1},
+  {"name": "наведение — подсказка", "hover": "[data-tip]", "wait": 500},
+  {"name": "курсор ушёл с чарта на борд", "parentMove": [600, 700]},
+  {"name": "клик по борду мимо чарта", "parentClick": [20, 400]},
+  {"name": "ввод в поле поиска", "fill": "input[type=search]", "value": "Отдел"},
+  {"name": "клавиша", "press": "Escape"},
+  {"name": "перезапуск кода тем же ответом (как Proteus после перерисовки)", "rerun": true},
+  {"name": "новый ответ датасета (как Proteus после кросс-фильтра)", "data": "next.mock.json"},
+  {"name": "окно уже на 17 px (появилась полоса прокрутки Windows)", "resize": [1183, 900], "wait": 500},
+  {"name": "прокрутить страницу борда", "scroll": 400},
+  {"name": "значение из iframe", "eval": "document.querySelectorAll('[class$=\"-overlay\"]').length"},
+  {"name": "пауза, мс", "wait": 1000}
+]

@@ -1,0 +1,154 @@
+{
+  "schema": 1,
+  "sources": [
+    {
+      "id": "clickhouse",
+      "repository": "https://github.com/ClickHouse/agent-skills.git",
+      "commit": "d3b2b5ba43a8b80c2d08858b68d53edc701b5ace",
+      "mappings": [
+        {
+          "source": "skills/clickhouse-best-practices",
+          "target": ".agents/skills/clickhouse-best-practices"
+        },
+        {
+          "source": "LICENSE",
+          "target": ".agents/skills/clickhouse-best-practices/LICENSE"
+        }
+      ],
+      "files": {
+        ".agents/skills/clickhouse-best-practices/AGENTS.md": "515c645d77996080aed872b9aa2340a2696f8a7eb2ce1f0d5627e7cf28f523d2",
+        ".agents/skills/clickhouse-best-practices/README.md": "099f7989512615315ab055478352a97e6fbef2c816f485b89de34dc2fc74867d",
+        ".agents/skills/clickhouse-best-practices/SKILL.md": "00e4c781fd2924e45b6162b788d569882604c5d112ddcf3e24c90704bdad9018",
+        ".agents/skills/clickhouse-best-practices/metadata.json": "28b41f990a2772b9fc5143d36c200a0e4fb83378003d965d8b5d3899e5e066e7",
+        ".agents/skills/clickhouse-best-practices/rules/_sections.md": "f6bee2e7b577175713c75571dc37db3cf9ccf0914fafbc98fa1f1106926d7bcd",
+        ".agents/skills/clickhouse-best-practices/rules/_template.md": "31192513e0337b9bdfdc72890346871c4e4fadec58ac925e82d441862d9739ef",
+        ".agents/skills/clickhouse-best-practices/rules/agent-connect-mcp.md": "bf5dc8be042fa7124f7f9360eed9a4799f952f2a5eb0c710e6e35fc53fcf1981",
+        ".agents/skills/clickhouse-best-practices/rules/agent-discovery-schema.md": "260c6a5786288577350d3d31ddfe08b8a46bffb4398f65401a1518e1b9d40e3e",
+        ".agents/skills/clickhouse-best-practices/rules/agent-query-safety.md": "332b8bc9ceac7064a9424cf25b84bc84de3e23218f2c617bb1d62488cfaea7b5",
+        ".agents/skills/clickhouse-best-practices/rules/insert-async-small-batches.md": "f6c56e0225773748710f73106d3cbdabd010bd2c526725604941af51fea2f2da",
+        ".agents/skills/clickhouse-best-practices/rules/insert-batch-size.md": "f63371881719328347ac584394bc5bb3f63d94ddf2b7c1ce1d0be137890300f8",
+        ".agents/skills/clickhouse-best-practices/rules/insert-format-native.md": "63d43d92e2f4e72d3419e2fc86e451c245ba727510a3801547c3d09db5af0784",
+        ".agents/skills/clickhouse-best-practices/rules/insert-mutation-avoid-delete.md": "371a7f20aad445382174b40400069da3de8379988231aa30eab544f169392942",
+        ".agents/skills/clickhouse-best-practices/rules/insert-mutation-avoid-update.md": "b9e88ada40bc84e2edf7152beefd53f20f4eec195c2e16cb531994d71fbcb016",
+        ".agents/skills/clickhouse-best-practices/rules/insert-optimize-avoid-final.md": "ec580a9321e216523ba205b3cf9191be7db9cfae6370c0cedce9aae211301485",
+        ".agents/skills/clickhouse-best-practices/rules/query-index-skipping-indices.md": "09d4b49439d0ae4599e8109b23ca1d4e6d255e0e8771097328061e32d9829568",
+        ".agents/skills/clickhouse-best-practices/rules/query-join-choose-algorithm.md": "a17a6a46284a02b9e262344361ad3e714f49fc5fa6481fdb3c8a2ca286f1b8b5",
+        ".agents/skills/clickhouse-best-practices/rules/query-join-consider-alternatives.md": "d440f3ffdbf1b8dcbfe55c4237fc41fb33301683ce94c4e86ca2c7b82be4bad7",
+        ".agents/skills/clickhouse-best-practices/rules/query-join-filter-before.md": "532ed2b1eefc168856576106b196a41a0346beb1d682e209f89a1c5c7b2a91f2",
+        ".agents/skills/clickhouse-best-practices/rules/query-join-null-handling.md": "a1bf38fff84a97d30a13fb507104892ee371fe22d143980800b1cf16f4790cd3",
+        ".agents/skills/clickhouse-best-practices/rules/query-join-use-any.md": "ea1c4f9b1c952beb20fc2ab9576f37cffe8205329021c70446c71f9efda53558",
+        ".agents/skills/clickhouse-best-practices/rules/query-mv-incremental.md": "b18ef76516dbf988beb1b9b102a643fc9d6ac46f54de06de9ffb4cb8844788b1",
+        ".agents/skills/clickhouse-best-practices/rules/query-mv-refreshable.md": "85e48c3f178151ec51ec9af9f1f49037c986b994c0f16f7e2f0926011530fd37",
+        ".agents/skills/clickhouse-best-practices/rules/schema-json-when-to-use.md": "1dce3bf3d8a76416fe52df566cfa325d13a2c69d1696ea0a4576cfc9021d9a0b",
+        ".agents/skills/clickhouse-best-practices/rules/schema-partition-lifecycle.md": "5f2b97b4800a48598ac68bfda6c7708aff38dfa0dd57e230c17ded03681eaed8",
+        ".agents/skills/clickhouse-best-practices/rules/schema-partition-low-cardinality.md": "8d01eaf3f96e9ec85d3d2d0f82375d71dd3817a93c199127173051406bb3f7e1",
+        ".agents/skills/clickhouse-best-practices/rules/schema-partition-query-tradeoffs.md": "c2c97460f85a190da21ece9f849d62855362353ff500abee821dc8ae7d2a908d",
+        ".agents/skills/clickhouse-best-practices/rules/schema-partition-start-without.md": "d4163b8a4b4d96f0404f9dd6b65580a7f76bb99dcddca31e54d2bb4b5715e71c",
+        ".agents/skills/clickhouse-best-practices/rules/schema-pk-cardinality-order.md": "07dfdd64f9af200abc32bf4d574ed6e6e784cf4f56ae1dc6a8c8b4d9dae52801",
+        ".agents/skills/clickhouse-best-practices/rules/schema-pk-filter-on-orderby.md": "787cc47a1bd778e91b963d546802b4f644969567569583a2adb64aa0bc68f69f",
+        ".agents/skills/clickhouse-best-practices/rules/schema-pk-plan-before-creation.md": "debb50214742b81b80abc18341749a3647bdcdd638d129c9f8a9d92c2e12b634",
+        ".agents/skills/clickhouse-best-practices/rules/schema-pk-prioritize-filters.md": "e056055b4339e56cc59deb3916b0e8e0a453445b14394807b26dbfb41fb1460a",
+        ".agents/skills/clickhouse-best-practices/rules/schema-types-avoid-nullable.md": "f038121d4b9f258ebecb58ceee4c012eaa1371025e8bc136b54990f3136079ab",
+        ".agents/skills/clickhouse-best-practices/rules/schema-types-enum.md": "61510cf7c39689f4f9b2d819ff49c390443864560ddc41e18f491e3586f5949d",
+        ".agents/skills/clickhouse-best-practices/rules/schema-types-lowcardinality.md": "c2742cd5f8a87e1c45c0b37446e7a6c04d0ec4d3914cc01480e39f556bf59490",
+        ".agents/skills/clickhouse-best-practices/rules/schema-types-minimize-bitwidth.md": "6c2ac5ea2d07a9a69152116f1da7cc025299e5fa2d8b2cb620481982652d30af",
+        ".agents/skills/clickhouse-best-practices/rules/schema-types-native-types.md": "9b779ebaf3c3fec2bb66ae3e5f59c3492b1f6695eee3e3ba23ec0b9f091cc693",
+        ".agents/skills/clickhouse-best-practices/LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+      }
+    },
+    {
+      "id": "web-design",
+      "repository": "https://github.com/vercel-labs/agent-skills.git",
+      "commit": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+      "mappings": [
+        {
+          "source": "skills/web-design-guidelines",
+          "target": ".agents/skills/web-design-guidelines"
+        }
+      ],
+      "files": {
+        ".agents/skills/web-design-guidelines/SKILL.md": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f"
+      }
+    },
+    {
+      "id": "web-rules",
+      "repository": "https://github.com/vercel-labs/web-interface-guidelines.git",
+      "commit": "434b7f91364665f2f733b310ec54809bf8f37937",
+      "mappings": [
+        {
+          "source": "command.md",
+          "target": "docs/vendor/web-interface-guidelines/command.md"
+        },
+        {
+          "source": "LICENSE",
+          "target": "docs/vendor/web-interface-guidelines/LICENSE"
+        }
+      ],
+      "files": {
+        "docs/vendor/web-interface-guidelines/command.md": "d246b026f4f29b5823a9cc857f9edf3d2507002e055e32040cadeaf3b38e0234",
+        "docs/vendor/web-interface-guidelines/LICENSE": "6cd1609c9c12233507cdd2ce0d32e9a721e3c27494951be06b90090deeeb7af2"
+      }
+    },
+    {
+      "id": "proteus",
+      "repository": "https://github.com/romuney/TeamPulse.git",
+      "commit": "6f5121c0112398340802a231a484cd51785c0523",
+      "mappings": [
+        {
+          "source": "proteus-playbook",
+          "target": "docs/vendor/proteus-playbook"
+        }
+      ],
+      "files": {
+        "docs/vendor/proteus-playbook/.gitignore": "862263fa1f46c20f0d1e4dac5ffcc75abd55c08211b2c3864c5f8764b9d87793",
+        "docs/vendor/proteus-playbook/01-platform.md": "b214a426ab2147b1784519d76d24eaa779c9931b5ba0ab3b5b7ac8d0f3cab659",
+        "docs/vendor/proteus-playbook/02-superset-path.md": "f47bf5ba3a308a5fea07685c943e9a97b668380e09ac7c52e3ed7138500c43f1",
+        "docs/vendor/proteus-playbook/03-access-cache.md": "a179ecc073b0e241f19784846a8505fffa0f7f71b3c78a833d739233297d0944",
+        "docs/vendor/proteus-playbook/04-clickhouse.md": "91a4882220936d448f20c816980f878bbf0673f3fb85ab907d79ebbcf449d4da",
+        "docs/vendor/proteus-playbook/05-dataset.md": "730bcac6cc81d748f32cef8de594994cf848bd40263b2a85c4449eabd03cb85f",
+        "docs/vendor/proteus-playbook/06-helicopter-gp.md": "72ca0d9216610f5552dece37ab532bd661f488c23ac0d8712ec4ace56a108d99",
+        "docs/vendor/proteus-playbook/07-chart.md": "eef4a4e6eb9ff21a9a86204aa957edc5f31472457d38b5d74baea5da53a1358c",
+        "docs/vendor/proteus-playbook/08-sandbox.md": "873402c4708b77037ed0dd9f6fa0617a05bb92d10d7f01cce7d82a9688bf200c",
+        "docs/vendor/proteus-playbook/09-multi-chart.md": "dbdd8b8b88a9a13cf10bb9e81882616379fa8a3b0a7f365d600867b7738c34d3",
+        "docs/vendor/proteus-playbook/10-board-css.md": "061fb662707cb3dd1d0acfc0fbf0cf0bc6afcf4260af856909eb404e5e7ec27a",
+        "docs/vendor/proteus-playbook/11-ui.md": "c00e6d86731101ff83a39e1439c9ee11effac142e4acefdb38a1662ec2559175",
+        "docs/vendor/proteus-playbook/12-tour.md": "f576c769d648d939e08209c99df8aec40c6cebb538d2a31820cf24872fffae2b",
+        "docs/vendor/proteus-playbook/13-stand.md": "1a76e28b4f9ddccc718d4be5feaf5d0f26fb05719b32f740369ad3bfe726098e",
+        "docs/vendor/proteus-playbook/14-delivery.md": "642074bec36fc1b85c7e2ae1a4b8ea1261d80ea123deee515cb07cf92a19c31a",
+        "docs/vendor/proteus-playbook/15-process.md": "3740eccf9d2e9d951160085578c71572ff12311e1dd0d614bc8497c19766290d",
+        "docs/vendor/proteus-playbook/16-antipatterns.md": "e2176e6e7d6c7a499e5c2836fc0fff782e2056dda3d03da7bf5c3ec3b8f3a652",
+        "docs/vendor/proteus-playbook/17-open-questions.md": "beea0632c0a6b86814caed7f3b1408b8b371e241851488ec83ae9b885a7c24d3",
+        "docs/vendor/proteus-playbook/OPTIMIZATION.md": "84c41bf8981151e52b7b0afd722ecab4581a311813af60019d480f2acdd6543c",
+        "docs/vendor/proteus-playbook/README.md": "0bca4212db66bf534f7915a430e6caef67e5f07a8087c04795c59505c983dce6",
+        "docs/vendor/proteus-playbook/SKILL.md": "63239435eeeeed15ee6c92302563e61460c424011212db9cafdc4850830a2201",
+        "docs/vendor/proteus-playbook/checklists/after-delivery.md": "46217daf69a6222e379a3cd3dee1969fd8b6516798063fe87b75dfbb00c89bd4",
+        "docs/vendor/proteus-playbook/checklists/backend-probe.md": "18ed375be0392996dca89fcc4cf06fb9c306b2c3ddb2f11bc3bd470c76f1275c",
+        "docs/vendor/proteus-playbook/checklists/before-delivery.md": "9eaa29534b99046c5ae8e5e02176532b1cb94a9c43b649937d04c7730b1fac99",
+        "docs/vendor/proteus-playbook/checklists/new-board.md": "31dad48f8aa935e06a9fef65b984468ec281da3b6909b22f343ad14a7ea535c9",
+        "docs/vendor/proteus-playbook/checklists/perf-triage.md": "c9b321762a846ff64e81c6b10919b03fffbdb2d91549c764d5289569de8084bc",
+        "docs/vendor/proteus-playbook/kit/README.md": "06c0653b412ef64dc75aa3bdce006ba1c9273258d19c724f28fe582e410e35b6",
+        "docs/vendor/proteus-playbook/kit/RESULTS.js.md": "156b48837c9267d39db982135d8f8cdcd51176024952d147ad49d8c81d315dba",
+        "docs/vendor/proteus-playbook/kit/RESULTS.md": "cad4749190d06b652c41c4292655fb750764df552aeba8c615823f7ec8ff7f41",
+        "docs/vendor/proteus-playbook/kit/backend-probe.js": "4a7142e84a26442e41c88adb1212f28a74319ecae4165bcfe386b1d4956c335d",
+        "docs/vendor/proteus-playbook/kit/backend-probe.oneline.js": "8bab9dbd9f69a05c1223ba9238fb5253fe28bd92a78c80a8a4ad29fa22970ec5",
+        "docs/vendor/proteus-playbook/kit/board-check.js": "cb6aff0e4f4aa4478002706ffa7fc1073aae50cb16d505857bf6cba3c99c45b1",
+        "docs/vendor/proteus-playbook/kit/eslint.chart.cjs": "34ccdc4a2428612098635918e7a25286939ac08959556786b7713cf0f3da7baf",
+        "docs/vendor/proteus-playbook/kit/min.cjs": "0b120b45beb0ad6f6f1751ab341d8fe3c97ac7455455ce4a59591f054ec3f7a6",
+        "docs/vendor/proteus-playbook/kit/pack_template.py": "b3aca9647fd2d943e9ed67cadb1026aefbbdf409d242379a48e90465d086a5cb",
+        "docs/vendor/proteus-playbook/kit/sbx/clicks.example.json": "120a4aeea7fe5ad9dd449fa92b31b234589766ebcbfc379ba6d78151cf4c2aad",
+        "docs/vendor/proteus-playbook/kit/sbx/inner.html": "0ff83c59a4e55dd4e1e542c433f6a5b6325c71226174441e963355e2ee70f8f5",
+        "docs/vendor/proteus-playbook/kit/sbx/parent.html": "46cf7c6950d1b21a23f1e846dadd1ee48a4b17a45b9c867ea991425c96c6a08e",
+        "docs/vendor/proteus-playbook/kit/sbx/run.cjs": "e1091018527c3240aeb9953767230ec89d539f5404d27e1c06f376d7bfc03f44",
+        "docs/vendor/proteus-playbook/kit/server-probe.sh": "f3b0e9ef1fb093500bc5cb4db389283cb8f0d96d6299b970bf43169899515cb0",
+        "docs/vendor/proteus-playbook/kit/setup.sh": "d6e1b1618843d4979490b6fff445bd4f648a999ebdb1f839401fe77465e8eca3",
+        "docs/vendor/proteus-playbook/kit/sqlgate.py": "adf20e2d49259a97419d3302982e36e18d9966371a4198e91b6b6ff6453dc31d",
+        "docs/vendor/proteus-playbook/kit/superset201.py": "4db85c6086c2a104a2494af87263e30f32c064fe04db020875af4a12c783d6c8",
+        "docs/vendor/proteus-playbook/templates/CLAUDE.md.template": "faf53992a65d2e9e542508507b7ad1219abeb4023589c7e9b72a10e010e5ef0c",
+        "docs/vendor/proteus-playbook/templates/board.template.css": "f878c67f6681bf72eba004a91c5cfc4d15dc784449017001b8fdaa34a9edc7d4",
+        "docs/vendor/proteus-playbook/templates/chart.notes.template.md": "aa8c40ed2a87698bf9577a0bfecd2ec5875c1b0c1315db2203743e4a388b93a8",
+        "docs/vendor/proteus-playbook/templates/dataset.template.sql": "479fc26120e1e06d389982b22728825b9286a3b0823a8b730eb73d9f70c05cc9",
+        "docs/vendor/proteus-playbook/templates/instruction.template.md": "4b56a50b5fbf6dff7ac51c9283c450da388a6bc71e405a2dd618d5f33f7e25ce"
+      }
+    }
+  ]
+}

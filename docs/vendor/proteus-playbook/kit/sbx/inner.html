@@ -1,0 +1,89 @@
+<!doctype html>
+<!-- kit/sbx/inner.html — документ внутри iframe sandbox="allow-scripts" (без allow-same-origin): модель песочницы
+     react_sanbbox форка Proteus. Собирает kit/sbx/run.cjs (подставляет __ECHARTS__, __MODE__ и __CATCH__).
+     Повторено (08-sandbox.md, факты S1–S15):
+       • origin "null": нет localStorage / sessionStorage / cookie (SecurityError), родителя не прочитать (S3–S5);
+       • CSP connect-src 'none': fetch / XHR запрещены (так в бою; запрет даёт CSP, не sandbox — S6);
+       • хост — div [_echarts_instance_] во весь документ; в нём корень зрендера с размером В ПИКСЕЛЯХ, подгоняется по
+         ResizeObserver (заглушка) или настоящий echarts.init + chart.resize();
+       • песочница гасит чарт на ЛЮБУЮ ошибку окна — chart.clear() + dispose(), хост пуст (S7), в том числе на безвредное
+         «ResizeObserver loop completed with undelivered notifications» (бой 06.10). Чем она ловит ошибки — не известно (S8),
+         поэтому два варианта: __CATCH__ = onerror — window.onerror, поставленный ДО кода чарта (обёртка чарта по SB-03
+         регистрируется позже и пропускает мимо только «ResizeObserver loop» — так и должно быть); __CATCH__ = listener —
+         addEventListener('error') до кода чарта: его обёртка не опередит, держит только overflow:hidden (SB-03);
+       • код чарта запускается на каждый ответ В ТОМ ЖЕ окне (window.__pvtState переживает, S9), data и applyCrossFilter —
+         как у стендов проектов: new Function('data', 'applyCrossFilter', код) (__MODE__ = fn) или глобальным <script>
+         (__MODE__ = script, как хост smoke скилла). Чем именно запускает Proteus — не известно (17-open-questions.md);
+       • после прогона option отдаётся echarts (настоящий: chart.setOption(option, true)).
+     Фон прозрачный, как у iframe react_sanbbox в бою: скругления карточек видны на фоне борда. -->
+<html><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="connect-src 'none'">
+<style>html,body{margin:0;height:100%;background:transparent}</style></head>
+<body><div class="sbx-host" style="width:100%;height:100%;position:relative"></div>
+<script>/*__ECHARTS__*/</script>
+<script>
+(function () {
+  var MODE = '__MODE__', CATCH = '__CATCH__', host = document.querySelector('.sbx-host'), chart = null, zr = null, SRC = '';
+  window.option = null;
+  function send(m) { try { parent.postMessage(m, '*'); } catch (e) { /* родителя нет — некуда */ } }
+  // ── хост echarts ──
+  if (window.echarts && window.echarts.init) {
+    chart = window.echarts.init(host);                                  // ставит атрибут _echarts_instance_ и холст
+    new ResizeObserver(function () { if (chart && !chart.isDisposed()) chart.resize(); }).observe(host);
+  } else {
+    // заглушка: как echarts.init — атрибут, корень зрендера с размером в px и холст; подгонка по ResizeObserver
+    host.setAttribute('_echarts_instance_', 'ec_' + Date.now());
+    zr = document.createElement('div');
+    zr.style.cssText = 'position:relative;padding:0;margin:0;border-width:0;cursor:default';
+    zr.innerHTML = '<canvas data-zr-dom-id="zr_0" style="position:absolute;left:0;top:0;user-select:none;padding:0;margin:0;border-width:0"></canvas>';
+    host.appendChild(zr);
+    var fit = function () {
+      if (!zr.parentNode) return;
+      var w = host.clientWidth, h = host.clientHeight, cv = zr.firstChild;
+      zr.style.width = w + 'px'; zr.style.height = h + 'px';
+      cv.width = w; cv.height = h; cv.style.width = w + 'px'; cv.style.height = h + 'px';
+    };
+    fit();
+    new ResizeObserver(fit).observe(host);
+  }
+  // ── песочница гасит чарт на любую ошибку окна ──
+  function kill(msg, line, col, err) {
+    var kids = host.children.length;
+    if (chart) { try { chart.clear(); chart.dispose(); } catch (e) { /* уже */ } }
+    host.innerHTML = '';                                                 // как dispose зрендера: корень пуст
+    send({ type: 'SBX_ERR', msg: String(msg), where: (line ? line + ':' + col : ''), stack: err && err.stack ? String(err.stack).slice(0, 800) : '',
+      killed: kids > 0, how: CATCH });
+  }
+  if (CATCH === 'listener') window.addEventListener('error', function (e) { kill(e.message, e.lineno, e.colno, e.error); });
+  else window.onerror = function (msg, src, line, col, err) { kill(msg, line, col, err); };
+  window.addEventListener('unhandledrejection', function (e) {
+    send({ type: 'SBX_ERR', msg: 'unhandledrejection: ' + String(e.reason && e.reason.message || e.reason), where: '', stack: '', killed: false });
+  });
+  // ── контракт чарта ──
+  window.applyCrossFilter = function (filters) { send({ type: 'ECHARTS_APPLY_CROSS_FILTER', filters: filters }); };
+  function run(rows) {
+    var t0 = performance.now(), opt = null;
+    window.data = rows;
+    window.option = null;
+    if (MODE === 'script') {
+      var s = document.createElement('script');
+      s.text = SRC;                                                       // глобальная область, как <script> хоста smoke
+      document.body.appendChild(s);
+      s.parentNode.removeChild(s);
+      opt = window.option;
+    } else {
+      // исключение кода чарта не ловим: оно уходит в обработчик ошибок окна, как ошибка в песочнице
+      opt = (new Function('data', 'applyCrossFilter', SRC + '\n;return typeof option !== "undefined" ? option : null;'))(rows, window.applyCrossFilter);
+    }
+    if (chart && !chart.isDisposed() && opt) chart.setOption(opt, true);
+    send({ type: 'SBX_RUN', ms: Math.round(performance.now() - t0), kids: host.children.length, option: !!opt });
+  }
+  window.addEventListener('message', function (e) {
+    if (e.source !== parent) return;                                     // команды — только от родителя; чужие — чарту
+    var d = e.data || {};
+    if (d.type === 'SBX_SRC') SRC = d.src;
+    else if (d.type === 'SBX_RUN') run(d.rows);
+  });
+  send({ type: 'SBX_READY', referrer: document.referrer, origin: String(self.origin) });
+})();
+</script></body></html>

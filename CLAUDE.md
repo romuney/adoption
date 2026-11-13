@@ -1,5 +1,11 @@
 # CLAUDE.md
 
+Облачная навигация и уточнения актуальности: [AGENTS.md](AGENTS.md),
+[аудит базы знаний](docs/knowledge/README.md). Общий Proteus Playbook теперь
+закреплён и доставлен в [docs/vendor/proteus-playbook/](docs/vendor/proteus-playbook/SKILL.md);
+не требуется соседний checkout TeamPulse или установка в home.
+CONTEXT.md ниже — исторический срез сентября, а не подтверждение текущего прода.
+
 Это рабочая папка BI-проекта «Proteus Adoption» — перестройка боевого дашборда
 13896 внутри корпоративного BI **Proteus** (форк Superset: eCharts-виджеты с
 кастомным JS, viz_type `react_sanbbox`). Это не приложение и до передачи не

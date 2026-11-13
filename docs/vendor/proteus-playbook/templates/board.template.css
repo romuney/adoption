@@ -1,0 +1,433 @@
+/* ==== <ОТЧЁТ> — CSS борда · НАЧАЛО блока отчёта ==================================================================
+   Шаблон playbook: templates/board.template.css (правила — 10-board-css.md, BC; поставка — 14-delivery.md, DV-24).
+   Исходник: proteus/<x>.board.css. Владелец вставляет файл поставки ЦЕЛИКОМ в конец CSS дашборда («Редактировать
+   дашборд → CSS»), прежний блок этого отчёта — от строки «НАЧАЛО» до строки «КОНЕЦ» — удаляет. Чужой CSS не трогать.
+
+   id чартов — заглушки (BC-20, DV-05): шесть цифр, как у боевых id, и ни с чем больше в файле не совпадают.
+     100001 — <главный чарт> (справа, ведёт тур),  100002 — <панель фильтров> (слева: выпадашка и подсказки шире панели).
+   Боевые id подставляет сборщик (kit/pack_template.py, вид css, BOARD_IDS = {'100001': '<id>', '100002': '<id>'}) и
+   переписывает эту строку. Чарт без id в BOARD_IDS сборщик оставит заглушкой и сам допишет в шапку файла поставки,
+   что поменять руками.
+   Больше чартов — 100003, 100004…: допиши id в каждый список блоков 1, 4, 7 и 8. Цвета в файле — только #xxx, rgb() или
+   с буквами: шестизначный цвет из одних цифр может совпасть с заглушкой (сборщик тогда падает).
+
+   Блоки (номер закреплён за назначением; инструкция ссылается на «блок N»):
+     1 — ячейки: без белой карточки, поля 16 px и теней форка, ячейка — по классу холдера (заглушка загрузки той же
+         формы, что чарт), цепочка до iframe — флекс / 100 %, от шапки чарта — только меню «⋯»
+     2 — панель: выпадашка вправо поверх соседа (маркер XX-DD-ON-001 → WFgtREQtT04tMDAx)
+     3 — панель: подсказки чуть шире панели (маркер XX-TIP-ON-01 → WFgtVElQLU9OLTAx)
+     4 — загрузка: пока нет iframe — белая карточка, значок Proteus и подпись; после — значок Proteus не нужен
+     5 — вкладки борда в стиле чартов: через 40 px, значок ссылки — в 6 px за названием (действует на ВСЕ вкладки борда —
+         согласовать с владельцем)
+     6 — поля борда: от шапки до вкладок 12, по бокам и снизу 24, от вкладок до чартов и между чартами 16 (числа
+         владельца DL, 08.10 — поставил на борде сам; другой борд — свои числа владельца, BC-12)
+     7 — высота ряда по экрану: 201 — число владельца DL для раскладки «шапка → вкладки → ряд»; другая раскладка — другое
+         число, его даёт сниппет разметки (файл «Проверка на бою — разметка борда»)
+     8 — тур «Как работать» на весь экран: страница, шапка, вкладки и меню — в цвет затемнения (маркер XX-TOUR-ON-1 →
+         WFgtVE9VUi1PTi0x)
+   Маркер: 12 ASCII-байт → ровно 16 знаков base64; префикс XX- — свой у отчёта, на борде уникален (BC-10, SB-12).
+   Тот же маркер стоит в CFG чарта (SB-11). Блоки 2, 3, 8 работают только вместе с обёрткой onerror и overflow:hidden
+   в чарте (SB-03): иначе на Windows чарт гаснет при сворачивании разворота. Блок 8 — вместе с прямыми углами карточки
+   под шторкой тура (TR-22): иначе на углах чартов светлая дуга.
+
+   Красные «!» редактора CSS у строк с :has(…), :not(… *) и max(…) — линтер редактора их не знает, на работу не влияет.
+
+   ПРОВЕРЕНО (09.10, стенд: Chromium 141, каркас Superset 2.0.1 со слоями detail_list:stand/skeleton.css 31-й поставки —
+   сетка 2.0.1, меню 48 px, пилюли вкладок форка, значок ссылки форка вне потока, тени ячеек форка, CSS борда 7241; окно
+   1400×950, ряд «панель 3 колонки + чарт 9»): браузер принял 52 блока из 52; холдер без поля, фона и теней (тени
+   форка на ряду-ячейке, контейнере, react_sanbbox и iframe сняты), скругление 12, iframe = ячейке; без iframe —
+   подложка того же прямоугольника и скругления, что потом iframe, «Загружаю…», картинка Proteus скрыта; маркер
+   выпадашки — iframe 1352 px (100vw − 48), подсказки — ячейка + 360 px; от шапки до вкладок 12, от линии вкладок до ряда
+   16, по бокам 24, между чартами 16; вкладки — Arial 14,5 / 400, через 40 px, значок ссылки в 6 px за названием и по
+   середине строки (без файла форк ставит его в 26 px, и он наезжает на соседнюю), черта #2b6cff, значок — шрифт иконок;
+   ряд 749 px при окне 950, 560 при 700; вкладки верхнего уровня — от шапки 0, до ряда 16, вкладки с x = 24; режим
+   правки — поля и высота Superset; маркер тура — поля, зазор, полоса вкладок и шапка по пикселям скриншота #7c8088,
+   меню темнее, «⋯» скрыты. kit/board-check.js на этом каркасе: «201 — верно (расчёт 200, допуск ±2)», при вкладках
+   верхнего уровня — «замените 201 на 188». kit/pack_template.py подставляет id без остатка заглушек.
+   Не проверено в бою (17-open-questions.md, OQ-28…OQ-31): классы .dashboard--editing, .dashboard-header-container и
+   #main-menu у форка (.grid-container подтверждён: DevTools владельца DL, 08.10); что делает is_css_scoped; число 201 на
+   другой раскладке; тур на весь экран. Сниппет разметки печатает цепочку классов и точное число для блока 7.
+   ================================================================================================================= */
+
+/* ==== 1. Ячейки ===================================================================================================
+   Ячейку узнаём по классу холдера .dashboard-chart-id-N: он стоит с первой секунды, и на загрузке, пока чарта ещё нет,
+   ячейка уже без карточки форка — заглушка загрузки той же формы и размера, что чарт, без скачка (BC-02, BC-06).
+   :has(#chart-id) внутри :is() — запасной путь, если у форка класс окажется не на холдере, и вес id против правил форка.
+   Поле 16 px и белый фон холдера и есть «рамка» вокруг чарта (BC-03). Тени форка снимаем со всей цепочки — от
+   ряда-ячейки до iframe (BC-25), скругление холдера — как у карточки чарта. Высоту iframe Proteus пишет атрибутом один
+   раз — растягивает только CSS (BC-04). Заголовок шапки чарта не занимает строку, меню «⋯» остаётся поверх (BC-05). */
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) {
+  background-color: transparent !important;    /* белая карточка ячейки */
+  padding: 0 !important;                        /* поле 16 px — оно и даёт «рамку» */
+  box-shadow: none !important;
+  outline: 0 !important;
+  border: 0 !important;                         /* 2 px прозрачной рамки 2.0.1 */
+  border-radius: 12px !important;               /* как у карточки чарта (у ячеек форка на борде 7241 — 15) */
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .chart-slice,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .dashboard-chart,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .chart-container,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .slice_container,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .slice_container > div,
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .react_sanbbox {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 auto !important;
+  min-height: 0 !important;                     /* emotion 2.0.1 ставит min-height / height в px — снять */
+  padding: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;                  /* тени ячеек форка вокруг чарта (владелец DL, 08.10: «на краях тень») */
+  outline: 0 !important;
+}
+/* ряд-ячейка с нашим чартом — без тени и рамки форка */
+.resizable-container:has(> .dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002)) {
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+/* подложка размера и скругления чарта: пока чарта нет (загрузка, доли секунды до отрисовки), ячейка не пустеет и не
+   моргает; отрисованный чарт закрывает её своей карточкой того же размера (карточка — во всё окно iframe, UI-08) */
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .chart-container {
+  background: #fff !important;
+  border-radius: 12px !important;
+}
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .header-title {
+  display: none !important;
+}
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .chart-slice {
+  position: relative !important;
+}
+.dashboard-component-chart-holder:is(.dashboard-chart-id-100001, .dashboard-chart-id-100002, :has(#chart-id-100001, #chart-id-100002)) .chart-header {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 11 !important;
+  margin: 0 !important;
+}
+#chart-id-100001 iframe,
+#chart-id-100002 iframe {
+  display: block !important;                    /* строчный iframe даёт щель снизу */
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  height: 100% !important;                      /* поверх атрибута height платформы */
+  min-height: 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ==== 2. Панель — выпадашка вправо поверх соседа ===================================================================
+   Чарт шлёт в канал скриншотов PNG 1×1 с маркером; родитель кладёт его в img.echarts-plugin рядом с iframe; правила
+   ниже разворачивают iframe прозрачным слоем (BC-08). Якорь — #chart-id, а не ячейка с заголовком: строка не прыгает.
+   #chart-id в селекторе слоя — сильнее блока 1 (BC-09). Ширина 100vw − 48 — для чарта у левого края борда; ячейка
+   правее — вычти её отступ слева, иначе слой даст горизонтальную прокрутку страницы. */
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtREQtT04tMDAx"]) .slice_container,
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtREQtT04tMDAx"]) .chart-container,
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtREQtT04tMDAx"]) .dashboard-chart {
+  overflow: visible !important;
+}
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtREQtT04tMDAx"]) #chart-id-100002 {
+  position: relative !important;
+}
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtREQtT04tMDAx"]) #chart-id-100002 iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: calc(100vw - 48px) !important;
+  height: 100% !important;
+  z-index: 998 !important;                      /* выше сетки, ниже системных модалок */
+  background: transparent !important;
+}
+
+/* ==== 3. Панель — подсказки: свой маркер и малый разворот (BC-10). Курсор ушёл с панели — чарт шлёт чистый PNG. ==== */
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtVElQLU9OLTAx"]) .slice_container,
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtVElQLU9OLTAx"]) .chart-container,
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtVElQLU9OLTAx"]) .dashboard-chart {
+  overflow: visible !important;
+}
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtVElQLU9OLTAx"]) #chart-id-100002 {
+  position: relative !important;
+}
+.dashboard-chart-id-100002:has(img.echarts-plugin[src*="WFgtVElQLU9OLTAx"]) #chart-id-100002 iframe {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: calc(100% + 360px) !important;
+  height: 100% !important;
+  z-index: 998 !important;
+  background: transparent !important;
+}
+
+/* ==== 4. Загрузка ==================================================================================================
+   Пока в ячейке нет iframe, Proteus показывает «Не было получено данных по этому запросу» с картинкой (BC-06):
+   прячем её, на белой подложке блока 1 — значок загрузки Proteus и подпись. Появился iframe — правила снимаются сами.
+   Предусловие: датасет всегда отдаёт хотя бы строку meta (DS-08) — на пустой ответ iframe не появится никогда.
+   Значок Proteus поверх уже отрисованного чарта прячем, только если у чарта своя плашка пересчёта (BC-07, UI-23). */
+.dashboard-chart-id-100001:not(:has(iframe)) .slice_container,
+.dashboard-chart-id-100002:not(:has(iframe)) .slice_container {
+  visibility: hidden !important;
+}
+.dashboard-chart-id-100001:not(:has(iframe)) .chart-container,
+.dashboard-chart-id-100002:not(:has(iframe)) .chart-container {
+  position: relative !important;
+}
+.dashboard-chart-id-100001:not(:has(iframe)) .chart-container::after,
+.dashboard-chart-id-100002:not(:has(iframe)) .chart-container::after {
+  content: 'Загружаю отчёт…';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(50% + 26px);                        /* под значком 50 px */
+  text-align: center;
+  font: 400 13px/1.4 Arial, Helvetica, sans-serif;
+  color: #8a909c;
+  pointer-events: none;
+  animation: xx-load-pulse 1.6s ease-in-out infinite;
+}
+.dashboard-chart-id-100002:not(:has(iframe)) .chart-container::after {
+  content: 'Загружаю фильтры…';
+}
+/* низкая ячейка (шапка ≈ 60–120 px): подпись справа от значка —
+.dashboard-chart-id-100003:not(:has(iframe)) .chart-container::after {
+  content: 'Загружаю шапку…'; top: calc(50% - 9px); left: calc(50% + 30px); right: auto; text-align: left;
+} */
+@keyframes xx-load-pulse {
+  50% { opacity: .6; }
+}
+.dashboard-chart-id-100001:has(iframe) img.loading,
+.dashboard-chart-id-100001:has(iframe) [aria-label="Loading"],
+.dashboard-chart-id-100002:has(iframe) img.loading,
+.dashboard-chart-id-100002:has(iframe) [aria-label="Loading"] {
+  display: none !important;
+}
+
+/* ==== 5. Вкладки борда в стиле чартов ===============================================================================
+   У форка правила вкладок с !important и цепочками классов (серые пилюли на серой полосе): у каждого селектора здесь
+   вес идентификатора «:not(#xx-tabs)» — такого id нет, условие всегда выполнено, а вес больше любой цепочки (BC-13).
+   Шрифт — только вкладке и её тексту: значок ссылки рисуется шрифтом иконок, чужой шрифт делает из него квадратик
+   (BC-14). Один вес у всех вкладок, активная — цветом и чертой (BC-15). Между вкладками — 40 px одним margin, значок
+   ссылки — вне потока в 6 px за названием (BC-24). Цвета — профиль Proteus Adoption (UI-05): ink #23272e, ink2 #454b55,
+   muted #8a909c, линия #e7e9ee, черта — акцент отчёта (тот же, что у кнопок в чартах). */
+.dashboard-component-tabs:not(#xx-tabs),
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav-wrap,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav-list,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav-operations {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav {
+  margin: 0 0 16px !important;                  /* от линии вкладок до чартов — 16 (блок 6) */
+  padding: 0 !important;
+  border: 0 !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav-wrap,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav-list {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 0 !important;                            /* расстояние между вкладками — только их margin (у форка gap свой) */
+  align-items: flex-end !important;             /* вкладки — на линии */
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav::before {
+  border-bottom: 1px solid #e7e9ee !important;
+}
+/* фон под содержимым вкладки — фон борда (у 2.0.1 он белый: зазоры между чартами стали бы белыми, BC-16) */
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-content-holder,
+.dashboard-component-tabs:not(#xx-tabs) [role="tabpanel"] {
+  background: var(--dashboard-background, #f6f6f6) !important;
+}
+/* содержимое вкладки — сразу под полосой (у Superset ещё 1 px) */
+.dashboard-component-tabs:not(#xx-tabs) .dashboard-component-tabs-content {
+  margin-top: 0 !important;
+}
+/* вкладки верхнего уровня (первая строка борда): полоса — в липкой шапке; ей фон страницы, вкладкам — вровень с
+   чартами, отступ = поле сбоку блока 6 (BC-17); до чартов — поле сверху сетки, блок 6 */
+.dashboard-header-container ~ * .dashboard-component-tabs:not(#xx-tabs) {
+  background: var(--dashboard-background, #f6f6f6) !important;
+}
+.dashboard-header-container ~ * .dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav {
+  margin: 0 !important;
+  padding: 0 24px !important;
+}
+/* вкладка и всё в ней — без заливки, рамок и скруглений (пилюли форка) */
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active * {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]):not([class*="anchor"] *) {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab {
+  position: relative !important;
+  margin: 0 40px 0 0 !important;                /* между вкладками 40 px (владелец DL, 08.10: «шире»); в них и значок ссылки */
+  padding: 7px 0 9px !important;
+  border: 0 !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .ant-tabs-tab-btn,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab [role="tab"],
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .editable-title,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .editable-title * {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+/* один вес у всех вкладок — при переключении названия не сдвигаются */
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]):not([class*="anchor"] *) {
+  font-size: 14.5px !important;
+  font-weight: 400 !important;
+  line-height: 20px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  text-shadow: none !important;
+  color: #8a909c !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab:hover,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab:hover *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]):not([class*="anchor"] *) {
+  color: #454b55 !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active,
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active *:not(i):not(svg):not(svg *):not(.anticon):not([class*="fa-"]):not([class*="icon"]):not([class*="anchor"]):not([class*="anchor"] *) {
+  color: #23272e !important;
+}
+/* значок ссылки на вкладку (короткая ссылка Proteus, виден при наведении) — в 6 px за названием (BC-24): самый внешний
+   элемент значка — вне потока, у правого края названия, по середине строки; при наведении вкладки не сдвигаются; внутри —
+   без отступов и рамок кнопки. Шрифт, размер и показ значка (его прячет и показывает Proteus) не трогаем (BC-14). */
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab:has(> [class*="anchor"]),
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab :has(> [class*="anchor"]) {
+  position: relative !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab [class*="anchor"]:not([class*="anchor"] *) {
+  position: absolute !important;
+  left: 100% !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  margin: 0 0 0 6px !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  color: #8a909c !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab [class*="anchor"] * {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  height: auto !important;
+  line-height: 1 !important;
+  top: auto !important;
+  vertical-align: middle !important;
+  color: inherit !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab [class*="anchor"]:hover {
+  color: #454b55 !important;
+}
+/* значок вкладки без «anchor» в классах — та же черта: 6 px от названия */
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab .anticon:not([class*="anchor"] *) {
+  margin-left: 6px !important;
+  color: #8a909c !important;
+  vertical-align: middle !important;
+}
+/* черта активной вкладки — на линии полосы; ink-bar antd двигает скрипт — скрыт */
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav .ant-tabs-tab.ant-tabs-tab-active::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  height: 2px !important;
+  border-radius: 2px 2px 0 0 !important;
+  background: #2b6cff !important;               /* акцент отчёта */
+  display: block !important;
+  z-index: 1 !important;
+}
+.dashboard-component-tabs:not(#xx-tabs) .ant-tabs-ink-bar {
+  display: none !important;
+}
+
+/* ==== 6. Поля борда (BC-12) =========================================================================================
+   У 2.0.1 поля сетки 24 / 32 px, а над чартами ещё полоса вкладок 50–68 px: «сверху место больше, чем сбоку». Числа —
+   владельца DL (08.10, поставил на борде сам): от шапки до вкладок 12, по бокам и снизу 24, от линии вкладок до чартов
+   16 (блок 5), между чартами в ряду — штатные 16 (на них ширины ячеек — не трогаем), между рядами — 16. Вкладки верхнего
+   уровня: их полоса — в шапке, и поле сверху сетки — это уже от линии вкладок до чартов, 16. Режим правки не трогаем:
+   там справа панель конструктора, высоту задаёт ручка. Другие числа владельца — здесь и в блоках 5 и 7 (и EXPECT
+   сниппета разметки). */
+.grid-container:not(.dashboard--editing *):not(#xx-grid) {
+  margin: 12px 24px 24px !important;
+}
+html:has(.dashboard-header-container ~ * .dashboard-component-tabs) .grid-container:not(.dashboard--editing *):not(#xx-grid) {
+  margin-top: 16px !important;
+}
+.dashboard-grid .grid-content > :not(:last-child) {
+  margin-bottom: 16px !important;
+}
+/* ряды во вложенных вкладках: у 2.0.1 своего зазора нет — предложение, на форке не проверено */
+.dashboard-component-tabs-content > .dragdroppable-row:not(:last-child) {
+  margin-bottom: 16px !important;
+}
+
+/* ==== 7. Высота ряда по экрану (BC-18) ==============================================================================
+   Ряд с нашими чартами — от своего верха до низа окна с полем 24 px, не ниже 560 px (MIN — под самый высокий
+   обязательный элемент: подвал с «Применить», выпадашку во всю высоту). Самый внутренний .resizable-container (колонка
+   тоже им бывает), кроме режима правки. 201 (TOP) — верх ряда от начала страницы + нижнее поле: число владельца DL на
+   борде «меню → шапка → вкладки → ряд» (08.10: верх ряда 177 + 24). Ряд над вкладками или вкладки верхнего уровня —
+   другое число: сниппет разметки скажет «замените 201 на N». Селектор — одной строкой: перенос между «)» и «:not» стал
+   бы пробелом-потомком. По наполнению высоту не сделать: из песочницы чарт свою высоту странице не сообщает. */
+.resizable-container:not(.dashboard--editing *):has(.dashboard-chart-id-100001, .dashboard-chart-id-100002):not(:has(.resizable-container .dashboard-chart-id-100001, .resizable-container .dashboard-chart-id-100002)) {
+  height: max(560px, calc(100vh - 201px)) !important;
+}
+
+/* ==== 8. Тур «Как работать» — весь экран (TR-16, TR-22) ============================================================
+   Каждый iframe затемняет только себя (шторка rgba(17,24,39,.55) поверх белой карточки = #7c8088), страницу вокруг
+   рисует Proteus. Пока идёт тур, ведущий чарт шлёт в канал скриншотов маркер тура (повтор каждые 1,5 с, конец — чистый
+   PNG; iframe не разворачивается), и всё вокруг чартов — страница, сетка, поля, зазоры — красится в тот же #7c8088.
+   Шапку борда и полосу вкладок красим белым и накрываем тем же затемнением (::after), меню Proteus (#main-menu) — тоже;
+   «⋯» Proteus у наших ячеек прячем. Своего слоя поверх всей страницы нет: его могли бы перекрыть слои самого Proteus
+   (Adoption, 07.10). Только швы и поля, без шапки и меню, — вариант Adoption: оставь первое правило без строк про шапку.
+   В бою не подтверждено (стоп-точка TR-16); #main-menu и .dashboard-header-container — по разметке 2.0.1: у форка
+   другие — светлыми останутся они, страница вокруг чартов затемнится. */
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]),
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) body,
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) :not(iframe):has(.dashboard-component-chart-holder),
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) :not(iframe):has(.dashboard-header-container),
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) .dashboard-header-container ~ * .dashboard-component-tabs:not(#xx-tabs) {
+  background-color: #7c8088 !important;
+  background-image: none !important;
+}
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) .dashboard-header-container,
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) .dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav {
+  position: relative !important;
+  background: #fff !important;                  /* белое под затемнением = #7c8088, как карточки чартов */
+}
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) #main-menu {
+  position: relative !important;
+}
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) :is(.dashboard-chart-id-100001, .dashboard-chart-id-100002) .chart-header {
+  visibility: hidden !important;                /* «⋯» у ячейки — не поверх затемнения */
+}
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) .dashboard-header-container::after,
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) .dashboard-component-tabs:not(#xx-tabs) .ant-tabs-nav::after,
+html:has(.dashboard-chart-id-100001 img.echarts-plugin[src*="WFgtVE9VUi1PTi0x"]) #main-menu::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(17, 24, 39, .55) !important;
+  z-index: 1000 !important;
+  pointer-events: auto !important;              /* клики под затемнением не проходят, как в чартах */
+}
+/* ==== <ОТЧЁТ> — CSS борда · КОНЕЦ блока отчёта ==================================================================== */

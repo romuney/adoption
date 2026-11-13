@@ -1,0 +1,135 @@
+{
+  "status": "passed",
+  "clickhouse": "24.8.4.1",
+  "max_threads": 2,
+  "fact_rows": 13000000,
+  "table_rows": {
+    "pa_next_adg_member": 500000,
+    "pa_next_adg_size": 1000,
+    "pa_next_all_day": 1000,
+    "pa_next_cat_aud": 1000,
+    "pa_next_cat_grp": 1000,
+    "pa_next_cat_rep": 1000,
+    "pa_next_dash_acl": 1000,
+    "pa_next_dash_bkt": 1000,
+    "pa_next_dash_ca": 1000,
+    "pa_next_dash_day": 100000,
+    "pa_next_dash_meta": 1000,
+    "pa_next_dict": 1000,
+    "pa_next_emp_attrs": 50000,
+    "pa_next_evd_day": 13000000,
+    "pa_next_login_map": 1000,
+    "pa_next_md": 1000,
+    "pa_next_pair": 500000,
+    "pa_next_pair_acc": 400000,
+    "pa_next_staff": 75000,
+    "pa_next_staffx": 75000,
+    "pa_next_viewer": 50000
+  },
+  "results": {
+    "head": [
+      {
+        "wall_seconds": 0.22242594599993026,
+        "statistics": {
+          "elapsed": 0.156701835,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.23365687200021057,
+        "statistics": {
+          "elapsed": 0.148686585,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.23299890399994183,
+        "statistics": {
+          "elapsed": 0.138236861,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.24130292400013786,
+        "statistics": {
+          "elapsed": 0.174423415,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      }
+    ],
+    "cat": [
+      {
+        "wall_seconds": 0.9050166209999588,
+        "statistics": {
+          "elapsed": 0.797854257,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.8341491169999244,
+        "statistics": {
+          "elapsed": 0.750815008,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.8615081640000426,
+        "statistics": {
+          "elapsed": 0.780128351,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.912225959999887,
+        "statistics": {
+          "elapsed": 0.812669041,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      }
+    ],
+    "one": [
+      {
+        "wall_seconds": 0.7719968599999447,
+        "statistics": {
+          "elapsed": 0.69730837,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.8347793109996928,
+        "statistics": {
+          "elapsed": 0.769424247,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.8785213829996792,
+        "statistics": {
+          "elapsed": 0.802311126,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      },
+      {
+        "wall_seconds": 0.8772581160001209,
+        "statistics": {
+          "elapsed": 0.785977885,
+          "rows_read": 0,
+          "bytes_read": 0
+        }
+      }
+    ]
+  },
+  "limitation": "Synthetic run column scans only, same process first/warm runs; no OS-cache eviction and no claim about whole-report or production speed",
+  "statistics_note": "Top-level JSON statistics can show zero rows_read/bytes_read for work done inside scalar subqueries; these are not total I/O counters for this guard."
+}

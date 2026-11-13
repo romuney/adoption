@@ -1,0 +1,779 @@
+{
+  "schema": 1,
+  "clickhouse": "24.8.4.1",
+  "baseline_revision": "167c2edcfae1bee7a4fcd830052a9d2dfea49edb",
+  "baseline_yaml": "Proteus Adoption (4).yaml",
+  "baseline_yaml_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
+  "scope": "synthetic dataset equivalence; NOT corporate GP/Proteus acceptance",
+  "cases": [
+    {
+      "kind": "cat",
+      "label": "default",
+      "filters": {},
+      "mode": "production-profile",
+      "baseline_seconds": 1.935454,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 0.772274,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "default",
+      "filters": {},
+      "mode": "old-analyzer",
+      "candidate_seconds": 1.012272,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.854023,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "default",
+      "filters": {},
+      "mode": "nullable-join",
+      "baseline_seconds": 1.672436,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.002521,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "default",
+      "filters": {},
+      "mode": "nullable-group",
+      "candidate_seconds": 1.042444,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.990141,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "default",
+      "filters": {},
+      "mode": "all-nullable",
+      "baseline_seconds": 1.928404,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.077641,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.222348,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.869223,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "old-analyzer",
+      "baseline_seconds": 1.87907,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.322,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "nullable-join",
+      "candidate_seconds": 0.982857,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.767377,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "nullable-group",
+      "baseline_seconds": 1.768427,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 0.887676,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "all-nullable",
+      "candidate_seconds": 1.078543,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.048859,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.811077,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.904978,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "old-analyzer",
+      "candidate_seconds": 3.17388,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.988987,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "nullable-join",
+      "baseline_seconds": 2.64046,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.668352,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "nullable-group",
+      "candidate_seconds": 2.567944,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.725696,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "all-nullable",
+      "baseline_seconds": 2.659293,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.044176,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.064831,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.174497,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "old-analyzer",
+      "baseline_seconds": 2.177417,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.527679,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "nullable-join",
+      "candidate_seconds": 2.192678,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.343334,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "nullable-group",
+      "baseline_seconds": 2.229167,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.305803,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "all-nullable",
+      "candidate_seconds": 2.202532,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.153366,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.993719,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.240774,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "old-analyzer",
+      "candidate_seconds": 2.773198,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.287394,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "nullable-join",
+      "baseline_seconds": 2.173139,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.030296,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "nullable-group",
+      "candidate_seconds": 2.280918,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.877051,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "all-nullable",
+      "baseline_seconds": 1.899785,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.99112,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "default",
+      "filters": {},
+      "mode": "production-profile",
+      "candidate_seconds": 1.452753,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.56793,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "default",
+      "filters": {},
+      "mode": "old-analyzer",
+      "baseline_seconds": 3.588748,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.043447,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "default",
+      "filters": {},
+      "mode": "nullable-join",
+      "candidate_seconds": 2.068128,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.090059,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "default",
+      "filters": {},
+      "mode": "nullable-group",
+      "baseline_seconds": 2.147756,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.718376,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "default",
+      "filters": {},
+      "mode": "all-nullable",
+      "candidate_seconds": 1.708824,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.912713,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.989173,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.938485,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "old-analyzer",
+      "candidate_seconds": 2.162169,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.197025,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "nullable-join",
+      "baseline_seconds": 2.98123,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.230804,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "nullable-group",
+      "candidate_seconds": 2.191562,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.032184,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "one-report",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "all-nullable",
+      "baseline_seconds": 2.435536,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.301944,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.541041,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.964592,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "old-analyzer",
+      "baseline_seconds": 6.089789,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.882272,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "nullable-join",
+      "candidate_seconds": 3.992089,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.689483,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "nullable-group",
+      "baseline_seconds": 3.389158,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.651964,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "custom-long",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "all-nullable",
+      "candidate_seconds": 3.807854,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.267205,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.688788,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.188829,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "old-analyzer",
+      "candidate_seconds": 2.761355,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.427512,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "nullable-join",
+      "baseline_seconds": 3.169566,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.768838,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "nullable-group",
+      "candidate_seconds": 2.923205,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.89095,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "audience",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "all-nullable",
+      "baseline_seconds": 3.573718,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.669614,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.131884,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.204923,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "old-analyzer",
+      "baseline_seconds": 4.936626,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.798525,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "nullable-join",
+      "candidate_seconds": 2.139469,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.805137,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "nullable-group",
+      "baseline_seconds": 3.118088,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.442183,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "no-audience-match",
+      "filters": {
+        "ca_spec_f": [
+          "__nonexistent__"
+        ]
+      },
+      "mode": "all-nullable",
+      "candidate_seconds": 2.512383,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.351996,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    }
+  ],
+  "passed": 50,
+  "failed": 0,
+  "completed": true,
+  "candidate_sha256": {
+    "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+    "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+  },
+  "elapsed_seconds": 272.527,
+  "rows_read_note": "chdb may report 0 although tables were read; do not interpret 0 as no I/O"
+}

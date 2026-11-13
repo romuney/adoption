@@ -1,0 +1,6069 @@
+{
+  "schema": 1,
+  "clickhouse": "24.8.4.1",
+  "baseline_revision": "167c2edcfae1bee7a4fcd830052a9d2dfea49edb",
+  "baseline_yaml": "Proteus Adoption (4).yaml",
+  "baseline_yaml_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
+  "scope": "synthetic dataset equivalence; NOT corporate GP/Proteus acceptance",
+  "cases": [
+    {
+      "kind": "head",
+      "label": "шапка",
+      "filters": {},
+      "mode": "production-profile",
+      "baseline_seconds": 0.407747,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 0.479682,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {},
+      "mode": "production-profile",
+      "candidate_seconds": 1.639269,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.183959,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.921142,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.426264,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.711256,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.475514,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.410809,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.734392,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 5.787555,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.26384,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.955488,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.285438,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "lvl3_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.913923,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.53589,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "lvl3_f": [
+          "Блок 3"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.587974,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.048588,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "lvl3_f": [
+          "Блок 3"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.663741,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.448832,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "lvl3_f": [
+          "Блок 3"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.5274,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.134775,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "lvl3_f": [
+          "Блок 3"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.52234,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.647422,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "lvl3_f": [
+          "Блок 3"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.899585,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.751801,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.567303,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.070619,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.630847,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.614911,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.589189,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.484806,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.640952,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.956525,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.918745,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.561994,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.713455,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.147414,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "org_f": [
+          "Блок 3 › Деп 3.0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.59592,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.08169,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.642452,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.960925,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.923964,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.275997,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.457144,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.436604,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.457592,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.786775,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.713561,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.758263,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "login_f": [
+          "u2122"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.498365,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.85729,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "login_f": [
+          "u2122"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.13496,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.041484,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "login_f": [
+          "u2122"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.107276,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.818185,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "login_f": [
+          "u2122"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.342184,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.049567,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "login_f": [
+          "u2122"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.321152,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.798715,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "login_f": [
+          "u2122"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.091515,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.239932,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "exl_f": [
+          "u2122"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.362582,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.304437,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "exl_f": [
+          "u2122"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.022911,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.954644,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "exl_f": [
+          "u2122"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.386426,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.931018,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "exl_f": [
+          "u2122"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.086354,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.11306,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "exl_f": [
+          "u2122"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.77631,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.20993,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "exl_f": [
+          "u2122"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.203134,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.720815,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "freq_f": [
+          "1",
+          "4"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.062316,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.056981,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "freq_f": [
+          "1",
+          "4"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.577563,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.677289,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "freq_f": [
+          "1",
+          "4"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.181166,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.850107,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "freq_f": [
+          "1",
+          "4"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.194895,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.5371,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "freq_f": [
+          "1",
+          "4"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.712303,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.00716,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "freq_f": [
+          "1",
+          "4"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.589592,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.416816,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.948582,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.514962,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "reach"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.804102,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.937591,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "reach"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.952204,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.371439,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "reach"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.58069,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.740751,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "reach"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.658034,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.816027,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "reach"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.663938,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.814199,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "out"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.843081,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.115015,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "out"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.069408,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.077813,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "out"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.007625,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.044417,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "out"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.069811,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.931777,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "out"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.90411,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.957395,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "out"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.319568,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.294151,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "never"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.613321,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.338518,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "never"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.510098,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.641901,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "never"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.718333,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.53516,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "never"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.715582,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.689497,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "never"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.712021,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.356961,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "seg_f": [
+          "never"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.810598,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.500116,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "adg_f": [
+          "ADG1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.644395,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.577501,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "adg_f": [
+          "ADG1"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.765683,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.877891,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "adg_f": [
+          "ADG1"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.402113,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.61323,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "adg_f": [
+          "ADG1"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.658828,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.564803,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "adg_f": [
+          "ADG1"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.574579,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.725381,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "шина×ЦА",
+      "filters": {
+        "adg_f": [
+          "ADG1"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.056623,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.193967,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {},
+      "mode": "production-profile",
+      "candidate_seconds": 1.960826,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.860112,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.94388,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.166565,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.048312,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.220028,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.392463,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.440685,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.201837,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.03546,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.230355,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.153416,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.289827,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.377769,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.72676,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.204486,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.536151,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.757802,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.12888,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.459378,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.030384,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.397062,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.285063,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.386831,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.736526,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.490019,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.448472,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.560921,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.547765,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.699402,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.457228,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.58355,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.083439,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.634577,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.309027,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.041702,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.816169,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.059596,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "w",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.686619,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.263644,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "w",
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.050747,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.424261,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "w",
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.185015,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.201675,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.219747,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.448736,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.229285,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.574836,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.387351,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.144414,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.656282,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.845928,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.037076,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.266184,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.439753,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.981838,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.646978,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.379284,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 5.952433,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.220803,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "m",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.660172,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 6.091101,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "m",
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.339056,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.188413,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "m",
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.763486,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.763701,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 8.462438,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.005163,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.86158,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 6.186267,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.34925,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.507097,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.748564,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 6.968406,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 6.465314,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.6062,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.357652,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 8.870395,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.775426,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.039154,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.015168,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.125744,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "q",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.681889,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.806959,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "q",
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.366974,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.594078,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "q",
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.296436,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.233781,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.872654,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.361715,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.846444,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.825441,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.814446,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.542533,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.247953,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.182349,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.905728,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.084646,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.08738,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.679039,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.677191,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.932162,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.407688,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.578039,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.321732,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.20775,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.073357,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.673416,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 4.024104,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.550217,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.898634,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.35723,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.664223,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.542878,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.238316,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.61914,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 4.471854,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.048336,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.984692,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.4846,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.524412,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.860067,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.750231,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.480299,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 4.039673,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.50604,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.515953,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.0797,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.122659,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.83717,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.733883,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.505982,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.132973,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.016327,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.335987,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 13.023385,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 11.485295,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.636407,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.1937,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.719243,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.180281,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.828297,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.008739,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.322932,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.897736,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.190499,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.352882,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.562295,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.937357,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.019727,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "spec_f": [
+          "Спец 0"
+        ],
+        "heads_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.037646,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.052245,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "период×шина/ЦА",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "seg_f": [
+          "reach"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.807,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.604066,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "мой логин",
+      "filters": {
+        "cat_sync_f": [
+          "r=1"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.098097,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.147212,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "request-echo",
+      "filters": {
+        "pa_next_head_req": [
+          "test-head-1"
+        ],
+        "pa_next_cat_req": [
+          "test-cat-2"
+        ],
+        "pa_next_one_req": [
+          "test-one-3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.326547,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.343295,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "invalid-period",
+      "filters": {
+        "period_param": "c|invalid|d|10"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.44966,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.394509,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "invalid-period",
+      "filters": {
+        "period_param": "c|2026-09-21|d|0"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.739063,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.578147,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "invalid-period",
+      "filters": {
+        "period_param": "unknown"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.487535,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.107661,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "O'Brien"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.535087,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.419379,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "a]b"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.917497,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.52631,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "x -- y"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.226936,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.803224,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "Отдел | ^ ` ~"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.30976,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.583559,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {},
+      "mode": "production-profile",
+      "candidate_seconds": 2.559135,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.226278,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.886333,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.542833,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.29618,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.601494,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.602014,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.635535,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.272286,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.379388,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.035606,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.500522,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.034561,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.440926,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.242826,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.935453,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.076891,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.231397,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.693247,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.799429,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.470474,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.027515,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.709177,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.279813,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.231177,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.392247,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.206467,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.830481,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.603664,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.591287,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.313419,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.754657,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.780976,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.035107,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.138326,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.165799,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "999999"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.747365,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.567232,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "999999"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.740919,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.034331,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "999999"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.904709,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.411706,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "999999"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.754523,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.759261,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "999999"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.727596,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.205464,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "999999"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.228346,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.618262,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.865022,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.907431,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.935666,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.86999,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.517475,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.630228,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.470128,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 5.354181,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 4.522758,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.01521,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.328267,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.587727,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "collection",
+        "sel_f": [
+          "Род 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.442417,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.568328,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "collection",
+        "sel_f": [
+          "Род 0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.383603,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.569544,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "collection",
+        "sel_f": [
+          "Род 0"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.397693,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.783899,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "collection",
+        "sel_f": [
+          "Род 0"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.857186,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.169324,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "collection",
+        "sel_f": [
+          "Род 0"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.59683,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.538023,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "collection",
+        "sel_f": [
+          "Род 0"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.548221,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.118156,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:spec",
+        "sel_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.227062,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.846268,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:spec",
+        "sel_f": [
+          "Спец 0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.556543,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.807141,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:spec",
+        "sel_f": [
+          "Спец 0"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.626993,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.009654,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:spec",
+        "sel_f": [
+          "Спец 0"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.655992,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.905721,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:spec",
+        "sel_f": [
+          "Спец 0"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.075141,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.522738,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:spec",
+        "sel_f": [
+          "Спец 0"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.550604,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.333775,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:lvl3",
+        "sel_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.346206,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.340099,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:lvl3",
+        "sel_f": [
+          "Блок 3"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.951476,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.536303,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:lvl3",
+        "sel_f": [
+          "Блок 3"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.959325,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.898861,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:lvl3",
+        "sel_f": [
+          "Блок 3"
+        ],
+        "ca_org_f": [
+          "Блок 3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.659512,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.907276,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:lvl3",
+        "sel_f": [
+          "Блок 3"
+        ],
+        "ca_adg_f": [
+          "ADG28"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 5.301691,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 7.350818,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "выбор×ЦА",
+      "filters": {
+        "mode_param": "cut:lvl3",
+        "sel_f": [
+          "Блок 3"
+        ],
+        "ca_head_f": "n",
+        "ca_hq_f": [
+          "HQ"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.526598,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.987335,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "группа «Аудитории»",
+      "filters": {
+        "aud_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.841042,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.990288,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "группа «Аудитории»",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "aud_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.098812,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.972467,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "группа «Аудитории»",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ],
+        "aud_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.918839,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.071677,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "группа «Аудитории»",
+      "filters": {
+        "aud_org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "aud_head_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.494218,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.079422,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "группа «Аудитории»",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "aud_org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "aud_head_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.604797,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.329006,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "группа «Аудитории»",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ],
+        "aud_org_f": [
+          "Блок 3 › Деп 3.0"
+        ],
+        "aud_head_f": [
+          "1"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.096614,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.284534,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {},
+      "mode": "production-profile",
+      "candidate_seconds": 2.810287,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.768387,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.399317,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.970448,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.99789,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.190731,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.026381,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.105007,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.870266,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.196448,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.225627,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.993528,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.936763,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.864422,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.332889,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.967847,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.488415,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.913478,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.731876,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.759419,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.981082,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.354015,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.455172,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.241607,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.609467,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.677029,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.869461,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.344733,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.132546,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.449112,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.223055,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.087621,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.59802,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.911362,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.392404,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.310037,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "w",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.20571,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.362194,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "w",
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.669868,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.517265,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "w",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.704392,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.544321,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "w",
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.324969,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.444284,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.665504,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.101103,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.572494,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.135456,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.071653,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.680361,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.974864,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.731899,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.41226,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.108595,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.907764,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.569362,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.446511,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.384155,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "m",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.456233,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.326245,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "m",
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.888069,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.332004,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "m",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 5.10932,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 5.101304,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "m",
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.67615,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.91683,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.891794,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.357467,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.71721,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.897883,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.604167,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.144375,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.42436,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.741878,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.22081,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.028303,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.567269,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.852846,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.737046,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.166971,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "q",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.122693,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.003223,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "q",
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.662453,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.64766,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "q",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.894401,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.098114,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "q",
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.541929,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.411928,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.791242,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.566789,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.228893,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.340913,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.923356,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.586328,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.392495,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.478728,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.614844,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.451459,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.725756,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.076145,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 5.862245,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.882559,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.194698,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.730368,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.865802,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.753212,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.301776,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.175985,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|w|10",
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.525838,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.300021,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.034869,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.011423,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.262917,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.74986,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.416332,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.049075,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.792087,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.147069,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.182299,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.270729,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.71792,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.858159,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.730804,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.631476,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 4.006531,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.850085,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.872861,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.501427,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 5.075448,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 5.689817,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|d|45",
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.40891,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.627988,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 4.054678,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.339055,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.299816,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.999643,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.376762,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.96828,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 4.830211,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.849107,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.754199,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.829744,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.997152,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.747057,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.720057,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.438282,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×переключатели",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.944666,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.817921,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.727288,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.024893,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 5.637109,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 4.673752,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "период×выбор",
+      "filters": {
+        "period_param": "c|2026-09-21|d|120",
+        "mode_param": "report",
+        "sel_f": [
+          "2",
+          "3"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 3.24793,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.04958,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.116365,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.174707,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.374486,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.655923,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.166907,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.742444,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.569484,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.302742,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.374274,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.027647,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.28178,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.29172,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.953337,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.203863,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.617512,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.349521,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.294875,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.621613,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.757118,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.833435,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.981908,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.423078,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.639452,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.613439,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.152592,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.052921,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.305155,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.282767,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "exc_f": [
+          "0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.676484,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.403804,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.282323,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.475773,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.092231,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.962329,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.855211,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.994018,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.779309,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.568226,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.381903,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.906296,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.098646,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.075795,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.193789,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.290362,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.637033,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.317072,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.239422,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.599723,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.853407,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.56858,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "owner",
+        "sel_f": [
+          "own1"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.905716,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.99195,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "ca_it_f": [
+          "IT"
+        ],
+        "ca_head_f": "1"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.990482,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 3.349764,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "переключатели×выбор",
+      "filters": {
+        "pub_f": [
+          "0"
+        ],
+        "act_f": [
+          "0"
+        ],
+        "exc_f": [
+          "0"
+        ],
+        "mode_param": "report",
+        "sel_f": [
+          "2"
+        ],
+        "ca_spec_f": [
+          "Спец 0"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.705029,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 2.851389,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "request-echo",
+      "filters": {
+        "pa_next_head_req": [
+          "test-head-1"
+        ],
+        "pa_next_cat_req": [
+          "test-cat-2"
+        ],
+        "pa_next_one_req": [
+          "test-one-3"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.194344,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.210134,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "invalid-period",
+      "filters": {
+        "period_param": "c|invalid|d|10"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.64208,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.182597,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "invalid-period",
+      "filters": {
+        "period_param": "c|2026-09-21|d|0"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.039708,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.975124,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "invalid-period",
+      "filters": {
+        "period_param": "unknown"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.693316,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 4.416386,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "O'Brien"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.886836,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.635104,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "a]b"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.456896,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.015939,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "x -- y"
+        ]
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 3.167809,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 2.593258,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "one",
+      "label": "hostile-filter",
+      "filters": {
+        "ca_spec_f": [
+          "Отдел | ^ ` ~"
+        ]
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 2.491329,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 3.31924,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    }
+  ],
+  "passed": 320,
+  "failed": 0,
+  "completed": true,
+  "candidate_sha256": {
+    "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+    "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+    "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+  },
+  "elapsed_seconds": 2007.847,
+  "post_run_integrity": "all current SQL hashes and actual source YAML lineage verified",
+  "rows_read_note": "chdb reports 0 even though queries read tables; this metric is unavailable for I/O conclusions",
+  "timing_note": "observational full-suite timings under concurrent verification; not an isolated production speed benchmark"
+}

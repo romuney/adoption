@@ -1,0 +1,73 @@
+{
+  "status": "passed",
+  "gp_paragraphs": 17,
+  "base_table_comparisons": [
+    {
+      "table": "pa_login_map",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_evd_day",
+      "rows": 5,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_meta",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_emp_attrs",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_pair",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_bkt",
+      "rows": 8,
+      "equal": true
+    },
+    {
+      "table": "pa_staff",
+      "rows": 2,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_acl",
+      "rows": 2,
+      "equal": true
+    },
+    {
+      "table": "pa_adg_member",
+      "rows": 2,
+      "equal": true
+    },
+    {
+      "table": "pa_adg_size",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_ca",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_pair_acc",
+      "rows": 1,
+      "equal": true
+    }
+  ],
+  "source_views": 12,
+  "checks": [
+    "canonical login merge",
+    "nested AD membership",
+    "all 21 export run stamps"
+  ],
+  "limitation": "PostgreSQL local model; DISTRIBUTED clauses removed; no corporate services invoked"
+}

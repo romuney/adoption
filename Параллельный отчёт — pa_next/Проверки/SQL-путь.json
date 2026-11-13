@@ -1,0 +1,155 @@
+{
+  "status": "passed",
+  "files": {
+    "3. SQL — шапка.sql": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+    "5. SQL — каталог.sql": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+    "7. SQL — панель.sql": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+  },
+  "reports": [
+    {
+      "tool": "sqlgate.py",
+      "sqlparse": "0.4.3",
+      "variants": 12,
+      "errors": [],
+      "warnings": [],
+      "warnings_count": 0
+    },
+    {
+      "tool": "superset201.py",
+      "sqlparse": "0.4.3",
+      "variants": 22,
+      "errors": [],
+      "warnings": [
+        {
+          "file": "3. SQL — шапка.sql",
+          "message": "враждебный ввод неприменим: шаблон не читает ни носителей, ни параметров адреса"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "разбор ради ключа 1.05 с > 0.50 с — он идёт на каждом заборе qc-… (SP-22)"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "враждебный 'x -- y': reindent 1.07 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "враждебный '# x': reindent 1.02 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "враждебный 'a\\\\': reindent 1.23 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный \"O'Brien; x\": reindent 2.26 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'a]b': reindent 2.01 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'x -- y': reindent 2.23 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'x // y': reindent 2.02 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный '# x': reindent 2.11 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'a\\\\': reindent 1.67 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'a;b': reindent 2.43 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'Отдел «Альфа» — 1': reindent 2.13 с > 1.00 с (бой ≈ 2× стенда)"
+        }
+      ],
+      "warnings_count": 13
+    },
+    {
+      "tool": "sqlgate.py",
+      "sqlparse": "0.4.4",
+      "variants": 12,
+      "errors": [],
+      "warnings": [],
+      "warnings_count": 0
+    },
+    {
+      "tool": "superset201.py",
+      "sqlparse": "0.4.4",
+      "variants": 22,
+      "errors": [],
+      "warnings": [
+        {
+          "file": "3. SQL — шапка.sql",
+          "message": "враждебный ввод неприменим: шаблон не читает ни носителей, ни параметров адреса"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "разбор ради ключа 1.07 с > 0.50 с — он идёт на каждом заборе qc-… (SP-22)"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "враждебный \"O'Brien; x\": reindent 2.17 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "враждебный 'x -- y': reindent 1.12 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "5. SQL — каталог.sql",
+          "message": "враждебный 'x // y': reindent 1.11 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный \"O'Brien; x\": reindent 2.76 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'a]b': reindent 2.61 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'x -- y': reindent 2.22 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'x // y': reindent 1.68 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный '# x': reindent 1.74 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'a\\\\': reindent 1.82 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'a;b': reindent 1.79 с > 1.00 с (бой ≈ 2× стенда)"
+        },
+        {
+          "file": "7. SQL — панель.sql",
+          "message": "враждебный 'Отдел «Альфа» — 1': reindent 1.92 с > 1.00 с (бой ≈ 2× стенда)"
+        }
+      ],
+      "warnings_count": 13
+    }
+  ],
+  "limitation": "Model of documented Superset fork and Save parser; no request made to actual Proteus",
+  "sql_lab": {
+    "files": 1,
+    "errors": [],
+    "warnings": []
+  },
+  "timing_note": "Parser timings were obtained while numeric regressions ran concurrently. Reindent/key-parse warnings are recorded, not treated as isolated performance measurements. No syntax/lexer/Save failures."
+}

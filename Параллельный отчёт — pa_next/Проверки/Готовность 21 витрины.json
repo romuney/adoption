@@ -1,0 +1,195 @@
+{
+  "status": "passed",
+  "rows": [
+    {
+      "table_name": "prod_proteus.pa_next_adg_member",
+      "rows": 29696,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_adg_size",
+      "rows": 31,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_all_day",
+      "rows": 1580,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_cat_aud",
+      "rows": 6112,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_cat_grp",
+      "rows": 10240,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_cat_rep",
+      "rows": 6000,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_dash_acl",
+      "rows": 131726,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_dash_bkt",
+      "rows": 127444,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_dash_ca",
+      "rows": 3000,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_dash_day",
+      "rows": 577699,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_dash_meta",
+      "rows": 3000,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_dict",
+      "rows": 42,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_emp_attrs",
+      "rows": 6080,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_evd_day",
+      "rows": 1267692,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_login_map",
+      "rows": 2,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_md",
+      "rows": 1,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_pair",
+      "rows": 141628,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_pair_acc",
+      "rows": 121634,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_staff",
+      "rows": 10240,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_staffx",
+      "rows": 10240,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    },
+    {
+      "table_name": "prod_proteus.pa_next_viewer",
+      "rows": 6791,
+      "min_run": "test-1",
+      "max_run": "test-1",
+      "published_run": "test-1",
+      "publication_state": "ready",
+      "ready": 1
+    }
+  ],
+  "scope": "actual21-table synthetic fixture; read-only shipment SQL Lab probe executed in CH24.8.4.1"
+}

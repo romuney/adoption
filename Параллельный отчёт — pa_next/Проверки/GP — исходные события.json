@@ -1,0 +1,24 @@
+{
+  "status": "passed",
+  "input_events": 12,
+  "expected_views": 12,
+  "actual_views": 12,
+  "same_columns": true,
+  "same_business_rows": true,
+  "excluded_unused_column": "max_date",
+  "candidate_max_date_all_null": true,
+  "today": "2026-11-13",
+  "cutoff": "2025-08-13",
+  "time_mode": "current_date frozen identically in both test copies; shipment unchanged",
+  "cases": [
+    "history cutoff before/exact",
+    "old/new event before/exact cutover",
+    "today midnight included; midday excluded",
+    "wrong event type ignored",
+    "duplicate source events preserved",
+    "duplicate dimension join multiplicity preserved"
+  ],
+  "production_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
+  "candidate_sha256": "ddc6e4ac31df9c24d0f9be493b96f3e51ea221566301c44315dd2a22c225d7b0",
+  "limitation": "PostgreSQL local semantic model; actual corporate source and GP engine not queried"
+}

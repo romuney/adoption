@@ -1,0 +1,88 @@
+{
+  "schema": 1,
+  "clickhouse": "24.8.4.1",
+  "baseline_revision": "167c2edcfae1bee7a4fcd830052a9d2dfea49edb",
+  "baseline_yaml": "Proteus Adoption (4).yaml",
+  "baseline_yaml_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
+  "scope": "synthetic dataset equivalence; NOT corporate GP/Proteus acceptance",
+  "cases": [
+    {
+      "kind": "cat",
+      "label": "identity",
+      "filters": {
+        "__user": ""
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.327611,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 0.810895,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "identity",
+      "filters": {
+        "__user": "OWN3_OLD"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 0.879299,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.593296,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "identity",
+      "filters": {
+        "__user": "own3"
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 1.575568,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.091907,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "identity",
+      "filters": {
+        "__user": "own7"
+      },
+      "mode": "production-profile",
+      "candidate_seconds": 1.081478,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 1.896055,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "cat",
+      "label": "identity",
+      "filters": {
+        "__user": " u131 "
+      },
+      "mode": "production-profile",
+      "baseline_seconds": 2.093044,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 1.090992,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    }
+  ],
+  "passed": 5,
+  "failed": 0,
+  "completed": true,
+  "candidate_sha256": {
+    "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79"
+  },
+  "elapsed_seconds": 16.324,
+  "rows_read_note": "chdb may report 0 although tables were read; do not interpret 0 as no I/O"
+}

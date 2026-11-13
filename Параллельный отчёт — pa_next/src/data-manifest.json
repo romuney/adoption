@@ -1,0 +1,248 @@
+{
+  "source_notebook": "Proteus Adoption (4).yaml",
+  "source_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
+  "source_paragraph": "Финальная таблица из event_physical_report",
+  "source_table": "usr_cross_data.proteus_views_1",
+  "accelerated_source_sha256": {
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/1a. GP — новый параграф 1 из 3 (люди, коды, дата свежести).sql": "d6f3f4ca111920fc1866fbb7ff7e5f959cf75be2c63ec74fca810ccc2ce74416",
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/1b. GP — новый параграф 2 из 3 (календари по дням).sql": "554878cfcd52557b2abc3277dd22ca792d0bd667485ea6ae16182f72cd898954",
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/1c. GP — новый параграф 3 из 3 (каталог — готовые строки).sql": "260a91ceb275c96c065f470aee45cf41dff58fd48d3779880a9c88b3c2c517e3",
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/2. Python — выгрузка всех витрин в ClickHouse.py": "5d368a39684a8c7400625f50400c669c289072579c9de17705dd2b2c92a1f56f",
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/2a. Python — выгрузка новых витрин (отдельный параграф).py": "42671c8d937c181282315ab62abf1b8bcaf54adf965810c84386a2eec4788941",
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/3. SQL — датасет шапки pa_head (НОВЫЙ).sql": "3d7ffe4028a7902e9dc94926fda5e10333a7b01e2c1170e2004e4cced9a310a9",
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/5. SQL — датасет каталога pa_body_one (НОВЫЙ, 5 колонок).sql": "efac314e97d85e1213132e109eb976019f325f48e16e9cfbeba0a049bae373a7",
+    "Единый лист — поставка 2026-10-23 (ускорение через GP)/7. SQL — датасет панели pa_one (НОВЫЙ).sql": "269cf61479db5209b9a181f37c07043b6f485d44d89229649d47e681696dd58b"
+  },
+  "exports": [
+    {
+      "gp": "usr_cross_data.pa_next_evd_day",
+      "ch": "prod_proteus.pa_next_evd_day",
+      "options": {
+        "partition_by_columns": "toYYYYMM(log_dttm)",
+        "order_by_columns": "(dashboard_id, login, log_dttm)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_dash_meta",
+      "ch": "prod_proteus.pa_next_dash_meta",
+      "options": {
+        "order_by_columns": "(dashboard_id)",
+        "array_type_cast": true
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_emp_attrs",
+      "ch": "prod_proteus.pa_next_emp_attrs",
+      "options": {
+        "order_by_columns": "(login)",
+        "array_type_cast": true
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_pair",
+      "ch": "prod_proteus.pa_next_pair",
+      "options": {
+        "order_by_columns": "(dashboard_id, login)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_dash_bkt",
+      "ch": "prod_proteus.pa_next_dash_bkt",
+      "options": {
+        "order_by_columns": "(grain, dashboard_id, k)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_login_map",
+      "ch": "prod_proteus.pa_next_login_map",
+      "options": {
+        "order_by_columns": "(login)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_staff",
+      "ch": "prod_proteus.pa_next_staff",
+      "options": {
+        "order_by_columns": "(login)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_dash_acl",
+      "ch": "prod_proteus.pa_next_dash_acl",
+      "options": {
+        "order_by_columns": "(dashboard_id, kind, principal)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_adg_member",
+      "ch": "prod_proteus.pa_next_adg_member",
+      "options": {
+        "order_by_columns": "(ad_group, login)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_dash_ca",
+      "ch": "prod_proteus.pa_next_dash_ca",
+      "options": {
+        "order_by_columns": "(dashboard_id)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_adg_size",
+      "ch": "prod_proteus.pa_next_adg_size",
+      "options": {
+        "order_by_columns": "(ad_group)"
+      }
+    },
+    {
+      "gp": "usr_cross_data.pa_next_pair_acc",
+      "ch": "prod_proteus.pa_next_pair_acc",
+      "options": {
+        "order_by_columns": "(dashboard_id, login)"
+      }
+    },
+    {
+      "gp": "pa_next_md",
+      "ch": "prod_proteus.pa_next_md",
+      "options": {
+        "order_by_columns": "(md)"
+      }
+    },
+    {
+      "gp": "pa_next_dict",
+      "ch": "prod_proteus.pa_next_dict",
+      "options": {
+        "order_by_columns": "(g, code)"
+      }
+    },
+    {
+      "gp": "pa_next_viewer",
+      "ch": "prod_proteus.pa_next_viewer",
+      "options": {
+        "order_by_columns": "(login)",
+        "array_type_cast": true
+      }
+    },
+    {
+      "gp": "pa_next_staffx",
+      "ch": "prod_proteus.pa_next_staffx",
+      "options": {
+        "order_by_columns": "(login)",
+        "array_type_cast": true
+      }
+    },
+    {
+      "gp": "pa_next_dash_day",
+      "ch": "prod_proteus.pa_next_dash_day",
+      "options": {
+        "order_by_columns": "(dashboard_id, dt)"
+      }
+    },
+    {
+      "gp": "pa_next_all_day",
+      "ch": "prod_proteus.pa_next_all_day",
+      "options": {
+        "order_by_columns": "(pub, act, dt)"
+      }
+    },
+    {
+      "gp": "pa_next_cat_rep",
+      "ch": "prod_proteus.pa_next_cat_rep",
+      "options": {
+        "order_by_columns": "(exc, dashboard_id)"
+      }
+    },
+    {
+      "gp": "pa_next_cat_grp",
+      "ch": "prod_proteus.pa_next_cat_grp",
+      "options": {
+        "order_by_columns": "(pub, act, exc, kd, k0)"
+      }
+    },
+    {
+      "gp": "pa_next_cat_aud",
+      "ch": "prod_proteus.pa_next_cat_aud",
+      "options": {
+        "order_by_columns": "(pub, act, exc, ad, ak0)"
+      }
+    }
+  ],
+  "datasets": {
+    "head": {
+      "path": "3. SQL — шапка.sql",
+      "tables": [
+        "pa_next_adg_size",
+        "pa_next_md",
+        "pa_next_staff",
+        "pa_next_staffx"
+      ]
+    },
+    "cat": {
+      "path": "5. SQL — каталог.sql",
+      "tables": [
+        "pa_next_adg_member",
+        "pa_next_cat_aud",
+        "pa_next_cat_grp",
+        "pa_next_cat_rep",
+        "pa_next_dash_bkt",
+        "pa_next_dash_ca",
+        "pa_next_dash_day",
+        "pa_next_dash_meta",
+        "pa_next_emp_attrs",
+        "pa_next_evd_day",
+        "pa_next_login_map",
+        "pa_next_md",
+        "pa_next_pair",
+        "pa_next_pair_acc",
+        "pa_next_staffx"
+      ]
+    },
+    "one": {
+      "path": "7. SQL — панель.sql",
+      "tables": [
+        "pa_next_adg_member",
+        "pa_next_all_day",
+        "pa_next_dash_acl",
+        "pa_next_dash_bkt",
+        "pa_next_dash_day",
+        "pa_next_dash_meta",
+        "pa_next_dict",
+        "pa_next_emp_attrs",
+        "pa_next_evd_day",
+        "pa_next_md",
+        "pa_next_pair",
+        "pa_next_staff",
+        "pa_next_staffx",
+        "pa_next_viewer"
+      ]
+    }
+  },
+  "source_optimization": {
+    "unused_column": "max_date",
+    "replacement": "cast(null as timestamp)",
+    "removed_scalar_max_subqueries": 2,
+    "proof": "No max_date identifier in final production base GP or accelerators; exact business-column event and 12-table GP regression"
+  },
+  "contract": {
+    "section": "pa_next_version",
+    "k": "run_id",
+    "parent": "ready or loading",
+    "n": "1 only when ready",
+    "g": "head, cat, one",
+    "request_section": "pa_next_request",
+    "request_datasets": [
+      "cat",
+      "one"
+    ],
+    "request_owners": [
+      "head",
+      "cat",
+      "one"
+    ],
+    "request_carriers": [
+      "pa_next_head_req",
+      "pa_next_cat_req",
+      "pa_next_one_req"
+    ]
+  }
+}

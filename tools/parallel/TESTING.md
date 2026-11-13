@@ -111,6 +111,9 @@ python3 tools/parallel/verify_data.py
 /workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_publication.py
 # Отдельная локальная PG-база: все GP-параграфы и 12 базовых таблиц.
 /workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_gp_pipeline.py
+# Три отдельные локальные PG-базы: Unicode и полные поля ФИО против CH 24.8.
+# Воспроизводит chr(894) и скрытую порчу ФИО в старом коде SQL_ASCII.
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_encoding.py
 # Отдельная CH-база, 13 млн строк: цена полной проверки штампов версий.
 # Запускать после окончания других замеров; не доказывает скорость всего отчёта.
 /workspace/.venvs/pa-next-test/bin/python tools/parallel/benchmark_generation.py

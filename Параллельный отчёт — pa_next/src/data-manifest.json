@@ -217,6 +217,13 @@
       ]
     }
   },
+  "gp_text_compatibility": {
+    "paragraph": "PA NEXT · ускорение 1a",
+    "empty_levels": "Exact inherited CH 24.8 Unicode set, matched on UTF8 hex",
+    "fio_packing": "Byte-delimited UTF8 hex; original compact alphabet and escaping",
+    "patch": "12. GP — замена ускорения 1a.sql",
+    "sql_ascii_limit": "Text bytes must be valid UTF8; unknown legacy bytes are not guessed"
+  },
   "source_optimization": {
     "unused_column": "max_date",
     "replacement": "cast(null as timestamp)",

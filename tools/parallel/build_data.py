@@ -12,6 +12,7 @@ import json
 import re
 import sys
 import yaml
+from unicode_empty import rewrite_acceleration
 
 ROOT = Path(__file__).resolve().parents[2]
 BASE = ROOT / 'Единый лист — поставка 2026-10-23 (ускорение через GP)'
@@ -155,6 +156,8 @@ DISTRIBUTED RANDOMLY;
         # Drop obsolete placement instructions for the old notebook, retain SQL
         # and its methodology comments below the first actual table description.
         acceleration = '-- ---- витрина' + acceleration.split('-- ---- витрина', 1)[1]
+        if prefix == '1a. GP':
+            acceleration = rewrite_acceleration(acceleration)
         code = stamped_ctas(rename_gp(acceleration, raw_table))
         paragraphs.append(dict(title='PA NEXT · ускорение ' + prefix[:2], shebang='gp', code=code, isEnabled=True))
     # Imported actual readiness check only; no obsolete outputs/cache warmup.
@@ -190,6 +193,13 @@ print('PA NEXT: all data tables uploaded; generation published ready')
     data = {'title': 'Proteus Adoption NEXT — отдельный отчёт', 'paragraphs': paragraphs}
     generated = {'1. Helicopter — pa_next.yaml': yaml.dump(data, Dumper=LiteralDumper, allow_unicode=True, sort_keys=False, width=120),
                  'src/export.py': export}
+    patch = next(p['code'] for p in paragraphs if p['title'] == 'PA NEXT · ускорение 1a')
+    generated['12. GP — замена ускорения 1a.sql'] = (
+        '-- Заменить ЦЕЛИКОМ код существующего GP-параграфа «PA NEXT · ускорение 1a».\n'
+        '-- Не добавлять второй параграф и не переимпортировать установленную ноду.\n'
+        '-- Затем выполнить всю PA NEXT ноду сверху вниз и проверку готовности из файла 11.\n'
+        '-- Исправляет chr(894) и обработку ФИО в SQL_ASCII; правило расчёта сохраняется.\n'
+        + patch)
     datasets = {}
     for num, (part, name) in NAMES.items():
         sql, tables = versioned_sql(first(str(num) + '. SQL').read_text(), part)
@@ -199,6 +209,11 @@ print('PA NEXT: all data tables uploaded; generation published ready')
                     for prefix in ['1a. GP', '1b. GP', '1c. GP', '2. Python', '2a. Python', '3. SQL', '5. SQL', '7. SQL']}
     manifest = dict(source_notebook=str(source_path.relative_to(ROOT)), source_sha256=hashlib.sha256(source_path.read_bytes()).hexdigest(), source_paragraph=source_paragraph, source_table=raw_table,
                     accelerated_source_sha256=source_files, exports=exports, datasets=datasets,
+                    gp_text_compatibility={'paragraph': 'PA NEXT · ускорение 1a',
+                                           'empty_levels': 'Exact inherited CH 24.8 Unicode set, matched on UTF8 hex',
+                                           'fio_packing': 'Byte-delimited UTF8 hex; original compact alphabet and escaping',
+                                           'patch': '12. GP — замена ускорения 1a.sql',
+                                           'sql_ascii_limit': 'Text bytes must be valid UTF8; unknown legacy bytes are not guessed'},
                     source_optimization={'unused_column': 'max_date', 'replacement': 'cast(null as timestamp)', 'removed_scalar_max_subqueries': 2,
                                          'proof': 'No max_date identifier in final production base GP or accelerators; exact business-column event and 12-table GP regression'},
                     contract={'section': 'pa_next_version', 'k': 'run_id', 'parent': 'ready or loading', 'n': '1 only when ready', 'g': 'head, cat, one',

@@ -19,6 +19,6 @@
     "duplicate dimension join multiplicity preserved"
   ],
   "production_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
-  "candidate_sha256": "ddc6e4ac31df9c24d0f9be493b96f3e51ea221566301c44315dd2a22c225d7b0",
+  "candidate_sha256": "ec8f09068cc58db5a6dc7129add899ea8169cb799a165ce7dc9a6107f53405de",
   "limitation": "PostgreSQL local semantic model; actual corporate source and GP engine not queried"
 }

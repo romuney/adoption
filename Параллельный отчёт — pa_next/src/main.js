@@ -261,16 +261,23 @@
     node.innerHTML = brandLoading('', '');
     return node;
   }
-  function markWaiting(el, waiting, message) {
+  function markWaiting(el, waiting, message, navigation) {
     el.classList.toggle('pa-next-pending-block', waiting);
+    el.classList.toggle('pa-next-analysis-pending', waiting && !!navigation);
     Array.prototype.forEach.call(el.children, function (child) {
-      if (child.classList.contains('pa-next-wait')) return;
+      if (child.classList.contains('pa-next-wait') || child === navigation) return;
       child.inert = waiting; child.setAttribute('aria-hidden', waiting ? 'true' : 'false');
     });
     var cover = Array.prototype.filter.call(el.children, function (n) { return n.classList.contains('pa-next-wait'); })[0];
     if (waiting && !cover) { cover = loadingNode(); el.appendChild(cover); }
     if (!waiting && cover) cover.parentNode.removeChild(cover);
     if (waiting && cover.querySelector('.pa-next-loading-message').textContent !== message) cover.querySelector('.pa-next-loading-message').textContent = message;
+    if (waiting && navigation) {
+      // One continuous surface below the tabs, including KPI and observations.
+      // Absolute placement preserves the underlying layout and scroll position.
+      cover.classList.add('pa-next-analysis-wait');
+      cover.style.top = (navigation.offsetTop + navigation.offsetHeight + (parseFloat(window.getComputedStyle(navigation).marginBottom) || 0)) + 'px';
+    }
   }
   function status() {
     var issues = [], now = Date.now();
@@ -285,21 +292,17 @@
       el.classList.toggle('pa-next-stale', !usable);
       el.classList.toggle('pa-next-has-error', !!ST.error[part]);
       el.classList.toggle('pa-next-quiet', !ST.error[part] && now - ST.started < 400);
-      // Keep navigation available while an uncached selection loads; only hide
-      // stale metric blocks. The native renderer handles partial preview tabs.
+      // Keep tabs available; an uncached period/selection replaces the complete
+      // analytics surface. Valid preview data keeps its local detail loaders.
       var local = part === 'one' && ST.mounted.one && !!el.querySelector('.pone-topbar');
       markWaiting(el, !usable && !local, message);
       if (local) {
-        Array.prototype.forEach.call(el.querySelectorAll('.pone-panel-b'), function (block) {
-          markWaiting(block, !usable, message);
-        });
-        // Stale KPI values disappear without adding another spinner/placard.
+        var root = el.querySelector('.pone-root');
+        markWaiting(root, !usable, message, root.querySelector('.pone-topbar'));
         Array.prototype.forEach.call(el.querySelectorAll('.pone-h-ttl'), function (title) {
           if (!usable && title.hasAttribute('title')) { title.setAttribute('data-pa-next-title', title.getAttribute('title')); title.removeAttribute('title'); }
           else if (usable && title.hasAttribute('data-pa-next-title')) { title.setAttribute('title', title.getAttribute('data-pa-next-title')); title.removeAttribute('data-pa-next-title'); }
         });
-        var kpis = el.querySelector('.pone-top');
-        if (kpis) { kpis.style.visibility = usable ? '' : 'hidden'; kpis.inert = !usable; kpis.setAttribute('aria-hidden', usable ? 'false' : 'true'); }
       }
       var retrySource = part === 'cat' ? 'one' : 'cat';
       var cover = el.querySelector('.pa-next-wait'), retry = el.querySelector('[data-pa-next-retry]');
@@ -353,7 +356,7 @@
   var renderers = __RENDERERS__;
   function render(part, rows) {
     if (part === 'one') ST.preview = null;
-    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, deferStatus, uiKey, brandImage, brandLoading);
+    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, function () { status(); deferStatus(); }, uiKey, brandImage, brandLoading);
     ST.mounted[part] = true;
   }
   function receive(part, rows, serial) {

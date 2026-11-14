@@ -15,7 +15,8 @@ CSS += '.pa-next-wait button{pointer-events:auto;border:1px solid #dce2eb;border
 
 # Source resize may rebuild its DOM before the deferred status callback runs.
 # Keep stale numbers hidden in that interval as well.
-CSS += '.pa-next-one.pa-next-stale .pone-top,.pa-next-one.pa-next-stale .pone-panel-b>:not(.pa-next-wait){visibility:hidden!important}'
+CSS += '.pa-next-one.pa-next-stale .pone-top,.pa-next-one.pa-next-stale .pone-panel{visibility:hidden!important}'
+CSS += '.pa-next-analysis-pending>.pone-topbar{visibility:visible!important}.pa-next-one.pa-next-quiet .pa-next-analysis-wait .pa-next-loading{visibility:visible}'
 
 # Selecting a report must not expand its name beyond the same three lines.
 # The source row tooltip already contains the complete report name.

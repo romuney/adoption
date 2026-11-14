@@ -1,0 +1,400 @@
+{
+  "completed": true,
+  "main_sha256": "acbcd7f8a9252b11064a1ef31e7ed86cf91ae7084408ff939624a51bf2a5a22e",
+  "cases": [
+    {
+      "viewport": [
+        1920,
+        1080
+      ],
+      "frames": 37,
+      "initial": {
+        "state": "ready",
+        "cover": null,
+        "tabs": {
+          "x": 718,
+          "y": 128.59375,
+          "w": 1106,
+          "h": 34,
+          "bottom": 162.59375,
+          "right": 1824
+        },
+        "first": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 173.59375,
+          "bottom": 344.1875,
+          "right": 1824
+        },
+        "root": {
+          "x": 718,
+          "y": 128.59375,
+          "w": 1106,
+          "h": 776,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "shellScroll": 0,
+        "panel": {
+          "x": 718,
+          "y": 356.1875,
+          "w": 1106,
+          "h": 548.40625,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "kpi": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 121.59375,
+          "bottom": 292.1875,
+          "right": 1824
+        },
+        "obs": {
+          "x": 718,
+          "y": 302.1875,
+          "w": 1106,
+          "h": 42,
+          "bottom": 344.1875,
+          "right": 1824
+        },
+        "loaders": 0,
+        "loaderVisible": false,
+        "staleVisible": 9,
+        "staleAccessible": true,
+        "tabsInert": false
+      },
+      "pending": {
+        "state": "loading",
+        "cover": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 734,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "tabs": {
+          "x": 718,
+          "y": 128.59375,
+          "w": 1106,
+          "h": 34,
+          "bottom": 162.59375,
+          "right": 1824
+        },
+        "first": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 173.59375,
+          "bottom": 344.1875,
+          "right": 1824
+        },
+        "root": {
+          "x": 718,
+          "y": 128.59375,
+          "w": 1106,
+          "h": 776,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "shellScroll": 0,
+        "panel": {
+          "x": 718,
+          "y": 356.1875,
+          "w": 1106,
+          "h": 548.40625,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "kpi": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 121.59375,
+          "bottom": 292.1875,
+          "right": 1824
+        },
+        "obs": {
+          "x": 718,
+          "y": 302.1875,
+          "w": 1106,
+          "h": 42,
+          "bottom": 344.1875,
+          "right": 1824
+        },
+        "loaders": 1,
+        "loaderVisible": true,
+        "staleVisible": 0,
+        "staleAccessible": false,
+        "tabsInert": false
+      },
+      "two_months": {
+        "state": "loading",
+        "cover": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 734,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "tabs": {
+          "x": 718,
+          "y": 128.59375,
+          "w": 1106,
+          "h": 34,
+          "bottom": 162.59375,
+          "right": 1824
+        },
+        "first": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 173.59375,
+          "bottom": 344.1875,
+          "right": 1824
+        },
+        "root": {
+          "x": 718,
+          "y": 128.59375,
+          "w": 1106,
+          "h": 776,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "shellScroll": 0,
+        "panel": {
+          "x": 718,
+          "y": 356.1875,
+          "w": 1106,
+          "h": 548.40625,
+          "bottom": 904.59375,
+          "right": 1824
+        },
+        "kpi": {
+          "x": 718,
+          "y": 170.59375,
+          "w": 1106,
+          "h": 121.59375,
+          "bottom": 292.1875,
+          "right": 1824
+        },
+        "obs": {
+          "x": 718,
+          "y": 302.1875,
+          "w": 1106,
+          "h": 42,
+          "bottom": 344.1875,
+          "right": 1824
+        },
+        "loaders": 1,
+        "loaderVisible": true,
+        "staleVisible": 0,
+        "staleAccessible": false,
+        "tabsInert": false
+      },
+      "cache_covers": 0,
+      "errors": []
+    },
+    {
+      "viewport": [
+        1366,
+        768
+      ],
+      "frames": 29,
+      "initial": {
+        "state": "ready",
+        "cover": null,
+        "tabs": {
+          "x": 507,
+          "y": 128.59375,
+          "w": 763,
+          "h": 34,
+          "bottom": 162.59375,
+          "right": 1270
+        },
+        "first": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 189.59375,
+          "bottom": 360.1875,
+          "right": 1270
+        },
+        "root": {
+          "x": 507,
+          "y": 128.59375,
+          "w": 763,
+          "h": 624,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "shellScroll": 0,
+        "panel": {
+          "x": 507,
+          "y": 372.1875,
+          "w": 763,
+          "h": 380.40625,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "kpi": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 137.59375,
+          "bottom": 308.1875,
+          "right": 1270
+        },
+        "obs": {
+          "x": 507,
+          "y": 318.1875,
+          "w": 763,
+          "h": 42,
+          "bottom": 360.1875,
+          "right": 1270
+        },
+        "loaders": 0,
+        "loaderVisible": false,
+        "staleVisible": 9,
+        "staleAccessible": true,
+        "tabsInert": false
+      },
+      "pending": {
+        "state": "loading",
+        "cover": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 582,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "tabs": {
+          "x": 507,
+          "y": 128.59375,
+          "w": 763,
+          "h": 34,
+          "bottom": 162.59375,
+          "right": 1270
+        },
+        "first": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 189.59375,
+          "bottom": 360.1875,
+          "right": 1270
+        },
+        "root": {
+          "x": 507,
+          "y": 128.59375,
+          "w": 763,
+          "h": 624,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "shellScroll": 0,
+        "panel": {
+          "x": 507,
+          "y": 372.1875,
+          "w": 763,
+          "h": 380.40625,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "kpi": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 137.59375,
+          "bottom": 308.1875,
+          "right": 1270
+        },
+        "obs": {
+          "x": 507,
+          "y": 318.1875,
+          "w": 763,
+          "h": 42,
+          "bottom": 360.1875,
+          "right": 1270
+        },
+        "loaders": 1,
+        "loaderVisible": true,
+        "staleVisible": 0,
+        "staleAccessible": false,
+        "tabsInert": false
+      },
+      "two_months": {
+        "state": "loading",
+        "cover": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 582,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "tabs": {
+          "x": 507,
+          "y": 128.59375,
+          "w": 763,
+          "h": 34,
+          "bottom": 162.59375,
+          "right": 1270
+        },
+        "first": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 189.59375,
+          "bottom": 360.1875,
+          "right": 1270
+        },
+        "root": {
+          "x": 507,
+          "y": 128.59375,
+          "w": 763,
+          "h": 624,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "shellScroll": 0,
+        "panel": {
+          "x": 507,
+          "y": 372.1875,
+          "w": 763,
+          "h": 380.40625,
+          "bottom": 752.59375,
+          "right": 1270
+        },
+        "kpi": {
+          "x": 507,
+          "y": 170.59375,
+          "w": 763,
+          "h": 137.59375,
+          "bottom": 308.1875,
+          "right": 1270
+        },
+        "obs": {
+          "x": 507,
+          "y": 318.1875,
+          "w": 763,
+          "h": 42,
+          "bottom": 360.1875,
+          "right": 1270
+        },
+        "loaders": 1,
+        "loaderVisible": true,
+        "staleVisible": 0,
+        "staleAccessible": false,
+        "tabsInert": false
+      },
+      "cache_covers": 0,
+      "errors": []
+    }
+  ]
+}

@@ -48,7 +48,7 @@
     "use container queries for embedded region width",
     "validate catalogue preview before render",
     "keep tabs active while metric blocks load",
-    "resizable and collapsible catalogue",
+    "resizable catalogue with inline collapse caret and left rail",
     "viewport board height and hidden service chrome"
   ],
   "calculations": "Original buildModel and metric functions are preserved verbatim.",

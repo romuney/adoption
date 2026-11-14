@@ -25,6 +25,34 @@ def assert_dynamic_geometry(frame):
     assert all(s['textHeight'] <= s['fontSize'] * 1.4 for s in sizes), sizes
 
 
+def assert_inline_caret(frame):
+    caret = frame.locator('.pa-next-cat-toggle')
+    assert caret.count() == 1 and caret.is_visible()
+    geometry = caret.evaluate('''el => {
+      var r = el.getBoundingClientRect(), h = el.parentNode.getBoundingClientRect();
+      var search = el.parentNode.querySelector('.prb-psearch');
+      var q = search ? search.getBoundingClientRect() : null;
+      var title = el.parentNode.querySelector('.prb-h-txt > span:first-child');
+      var mine = el.parentNode.querySelector('.prb-mine');
+      var titleSeparate = true;
+      if (title && mine) {
+        var range = document.createRange(); range.selectNodeContents(title);
+        var text = range.getBoundingClientRect(), label = title.getBoundingClientRect(), mineBox = mine.getBoundingClientRect();
+        var clipped = ['hidden','clip'].includes(getComputedStyle(title).overflowX);
+        var right = clipped ? Math.min(text.right, label.right) : text.right;
+        titleSeparate = right <= mineBox.left || text.bottom <= mineBox.top || text.top >= mineBox.bottom;
+      }
+      var hit = document.elementFromPoint(r.left+r.width/2, r.top+r.height/2);
+      return {contained: el.parentNode.classList.contains('prb-panel-h') && r.left >= h.left && r.right <= h.right && r.top >= h.top && r.bottom <= h.bottom,
+        unobscured: hit === el || el.contains(hit),
+        titleSeparate: titleSeparate,
+        searchSeparate: !q || q.right <= r.left || q.left >= r.right || q.bottom <= r.top || q.top >= r.bottom,
+        caret: {x:r.x,y:r.y,width:r.width,height:r.height}, header: {x:h.x,y:h.y,width:h.width,height:h.height},
+        search: q && {x:q.x,y:q.y,width:q.width,height:q.height}};
+    }''')
+    assert geometry['contained'] and geometry['unobscured'] and geometry['searchSeparate'] and geometry['titleSeparate'], geometry
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source-only', action='store_true', help='Inject interaction source for development before the delivery is rebuilt')
@@ -47,25 +75,39 @@ def main():
         splitter.wait_for()
         cat = frame.locator('[data-pa-next-host="cat"]')
         panel = frame.locator('[data-pa-next-host="one"]')
-        toggle = frame.locator('[data-layout="toggle"]')
+        caret = frame.get_by_role('button', name='Свернуть каталог', exact=True)
+        rail = frame.get_by_role('button', name='Развернуть каталог', exact=True)
+        assert not frame.locator('.pa-next-layoutbar, [data-layout="less"], [data-layout="more"]').count()
+        assert not rail.is_visible()
+        assert_inline_caret(frame)
         header = frame.locator('.phead-overlay').bounding_box()
-        layoutbar = frame.locator('.pa-next-layoutbar').bounding_box()
-        assert layoutbar['y'] - header['y'] - header['height'] >= 11, (header, layoutbar)
+        content = frame.locator('.pa-next-content').bounding_box()
+        assert content['y'] - header['y'] - header['height'] >= 11, (header, content)
         assert_dynamic_geometry(frame)
-        page.screenshot(path='/tmp/pa-next-ui-layout-default.png')
+        page.wait_for_timeout(500)  # let the original SVG entrance animation finish
+        page.screenshot(path='/tmp/pa-next-ui-inline-expanded.png')
         original = cat.bounding_box()['width']
-        frame.get_by_role('button', name='Увеличить каталог', exact=True).click()
-        assert cat.bounding_box()['width'] > original + 40
         splitter.focus()
+        splitter.press('ArrowRight')
+        splitter.press('ArrowRight')
+        assert cat.bounding_box()['width'] > original + 40
         splitter.press('ArrowLeft')
         after_key = cat.bounding_box()['width']
         assert original + 20 <= after_key <= original + 28
         splitter.press('Home')
         assert cat.bounding_box()['width'] == 280
-        assert frame.get_by_role('button', name='Уменьшить каталог', exact=True).is_disabled()
+        assert splitter.get_attribute('aria-valuenow') == splitter.get_attribute('aria-valuemin')
+        assert_inline_caret(frame)
+        page.screenshot(path='/tmp/pa-next-ui-inline-narrow.png')
+        caret.press('Enter')
+        assert not cat.is_visible() and rail.is_visible()
+        assert rail.evaluate('(el)=>el===document.activeElement')
+        rail.press('Space')
+        assert cat.is_visible() and cat.bounding_box()['width'] == 280
+        assert caret.evaluate('(el)=>el===document.activeElement')
         splitter.press('End')
         assert panel.bounding_box()['width'] >= 380
-        assert frame.get_by_role('button', name='Увеличить каталог', exact=True).is_disabled()
+        assert splitter.get_attribute('aria-valuenow') == splitter.get_attribute('aria-valuemax')
         splitter.press('ArrowLeft')
         before_drag = cat.bounding_box()['width']
         box = splitter.bounding_box()
@@ -77,7 +119,7 @@ def main():
         assert not frame.locator('.pa-next-resizing').count()
         assert frame.evaluate('window.__paNext.layout.ratio > 0')
         assert page.evaluate('emits') == []
-        print('PASS: buttons, separator arrows/Home/End and pointer drag resize within bounds without data queries')
+        print('PASS: inline caret at 280px is visible, separate from search; Enter/Space, separator keys and pointer drag work without queries')
 
         # Pointer Events cover touch as well: cancellation releases the drag lock.
         before_touch = cat.bounding_box()['width']
@@ -91,12 +133,31 @@ def main():
         assert not frame.locator('.pa-next-resizing').count()
         print('PASS: touch pointer movement resizes; cancellation releases selection lock')
 
+        # Renderer updates replace the catalogue header: delegated collapse must survive.
+        search = cat.locator('input[data-search]')
+        search.fill('Отчёт 12')
+        assert search.input_value() == 'Отчёт 12'
+        assert_inline_caret(frame)
+        search.fill('')
+        for mode in ['collection', 'owner', 'aud', 'report']:
+            cat.locator('[data-mode="'+mode+'"]').click()
+            assert cat.locator('[data-mode="'+mode+'"]').get_attribute('aria-selected') == 'true'
+            assert_inline_caret(frame)
+            caret.click()
+            assert rail.is_visible() and not cat.is_visible()
+            rail.click()
+            assert caret.evaluate('(el)=>el===document.activeElement')
+            assert cat.locator('[data-mode="'+mode+'"]').get_attribute('aria-selected') == 'true'
+        assert page.evaluate('emits') == []
+        print('PASS: one caret survives catalogue search and all four mode rerenders; collapse preserves mode and emits no filters')
+
         saved_width = cat.bounding_box()['width']
         old_panel_width = panel.bounding_box()['width']
         catalog_text = cat.inner_text()
         # Inspect in the very same JS stack as the click, before ResizeObserver
         # or its 150 ms timer can conceal a stretched first frame.
-        immediate = toggle.evaluate('''el => {
+        cat_bounds = cat.bounding_box()
+        immediate = caret.evaluate('''el => {
           el.click();
           return Array.from(document.querySelectorAll('.pone-overlay svg[data-dyn-svg]')).map(s => ({
             width: s.getBoundingClientRect().width, viewBox: s.viewBox.baseVal.width,
@@ -106,29 +167,46 @@ def main():
         assert len(immediate) == 2 and all(abs(s['width']-s['viewBox'])<2 and abs(s['height']-s['boxHeight'])<2 for s in immediate), immediate
         assert not cat.is_visible()
         assert panel.bounding_box()['width'] > old_panel_width + 200
-        assert toggle.inner_text() == 'Показать каталог'
-        assert toggle.get_attribute('aria-expanded') == 'false'
+        assert rail.is_visible() and rail.get_attribute('aria-expanded') == 'false'
+        assert rail.evaluate('(el)=>el===document.activeElement')
+        rail_bounds = rail.bounding_box()
+        assert rail_bounds['width'] == 34 and rail_bounds['x'] == cat_bounds['x'] and rail_bounds['y'] == cat_bounds['y'], rail_bounds
+        assert abs(panel.bounding_box()['x'] - rail_bounds['x'] - rail_bounds['width'] - 12) < 1
         assert_dynamic_geometry(frame)
-        page.screenshot(path='/tmp/pa-next-ui-layout-hidden.png')
-        toggle.click()
+        page.screenshot(path='/tmp/pa-next-ui-inline-collapsed.png')
+        rail.click()
         assert cat.is_visible() and abs(cat.bounding_box()['width']-saved_width)<2
+        assert caret.evaluate('(el)=>el===document.activeElement')
         assert_dynamic_geometry(frame)
         assert cat.inner_text() == catalog_text
         assert page.evaluate('emits') == []
         print('PASS: hide/show retains catalogue state; both SVGs fit at scale 1:1 immediately and after ResizeObserver')
+        cal = panel.locator('[data-view="view:cal"]')
+        cal.click()
+        caret.press('Space')
+        assert rail.is_visible() and cal.get_attribute('aria-selected') == 'true'
+        rail.press('Enter')
+        assert cat.is_visible() and cal.get_attribute('aria-selected') == 'true'
+        assert caret.evaluate('(el)=>el===document.activeElement')
+        panel.locator('[data-view="view:dyn"]').click()
+        print('PASS: catalogue caret/rail preserve the active analytics tab and return focus to the caret')
         if not args.source_only:
+            caret.click()
             frame.evaluate('() => {' + scripts['head'] + '}')
-            assert frame.locator('.pa-next-layoutbar').count() == 1
-            assert splitter.count() == 1
+            assert frame.locator('.pa-next-cat-toggle').count() == 1
+            assert frame.locator('.pa-next-catalog-rail').count() == 1
+            assert frame.locator('.pa-next-splitter').count() == 1
+            assert not cat.is_visible() and rail.is_visible()
+            rail.click()
             assert abs(cat.bounding_box()['width']-saved_width)<2
-            frame.get_by_role('button', name='Уменьшить каталог', exact=True).click()
-            assert abs(cat.bounding_box()['width']-(saved_width-48))<2
+            splitter.press('ArrowLeft')
+            assert abs(cat.bounding_box()['width']-(saved_width-24))<2
             assert page.evaluate('emits') == []
-            print('PASS: full chart rerun retains width, tears down old handlers and keeps one toolbar/separator')
+            print('PASS: full chart rerun retains collapsed state and width, with one caret/rail/separator and no duplicate handlers')
 
         # Session fallback must work despite unavailable localStorage in allow-scripts sandbox.
         assert frame.evaluate('''(() => {try {localStorage.getItem('x');return false} catch(e) {return true}})()''')
-        toggle.click()
+        caret.click()
         frame.locator('[data-tourstart]').click()
         layer = frame.locator('.pa-next-help.pa-next-tour')
         layer.wait_for()
@@ -144,7 +222,7 @@ def main():
         layer.get_by_role('button', name='Начать', exact=True).press('ArrowRight')
         assert layer.get_attribute('data-tour-step') == '2'
         assert 'Период' in layer.locator('h2').inner_text()
-        page.screenshot(path='/tmp/pa-next-ui-layout-guide.png')
+        page.screenshot(path='/tmp/pa-next-ui-inline-guide.png')
         layer.locator('[data-tour-action="back"]').click()
         assert layer.get_attribute('data-tour-step') == '1'
 
@@ -159,7 +237,7 @@ def main():
                 assert ring.evaluate('(el)=>getComputedStyle(el).backgroundColor') == 'rgba(0, 0, 0, 0)'
                 assert ring.bounding_box()['width']>0
             layer.locator('[data-tour-action="next"]').click()
-        assert len(titles)>=10, titles
+        assert len(titles)==13, titles
         assert 'Ширина каталога' in titles and 'Только аналитика' in titles and 'Вкладки аналитики' in titles, titles
         assert not cat.is_visible(), 'tour restores hidden catalogue'
         assert frame.locator('[data-tourstart]').evaluate('(el)=>el===document.activeElement')
@@ -171,7 +249,7 @@ def main():
         frame.locator('.pa-next-tour [data-tour-action="next"]').press('Escape')
         assert not frame.locator('.pa-next-tour').count()
         assert not cat.is_visible()
-        toggle.click()
+        rail.click()
         for width in [1280, 900, 700, 390]:
             page.set_viewport_size({'width':width,'height':650})
             page.wait_for_timeout(250)

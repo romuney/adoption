@@ -12,13 +12,16 @@ function installInteraction(shell, ST) {
     hidden: !!(saved && saved.hidden)
   };
   var style = document.createElement('style');
-  style.textContent = '.pa-next-layoutbar{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex:0 0 34px;margin:0 8px 8px;min-width:0;font:12px Arial,Helvetica,sans-serif;color:#454b55}' +
-    '.pa-next-layoutbar button{height:34px;min-width:34px;border:1px solid #e7e9ee;border-radius:8px;padding:0 10px;background:#fff;color:#454b55;font:12px Arial,Helvetica,sans-serif;cursor:pointer;touch-action:manipulation}' +
-    '.pa-next-layoutbar button:hover{border-color:#245fd4;color:#245fd4}.pa-next-layoutbar button:disabled{opacity:.45;cursor:default}.pa-next-layoutbar [data-layout="toggle"]{min-width:140px}' +
-    '.pa-next-splitter{position:relative;min-width:12px;cursor:col-resize;touch-action:none;align-self:stretch;z-index:35}' +
-    '.pa-next-splitter:before{content:"";position:absolute;width:4px;height:44px;left:4px;top:calc(50% - 22px);border-radius:4px;background:#c3d4f5}' +
+  style.textContent = '.pa-next-cat-toggle{display:inline-flex;align-items:center;justify-content:center;flex:0 0 28px;width:28px;height:28px;padding:0;border:0;border-radius:8px;background:transparent;color:#8a909c;cursor:pointer;touch-action:manipulation}' +
+    '.pa-next-cat-toggle:hover{background:#eef0f3;color:#245fd4}.pa-next-cat-toggle:focus-visible,.pa-next-catalog-rail:focus-visible{outline:2px solid #245fd4;outline-offset:-2px}.pa-next-cat-toggle svg,.pa-next-catalog-rail svg{flex:none;pointer-events:none}' +
+    '.pa-next-cat .prb-panel-h{position:relative;padding-right:54px}.pa-next-cat .prb-panel-h>.pa-next-cat-toggle{position:absolute;right:14px;top:14px}.pa-next-cat .prb-panel-h .prb-psearch{min-width:90px}' +
+    '.pa-next-cat .prb-h-txt>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}@container pa-next-cat (max-width:400px){.pa-next-cat .prb-panel-h{flex-wrap:wrap}.pa-next-cat .prb-h-txt{flex:1;min-width:0}.pa-next-cat .prb-panel-h .prb-psearch{flex:1 0 100%;margin-left:0}}' +
+    '.pa-next-catalog-rail{display:none;grid-column:1;grid-row:1;align-items:center;gap:14px;flex-direction:column;box-sizing:border-box;width:34px;min-height:0;height:100%;padding:14px 4px;border:0;border-radius:12px;background:#fff;color:#8a909c;font:12px Arial,Helvetica,sans-serif;cursor:pointer;touch-action:manipulation}' +
+    '.pa-next-catalog-rail:hover{background:#f0f4fc;color:#245fd4}.pa-next-catalog-rail span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;letter-spacing:.3px}.pa-next-cat{grid-column:1;grid-row:1}.pa-next-one{grid-column:3;grid-row:1}' +
+    '.pa-next-splitter{grid-column:2;grid-row:1;position:relative;min-width:12px;cursor:col-resize;touch-action:none;align-self:stretch;z-index:35}' +
+    '.pa-next-splitter:before{content:"";position:absolute;width:2px;height:44px;left:5px;top:calc(50% - 22px);border-radius:4px;background:#d8dde4}' +
     '.pa-next-splitter:hover:before,.pa-next-splitter:focus-visible:before{background:#245fd4}.pa-next-splitter:focus-visible{outline:2px solid #245fd4;outline-offset:-2px}' +
-    '.pa-next-shell.pa-next-resizing,.pa-next-shell.pa-next-resizing *{cursor:col-resize!important;user-select:none!important}.pa-next-shell.pa-next-catalog-hidden .pa-next-cat,.pa-next-shell.pa-next-catalog-hidden .pa-next-splitter{display:none!important}' +
+    '.pa-next-shell.pa-next-resizing,.pa-next-shell.pa-next-resizing *{cursor:col-resize!important;user-select:none!important}.pa-next-shell.pa-next-catalog-hidden .pa-next-cat,.pa-next-shell.pa-next-catalog-hidden .pa-next-splitter{display:none!important}.pa-next-shell.pa-next-catalog-hidden .pa-next-catalog-rail{display:flex}' +
     '.pa-next-tour{display:block;padding:0;background:transparent;font:12.5px/1.55 Arial,Helvetica,sans-serif;color:#23272e;overflow:hidden}' +
     '.pa-next-tour .pa-next-tour-ring{position:fixed;box-sizing:border-box;border:2px solid #245fd4;border-radius:10px;padding:0;max-width:none;max-height:none;overflow:visible;background:transparent;box-shadow:0 0 0 9999px rgba(35,39,46,.57);pointer-events:none}' +
     '.pa-next-tour.pa-next-tour-intro{background:rgba(35,39,46,.57)}.pa-next-tour.pa-next-tour-intro .pa-next-tour-ring{display:none}' +
@@ -27,19 +30,18 @@ function installInteraction(shell, ST) {
     '.pa-next-tour .pa-next-tour-actions{display:flex;justify-content:space-between;gap:8px;margin-top:16px}.pa-next-tour button{font:12px Arial,Helvetica,sans-serif;min-height:34px;padding:6px 12px;border:1px solid #e7e9ee;background:#fff;color:#454b55;border-radius:8px;cursor:pointer;touch-action:manipulation}' +
     '.pa-next-tour button:hover{border-color:#245fd4;color:#245fd4}.pa-next-tour button:focus-visible{outline:2px solid #245fd4;outline-offset:2px}.pa-next-tour button[data-tour-action="next"]{background:#245fd4;color:white;border-color:#245fd4}.pa-next-tour button[data-tour-action="close"]{min-width:34px;padding:4px}.pa-next-tour button:disabled{visibility:hidden}';
   shell.appendChild(style);
-  var toolbar = document.createElement('div'); toolbar.className = 'pa-next-layoutbar';
-  toolbar.setAttribute('role', 'group'); toolbar.setAttribute('aria-label', 'Размер каталога');
-  toolbar.innerHTML = '<span>Каталог</span><button type="button" data-layout="less" aria-label="Уменьшить каталог" title="Уменьшить каталог">−</button>' +
-    '<button type="button" data-layout="more" aria-label="Увеличить каталог" title="Увеличить каталог">+</button>' +
-    '<button type="button" data-layout="toggle" aria-expanded="true">Скрыть каталог</button>';
-  shell.insertBefore(toolbar, content);
+  var rail = document.createElement('button'); rail.type = 'button'; rail.className = 'pa-next-catalog-rail';
+  rail.setAttribute('data-layout', 'expand'); rail.setAttribute('aria-label', 'Развернуть каталог');
+  rail.setAttribute('title', 'Развернуть каталог'); rail.setAttribute('aria-expanded', 'false');
+  rail.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg><span aria-hidden="true">Каталог</span>';
+  content.insertBefore(rail, catalog);
   var splitter = document.createElement('div'); splitter.className = 'pa-next-splitter';
   splitter.tabIndex = 0; splitter.setAttribute('role', 'separator'); splitter.setAttribute('aria-orientation', 'vertical');
   splitter.setAttribute('aria-label', 'Ширина каталога');
   splitter.setAttribute('title', 'Потяни для изменения ширины. Стрелки ← → — изменить, Home — сузить, End — расширить.');
   catalog.id = catalog.id || 'pa-next-catalog';
   splitter.setAttribute('aria-controls', catalog.id);
-  toolbar.querySelector('[data-layout="toggle"]').setAttribute('aria-controls', catalog.id);
+  rail.setAttribute('aria-controls', catalog.id);
   content.insertBefore(splitter, panel);
   var destroyed = false, drag = null, tour = null, resizeObserver = null, resizeTick = null;
   var oldGrid = content.style.gridTemplateColumns, oldGap = content.style.gap;
@@ -56,14 +58,9 @@ function installInteraction(shell, ST) {
     if (destroyed) return;
     var s = size(), width = Math.round(Math.max(s.min, Math.min(s.max, s.width * layout.ratio)));
     shell.classList.toggle('pa-next-catalog-hidden', layout.hidden);
-    content.style.gridTemplateColumns = layout.hidden ? 'minmax(380px,1fr)' : width + 'px 12px minmax(380px,1fr)';
+    content.style.gridTemplateColumns = layout.hidden ? '34px 12px minmax(380px,1fr)' : width + 'px 12px minmax(380px,1fr)';
     splitter.setAttribute('aria-valuemin', String(s.min)); splitter.setAttribute('aria-valuemax', String(s.max));
     splitter.setAttribute('aria-valuenow', String(width)); splitter.setAttribute('aria-valuetext', width + ' пикселей');
-    var toggle = toolbar.querySelector('[data-layout="toggle"]');
-    toggle.textContent = layout.hidden ? 'Показать каталог' : 'Скрыть каталог';
-    toggle.setAttribute('aria-expanded', layout.hidden ? 'false' : 'true');
-    toolbar.querySelector('[data-layout="less"]').disabled = layout.hidden || width <= s.min;
-    toolbar.querySelector('[data-layout="more"]').disabled = layout.hidden || width >= s.max;
     if (tour) placeTour();
   }
   function setWidth(width) {
@@ -80,23 +77,27 @@ function installInteraction(shell, ST) {
   function adjust(amount) { setWidth(catalog.getBoundingClientRect().width + amount); settleResize(); persist(); }
   function toggleCatalog() {
     layout.hidden = !layout.hidden;
-    if (layout.hidden && catalog.contains(document.activeElement)) toolbar.querySelector('[data-layout="toggle"]').focus();
     paint(); settleResize(); persist();
+    var target = layout.hidden ? rail : catalog.querySelector('.pa-next-cat-toggle');
+    if (target) target.focus({ preventScroll: true });
   }
-  function toolbarClick(ev) {
-    var action = ev.target.getAttribute('data-layout');
-    if (action === 'toggle') toggleCatalog();
-    else if (action === 'less') adjust(-48);
-    else if (action === 'more') adjust(48);
+  function catalogToggle(ev) {
+    var node = ev.target;
+    while (node && node !== shell && (!node.getAttribute || !node.getAttribute('data-layout'))) node = node.parentNode;
+    if (!node || node === shell) return;
+    var action = node.getAttribute('data-layout');
+    if (action === 'collapse' || action === 'expand') {
+      ev.preventDefault(); ev.stopPropagation(); toggleCatalog();
+    }
   }
-  toolbar.addEventListener('click', toolbarClick);
+  shell.addEventListener('click', catalogToggle, true);
   function splitterKey(ev) {
     var s = size(), key = ev.key || '', amount = ev.shiftKey ? 80 : 24;
     if (key === 'ArrowLeft') adjust(-amount);
     else if (key === 'ArrowRight') adjust(amount);
     else if (key === 'Home') { setWidth(s.min); settleResize(); persist(); }
     else if (key === 'End') { setWidth(s.max); settleResize(); persist(); }
-    else if (key === 'Enter') { toggleCatalog(); toolbar.querySelector('[data-layout="toggle"]').focus(); }
+    else if (key === 'Enter') toggleCatalog();
     else return;
     ev.preventDefault(); ev.stopPropagation();
   }
@@ -147,8 +148,8 @@ function installInteraction(shell, ST) {
       { selector: '[data-pa-next-host="cat"] [data-mode]', parent: true, title: 'Разрезы каталога', text: 'Переключай отчёты, коллекции, владельцев и аудиторию. Действующие фильтры сохраняются, поэтому разрезы показывают связанные с твоим выбором данные.' },
       { selector: '[data-pa-next-host="cat"] input[data-search]', title: 'Найти в каталоге', text: 'Введи часть названия, чтобы найти нужную строку в выбранном разрезе. Поиск не меняет фильтры аналитики.' },
       { selector: '[data-pa-next-host="cat"] tr[data-rep], [data-pa-next-host="cat"] tr[data-sel]', title: 'Выбор области', text: 'Нажми строку, чтобы посмотреть её аналитику справа. Повторный клик снимает выбор. Выбор людей в аналитике, в свою очередь, уточняет каталог.' },
-      { selector: '.pa-next-splitter', title: 'Ширина каталога', text: 'Потяни разделитель влево или вправо. Можно использовать кнопки − и + над панелями или стрелки на клавиатуре, когда разделитель в фокусе.' },
-      { selector: '.pa-next-layoutbar [data-layout="toggle"]', title: 'Только аналитика', text: '«Скрыть каталог» отдаёт всё место аналитике. «Показать каталог» возвращает его с прежним выбором и шириной.' },
+      { selector: '.pa-next-splitter', title: 'Ширина каталога', text: 'Потяни разделитель влево или вправо. Когда разделитель в фокусе, его можно двигать стрелками на клавиатуре; Home и End задают крайние положения.' },
+      { selector: '.pa-next-cat-toggle', title: 'Только аналитика', text: 'Каретка в шапке каталога сворачивает его в узкую полосу слева. Нажми эту полосу, чтобы вернуть каталог с прежним выбором и шириной.' },
       { selector: '.pone-kpis', title: 'Показатели', text: 'Эти показатели относятся к текущему периоду, выбранной области и условиям аудитории. Подсказки рядом с названиями объясняют расчёт.' },
       { selector: '.pone-obs', title: 'Что видно в данных', text: 'Наблюдения помогают прочитать показатели: где вырос интерес и как меняется использование. Они рассчитываются по тем же данным отчёта.' },
       { selector: '[data-pa-next-host="one"] [data-view^="view:"]', parent: true, title: 'Вкладки аналитики', text: 'Динамика показывает изменение по периодам, календарь — посещения по дням. Путь ЦА, «Кто смотрит» и закрепляемость раскрывают детали. Ещё не полученные детали догружаются в своей вкладке.' },
@@ -270,7 +271,8 @@ function installInteraction(shell, ST) {
     window.removeEventListener('pointerup', dragEnd);
     window.removeEventListener('pointercancel', dragEnd);
     window.removeEventListener('blur', dragEnd);
-    [toolbar, splitter, style].forEach(function (node) { if (node.parentNode) node.parentNode.removeChild(node); });
+    shell.removeEventListener('click', catalogToggle, true);
+    [rail, splitter, style].forEach(function (node) { if (node.parentNode) node.parentNode.removeChild(node); });
     content.style.gridTemplateColumns = oldGrid; content.style.gap = oldGap;
   } };
 }

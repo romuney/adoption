@@ -35,6 +35,13 @@ def renderer(part, name):
         s=s.replace('function pvFits(p) {', 'function pvFits(p) { if (!PA_NEXT_PREVIEW(p, false)) return false;')
         s=s.replace("m.sig = 'pv|' + p.key + '|' + p.grain;", "m.sig = 'pv|' + p.key + '|' + p.grain; PA_NEXT_PREVIEW(p, true);")
         s=s.replace('state.scr = scrSnap();\n      renderTip();', 'state.scr = scrSnap();\n      renderTip(); PA_NEXT_RENDERED();')
+    if part == 'cat':
+        # Place the collapse caret in the catalogue's own header on every render.
+        # Delegation belongs to the shell, so rebuilding rows never adds handlers.
+        hook="      (o.right || '') +"
+        assert s.count(hook)==1, 'catalogue header changed'
+        caret='<button type="button" class="pa-next-cat-toggle" data-layout="collapse" aria-label="Свернуть каталог" title="Свернуть каталог" aria-expanded="true" aria-controls="pa-next-catalog"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>'
+        s=s.replace(hook, hook+"\n      (o.cls === 'cat' ? "+json.dumps(caret,ensure_ascii=False)+" : '') +")
     s=s.replace('function tourStart() {', 'function tourStart() { PA_NEXT_HELP(); return;')
     # Namespaced internal protocol: current report cannot affect embedded regions.
     s=s.replace('PA_', 'PA_NEXT_INTERNAL_')
@@ -124,7 +131,7 @@ body:not(:has(#main-menu)) {grid}{{--pa-next-nav-height:0px}}
     metadata={'cross_filters_enabled':True,'chart_configuration':{str(main):{'id':main,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main]},'chartsInScope':[cat,one]}},str(cat):{'id':cat,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,cat]},'chartsInScope':[one]}},str(one):{'id':one,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,one]},'chartsInScope':[cat]}}},'global_chart_configuration':{'scope':{'rootPath':['ROOT_ID'],'excluded':[]},'chartsInScope':[main,cat,one]}}
     metadata.update(show_native_filters=False,native_filter_configuration=[])
     write('10. JSON — области фильтров.json',json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
-    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable and collapsible catalogue','viewport board height and hidden service chrome'], 'calculations':'Original buildModel and metric functions are preserved verbatim.'}
+    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height and hidden service chrome'], 'calculations':'Original buildModel and metric functions are preserved verbatim.'}
     report['minifier']='terser 5.51.2 via pinned playbook kit/min.cjs'
     report['linter']='eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)'
     report['lint_messages_by_rule']=lint_summary

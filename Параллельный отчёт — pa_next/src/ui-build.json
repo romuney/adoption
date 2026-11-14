@@ -49,14 +49,20 @@
     "validate catalogue preview before render",
     "keep tabs active while metric blocks load",
     "resizable catalogue with inline collapse caret and left rail",
-    "viewport board height; visible dashboard header; hidden chart headers"
+    "viewport board height; visible dashboard header; hidden chart headers",
+    "scroll report filters away on laptop; preserve useful analytics height",
+    "single-flight query queue with exact request completion",
+    "bounded session cache keyed by exact business masks and generation",
+    "atomic selection and preview; one local delayed loader",
+    "preserve empty filter values; explicit retry for command errors",
+    "calendar width follows embedded panel"
   ],
   "calculations": "Original buildModel and metric functions are preserved verbatim.",
   "minifier": "terser 5.51.2 via pinned playbook kit/min.cjs",
   "linter": "eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)",
   "lint_messages_by_rule": {
     "4. JS — весь отчёт.js source": {
-      "no-unused-vars": 20
+      "no-unused-vars": 22
     },
     "4. JS — весь отчёт.js delivery": {},
     "6. JS — загрузчик каталога.js source": {},

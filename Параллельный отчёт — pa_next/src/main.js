@@ -22,9 +22,18 @@
   }
   ST.shell = shell;
   ST.intent = ST.intent || {};
+  ST.desired = ST.desired || { head: [], cat: [], one: [] };
+  ST.queue = ST.queue || {}; ST.flight = ST.flight || {};
+  ST.issued = ST.issued || { cat: {}, one: {} }; ST.received = ST.received || {};
+  ST.cache = ST.cache || { cat: [], one: [] };
+  ST.commandError = ST.commandError || {};
+  if (ST.statusTick) cancelAnimationFrame(ST.statusTick);
   if (ST.interaction) ST.interaction.destroy();
   __INTERACTION__
   ST.interaction = installInteraction(shell, ST);
+  if (ST.viewport) ST.viewport.destroy();
+  __VIEWPORT__
+  ST.viewport = installViewport(shell, ST);
   if (ST.keyboard) shell.removeEventListener('keydown', ST.keyboard);
   ST.keyboard = function (ev) {
     var node = ev.target;
@@ -66,7 +75,7 @@
     }, { threshold: 0.99 });
     for (var y=0;y<window.innerHeight;y+=16) {
       var probe = document.createElement('i');probe.setAttribute('data-pa-next-y',String(y));
-      probe.style.cssText='position:fixed;left:0;top:'+y+'px;width:1px;height:16px;pointer-events:none;opacity:0';
+      probe.style.cssText='position:fixed;left:0;top:'+y+'px;width:1px;height:'+Math.min(16,window.innerHeight-y)+'px;pointer-events:none;opacity:0';
       document.body.appendChild(probe);ST.viewportProbes.push(probe);ST.viewportObserver.observe(probe);
     }
   }
@@ -103,41 +112,118 @@
     if (found.length !== 1) return null;
     try { var x = JSON.parse(String(found[0].k)); return part === 'cat' ? x.flt : x; } catch (ignore) { return null; }
   }
+  // Echoes are lossy legacy SQL metadata. Never use them as a business-cache key.
   function values(a) {
-    return (a || []).map(function (x) { return String(x).replace(/["\\\n\r]/g, ''); }).filter(function (x) { return x !== ''; }).sort();
+    return (a || []).map(function (x) { return String(x).replace(/["\\\n\r]/g, ''); }).sort();
+  }
+  function rawMap(mask) {
+    var o = {}; (mask || []).forEach(function (f) { if (C.echoColumns.indexOf(f.column) >= 0) o[f.column] = f.value.slice(); }); return o;
   }
   function maskMap(mask) {
-    var o = {}; mask.forEach(function (f) { if (f.column !== 'pa_nonce') o[f.column] = values(f.value); }); return o;
+    var o = {}; (mask || []).forEach(function (f) { if (f.column !== 'pa_nonce') o[f.column] = values(f.value); }); return o;
   }
-  function wanted(part) {
-    var o = maskMap(ST.masks.head), other = maskMap(ST.masks[part === 'cat' ? 'one' : 'cat']);
-    Object.keys(other).forEach(function (k) { o[k] = other[k]; }); return o;
+  function sources(part) { return ['head', part === 'cat' ? 'one' : 'cat']; }
+  function combined(part, masks) {
+    var o = {}; sources(part).forEach(function (src) {
+      var m = rawMap(masks[src]); Object.keys(m).forEach(function (k) { o[k] = m[k]; });
+    }); return o;
   }
-  function matches(part, rows) {
+  function canonical(o) {
+    var out = {}; C.echoColumns.forEach(function (k) { out[k] = (o[k] || []).slice(); });
+    ['period_param','pub_f','act_f','exc_f'].forEach(function (k) { if (!out[k].length) out[k] = [k === 'period_param' ? 'd' : '1']; });
+    if (!out.mode_param.length && !out.sel_f.length) out.mode_param = ['report'];
+    return out;
+  }
+  function businessKey(part, masks) {
+    // Exact strings/array order retained: empty labels, separators, quotes and
+    // scalar first-value semantics are meaningful in the production SQL.
+    return JSON.stringify([1, ST.session, ST.generation, part, canonical(combined(part, masks))]);
+  }
+  function sourceKey(mask) { return JSON.stringify(canonical(rawMap(mask))); }
+  function requestKey(part, masks) {
+    return JSON.stringify(sources(part).map(function (src) {
+      var m = maskMap(masks[src]); return (m['pa_next_' + src + '_req'] || [''])[0];
+    }));
+  }
+  function responseKey(part, rows) {
+    var reqs = {}; rows.forEach(function (r) { if (r.section === 'pa_next_request') reqs[r.g] = String(r.k || ''); });
+    var src = sources(part);
+    return src.every(function (s) { return Object.prototype.hasOwnProperty.call(reqs, s); }) ? JSON.stringify(src.map(function (s) { return reqs[s]; })) : null;
+  }
+  function echoMatches(part, rows, expected) {
     var e = echo(part, rows); if (!e) return false;
-    var w = wanted(part), cols = C.echoColumns;
-    var reqs = {}, needed = ['head', part === 'cat' ? 'one' : 'cat'];
-    rows.forEach(function (r) { if (r.section === 'pa_next_request') reqs[r.g] = String(r.k || ''); });
-    if (!needed.every(function (src) {
-      var mask = maskMap(ST.masks[src]);
-      return Object.prototype.hasOwnProperty.call(reqs, src) && reqs[src] === (mask['pa_next_' + src + '_req'] || [''])[0];
-    })) return false;
-    return cols.every(function (k) { return JSON.stringify(values(e[k])) === JSON.stringify(w[k] || []); });
+    return C.echoColumns.every(function (k) { return JSON.stringify(values(e[k])) === JSON.stringify(values(expected[k])); });
   }
   function selectionKey(cols, flt) {
-    return cols.slice().sort().map(function (c) { return c + '=' + values(flt[c]).join(','); }).join(';');
+    var o = canonical(flt);
+    return JSON.stringify(cols.slice().sort().map(function (c) { return [c, values(o[c])]; }));
+  }
+  function uiKey(cols, get) {
+    var o = {}; C.echoColumns.forEach(function (c) { o[c] = get(c) || []; });
+    return selectionKey(cols, o);
   }
   function intentFits(part, rows) {
     var e = echo(part, rows); if (!e) return false;
     return Object.keys(ST.intent).every(function (src) {
-      var t = ST.intent[src];
-      if (t.part === part) return true;
-      return selectionKey(t.cols, e) === t.key;
+      var t = ST.intent[src]; return t.part === part || selectionKey(t.cols, e) === t.key;
     });
   }
   function current(part) {
     var x = ST.accepted[part];
-    return !!(!ST.error[part] && x && x.generation === ST.generation && matches(part, x.rows) && intentFits(part, x.rows));
+    return !!(!ST.error[part] && x && x.generation === ST.generation && x.key === businessKey(part, ST.desired) && intentFits(part, x.rows));
+  }
+  function remember(part, entry) {
+    var list = ST.cache[part].filter(function (x) { return x.key !== entry.key && x.generation === ST.generation; });
+    entry.bytes = JSON.stringify(entry.rows).length * 2;
+    list.push(entry);
+    // Bounded to the current iframe/user session; never persisted or shared.
+    var bytes = list.reduce(function (n, x) { return n + x.bytes; }, 0);
+    while (list.length > 16 || (bytes > 24 * 1024 * 1024 && list.length > 1)) {
+      var i = list[0].baseline && list.length > 2 ? 1 : 0;
+      bytes -= list[i].bytes; list.splice(i, 1);
+    }
+    ST.cache[part] = list;
+  }
+  function restore(part) {
+    var key = businessKey(part, ST.desired), list = ST.cache[part], found = null;
+    for (var i = list.length - 1; i >= 0; i--) if (list[i].key === key) { found = list[i]; break; }
+    if (!found || !intentFits(part, found.rows)) return false;
+    if (ST.accepted[part] !== found || !ST.mounted[part] || (part === 'one' && ST.preview)) {
+      ST.accepted[part] = found; render(part, found.rows);
+    }
+    return true;
+  }
+  function register(part) {
+    var key = requestKey(part, ST.masks);
+    var record = { request: key, key: businessKey(part, ST.masks), expected: combined(part, ST.masks), generation: ST.generation, time: Date.now() };
+    ST.issued[part][key] = record;
+    var keys = Object.keys(ST.issued[part]);
+    while (keys.length > 40) { delete ST.issued[part][keys.shift()]; }
+    return record;
+  }
+  function flush() {
+    // A platform request cannot be superseded while it runs. Coalesce choices
+    // locally, then release them on the actual matching SQL completion, not ACK.
+    ['head','cat','one'].forEach(function (src) {
+      var mask = ST.queue[src]; if (!mask) return;
+      var targets = src === 'head' ? ['cat','one'] : [src === 'cat' ? 'one' : 'cat'];
+      if (targets.some(function (p) { return ST.flight[p] || !ST.received[p] || ST.error[p]; })) return;
+      if (src !== 'head' && ST.queue.head) return;
+      delete ST.queue[src];
+      if (sourceKey(mask) === sourceKey(ST.masks[src])) return;
+      var seq = ++ST.seq;
+      mask = mask.filter(function (f) { return f.column !== 'pa_next_' + src + '_req'; }).concat([
+        { column: 'pa_next_' + src + '_req', operator: 'IN', value: [ST.session + '-' + seq] }
+      ]);
+      ST.masks[src] = mask;
+      targets.forEach(function (p) { ST.flight[p] = register(p); });
+      if (src === 'head') {
+        if (ST.apply) ST.apply(mask);
+        else ST.error.cat = ST.error.one = 'Открой отчёт на дашборде: фильтры недоступны.';
+      } else {
+        ST.pending[src] = { seq: seq, mask: mask }; send(src, 'COMMAND', ST.pending[src]);
+      }
+    });
   }
   // A preview is a verbatim row from an accepted, current catalogue response.
   // Never derive cross-report unique counts by summing already aggregated rows.
@@ -183,19 +269,35 @@
       var ready = current(part) && (part !== 'one' || !ST.preview), partial = part === 'one' && !!ST.preview && previewAllowed(ST.preview);
       var usable = ready || partial;
       var message = ST.error[part] || (!ST.generation ? 'Витрины обновляются или не опубликованы.' : 'Загружаем данные для выбранных фильтров…');
-      if (now - ST.started > 45000 && !ST.error[part]) message = 'Ответ задерживается. Принудительно обнови все чарты дашборда; если это повторится, сообщи владельцу.';
+      if (now - ST.started > 45000 && !ST.error[part]) message = 'Запрос ещё выполняется. Данные появятся здесь после его завершения.';
       el.setAttribute('aria-busy', ready ? 'false' : 'true');
       el.setAttribute('data-pa-next-state', ready ? 'ready' : (partial ? 'preview' : 'loading'));
       el.classList.toggle('pa-next-stale', !usable);
+      el.classList.toggle('pa-next-has-error', !!ST.error[part]);
+      el.classList.toggle('pa-next-quiet', !ST.error[part] && now - ST.started < 400);
       // Keep navigation available while an uncached selection loads; only hide
       // stale metric blocks. The native renderer handles partial preview tabs.
       var local = part === 'one' && ST.mounted.one && !!el.querySelector('.pone-topbar');
       markWaiting(el, !usable && !local, message);
       if (local) {
-        Array.prototype.forEach.call(el.querySelectorAll('.pone-top,.pone-panel-h,.pone-panel-b,.pone-topbar > :not(.pone-vtabs)'), function (block) {
+        Array.prototype.forEach.call(el.querySelectorAll('.pone-panel-b'), function (block) {
           markWaiting(block, !usable, message);
         });
+        // Stale KPI values disappear without adding another spinner/placard.
+        Array.prototype.forEach.call(el.querySelectorAll('.pone-h-ttl'), function (title) {
+          if (!usable && title.hasAttribute('title')) { title.setAttribute('data-pa-next-title', title.getAttribute('title')); title.removeAttribute('title'); }
+          else if (usable && title.hasAttribute('data-pa-next-title')) { title.setAttribute('title', title.getAttribute('data-pa-next-title')); title.removeAttribute('data-pa-next-title'); }
+        });
+        var kpis = el.querySelector('.pone-top');
+        if (kpis) { kpis.style.visibility = usable ? '' : 'hidden'; kpis.inert = !usable; kpis.setAttribute('aria-hidden', usable ? 'false' : 'true'); }
       }
+      var retrySource = part === 'cat' ? 'one' : 'cat';
+      var cover = el.querySelector('.pa-next-wait'), retry = el.querySelector('[data-pa-next-retry]');
+      if (ST.commandError[retrySource] && cover && !retry) {
+        retry = document.createElement('button'); retry.type = 'button'; retry.setAttribute('data-pa-next-retry', retrySource);
+        retry.textContent = 'Повторить запрос'; cover.appendChild(retry);
+      }
+      if (!ST.commandError[retrySource] && retry) retry.parentNode.removeChild(retry);
       if (!ready) issues.push(partial ? 'Доступные показатели готовы; остальные детали догружаются.' : (part === 'cat' ? 'Каталог: ' : 'Показатели: ') + message);
     });
     var node = shell.querySelector('.pa-next-status');
@@ -203,22 +305,17 @@
     if (node.textContent !== summary) node.textContent = summary;
     node.classList.toggle('pa-next-ready', !issues.length);
   }
+  function deferStatus() {
+    if (ST.statusTick) cancelAnimationFrame(ST.statusTick);
+    ST.statusTick = requestAnimationFrame(function () { ST.statusTick = null; status(); });
+    if (ST.quietTimer) clearTimeout(ST.quietTimer);
+    ST.quietTimer = setTimeout(status, 410);
+  }
   function emit(part, mask) {
     if (!Array.isArray(mask)) return;
-    var seq = ++ST.seq;
-    mask = mask.filter(function (f) { return f.column !== 'pa_next_' + part + '_req'; }).concat([
-      { column: 'pa_next_' + part + '_req', operator: 'IN', value: [ST.session + '-' + seq] }
-    ]);
-    ST.masks[part] = mask; ST.started = Date.now();
-    ST.error = {};
-    if (part === 'head') {
-      if (ST.apply) ST.apply(mask);
-      else ST.error.cat = ST.error.one = 'Открой отчёт на дашборде: фильтры недоступны.';
-    } else {
-      ST.pending[part] = { seq: seq, mask: mask };
-      send(part, 'COMMAND', ST.pending[part]);
-    }
-    status();
+    ST.desired[part] = mask; ST.queue[part] = mask;
+    ['cat','one'].forEach(restore);
+    flush(); deferStatus();
   }
   function help() { ST.interaction.help(); }
   function bus(part, msg) {
@@ -227,39 +324,50 @@
       var allowed = { head: ['strip', 'ca'], cat: ['cat'], one: ['ppl'] };
       if (allowed[part].indexOf(msg.src) >= 0) {
         ST.intent[msg.src] = { part: part, cols: msg.cols, key: msg.key, mask: msg.nextMask };
+        ST.desired[part] = ST.desired[part].filter(function (f) { return msg.cols.indexOf(f.column) < 0; }).concat(msg.nextMask.filter(function (f) { return msg.cols.indexOf(f.column) >= 0; }));
         ST.started = Date.now();
-        // A rapid select/deselect can return to the already accepted full answer
-        // before Proteus receives the debounced command. Restore that answer;
-        // a DOM showing an obsolete preview must never be marked fully ready.
-        if (part === 'cat' && ST.preview && !previewAllowed(ST.preview) && current('one')) render('one', ST.accepted.one.rows);
-        status();
+        // Synchronous selection/preview delivery gives the renderer one atomic
+        // visual change. Query completion remains independent of this UI state.
+        window.dispatchEvent(new window.MessageEvent('message', { data: msg }));
+        ['cat','one'].forEach(restore); status(); deferStatus(); return;
       }
     }
-    if (part === 'cat' && msg.type === 'PA_NEXT_INTERNAL_PREV') ST.previewLabel = { key: msg.key, id: String(msg.id), name: String(msg.name || '') };
+    if (part === 'cat' && msg.type === 'PA_NEXT_INTERNAL_PREV') {
+      ST.previewLabel = { key: msg.key, id: String(msg.id), name: String(msg.name || '') };
+      if (current('one') && !ST.preview) return;
+      window.dispatchEvent(new window.MessageEvent('message', { data: msg })); status(); deferStatus(); return;
+    }
     // Only these local renderer callbacks establish intent/provenance.
     window.postMessage(msg, '*');
   }
   var renderers = __RENDERERS__;
   function render(part, rows) {
     if (part === 'one') ST.preview = null;
-    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, status);
+    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, deferStatus, uiKey);
     ST.mounted[part] = true;
   }
   function receive(part, rows, serial) {
+    var request = responseKey(part, rows), record = request === null ? null : ST.issued[part][request];
+    // Complete even an obsolete choice. It must never overwrite the current UI.
+    var completed = ST.flight[part] && ST.flight[part].request === request;
+    if (completed) delete ST.flight[part];
     var g = version(rows);
     if (!g) { ST.error[part] = 'Обновление витрин не завершено. Дождись публикации и принудительно обнови все чарты дашборда.'; status(); return; }
     if (g !== ST.generation) { ST.error[part] = 'Части отчёта относятся к разным загрузкам. После завершения ноутбука принудительно обнови все чарты дашборда: обычная перезагрузка страницы может сохранить кэш.'; status(); return; }
-    if (!matches(part, rows)) {
+    if (!record || record.generation !== g || !echoMatches(part, rows, record.expected)) {
       if (!ST.mounted[part]) ST.error[part] = 'Фильтры сохранены от прежнего окна отчёта. Сбрось фильтры дашборда и обнови всю страницу.';
-      status(); return;
+      flush(); deferStatus(); return;
     }
-    var prev = ST.accepted[part];
-    delete ST.error[part];
-    if (!prev || prev.serial !== serial || prev.instance !== ST.instances[part] || prev.generation !== g || !ST.mounted[part]) {
-      ST.accepted[part] = { rows: rows, generation: g, serial: serial, instance: ST.instances[part] };
-      render(part, rows);
+    ST.received[part] = true;
+    var commandSource = part === 'cat' ? 'one' : 'cat';
+    if (!ST.commandError[commandSource] || completed) delete ST.error[part];
+    if (completed && ST.commandError[commandSource]) { delete ST.commandError[commandSource]; delete ST.pending[commandSource]; }
+    var old = ST.cache[part].filter(function (x) { return x.key === record.key; })[0];
+    // A duplicate ASK/ROWS does not rebuild an already visible renderer.
+    if (!old || old.serial !== serial || old.instance !== ST.instances[part]) {
+      remember(part, { rows: rows, generation: g, serial: serial, instance: ST.instances[part], key: record.key, baseline: request === '["",""]' });
     }
-    status();
+    restore(part); flush(); deferStatus();
   }
   ST.on = function (ev) {
     var d = ev.data;
@@ -270,7 +378,7 @@
         if (ST.instances[d.part]) ST.retired[d.part][ST.instances[d.part]] = true;
         ST.instances[d.part] = d.instance; ST.serial[d.part] = 0;
       }
-      ST.peers[d.part] = ev.source; send(d.part, 'ASK'); if (ST.pending[d.part]) send(d.part, 'COMMAND', ST.pending[d.part]); return; }
+      ST.peers[d.part] = ev.source; send(d.part, 'ASK'); if (ST.pending[d.part] && !ST.commandError[d.part]) send(d.part, 'COMMAND', ST.pending[d.part]); return; }
     if (d.kind === 'ROWS' && d.session === ST.session) {
       if (ST.peers[d.part] && ST.peers[d.part] !== ev.source) return;
       if (ST.instances[d.part] && ST.instances[d.part] !== d.instance) return;
@@ -280,17 +388,35 @@
       ST.serial[d.part] = d.serial; receive(d.part, d.rows || [], d.serial);
     } else if (d.kind === 'ACK' && d.session === ST.session && ev.source === ST.peers[d.part]) {
       if (ST.pending[d.part] && ST.pending[d.part].seq <= d.seq) delete ST.pending[d.part];
-    } else if (d.kind === 'ERROR' && d.session === ST.session && ev.source === ST.peers[d.part]) { ST.error[d.part] = d.message; status(); }
+    } else if (d.kind === 'ERROR' && d.session === ST.session && ev.source === ST.peers[d.part]) {
+      if (!ST.pending[d.part] || ST.pending[d.part].seq !== d.seq) return;
+      ST.commandError[d.part] = true;
+      ST.error[d.part === 'cat' ? 'one' : 'cat'] = d.message; status();
+    }
   };
   window.addEventListener('message', ST.on);
+  if (ST.retry) shell.removeEventListener('click', ST.retry);
+  ST.retry = function (ev) {
+    var button = ev.target.closest && ev.target.closest('[data-pa-next-retry]'); if (!button) return;
+    var src = button.getAttribute('data-pa-next-retry');
+    if (!ST.commandError[src] || !ST.pending[src]) return;
+    delete ST.commandError[src]; delete ST.error[src === 'cat' ? 'one' : 'cat'];
+    ST.started = Date.now(); send(src, 'COMMAND', ST.pending[src]); status();
+  };
+  shell.addEventListener('click', ST.retry);
   var head = typeof data !== 'undefined' && Array.isArray(data) ? data : [], gen = version(head);
+  if (ST.generation !== gen) {
+    ST.cache = { cat: [], one: [] }; ST.accepted = {}; ST.issued = { cat: {}, one: {} };
+    ST.received = {}; ST.flight = {}; ST.preview = null;
+  }
   ST.generation = gen;
+  ['cat','one'].forEach(function (part) { if (!ST.issued[part][requestKey(part, ST.masks)]) register(part); });
   if (gen) render('head', head);
   else shell.querySelector('[data-pa-next-host="head"]').textContent = 'Витрины pa_next ещё не опубликованы. Заверши запуск ноутбука и принудительно обнови все чарты дашборда.';
-  ['cat', 'one'].forEach(function (part) { var x = ST.accepted[part]; if (x && x.generation === gen && matches(part, x.rows) && !ST.mounted[part]) render(part, x.rows); });
+  ['cat', 'one'].forEach(restore);
   status(); broadcastAsk();
   ST.timer = setInterval(function () {
-    ['cat', 'one'].forEach(function (part) { if (ST.pending[part]) send(part, 'COMMAND', ST.pending[part]); if (!ST.mounted[part] || ST.error[part]) send(part, 'ASK'); });
+    ['cat', 'one'].forEach(function (part) { if (ST.pending[part] && !ST.commandError[part]) send(part, 'COMMAND', ST.pending[part]); if (!ST.mounted[part] || (ST.error[part] && !ST.commandError[part === 'cat' ? 'one' : 'cat'])) send(part, 'ASK'); });
     status();
   }, 1500);
 })();

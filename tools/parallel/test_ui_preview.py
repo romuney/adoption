@@ -165,51 +165,61 @@ def main():
         results.append({'case':'malformed-preview-key-id-payload-grain-filter-name','status':'passed'})
         print('PASS: malformed preview key/id/payload/grain/filter/name ignored',flush=True)
 
-        # Same selection after intervening B must not accept A's previous nonce.
+        # Cached A stays visible; its older nonce must not complete the B/A
+        # requests still outstanding. Snapshot metadata when each request starts.
         board.wait_mask('cat','sel_f',[a]);old_a=board.nonce_rows(reports['d'][a])
         board.push('one',reports['d'][a]);board.state('ready')
-        board.select(b);board.wait_mask('cat','sel_f',[b]);board.select(a)
-        # B's issued nonce can make A temporarily loading even though REAL is A;
-        # its stale preview B must never become a ready, interactive result.
-        board.page.wait_for_timeout(50)
-        if board.frame.locator(ONE).get_attribute('data-pa-next-state')=='ready':
-            assert board.frame.evaluate('window.__paNext.preview') is None
-        # Catalogue serializes in-flight requests for up to45s. A complete B
-        # response releases its held A request without displaying stale B metrics.
-        board.push('one',reports['d'][b]);board.state('preview')
+        full_a=kpi_text(board.frame)
+        board.select(b);board.wait_mask('cat','sel_f',[b]);frozen_b=board.nonce_rows(reports['d'][b])
+        board.select(a);board.state('ready')
+        assert board.frame.evaluate('window.__paNext.preview') is None
+        assert kpi_text(board.frame)==full_a
+        flight_b=board.frame.evaluate('window.__paNext.flight.one.request')
+        board.push('one',old_a,nonce=False);board.page.wait_for_timeout(80)
+        assert board.frame.evaluate('window.__paNext.flight.one.request')==flight_b
+        board.push('one',frozen_b,nonce=False);board.state('ready')
         board.wait_mask('cat','sel_f',[a])
         board.frame.wait_for_function('(old)=>window.__paNext.masks.cat.find(f=>f.column==="pa_next_cat_req").value[0]!==old',arg=next(r['k'] for r in old_a if r['section']=='pa_next_request' and r['g']=='cat'))
+        flight_a=board.frame.evaluate('window.__paNext.flight.one.request')
         board.push('one',old_a,nonce=False)
         board.page.wait_for_timeout(100)
-        board.state('preview')
+        board.state('ready')
+        assert board.frame.evaluate('window.__paNext.flight.one.request')==flight_a
+        assert kpi_text(board.frame)==full_a
         board.push('one',reports['d'][a]);board.state('ready')
-        results.append({'case':'rapid-A-B-A-old-nonce-rejected','status':'passed'})
-        print('PASS: rapid A→B→A keeps current preview and rejects obsolete full response',flush=True)
+        board.frame.wait_for_function('()=>!window.__paNext.flight.one')
+        results.append({'case':'rapid-A-B-A-exact-cache-old-nonce-cannot-complete','status':'passed'})
+        print('PASS: rapid A→B→A keeps exact cached A; obsolete responses cannot finish newer requests',flush=True)
+        board.close()
 
         # A is already accepted in full. B previews immediately; A is restored
         # BEFORE the debounced B request, so no new full response is supplied.
+        # Fresh board: B must not already be cached by the preceding scenario.
+        board=Board(browser,scripts,periods);board.select(a)
+        board.wait_mask('cat','sel_f',[a]);board.push('one',reports['d'][a]);board.state('ready')
         full_a=kpi_text(board.frame)
         board.frame.evaluate('''(ids)=>{
           const r=window.__testRapid={started:performance.now()};
           function observe(e){
             if(!e.data||e.data.type!=='PA_NEXT_INTERNAL_PREV'||String(e.data.id)!==ids.b)return;
             removeEventListener('message',observe);
-            setTimeout(()=>{
+            requestAnimationFrame(()=>{
               r.previewID=window.__paNext.preview&&window.__paNext.preview.id;
               r.state=document.querySelector('[data-pa-next-host="one"]').getAttribute('data-pa-next-state');
               r.users=document.querySelector('.pone-kpis .pone-k-val').textContent;
               r.elapsed=performance.now()-r.started;
               document.querySelector('tr[data-rep="'+ids.a+'"]').click();r.clicked=true;
-            },0);
+            });
           }
           addEventListener('message',observe);
         }''',{'a':a,'b':b})
-        board.select(b)
+        board.frame.evaluate('(id)=>document.querySelector(\'tr[data-rep="\'+id+\'"]\').click()',b)
         board.frame.wait_for_function('()=>!!window.__testRapid.clicked')
         board.state('ready')
         rapid=board.frame.evaluate('window.__testRapid')
         assert rapid['previewID']==b and rapid['state']=='preview',rapid
         assert rapid['elapsed']<300,('Return did not precede debounce',rapid)
+        assert int(rapid['users'].replace(' ','').replace('\u00a0',''))==int(next(r['k'] for r in reports['d'][b] if r['section']=='total').split('|')[0]),rapid
         assert board.frame.evaluate('window.__paNext.preview') is None
         assert kpi_text(board.frame)==full_a,('Accepted A restored stale B metrics',rapid,kpi_text(board.frame),full_a)
         results.append({'case':'FULL-A-preview-B-return-A-before-debounce','status':'passed','elapsed_ms':rapid['elapsed']})
@@ -217,7 +227,7 @@ def main():
 
         # A two-report union must wait for its SQL response, never sum previews.
         board.select(b,additive=True);board.state('loading');board.no_full_cover()
-        assert board.frame.locator(ONE+' .pone-top.pa-next-pending-block').count()==1
+        assert board.frame.locator(ONE+' .pone-top').evaluate('(el)=>el.inert && getComputedStyle(el).visibility==="hidden"')
         assert board.frame.locator(ONE+' .pone-kpis').evaluate('(el)=>!!el.closest("[inert]")')
         board.wait_mask('cat','sel_f',sorted([a,b]))
         board.push('one',reports['d']['multi']);board.state('ready')
@@ -228,20 +238,27 @@ def main():
         print('PASS: multi-selection hides stale metrics and uses exact full SQL union',flush=True)
         board.close()
 
-        board=Board(browser,scripts,periods);board.select(a);board.state('preview')
-        board.select(a);board.state('loading');board.no_full_cover()
-        assert board.frame.locator(ONE+' .pone-kpis').evaluate('(el)=>!!el.closest("[inert]")')
-        results.append({'case':'initial-all-preview-A-clear-does-not-expose-stale-A','status':'passed'})
-        print('PASS: clearing an initial preview hides stale selected-report numbers',flush=True)
+        board=Board(browser,scripts,periods);initial=kpi_text(board.frame)
+        board.select(a);board.state('preview')
+        board.select(a);board.state('ready');board.no_full_cover()
+        assert board.frame.evaluate('window.__paNext.preview') is None
+        assert kpi_text(board.frame)==initial
+        results.append({'case':'initial-all-preview-A-clear-restores-exact-defaults','status':'passed'})
+        print('PASS: clearing an initial preview restores exact cached all-report numbers',flush=True)
         board.close()
 
         board=Board(browser,scripts,periods);board.select(a);board.state('preview')
         old_preview=board.frame.evaluate('window.__paNext.preview')
+        board.wait_mask('cat','sel_f',[a]);frozen_a=board.nonce_rows(reports['d'][a])
+        old_cat=copy.deepcopy(periods['d']['cat'])
         board.frame.locator('[data-grain="w"]').click();board.state('loading')
+        board.push('one',frozen_a,nonce=False)
         board.wait_mask('head','period_param',['w'])
-        board.push('cat',periods['d']['cat'])
+        flight_w=board.frame.evaluate('window.__paNext.flight.cat.request')
+        board.push('cat',old_cat,nonce=False)
         board.inject_preview(old_preview)
         board.state('loading');board.no_full_cover()
+        assert board.frame.evaluate('window.__paNext.flight.cat.request')==flight_w
         results.append({'case':'period-change-rejects-old-catalogue-preview','status':'passed'})
         print('PASS: period change rejects old catalogue and preview',flush=True)
         board.close()

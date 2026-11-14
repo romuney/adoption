@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Browser transport/UX test on synthetic repository mocks; never claims SQL equivalence."""
-import json,re,time
+import copy,json,re,time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[2]
@@ -12,6 +12,20 @@ scripts={'head':(OUT/'4. JS — весь отчёт.js').read_text(),'cat':(OUT/
 
 def doc(key,code,data):
     return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="connect-src \'none\'; img-src data:; style-src \'unsafe-inline\'; script-src \'unsafe-inline\'"><style>html,body{height:100%;margin:0}div[_echarts_instance_]{height:100%;position:relative}</style></head><body><div _echarts_instance_="ec"><canvas></canvas></div><script>var data='+json.dumps(data,ensure_ascii=False)+'; var option; window.applyCrossFilter=function(mask){parent.postMessage({type:"TEST_EMIT",part:'+json.dumps(key)+',mask:mask},"*");};</script><script>'+code.replace('</script','<\\/script')+'</script></body></html>'
+
+def response_for(part, masks, grain):
+    """Transport-only mock tied to a captured request, never current delivery time."""
+    updated=copy.deepcopy(rows[part])
+    sources=['head','cat' if part=='one' else 'one']
+    echo={item['column']:item['value'] for source in sources for item in masks[source]
+          if not item['column'].startswith('pa_next_') and item['column']!='pa_nonce'}
+    for row in updated:
+        if part=='cat' and row['section']=='sj':
+            value=json.loads(row['k']);value['flt']=echo;value['period']=grain;row['k']=json.dumps(value)
+        if part=='one' and row['section']=='flt':row['k']=json.dumps(echo)
+        if row['section']=='pa_next_request':
+            row['k']=next((item['value'][0] for item in masks[row['g']] if item['column']=='pa_next_'+row['g']+'_req'),'')
+    return updated
 
 def main():
     with sync_playwright() as p:
@@ -78,7 +92,12 @@ def main():
         assert not frame.locator('.pone-overlay').evaluate('(el)=>el.inert')
         assert frame.locator('.pone-panel-b > :not(.pa-next-wait)').first.evaluate('(el)=>el.inert && el.getAttribute("aria-hidden")=="true"')
         assert frame.locator('.pone-vtabs').is_visible()
-        assert frame.locator('.pone-panel-b .pa-next-spinner').is_visible()
+        # Correctness protection is immediate; the visible spinner has a400ms
+        # grace period. Check both without changing the shipped runtime clock.
+        if frame.evaluate('Date.now()-window.__paNext.started<400'):
+            assert not frame.locator('.pone-panel-b .pa-next-spinner').is_visible()
+        frame.wait_for_function('()=>Date.now()-window.__paNext.started>=430')
+        frame.locator('.pone-panel-b .pa-next-spinner').wait_for(state='visible',timeout=2500)
         helper.evaluate('(payload)=>{data=payload.rows;'+scripts['cat']+'}',{'rows':rows['cat']})
         page.wait_for_timeout(100)
         assert frame.locator('[data-pa-next-host="cat"]').get_attribute('aria-busy')=='true'
@@ -87,39 +106,43 @@ def main():
         masks=frame.evaluate('window.__paNext.masks')
         valid_by_part={}
         for part in ['cat','one']:
-            updated=[dict(r) for r in rows[part]]
-            echo={x['column']:x['value'] for x in masks['head']}
-            for r in updated:
-                if part=='cat' and r['section']=='sj':
-                    st=json.loads(r['k']);st['flt']=echo;st['period']='m';r['k']=json.dumps(st)
-                if part=='one' and r['section']=='flt':r['k']=json.dumps(echo)
-                if r['section']=='pa_next_request': r['k']=echo.get('pa_next_'+r['g']+'_req',[''])[0]
+            updated=response_for(part,masks,'m')
             valid_by_part[part]=updated
             page.frame(name=part).evaluate('(payload)=>{data=payload.rows;'+scripts[part]+'}',{'rows':updated})
         frame.wait_for_selector('.pa-next-ready')
         print('PASS: matching full filter echoes and request nonce unlock both regions')
-        # A -> B -> A: same business echo is insufficient without the latest request nonce.
+        # A -> B -> A: exact cached A can display while B remains outstanding.
+        # A's old response must never complete B or the subsequent A request.
+        cached_text=frame.locator('.pone-kpis').inner_text()
         frame.locator('[data-pa-next-host="head"] [data-grain="w"]').click()
+        w_masks=frame.evaluate('window.__paNext.masks')
+        w_rows={part:response_for(part,w_masks,'w') for part in ['cat','one']}
+        w_flights=frame.evaluate('JSON.stringify(window.__paNext.flight)')
         frame.locator('[data-pa-next-host="head"] [data-grain="m"]').click()
         for part in ['cat','one']:
             page.frame(name=part).evaluate('(payload)=>{data=payload.rows;'+scripts[part]+'}',{'rows':valid_by_part[part]})
         page.wait_for_timeout(150)
-        assert frame.locator('[data-pa-next-host="cat"]').get_attribute('aria-busy')=='true'
-        assert frame.locator('[data-pa-next-host="one"]').get_attribute('aria-busy')=='true'
-        masks=frame.evaluate('window.__paNext.masks')
-        echo={x['column']:x['value'] for x in masks['head']}
+        frame.wait_for_selector('.pa-next-ready')
+        assert frame.locator('.pone-kpis').inner_text()==cached_text
+        assert frame.evaluate('JSON.stringify(window.__paNext.flight)')==w_flights
         for part in ['cat','one']:
-            for r in valid_by_part[part]:
-                if r['section']=='pa_next_request':r['k']=echo.get('pa_next_'+r['g']+'_req',[''])[0]
+            page.frame(name=part).evaluate('(payload)=>{data=payload.rows;'+scripts[part]+'}',{'rows':w_rows[part]})
+        frame.wait_for_function('()=>window.__paNext.masks.head.some(f=>f.column==="period_param"&&f.value[0]==="m")')
+        masks=frame.evaluate('window.__paNext.masks')
+        m_flights=frame.evaluate('JSON.stringify(window.__paNext.flight)')
+        for part in ['cat','one']:
+            page.frame(name=part).evaluate('(payload)=>{data=payload.rows;'+scripts[part]+'}',{'rows':valid_by_part[part]})
+        page.wait_for_timeout(100)
+        assert frame.evaluate('JSON.stringify(window.__paNext.flight)')==m_flights
+        assert frame.locator('.pone-kpis').inner_text()==cached_text
+        for part in ['cat','one']:
+            valid_by_part[part]=response_for(part,masks,'m')
             page.frame(name=part).evaluate('(payload)=>{data=payload.rows;'+scripts[part]+'}',{'rows':valid_by_part[part]})
         frame.wait_for_selector('.pa-next-ready')
-        print('PASS: A-B-A stale response with matching business echo rejected by exact request nonce')
+        frame.wait_for_function('()=>Object.keys(window.__paNext.flight).length===0')
+        print('PASS: A-B-A restores exact cached A; obsolete nonces cannot complete either live request')
         old_instance=frame.evaluate('window.__paNext.instances.cat')
-        updated_cat=[dict(r) for r in rows['cat']]
-        for r in updated_cat:
-            if r['section']=='sj':
-                st=json.loads(r['k']);st['flt']=echo;st['period']='m';r['k']=json.dumps(st)
-            if r['section']=='pa_next_request':r['k']=echo.get('pa_next_'+r['g']+'_req',[''])[0]
+        updated_cat=valid_by_part['cat']
         page.locator('iframe[name="cat"]').evaluate('(el,html)=>el.srcdoc=html',doc('cat',scripts['cat'],updated_cat))
         page.wait_for_timeout(300)
         assert frame.evaluate('window.__paNext.instances.cat')!=old_instance

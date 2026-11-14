@@ -24,7 +24,7 @@
     if (!Array.isArray(mask)) return false;
     return mask.every(function (f) {
       return f && C.columns.indexOf(f.column) >= 0 && f.operator === 'IN' && Array.isArray(f.value) && f.value.length > 0 &&
-        f.value.every(function (v) { return typeof v === 'string' && v.length > 0 && v.length < 2000; });
+        f.value.every(function (v) { return typeof v === 'string' && v.length < 2000; });
     });
   }
   S.on = function (ev) {
@@ -38,8 +38,9 @@
     if (d.kind !== 'COMMAND' || ev.source !== S.main || d.session !== S.session || !validMask(d.mask)) return;
     if (S.commandSession !== d.session) { S.commandSession = d.session; S.seq = 0; }
     if (d.seq > S.seq) {
-      if (typeof applyCrossFilter !== 'function') { send(ev.source, 'ERROR', { session: d.session, message: 'Открой чарт на дашборде: applyCrossFilter недоступен.' }); return; }
-      applyCrossFilter(d.mask);
+      if (typeof applyCrossFilter !== 'function') { send(ev.source, 'ERROR', { session: d.session, seq: d.seq, message: 'Открой чарт на дашборде: applyCrossFilter недоступен.' }); return; }
+      try { applyCrossFilter(d.mask); }
+      catch (ignore) { send(ev.source, 'ERROR', { session: d.session, seq: d.seq, message: 'Не удалось отправить запрос. Попробуй ещё раз.' }); return; }
       S.seq = d.seq;
     }
     send(ev.source, 'ACK', { session: d.session, seq: d.seq });

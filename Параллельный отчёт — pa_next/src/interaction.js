@@ -217,6 +217,7 @@ function installInteraction(shell, ST) {
     previous.inert.forEach(function (item) { item.node.inert = item.value; });
     layout.hidden = previous.hidden; paint(); settleResize();
     content.scrollLeft = previous.scrollLeft;
+    shell.scrollTop = previous.scrollTop;
     if (previous.focus && previous.focus.isConnected && previous.focus.focus) previous.focus.focus({ preventScroll: true });
   }
   function tourKey(ev) {
@@ -233,7 +234,7 @@ function installInteraction(shell, ST) {
   }
   function help() {
     if (tour || destroyed) return;
-    var focus = document.activeElement, hidden = layout.hidden, scrollLeft = content.scrollLeft;
+    var focus = document.activeElement, hidden = layout.hidden, scrollLeft = content.scrollLeft, scrollTop = shell.scrollTop;
     layout.hidden = false; paint(); settleResize();
     var layer = document.createElement('div'); layer.className = 'pa-next-help pa-next-tour pa-next-tour-intro';
     layer.innerHTML = '<div class="pa-next-tour-ring" aria-hidden="true"></div>' +
@@ -247,7 +248,7 @@ function installInteraction(shell, ST) {
     });
     shell.appendChild(layer);
     tour = { layer: layer, card: layer.querySelector('.pa-next-tour-card'), ring: layer.querySelector('.pa-next-tour-ring'),
-      steps: tourSteps(), index: 0, previous: 0, focus: focus, hidden: hidden, scrollLeft: scrollLeft, inert: inert };
+      steps: tourSteps(), index: 0, previous: 0, focus: focus, hidden: hidden, scrollLeft: scrollLeft, scrollTop: scrollTop, inert: inert };
     layer.addEventListener('click', function (ev) {
       var action = ev.target.getAttribute('data-tour-action');
       if (action === 'close') closeTour();

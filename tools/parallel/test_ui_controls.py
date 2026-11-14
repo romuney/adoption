@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Composed UI controls and geometry on fixed synthetic mocks; no SQL claims."""
+import copy
 import json
 from playwright.sync_api import sync_playwright
 from test_ui import doc, rows, scripts
@@ -88,10 +89,25 @@ def main():
         assert len(emitted)==1 and emitted[0]['part']=='head',emitted
         assert any(f['column']=='ca_org_f' and f['value'] for f in emitted[0]['mask'])
         assert frame.locator('[data-pa-next-host="cat"]').get_attribute('aria-busy')=='true'
+        snapshot=frame.evaluate('window.__paNext.masks')
         frame.locator('[data-careset]').click()
         page.wait_for_timeout(200)
         emitted=page.evaluate('emits')
-        assert len(emitted)==2 and emitted[1]['part']=='head',emitted
+        assert len(emitted)==1, 'Reset must wait for both active downstream queries'
+        assert frame.locator('[data-pa-next-host="one"]').get_attribute('data-pa-next-state')=='ready', 'Reset should restore the cached baseline immediately'
+        for part in ('cat','one'):
+            incoming=copy.deepcopy(rows[part])
+            # Transport-only mock: business values are irrelevant to this control test.
+            echo={f['column']:f['value'] for f in snapshot['head']}
+            for row in incoming:
+                if row['section']=='sj' and part=='cat':
+                    value=json.loads(row['k']);value['flt']=echo;row['k']=json.dumps(value)
+                if row['section']=='flt':row['k']=json.dumps(echo)
+                if row['section']=='pa_next_request':row['k']=echo.get('pa_next_'+row['g']+'_req',[''])[0]
+            page.frame(name=part).evaluate('(payload)=>{data=payload.rows;'+scripts[part]+'}',{'rows':incoming})
+        page.wait_for_function('()=>emits.length===2')
+        emitted=page.evaluate('emits')
+        assert emitted[1]['part']=='head',emitted
         assert not any(f['column'].startswith('ca_') for f in emitted[1]['mask'])
         print('PASS: CA Apply emits through main once; Reset removes CA conditions')
 

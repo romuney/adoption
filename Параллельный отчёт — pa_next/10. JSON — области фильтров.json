@@ -65,5 +65,7 @@
       859563,
       859564
     ]
-  }
+  },
+  "show_native_filters": false,
+  "native_filter_configuration": []
 }

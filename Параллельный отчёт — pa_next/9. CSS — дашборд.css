@@ -1,9 +1,30 @@
-/* Generated IDs; helper charts stay mounted, including during initial loading. */
-.dashboard-component-chart-holder.dashboard-chart-id-859562{padding:0!important;border:0!important;overflow:hidden!important}
-.dashboard-chart-id-859562 .chart-header{display:none!important}
-.dashboard-chart-id-859562 iframe{display:block!important;width:100%!important;height:100%!important;border:0!important}
-.dashboard-chart-id-859562 .chart-slice,.dashboard-chart-id-859562 .dashboard-chart,.dashboard-chart-id-859562 .chart-container,.dashboard-chart-id-859562 .slice_container,.dashboard-chart-id-859562 .slice_container>div,.dashboard-chart-id-859562 .react_sanbbox{height:100%!important}
+/* Самостоятельный CSS pa_next. Вставить целиком в CSS нового борда.
+   Просмотр: единый чарт по высоте окна; native filters, заголовки и служебные меню скрыты.
+   Редактор сохраняет штатные заголовки, меню и ручные размеры ячеек.
+   Меню Proteus: 48px (из боевого профиля), поля сверху/снизу: 16/24px,
+   один ряд загрузчиков: 2px. Высота = окно - 90px; без меню Proteus = окно - 42px.
+   Селекторы dashboard-header-container, dashboard-filters-panel и filter-bar
+   сверены с исходником Superset 2.1.0; форк Proteus локально не подключён. */
+body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .dashboard-header-container,
+body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) [data-test="dashboard-filters-panel"],
+body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) [data-test="filter-bar"],
+body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .sidebar-resizer{display:none!important}
+body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .dashboard-content:has(.dashboard-component-chart-holder.dashboard-chart-id-859562){margin-left:0!important}
+.grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-nav-height:48px;margin:16px 24px 24px!important;padding:0!important}
+body:not(:has(#main-menu)) .grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-nav-height:0px}
+.dragdroppable-row:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dragdroppable-row .dashboard-component-chart-holder.dashboard-chart-id-859562)){margin:0!important;padding:0!important}
+.resizable-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.resizable-container .dashboard-component-chart-holder.dashboard-chart-id-859562)){height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - 42px))!important;min-height:0!important}
+.dashboard-component-chart-holder.dashboard-chart-id-859562{padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important}
+.dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-859562,.dashboard-chart-id-859563,.dashboard-chart-id-859564) :is(.chart-header,[data-test="slice-header"],.header-title,.header-controls){display:none!important}
+.dashboard-chart-id-859562 :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}
+.dashboard-chart-id-859562 iframe{display:block!important;flex:1 1 auto!important;width:100%!important;height:100%!important;min-height:0!important;border:0!important}
+.dashboard-chart-id-859562 .dashboard-chart>div:not(.chart-container){height:100%!important;width:100%!important}
+/* При обновлении сохраняем интерактивный iframe. Начальную загрузку показывает Proteus. */
+.dashboard-component-chart-holder.dashboard-chart-id-859562:not(.dashboard--editing *):has(.react_sanbbox iframe) :is(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]){display:none!important}
+.dashboard-component-chart-holder.dashboard-chart-id-859562:not(.dashboard--editing *):has(.react_sanbbox iframe):has(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]) *:not(iframe):not(:has(iframe)){pointer-events:none!important}
+.dashboard-component-chart-holder.dashboard-chart-id-859562:not(.dashboard--editing *):has(.react_sanbbox iframe) iframe{pointer-events:auto!important}
+/* Загрузчики не display:none: скрипты и обмен сообщениями должны продолжать работать. */
 .resizable-container:not(.dashboard--editing *):has(> .dashboard-component-chart-holder:is(.dashboard-chart-id-859563,.dashboard-chart-id-859564)),
 .dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-859563,.dashboard-chart-id-859564){height:2px!important;min-height:2px!important;max-height:2px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;padding:0!important;border:0!important;margin:0!important}
 .dragdroppable-row:not(.dashboard--editing *):has(.dashboard-component-chart-holder:is(.dashboard-chart-id-859563,.dashboard-chart-id-859564)):not(:has(.dashboard-component-chart-holder:not(:is(.dashboard-chart-id-859563,.dashboard-chart-id-859564)))),.dragdroppable-row:not(.dashboard--editing *):has(.dashboard-component-chart-holder:is(.dashboard-chart-id-859563,.dashboard-chart-id-859564)):not(:has(.dashboard-component-chart-holder:not(:is(.dashboard-chart-id-859563,.dashboard-chart-id-859564))))>.with-popover-menu>.grid-row{height:2px!important;min-height:0!important;max-height:2px!important;margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important}
-.dashboard-chart-id-859563 iframe,.dashboard-chart-id-859564 iframe{display:block!important;visibility:visible!important;min-width:2px!important;min-height:2px!important;width:2px!important;height:2px!important}
+.dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-859563,.dashboard-chart-id-859564) iframe{display:block!important;visibility:visible!important;min-width:2px!important;min-height:2px!important;width:2px!important;height:2px!important}

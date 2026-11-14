@@ -21,6 +21,10 @@
     host.appendChild(shell); ST.mounted = {};
   }
   ST.shell = shell;
+  ST.intent = ST.intent || {};
+  if (ST.interaction) ST.interaction.destroy();
+  __INTERACTION__
+  ST.interaction = installInteraction(shell, ST);
   if (ST.keyboard) shell.removeEventListener('keydown', ST.keyboard);
   ST.keyboard = function (ev) {
     var node = ev.target;
@@ -120,28 +124,79 @@
     })) return false;
     return cols.every(function (k) { return JSON.stringify(values(e[k])) === JSON.stringify(w[k] || []); });
   }
+  function selectionKey(cols, flt) {
+    return cols.slice().sort().map(function (c) { return c + '=' + values(flt[c]).join(','); }).join(';');
+  }
+  function intentFits(part, rows) {
+    var e = echo(part, rows); if (!e) return false;
+    return Object.keys(ST.intent).every(function (src) {
+      var t = ST.intent[src];
+      if (t.part === part) return true;
+      return selectionKey(t.cols, e) === t.key;
+    });
+  }
+  function current(part) {
+    var x = ST.accepted[part];
+    return !!(!ST.error[part] && x && x.generation === ST.generation && matches(part, x.rows) && intentFits(part, x.rows));
+  }
+  // A preview is a verbatim row from an accepted, current catalogue response.
+  // Never derive cross-report unique counts by summing already aggregated rows.
+  function previewAllowed(p) {
+    var cat = ST.accepted.cat, one = ST.accepted.one, t = ST.intent.cat;
+    if (!p || !t || t.part !== 'cat' || !current('cat') || !one || one.generation !== ST.generation || ST.error.one) return false;
+    var label = ST.previewLabel;
+    if (!label || label.key !== p.key || label.id !== String(p.id) || label.name !== String(p.name || '')) return false;
+    var m = maskMap(t.mask), sel = m.sel_f || [];
+    if ((m.mode_param || [])[0] !== 'report' || sel.length !== 1 || sel[0] !== String(p.id) || p.key !== t.key) return false;
+    if (Object.keys(m).some(function (k) { return k.indexOf('aud_') === 0 && m[k].length; })) return false;
+    var pv = cat.rows.filter(function (r) { return r.section === 'pv' && String(r.g) === String(p.id); });
+    var h = cat.rows.filter(function (r) { return r.section === 'pvh'; });
+    if (pv.length !== 1 || h.length !== 1 || String(pv[0].k) !== p.k || String(h[0].g) !== p.grain || +h[0].n - 1 !== +p.kt || String(h[0].k || '') !== String(p.cs || '')) return false;
+    var e = echo('cat', cat.rows);
+    return C.echoColumns.every(function (k) { return JSON.stringify(values(e[k])) === JSON.stringify(values((p.flt || {})[k])); });
+  }
+  function preview(p, applied) {
+    var valid = previewAllowed(p);
+    if (applied) ST.preview = valid ? p : null;
+    return valid;
+  }
+  function loadingNode() {
+    var node = document.createElement('div'); node.className = 'pa-next-wait'; node.setAttribute('role', 'status');
+    node.innerHTML = '<div class="pa-next-loading"><i class="pa-next-spinner" aria-hidden="true"></i><span></span><div class="pa-next-skeleton" aria-hidden="true"><i></i><i></i><i></i></div></div>';
+    return node;
+  }
+  function markWaiting(el, waiting, message) {
+    el.classList.toggle('pa-next-pending-block', waiting);
+    Array.prototype.forEach.call(el.children, function (child) {
+      if (child.classList.contains('pa-next-wait')) return;
+      child.inert = waiting; child.setAttribute('aria-hidden', waiting ? 'true' : 'false');
+    });
+    var cover = Array.prototype.filter.call(el.children, function (n) { return n.classList.contains('pa-next-wait'); })[0];
+    if (waiting && !cover) { cover = loadingNode(); el.appendChild(cover); }
+    if (!waiting && cover) cover.parentNode.removeChild(cover);
+    if (waiting && cover.querySelector('span').textContent !== message) cover.querySelector('span').textContent = message;
+  }
   function status() {
     var issues = [], now = Date.now();
     ['cat', 'one'].forEach(function (part) {
       var el = shell.querySelector('[data-pa-next-host="' + part + '"]');
-      var x = ST.accepted[part], ready = !ST.error[part] && x && x.generation === ST.generation && matches(part, x.rows);
+      var ready = current(part) && (part !== 'one' || !ST.preview), partial = part === 'one' && !!ST.preview && previewAllowed(ST.preview);
+      var usable = ready || partial;
+      var message = ST.error[part] || (!ST.generation ? 'Витрины обновляются или не опубликованы.' : 'Загружаем данные для выбранных фильтров…');
+      if (now - ST.started > 45000 && !ST.error[part]) message = 'Ответ задерживается. Принудительно обнови все чарты дашборда; если это повторится, сообщи владельцу.';
       el.setAttribute('aria-busy', ready ? 'false' : 'true');
-      el.classList.toggle('pa-next-stale', !ready);
-      Array.prototype.forEach.call(el.children, function (child) {
-        if (child.className === 'pa-next-wait') return;
-        child.inert = !ready;
-        child.setAttribute('aria-hidden', ready ? 'false' : 'true');
-      });
-      var cover = el.querySelector('.pa-next-wait');
-      if (!ready && !cover) { cover = document.createElement('div'); cover.className = 'pa-next-wait'; cover.setAttribute('role', 'status'); el.appendChild(cover); }
-      if (ready && cover) cover.parentNode.removeChild(cover);
-      if (!ready) {
-        var name = part === 'cat' ? 'Каталог' : 'Показатели';
-        var message = ST.error[part] || (!ST.generation ? 'Витрины обновляются или не опубликованы.' : 'Загружаем данные для твоего выбора…');
-        if (now - ST.started > 45000 && !ST.error[part]) message = 'Ответ задерживается. Принудительно обнови все чарты дашборда; если это повторится, сообщи владельцу.';
-        if (cover.textContent !== message) cover.textContent = message;
-        issues.push(name + ': ' + message);
+      el.setAttribute('data-pa-next-state', ready ? 'ready' : (partial ? 'preview' : 'loading'));
+      el.classList.toggle('pa-next-stale', !usable);
+      // Keep navigation available while an uncached selection loads; only hide
+      // stale metric blocks. The native renderer handles partial preview tabs.
+      var local = part === 'one' && ST.mounted.one && !!el.querySelector('.pone-topbar');
+      markWaiting(el, !usable && !local, message);
+      if (local) {
+        Array.prototype.forEach.call(el.querySelectorAll('.pone-top,.pone-panel-h,.pone-panel-b,.pone-topbar > :not(.pone-vtabs)'), function (block) {
+          markWaiting(block, !usable, message);
+        });
       }
+      if (!ready) issues.push(partial ? 'Доступные показатели готовы; остальные детали догружаются.' : (part === 'cat' ? 'Каталог: ' : 'Показатели: ') + message);
     });
     var node = shell.querySelector('.pa-next-status');
     var summary = issues.length ? issues.join(' ') : 'Отчёт загружен';
@@ -165,55 +220,29 @@
     }
     status();
   }
-  function help() {
-    var old = shell.querySelector('.pa-next-help'); if (old) return;
-    var focus = document.activeElement, layer = document.createElement('div'); layer.className = 'pa-next-help';
-    layer.innerHTML = '<div role="dialog" aria-modal="true" aria-label="Как работать с отчётом" tabindex="-1"><h2>Как работать с отчётом</h2>' +
-      '<p>Выбери период и условия целевой аудитории сверху. Они применяются к каталогу и показателям.</p>' +
-      '<p>Выбери отчёт, владельца или коллекцию в каталоге слева — справа появятся показатели этой области. Повторный клик снимает выбор.</p>' +
-      '<p>Выбор людей справа уточняет каталог. Собственный выбор блока не меняет его исходные данные: направления фильтров сохранены.</p>' +
-      '<p>Пока ответ загружается, блок закрыт плашкой. Во время запуска ноутбука отчётом не пользуйся; после его завершения принудительно обнови все чарты дашборда.</p>' +
-      '<button type="button">Понятно</button></div>';
-    var observer = null, probes = [], visible = {}, dialog;
-    function close() {
-      if (observer) observer.disconnect();
-      probes.forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
-      layer.parentNode.removeChild(layer);
-      if (focus && focus.focus) focus.focus({ preventScroll: true });
-    }
-    function place() {
-      if (!dialog || !layer.parentNode) return;
-      var ys = Object.keys(visible).filter(function (k) { return visible[k]; }).map(Number).sort(function (a,b) { return a-b; });
-      var a = ys.length ? ys[0] : 0, b = ys.length ? Math.min(window.innerHeight, ys[ys.length-1]+24) : Math.min(window.innerHeight, window.screen.availHeight || 700);
-      dialog.style.maxHeight = Math.max(120,b-a-32)+'px';
-      dialog.style.top = Math.max(a+16,a+(b-a-dialog.offsetHeight)/2)+'px';
-      dialog.style.visibility = 'visible';
-    }
-    layer.addEventListener('click', function (ev) { if (ev.target === layer || ev.target.tagName === 'BUTTON') close(); });
-    layer.addEventListener('keydown', function (ev) { if (ev.keyCode === 27) { ev.preventDefault(); close(); } else if (ev.keyCode === 9) { ev.preventDefault(); layer.querySelector('button').focus(); } });
-    shell.appendChild(layer); dialog = layer.querySelector('[role=dialog]');
-    dialog.style.position = 'absolute'; dialog.style.visibility = 'hidden';
-    if (typeof IntersectionObserver !== 'undefined') {
-      observer = new IntersectionObserver(function (entries) {
-        entries.forEach(function (entry) { visible[entry.target.getAttribute('data-y')] = entry.isIntersecting; });
-        place();
-      }, { threshold: 0.01 });
-      for (var y = 0; y < window.innerHeight; y += 24) {
-        var probe = document.createElement('i'); probe.setAttribute('data-y',String(y));
-        probe.style.cssText = 'position:fixed;left:0;top:'+y+'px;width:1px;height:24px;pointer-events:none;opacity:0';
-        document.body.appendChild(probe); probes.push(probe); observer.observe(probe);
+  function help() { ST.interaction.help(); }
+  function bus(part, msg) {
+    if (msg.type === 'PA_NEXT_INTERNAL_TOUR_GO') { help(); return; }
+    if (msg.type === 'PA_NEXT_INTERNAL_SEL' && Array.isArray(msg.nextMask)) {
+      var allowed = { head: ['strip', 'ca'], cat: ['cat'], one: ['ppl'] };
+      if (allowed[part].indexOf(msg.src) >= 0) {
+        ST.intent[msg.src] = { part: part, cols: msg.cols, key: msg.key, mask: msg.nextMask };
+        ST.started = Date.now();
+        // A rapid select/deselect can return to the already accepted full answer
+        // before Proteus receives the debounced command. Restore that answer;
+        // a DOM showing an obsolete preview must never be marked fully ready.
+        if (part === 'cat' && ST.preview && !previewAllowed(ST.preview) && current('one')) render('one', ST.accepted.one.rows);
+        status();
       }
     }
-    setTimeout(function () { place(); if (layer.parentNode) layer.querySelector('button').focus({ preventScroll: true }); },100);
-  }
-  function bus(msg) {
-    if (msg.type === 'PA_TOUR_GO') { help(); return; }
-    // Internal only: existing renderers share a window, original board messages never leave it.
+    if (part === 'cat' && msg.type === 'PA_NEXT_INTERNAL_PREV') ST.previewLabel = { key: msg.key, id: String(msg.id), name: String(msg.name || '') };
+    // Only these local renderer callbacks establish intent/provenance.
     window.postMessage(msg, '*');
   }
   var renderers = __RENDERERS__;
   function render(part, rows) {
-    renderers[part](rows, function (mask) { emit(part, mask); }, bus, help);
+    if (part === 'one') ST.preview = null;
+    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, status);
     ST.mounted[part] = true;
   }
   function receive(part, rows, serial) {

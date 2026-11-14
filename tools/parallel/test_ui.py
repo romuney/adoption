@@ -42,7 +42,7 @@ def main():
         if help_buttons.count():
             help_buttons.first.click()
             frame.locator('.pa-next-help').wait_for(state='visible')
-            frame.locator('.pa-next-help button').press('Escape')
+            frame.locator('.pa-next-help [data-tour-action=next]').press('Escape')
             assert frame.locator('.pa-next-help').count()==0
         print('PASS: accessible help opens and closes with Escape')
         # Old production messages must not mutate wrapped renderer states.
@@ -75,11 +75,14 @@ def main():
         assert emitted and {x['part'] for x in emitted}=={'head'},emitted
         assert frame.locator('[data-pa-next-host="cat"]').get_attribute('aria-busy')=='true'
         assert frame.locator('[data-pa-next-host="one"]').get_attribute('aria-busy')=='true'
-        assert frame.locator('.pone-overlay').evaluate('(el)=>el.inert && el.getAttribute("aria-hidden")=="true"')
+        assert not frame.locator('.pone-overlay').evaluate('(el)=>el.inert')
+        assert frame.locator('.pone-panel-b > :not(.pa-next-wait)').first.evaluate('(el)=>el.inert && el.getAttribute("aria-hidden")=="true"')
+        assert frame.locator('.pone-vtabs').is_visible()
+        assert frame.locator('.pone-panel-b .pa-next-spinner').is_visible()
         helper.evaluate('(payload)=>{data=payload.rows;'+scripts['cat']+'}',{'rows':rows['cat']})
         page.wait_for_timeout(100)
         assert frame.locator('[data-pa-next-host="cat"]').get_attribute('aria-busy')=='true'
-        print('PASS: header emits through main only; stale echo remains blocked')
+        print('PASS: header emits through main only; stale metrics hidden while tabs remain available')
         # Recover by returning current echo; no numerical calculation is simulated here.
         masks=frame.evaluate('window.__paNext.masks')
         valid_by_part={}

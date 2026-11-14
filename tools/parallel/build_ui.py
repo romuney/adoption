@@ -7,7 +7,10 @@ OUT = ROOT / 'Параллельный отчёт — pa_next'
 CAT = ['mode_param','sel_f','aud_org_f','aud_spec_f','aud_stream_f','aud_hq_f','aud_it_f','aud_head_f']
 ONE = ['org_f','spec_f','stream_f','adg_f','heads_f','login_f','exl_f','freq_f']
 HEAD = ['period_param','pub_f','act_f','exc_f','ca_org_f','ca_spec_f','ca_stream_f','ca_hq_f','ca_it_f','ca_head_f','ca_adg_f']
-CSS = '''.pa-next-shell{position:absolute;inset:0;display:flex;flex-direction:column;background:#f6f6f6;color:#23272e;font:14px Arial,Helvetica,sans-serif;box-sizing:border-box;overflow:hidden}.pa-next-status{min-height:24px;padding:4px 12px;font-size:12px;background:#fff8e7;color:#785714;box-sizing:border-box}.pa-next-status.pa-next-ready{background:#edf7ed;color:#296a32}.pa-next-head{position:relative;flex:0 0 112px;min-width:0;z-index:30}.pa-next-content{display:grid;grid-template-columns:minmax(300px,38fr) minmax(450px,62fr);gap:12px;flex:1;min-height:0;padding:0 8px 8px}.pa-next-cat,.pa-next-one{position:relative;min-width:0;min-height:0;border-radius:10px;background:#fff}.pa-next-cat{container-type:inline-size;container-name:pa-next-cat}.pa-next-one{container-type:inline-size;container-name:pa-next-one}.pa-next-wait{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(246,246,246,.96);padding:24px;text-align:center;line-height:1.6;box-sizing:border-box}.pa-next-help{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px}.pa-next-help>div{background:white;border-radius:12px;max-width:600px;max-height:85vh;overflow:auto;padding:24px;font:14px/1.6 Arial,Helvetica,sans-serif}.pa-next-help h2{font-size:20px}.pa-next-help button{font:700 14px Arial;padding:10px 18px;border:0;border-radius:8px;background:#245fd4;color:white;cursor:pointer}.pa-next-shell button:focus-visible,.pa-next-shell [role=button]:focus-visible,.pa-next-shell input:focus-visible{outline:2px solid #245fd4;outline-offset:2px}@media(max-width:820px){.pa-next-content{grid-template-columns:minmax(280px,38fr) minmax(380px,62fr);overflow-x:auto}.pa-next-head{min-width:680px}.pa-next-shell{overflow-x:auto}}@media(prefers-reduced-motion:reduce){.pa-next-shell *{transition:none!important;animation:none!important}}'''
+CSS = '''.pa-next-shell{position:absolute;inset:0;display:flex;flex-direction:column;background:#f6f6f6;color:#23272e;font:14px Arial,Helvetica,sans-serif;box-sizing:border-box;overflow:hidden}.pa-next-status{min-height:24px;padding:4px 12px;font-size:12px;background:#fff8e7;color:#785714;box-sizing:border-box}.pa-next-status.pa-next-ready{background:#edf7ed;color:#296a32}.pa-next-head{position:relative;flex:0 0 112px;min-width:0;z-index:30;margin-bottom:12px}.pa-next-content{display:grid;grid-template-columns:minmax(300px,38fr) minmax(450px,62fr);gap:12px;flex:1;min-height:0;padding:0 8px 8px}.pa-next-cat,.pa-next-one{position:relative;min-width:0;min-height:0;border-radius:10px;background:#fff}.pa-next-cat{container-type:inline-size;container-name:pa-next-cat}.pa-next-one{container-type:inline-size;container-name:pa-next-one}.pa-next-wait{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(246,246,246,.96);padding:24px;text-align:center;line-height:1.6;box-sizing:border-box}.pa-next-help{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px}.pa-next-help>div{background:white;border-radius:12px;max-width:600px;max-height:85vh;overflow:auto;padding:24px;font:14px/1.6 Arial,Helvetica,sans-serif}.pa-next-help h2{font-size:20px}.pa-next-help button{font:700 14px Arial;padding:10px 18px;border:0;border-radius:8px;background:#245fd4;color:white;cursor:pointer}.pa-next-shell button:focus-visible,.pa-next-shell [role=button]:focus-visible,.pa-next-shell input:focus-visible{outline:2px solid #245fd4;outline-offset:2px}@media(max-width:820px){.pa-next-content{grid-template-columns:minmax(280px,38fr) minmax(380px,62fr);overflow-x:auto}.pa-next-head{min-width:680px}.pa-next-shell{overflow-x:auto}}@media(prefers-reduced-motion:reduce){.pa-next-shell *{transition:none!important;animation:none!important}}'''
+
+CSS += '''.pa-next-head{flex:0 0 auto}.pa-next-head .phead-overlay{position:relative!important;height:auto!important}.pa-next-head .phead-root{height:auto!important;min-height:112px}.pa-next-head .phead-strip,.pa-next-head .phead-bar{flex-wrap:wrap}.pa-next-head .phead-togs{flex-shrink:0}.pa-next-pending-block{position:relative!important}.pa-next-pending-block>:not(.pa-next-wait){visibility:hidden!important}.pa-next-wait{background:#f6f6f6;border-radius:12px;flex-direction:column;overflow:hidden;pointer-events:none}.pa-next-loading{display:flex;align-items:center;flex-direction:column;gap:12px;width:min(100%,360px);color:#69717e;font:12px/1.5 Arial,Helvetica,sans-serif}.pa-next-spinner{display:block;width:22px;height:22px;border:2px solid #dce5f6;border-top-color:#245fd4;border-radius:50%;animation:pa-next-spin .8s linear infinite;box-sizing:border-box;flex:none}.pa-next-skeleton{display:flex;gap:10px;align-items:flex-end;height:56px;width:100%}.pa-next-skeleton i{height:100%;flex:1;border-radius:8px;background:linear-gradient(100deg,#e7e9ee 25%,#f7f8fa 45%,#e7e9ee 65%);background-size:250% 100%;animation:pa-next-shimmer 1.6s ease-in-out infinite}.pa-next-skeleton i:nth-child(2){height:70%}.pa-next-skeleton i:nth-child(3){height:88%}.pa-next-one.pa-next-stale .pone-selg,.pa-next-one[data-pa-next-state=preview] .pone-selg{display:none!important}.pone-panel-h>.pa-next-wait,.pone-topbar .pa-next-wait{padding:2px 8px}.pone-panel-h>.pa-next-wait .pa-next-loading,.pone-topbar .pa-next-loading{flex-direction:row;justify-content:center;gap:8px}.pone-panel-h>.pa-next-wait .pa-next-skeleton,.pone-topbar .pa-next-skeleton{display:none}.pone-panel-h>.pa-next-wait .pa-next-spinner,.pone-topbar .pa-next-spinner{width:14px;height:14px}.pa-next-status{white-space:nowrap;text-overflow:ellipsis;overflow:hidden;flex-shrink:0}@keyframes pa-next-spin{to{transform:rotate(360deg)}}@keyframes pa-next-shimmer{to{background-position:-150% 0}}@media(prefers-reduced-motion:reduce){.pa-next-spinner,.pa-next-skeleton i{animation:none!important}}'''
+
 
 def renderer(part, name):
     p=ROOT/'Виджеты'/name
@@ -22,14 +25,24 @@ def renderer(part, name):
     end=s.index('\n}',start)+2
     s=s[:start]+'function paDiag(o) {}'+s[end:]
     s=s.replace('window.parent.postMessage(', 'PA_NEXT_SIGNAL(')
+    # Carry the full selection internally; debounced platform emission comes later.
+    old='key: paKey(cols, paMaskGet(fl)) }); }'
+    assert s.count(old)==1, (part, 'selection bridge changed')
+    s=s.replace(old, 'key: paKey(cols, paMaskGet(fl)), nextMask: fl }); }')
+    if part == 'one':
+        for hook in ['function pvFits(p) {', "m.sig = 'pv|' + p.key + '|' + p.grain;", 'state.scr = scrSnap();\n      renderTip();']:
+            assert s.count(hook)==1, ('preview bridge changed', hook)
+        s=s.replace('function pvFits(p) {', 'function pvFits(p) { if (!PA_NEXT_PREVIEW(p, false)) return false;')
+        s=s.replace("m.sig = 'pv|' + p.key + '|' + p.grain;", "m.sig = 'pv|' + p.key + '|' + p.grain; PA_NEXT_PREVIEW(p, true);")
+        s=s.replace('state.scr = scrSnap();\n      renderTip();', 'state.scr = scrSnap();\n      renderTip(); PA_NEXT_RENDERED();')
     s=s.replace('function tourStart() {', 'function tourStart() { PA_NEXT_HELP(); return;')
     # Namespaced internal protocol: current report cannot affect embedded regions.
     s=s.replace('PA_', 'PA_NEXT_INTERNAL_')
     # Restore bridge identifiers after namespacing source message literals.
-    for old,new in [('PA_NEXT_INTERNAL_NEXT_BUS','PA_NEXT_BUS'),('PA_NEXT_INTERNAL_NEXT_SIGNAL','PA_NEXT_SIGNAL'),('PA_NEXT_INTERNAL_NEXT_HELP','PA_NEXT_HELP')]: s=s.replace(old,new)
+    for old,new in [('PA_NEXT_INTERNAL_NEXT_BUS','PA_NEXT_BUS'),('PA_NEXT_INTERNAL_NEXT_SIGNAL','PA_NEXT_SIGNAL'),('PA_NEXT_INTERNAL_NEXT_HELP','PA_NEXT_HELP'),('PA_NEXT_INTERNAL_NEXT_PREVIEW','PA_NEXT_PREVIEW'),('PA_NEXT_INTERNAL_NEXT_RENDERED','PA_NEXT_RENDERED')]: s=s.replace(old,new)
     s=s.replace('@media (max-width:', '@container pa-next-'+part+' (max-width:')
     # Source transforms are deliberately structural, never numeric/formula replacements.
-    return 'function(data, applyCrossFilter, PA_NEXT_BUS, PA_NEXT_HELP) {\nvar option; function PA_NEXT_SIGNAL() {}\n'+s+'\n}'
+    return 'function(data, applyCrossFilter, PA_NEXT_BUS, PA_NEXT_HELP, PA_NEXT_PREVIEW, PA_NEXT_RENDERED) {\nvar option; function PA_NEXT_SIGNAL() {}\n'+s+'\n}'
 
 def build(main,cat,one,channel,check=False):
     expected={}
@@ -42,7 +55,7 @@ def build(main,cat,one,channel,check=False):
     config=dict(main=main,cat=cat,one=one,channel=channel,echoColumns=HEAD+CAT+ONE)
     sources={'head':'pa-head.chart.js','cat':'pa-reports-body.chart.js','one':'pa-one.chart.js'}
     wrappers='{'+','.join(json.dumps(k)+':'+renderer(k,v) for k,v in sources.items())+'}'
-    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers)
+    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',(OUT/'src/interaction.js').read_text())
     text=text.replace("msg.type === 'PA_TOUR_GO'", "msg.type === 'PA_NEXT_INTERNAL_TOUR_GO'")
     outputs={'4. JS — весь отчёт.js':text}
     for part,name in [('cat','6. JS — загрузчик каталога.js'),('one','8. JS — загрузчик панели.js')]:
@@ -71,21 +84,47 @@ def build(main,cat,one,channel,check=False):
         # Also syntax-check the unminified source without writing temporary tracked files.
         subprocess.run(['node','--check'],input=txt,text=True,check=True)
     helper=f'.dashboard-chart-id-{cat},.dashboard-chart-id-{one}'
+    mainholder=f'.dashboard-component-chart-holder.dashboard-chart-id-{main}'
+    board=f'body:has({mainholder}):not(:has(.dashboard--editing))'
+    grid=f'.grid-container:not(.dashboard--editing *):has({mainholder})'
+    mainrow=f'.dragdroppable-row:not(.dashboard--editing *):has({mainholder}):not(:has(.dragdroppable-row {mainholder}))'
     helperrow=f'.dragdroppable-row:not(.dashboard--editing *):has(.dashboard-component-chart-holder:is({helper})):not(:has(.dashboard-component-chart-holder:not(:is({helper}))))'
-    css=f'''/* Generated IDs; helper charts stay mounted, including during initial loading. */
-.dashboard-component-chart-holder.dashboard-chart-id-{main}{{padding:0!important;border:0!important;overflow:hidden!important}}
-.dashboard-chart-id-{main} .chart-header{{display:none!important}}
-.dashboard-chart-id-{main} iframe{{display:block!important;width:100%!important;height:100%!important;border:0!important}}
-.dashboard-chart-id-{main} .chart-slice,.dashboard-chart-id-{main} .dashboard-chart,.dashboard-chart-id-{main} .chart-container,.dashboard-chart-id-{main} .slice_container,.dashboard-chart-id-{main} .slice_container>div,.dashboard-chart-id-{main} .react_sanbbox{{height:100%!important}}
+    css=f'''/* Самостоятельный CSS pa_next. Вставить целиком в CSS нового борда.
+   Просмотр: единый чарт по высоте окна; native filters, заголовки и служебные меню скрыты.
+   Редактор сохраняет штатные заголовки, меню и ручные размеры ячеек.
+   Меню Proteus: 48px (из боевого профиля), поля сверху/снизу: 16/24px,
+   один ряд загрузчиков: 2px. Высота = окно - 90px; без меню Proteus = окно - 42px.
+   Селекторы dashboard-header-container, dashboard-filters-panel и filter-bar
+   сверены с исходником Superset 2.1.0; форк Proteus локально не подключён. */
+{board} .dashboard-header-container,
+{board} [data-test="dashboard-filters-panel"],
+{board} [data-test="filter-bar"],
+{board} .sidebar-resizer{{display:none!important}}
+{board} .dashboard-content:has({mainholder}){{margin-left:0!important}}
+{grid}{{--pa-next-nav-height:48px;margin:16px 24px 24px!important;padding:0!important}}
+body:not(:has(#main-menu)) {grid}{{--pa-next-nav-height:0px}}
+{mainrow}{{margin:0!important;padding:0!important}}
+.resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - 42px))!important;min-height:0!important}}
+{mainholder}{{padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important}}
+.dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-{main},{helper}) :is(.chart-header,[data-test="slice-header"],.header-title,.header-controls){{display:none!important}}
+.dashboard-chart-id-{main} :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){{display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}}
+.dashboard-chart-id-{main} iframe{{display:block!important;flex:1 1 auto!important;width:100%!important;height:100%!important;min-height:0!important;border:0!important}}
+.dashboard-chart-id-{main} .dashboard-chart>div:not(.chart-container){{height:100%!important;width:100%!important}}
+/* При обновлении сохраняем интерактивный iframe. Начальную загрузку показывает Proteus. */
+{mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe) :is(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]){{display:none!important}}
+{mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe):has(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]) *:not(iframe):not(:has(iframe)){{pointer-events:none!important}}
+{mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe) iframe{{pointer-events:auto!important}}
+/* Загрузчики не display:none: скрипты и обмен сообщениями должны продолжать работать. */
 .resizable-container:not(.dashboard--editing *):has(> .dashboard-component-chart-holder:is({helper})),
 .dashboard-component-chart-holder:not(.dashboard--editing *):is({helper}){{height:2px!important;min-height:2px!important;max-height:2px!important;overflow:hidden!important;opacity:0!important;pointer-events:none!important;padding:0!important;border:0!important;margin:0!important}}
 {helperrow},{helperrow}>.with-popover-menu>.grid-row{{height:2px!important;min-height:0!important;max-height:2px!important;margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important}}
-.dashboard-chart-id-{cat} iframe,.dashboard-chart-id-{one} iframe{{display:block!important;visibility:visible!important;min-width:2px!important;min-height:2px!important;width:2px!important;height:2px!important}}
+.dashboard-component-chart-holder:not(.dashboard--editing *):is({helper}) iframe{{display:block!important;visibility:visible!important;min-width:2px!important;min-height:2px!important;width:2px!important;height:2px!important}}
 '''
     write('9. CSS — дашборд.css',css)
     metadata={'cross_filters_enabled':True,'chart_configuration':{str(main):{'id':main,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main]},'chartsInScope':[cat,one]}},str(cat):{'id':cat,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,cat]},'chartsInScope':[one]}},str(one):{'id':one,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,one]},'chartsInScope':[cat]}}},'global_chart_configuration':{'scope':{'rootPath':['ROOT_ID'],'excluded':[]},'chartsInScope':[main,cat,one]}}
+    metadata.update(show_native_filters=False,native_filter_configuration=[])
     write('10. JSON — области фильтров.json',json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
-    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local accessible help','use container queries for embedded region width'], 'calculations':'Original buildModel and metric functions are preserved verbatim.'}
+    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable and collapsible catalogue','viewport board height and hidden service chrome'], 'calculations':'Original buildModel and metric functions are preserved verbatim.'}
     report['minifier']='terser 5.51.2 via pinned playbook kit/min.cjs'
     report['linter']='eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)'
     report['lint_messages_by_rule']=lint_summary

@@ -44,8 +44,12 @@
     "replace global broadcast with local bus",
     "namespace internal PA messages",
     "suppress screenshot expansion (single iframe)",
-    "replace distributed tour with local accessible help",
-    "use container queries for embedded region width"
+    "replace distributed tour with local interactive guide",
+    "use container queries for embedded region width",
+    "validate catalogue preview before render",
+    "keep tabs active while metric blocks load",
+    "resizable and collapsible catalogue",
+    "viewport board height and hidden service chrome"
   ],
   "calculations": "Original buildModel and metric functions are preserved verbatim.",
   "minifier": "terser 5.51.2 via pinned playbook kit/min.cjs",

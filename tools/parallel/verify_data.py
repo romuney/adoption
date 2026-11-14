@@ -22,12 +22,17 @@ def main():
     gp = '\n'.join(p['code'] for p in nb['paragraphs'] if p['shebang'] == 'gp')
     gp = re.sub(r'--[^\n]*', '', gp)
     writes = re.findall(r'(?i)\b(?:create\s+(?:temp\s+)?table|drop\s+table\s+(?:if\s+exists\s+)?|analyze|update|insert\s+into|alter\s+table)\s+([\w.]+)', gp)
-    assert writes and all(n.split('.')[-1].startswith('pa_next_') for n in writes), writes
+    assert writes and all(n.startswith('pa_next_') and '.' not in n for n in writes), writes
+    for p in nb['paragraphs']:
+        assert not p['title'].startswith('PA NEXT') and 'pa_next_' not in p['title'], p['title']
+        if p['shebang'] == 'gp':
+            assert p['code'].startswith(build.WORKSPACE_SQL), ('Missing workspace guard', p['title'])
+    assert not re.search(r'\busr_cross_data\.pa_next_\w+', gp), 'New GP table still schema-qualified'
     assert 'click_execute' not in (OUT / 'src/export.py').read_text().replace('# No click_execute / views / unverified atomic RENAME API.', '')
     creates = set(re.findall(r'(?i)\bcreate\s+(?:temp\s+)?table\s+([\w.]+)', gp))
     exports = manifest['exports']
     assert len(exports) == len({x['gp'] for x in exports}) == len({x['ch'] for x in exports})
-    assert all(x['gp'] in creates for x in exports)
+    assert all(x['gp'] in creates and '.' not in x['gp'] for x in exports)
     used = set()
     for entry in manifest['datasets'].values():
         sql = (OUT / entry['path']).read_text()
@@ -41,13 +46,13 @@ def main():
     # projection. Actual event predicates, grouping and join multiplicity stay exact.
     actual = yaml.safe_load((ROOT / manifest['source_notebook']).read_text())
     source = next(p['code'] for p in actual['paragraphs'] if p['title'] == manifest['source_paragraph'] and p['shebang'] == 'gp')
-    generated = next(p['code'] for p in nb['paragraphs'] if p['title'] == 'PA NEXT · исходные события')
+    generated = next(p['code'] for p in nb['paragraphs'] if p['title'] == manifest['paragraph_titles']['source'])
     consumers = next(p['code'] for p in actual['paragraphs'] if p['title']=='Для единой вкладки' and p['shebang']=='gp')
     consumers += '\n'.join(build.first(prefix).read_text() for prefix in ['1a. GP', '1b. GP', '1c. GP'])
     assert not re.search(r'\bmax_date\b', consumers, re.I), 'Pruned field acquired a downstream consumer'
     expected = re.sub(r'\(select\s+max\(event_dttm\)\s+from\s+prod_v_sse_crossdata\.event_physical_report\)\s+as\s+max_date',
                       'cast(null as timestamp) as max_date', source, flags=re.I)
-    assert generated.strip().rstrip(';') == expected.strip().rstrip(';').replace(manifest['source_table'], 'usr_cross_data.pa_next_source')
+    assert generated[len(build.WORKSPACE_SQL):].strip().rstrip(';') == expected.strip().rstrip(';').replace(manifest['source_table'], 'pa_next_source')
     assert generated.lower().count('cast(null as timestamp) as max_date')==2
     assert not any('Обновить кеш' in p['title'] or p['shebang'] == 'python_magic' for p in nb['paragraphs'])
     export = (OUT / 'src/export.py').read_text()
@@ -75,14 +80,14 @@ def main():
             else:
                 raise AssertionError('Export swallowed a failure')
             assert len(calls) == failure + 1
-            assert calls[0][0] == 'usr_cross_data.pa_next_loading'
+            assert calls[0][0] == 'pa_next_loading'
             if failure < total - 1:
-                assert not any(x[0] == 'usr_cross_data.pa_next_ready' for x in calls)
+                assert not any(x[0] == 'pa_next_ready' for x in calls)
         failure = None
         calls.clear()
         exec(export, {})
         assert len(calls) == total
-        assert calls[-1][0] == 'usr_cross_data.pa_next_ready'
+        assert calls[-1][0] == 'pa_next_ready'
     finally:
         for name, value in old.items():
             if value is None:

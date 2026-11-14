@@ -18,7 +18,44 @@ ROOT = Path(__file__).resolve().parents[2]
 BASE = ROOT / 'Единый лист — поставка 2026-10-23 (ускорение через GP)'
 OUT = ROOT / 'Параллельный отчёт — pa_next'
 NAMES = {3: ('head', '3. SQL — шапка.sql'), 5: ('cat', '5. SQL — каталог.sql'), 7: ('one', '7. SQL — панель.sql')}
-CONTROL = 'usr_cross_data.pa_next_run'
+CONTROL = 'pa_next_run'
+WORKSPACE_SQL = """-- Keep all new GP tables in this notebook's current working schema.
+-- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+-- Empty search_path stops CREATE if a physical/source/session schema was selected.
+SELECT set_config('search_path', CASE
+    WHEN current_schema() IS NOT NULL
+     AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+     AND current_schema() NOT LIKE 'pg_temp_%'
+    THEN quote_ident(current_schema()) ELSE '' END, false);
+
+"""
+TITLES = {
+    'instructions': 'Как запускать эту ноду',
+    'wait': 'Дождаться обновления источника просмотров',
+    'control': 'Создать номер загрузки и статусы публикации',
+    'source': 'Собрать просмотры по действующей методологии',
+    'pa_next_login_map': 'Объединить прежние и текущие логины сотрудников',
+    'pa_next_evd_day': 'Собрать просмотры по дням, отчётам и людям',
+    'pa_next_dash_meta': 'Определить последние атрибуты отчётов',
+    'pa_next_emp_attrs': 'Определить последние атрибуты зрителей',
+    'pa_next_pair': 'Подготовить историю посещений по людям и отчётам',
+    'pa_next_dash_bkt': 'Разложить посещения по календарным периодам',
+    'pa_next_staff': 'Собрать актуальный состав сотрудников',
+    'pa_next_dash_acl': 'Собрать правила доступа к отчётам',
+    'pa_next_adg_member': 'Раскрыть состав AD-групп с вложенными группами',
+    'pa_next_adg_size': 'Подсчитать численность AD-групп',
+    'pa_next_dash_ca': 'Определить целевую аудиторию отчётов',
+    'pa_next_pair_acc': 'Проверить доступ зрителей к просмотренным отчётам',
+    '1a': 'Подготовить атрибуты людей, права и словари (ускорение 1a)',
+    '1b': 'Рассчитать дневные показатели и календари (ускорение 1b)',
+    '1c': 'Подготовить строки каталога и аудитории (ускорение 1c)',
+    'export': 'Выгрузить витрины в ClickHouse и подтвердить готовность',
+}
+
+
+def working_gp(text):
+    """Only new products move; shared input tables keep their explicit schemas."""
+    return re.sub(r'\busr_cross_data\.(pa_next_\w+)\b', r'\1', text)
 
 
 def first(prefix):
@@ -29,8 +66,8 @@ def first(prefix):
 
 
 def rename_gp(text, raw_source):
-    text = text.replace(raw_source, 'usr_cross_data.pa_next_source')
-    return re.sub(r'\bpa_(?!next_)(\w+)\b', r'pa_next_\1', text)
+    text = text.replace(raw_source, 'pa_next_source')
+    return working_gp(re.sub(r'\bpa_(?!next_)(\w+)\b', r'pa_next_\1', text))
 
 
 def remove_unused_max_date(text, consumers):
@@ -70,7 +107,7 @@ def export_calls(code):
             kw = {x.arg: ast.literal_eval(x.value) for x in node.keywords}
             if len(args) != 2:
                 raise ValueError('Changed gp_to_click signature: review actual production export')
-            specs.append({'gp': re.sub(r'\bpa_', 'pa_next_', args[0]), 'ch': re.sub(r'\bpa_', 'pa_next_', args[1]), 'options': kw})
+            specs.append({'gp': working_gp(re.sub(r'\bpa_', 'pa_next_', args[0])), 'ch': re.sub(r'\bpa_', 'pa_next_', args[1]), 'options': kw})
     return specs
 
 
@@ -126,22 +163,22 @@ def build(source_path, source_paragraph, raw_table, write=True):
     source_sql = rename_gp(remove_unused_max_date(src_sql, consumers), raw_table)
     # Raw source is not exported; downstream fact generation uses the run marker.
     control = """-- Only this isolated experiment's control tables are changed.
-DROP TABLE IF EXISTS usr_cross_data.pa_next_run;
-CREATE TABLE usr_cross_data.pa_next_run AS
+DROP TABLE IF EXISTS pa_next_run;
+CREATE TABLE pa_next_run AS
 SELECT md5(current_timestamp::text || random()::text)::text AS run_id
 DISTRIBUTED RANDOMLY;
-DROP TABLE IF EXISTS usr_cross_data.pa_next_loading;
-CREATE TABLE usr_cross_data.pa_next_loading AS
-SELECT run_id, 'loading'::text AS state FROM usr_cross_data.pa_next_run
+DROP TABLE IF EXISTS pa_next_loading;
+CREATE TABLE pa_next_loading AS
+SELECT run_id, 'loading'::text AS state FROM pa_next_run
 DISTRIBUTED RANDOMLY;
-DROP TABLE IF EXISTS usr_cross_data.pa_next_ready;
-CREATE TABLE usr_cross_data.pa_next_ready AS
-SELECT run_id, 'ready'::text AS state FROM usr_cross_data.pa_next_run
+DROP TABLE IF EXISTS pa_next_ready;
+CREATE TABLE pa_next_ready AS
+SELECT run_id, 'ready'::text AS state FROM pa_next_run
 DISTRIBUTED RANDOMLY;
 """
-    paragraphs = [dict(title='PA NEXT · ограничения запуска', shebang='md', code='Параллельный отчёт. Запускать весь ноут сверху вниз; одновременные запуски запрещены. Все изменяемые таблицы имеют префикс pa_next_. При неуспешной выгрузке дальнейшие вызовы прекращаются; исправить причину и перезапустить весь ноут. Старый manifest не подтверждает успех нового запуска. Старый отчёт не изменяется.', isEnabled=True),
-                  dict(title='PA NEXT · версия запуска', shebang='gp', code=control, isEnabled=True),
-                  dict(title='PA NEXT · исходные события', shebang='gp', code=source_sql, isEnabled=True)]
+    paragraphs = [dict(title=TITLES['instructions'], shebang='md', code='Параллельный отчёт. Запускать весь ноут сверху вниз; одновременные запуски запрещены. Новые GP-таблицы pa_next_* создаются в рабочей схеме этой ноды; usr_cross_data используется только для чтения общих источников. При ошибке «no schema has been selected to create in» выбрать рабочую схему ноды вместо usr_cross_data. При неуспешной выгрузке исправить причину и перезапустить весь ноут. Старый manifest не подтверждает успех нового запуска.', isEnabled=True),
+                  dict(title=TITLES['control'], shebang='gp', code=control, isEnabled=True),
+                  dict(title=TITLES['source'], shebang='gp', code=source_sql, isEnabled=True)]
     # Use the FINAL active production GP paragraph, not superseded earlier builds.
     # Base file already contains paragraph boundaries. Splitting on DROP TABLE keeps
     # each table build within one GP session; acceleration 1a retains its temp table.
@@ -150,7 +187,7 @@ DISTRIBUTED RANDOMLY;
     chunks = re.split(r'(?im)(?=^drop table if exists )', base)[1:]
     for chunk in chunks:
         name = re.search(r'(?i)create table ([\w.]+)', chunk)[1]
-        paragraphs.append(dict(title='PA NEXT · ' + name, shebang='gp', code=stamped_ctas(chunk) + '\nANALYZE ' + name + ';\n', isEnabled=True))
+        paragraphs.append(dict(title=TITLES[name], shebang='gp', code=stamped_ctas(chunk) + '\nANALYZE ' + name + ';\n', isEnabled=True))
     for prefix in ['1a. GP', '1b. GP', '1c. GP']:
         acceleration = first(prefix).read_text()
         # Drop obsolete placement instructions for the old notebook, retain SQL
@@ -159,11 +196,11 @@ DISTRIBUTED RANDOMLY;
         if prefix == '1a. GP':
             acceleration = rewrite_acceleration(acceleration)
         code = stamped_ctas(rename_gp(acceleration, raw_table))
-        paragraphs.append(dict(title='PA NEXT · ускорение ' + prefix[:2], shebang='gp', code=code, isEnabled=True))
+        paragraphs.append(dict(title=TITLES[prefix[:2]], shebang='gp', code=code, isEnabled=True))
     # Imported actual readiness check only; no obsolete outputs/cache warmup.
     waiters = [p for p in paras if p.get('isEnabled') and p.get('shebang') == 'python_condition' and '.tables_wait' in p.get('code', '')]
     for waiter in reversed(waiters):
-        paragraphs.insert(1, dict(title='PA NEXT · готовность источника', shebang='python_condition', code=waiter['code'], isEnabled=True))
+        paragraphs.insert(1, dict(title=TITLES['wait'], shebang='python_condition', code=waiter['code'], isEnabled=True))
     actual_exports = [p for p in paras if p.get('title') == 'Для единой вкладки' and p.get('shebang') == 'python_condition' and p.get('isEnabled')]
     if len(actual_exports) != 1:
         raise ValueError('Expected one final active production export paragraph')
@@ -176,7 +213,7 @@ DISTRIBUTED RANDOMLY;
 import proteus_py.database.clickhouse as ppy
 # Invalidate publication BEFORE the first data table changes. If this fails,
 # execution raises and no data export below runs.
-ppy.gp_to_click('usr_cross_data.pa_next_loading', 'prod_proteus.pa_next_manifest',
+ppy.gp_to_click('pa_next_loading', 'prod_proteus.pa_next_manifest',
                 order_by_columns='(run_id)')
 """
     for item in exports:
@@ -185,18 +222,22 @@ ppy.gp_to_click('usr_cross_data.pa_next_loading', 'prod_proteus.pa_next_manifest
             export += ', ' + name + '=' + repr(value)
         export += ')\n'
     export += """# Publish ready LAST; exceptions propagate and stop subsequent export calls.
-ppy.gp_to_click('usr_cross_data.pa_next_ready', 'prod_proteus.pa_next_manifest',
+ppy.gp_to_click('pa_next_ready', 'prod_proteus.pa_next_manifest',
                 order_by_columns='(run_id)')
 print('PA NEXT: all data tables uploaded; generation published ready')
 """
-    paragraphs.append(dict(title='PA NEXT · выгрузка и публикация версии', shebang='python_condition', code=export, isEnabled=True))
+    paragraphs.append(dict(title=TITLES['export'], shebang='python_condition', code=export, isEnabled=True))
+    for paragraph in paragraphs:
+        if paragraph['shebang'] == 'gp':
+            paragraph['code'] = WORKSPACE_SQL + paragraph['code']
     data = {'title': 'Proteus Adoption NEXT — отдельный отчёт', 'paragraphs': paragraphs}
     generated = {'1. Helicopter — pa_next.yaml': yaml.dump(data, Dumper=LiteralDumper, allow_unicode=True, sort_keys=False, width=120),
                  'src/export.py': export}
-    patch = next(p['code'] for p in paragraphs if p['title'] == 'PA NEXT · ускорение 1a')
+    patch = next(p['code'] for p in paragraphs if p['title'] == TITLES['1a'])
     generated['12. GP — замена ускорения 1a.sql'] = (
-        '-- Заменить ЦЕЛИКОМ код существующего GP-параграфа «PA NEXT · ускорение 1a».\n'
-        '-- Не добавлять второй параграф и не переимпортировать установленную ноду.\n'
+        '-- Код параграфа «' + TITLES['1a'] + '».\n'
+        '-- Только для версии ноды, где ВСЕ pa_next_* находятся в рабочей схеме.\n'
+        '-- Для перехода со старой версии usr_cross_data импортировать полный YAML.\n'
         '-- Затем выполнить всю PA NEXT ноду сверху вниз и проверку готовности из файла 11.\n'
         '-- Исправляет chr(894) и обработку ФИО в SQL_ASCII; правило расчёта сохраняется.\n'
         + patch)
@@ -209,7 +250,12 @@ print('PA NEXT: all data tables uploaded; generation published ready')
                     for prefix in ['1a. GP', '1b. GP', '1c. GP', '2. Python', '2a. Python', '3. SQL', '5. SQL', '7. SQL']}
     manifest = dict(source_notebook=str(source_path.relative_to(ROOT)), source_sha256=hashlib.sha256(source_path.read_bytes()).hexdigest(), source_paragraph=source_paragraph, source_table=raw_table,
                     accelerated_source_sha256=source_files, exports=exports, datasets=datasets,
-                    gp_text_compatibility={'paragraph': 'PA NEXT · ускорение 1a',
+                    gp_workspace={'mode': 'unqualified names in the Helicopter working schema',
+                                  'search_path': 'pinned to current_schema() in every GP paragraph',
+                                  'cross_connection': 'Data/control tables are regular working-schema tables; only pa_next_acc_any is TEMP',
+                                  'source_schemas': 'Read-only; no pa_next writes in usr_cross_data'},
+                    paragraph_titles=TITLES,
+                    gp_text_compatibility={'paragraph': TITLES['1a'],
                                            'empty_levels': 'Exact inherited CH 24.8 Unicode set, matched on UTF8 hex',
                                            'fio_packing': 'Byte-delimited UTF8 hex; original compact alphabet and escaping',
                                            'patch': '12. GP — замена ускорения 1a.sql',

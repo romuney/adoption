@@ -17,6 +17,7 @@ import chdb
 import psycopg2
 from psycopg2.extras import execute_values
 import yaml
+from verify_events import paragraph_creating
 
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'Параллельный отчёт — pa_next'
@@ -205,7 +206,7 @@ def main():
     assert pattern.isascii()
     source = next(BASE.glob('1a. GP*.sql')).read_text()
     notebook = yaml.safe_load(args.candidate.read_text())
-    candidate = next(p['code'] for p in notebook['paragraphs'] if p['title'] == 'PA NEXT · ускорение 1a')
+    candidate = paragraph_creating(notebook, 'pa_next_viewer')['code']
     current_sha = sha(args.candidate)
     pu_ctes = ctes(candidate)
     values, neighbors = samples(points)

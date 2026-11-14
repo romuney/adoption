@@ -5,6 +5,7 @@
   "actual_views": 12,
   "same_columns": true,
   "same_business_rows": true,
+  "workspace_schema": "pa_next_workspace",
   "excluded_unused_column": "max_date",
   "candidate_max_date_all_null": true,
   "today": "2026-11-13",
@@ -19,6 +20,6 @@
     "duplicate dimension join multiplicity preserved"
   ],
   "production_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
-  "candidate_sha256": "ec8f09068cc58db5a6dc7129add899ea8169cb799a165ce7dc9a6107f53405de",
+  "candidate_sha256": "85c095f30b5240804a79b2b8c3d4d748fa217b5a72717106bbcf9cb049df585d",
   "limitation": "PostgreSQL local semantic model; actual corporate source and GP engine not queried"
 }

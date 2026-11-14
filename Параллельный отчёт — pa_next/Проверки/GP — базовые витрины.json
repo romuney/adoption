@@ -63,6 +63,137 @@
       "equal": true
     }
   ],
+  "candidate_yaml_sha256": "85c095f30b5240804a79b2b8c3d4d748fa217b5a72717106bbcf9cb049df585d",
+  "workspace_schema": "pa_next_workspace",
+  "namespace_checks": {
+    "read_only_source_role": "pa_next_fixture_reader",
+    "shared_tables_unchanged": 46,
+    "shared_decoys_unchanged": 26,
+    "unsafe_search_paths_rejected": [
+      "usr_cross_data, public",
+      ""
+    ],
+    "unsafe_workspace_details": [
+      {
+        "search_path": "usr_cross_data, public",
+        "current_schema": "usr_cross_data",
+        "sqlstate": "3F000"
+      },
+      {
+        "search_path": "",
+        "current_schema": null,
+        "sqlstate": "3F000"
+      }
+    ],
+    "second_connection_exports": [
+      {
+        "table": "pa_next_evd_day",
+        "rows": 5,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_dash_meta",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_emp_attrs",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_pair",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_dash_bkt",
+        "rows": 8,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_login_map",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_staff",
+        "rows": 2,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_dash_acl",
+        "rows": 2,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_adg_member",
+        "rows": 2,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_dash_ca",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_adg_size",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_pair_acc",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_md",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_dict",
+        "rows": 14,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_viewer",
+        "rows": 1,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_staffx",
+        "rows": 2,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_dash_day",
+        "rows": 5,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_all_day",
+        "rows": 20,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_cat_rep",
+        "rows": 2,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_cat_grp",
+        "rows": 24,
+        "permanent": true
+      },
+      {
+        "table": "pa_next_cat_aud",
+        "rows": 80,
+        "permanent": true
+      }
+    ],
+    "paragraph_helper_is_temp": true
+  },
   "source_views": 12,
   "checks": [
     "canonical login merge",

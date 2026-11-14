@@ -49,22 +49,22 @@ flowchart TD
 
 ## Изоляция и контракт таблиц
 
-26 GP-таблиц включая служебные и временную; 21 выгрузка данных + одна публикационная таблица ClickHouse. Все изменяемые имена начинаются с `pa_next_`. Общие входные источники не изменяются. Встроенные макросы и фильтры датасетов не переназваны: физическое хранение изолировано, семантика интерфейса сохранена.
+26 GP-таблиц включая служебные и временную; 21 выгрузка данных + одна публикационная таблица ClickHouse. Все изменяемые имена начинаются с `pa_next_`. Общие входные источники не изменяются. YAML сам не создаёт схему: он использует текущую рабочую схему ноды. Все 21 источники `gp_to_click` также указаны без схемы; Python-подключение должно разрешать их в той же рабочей схеме. Срок жизни этой схемы задаёт Helicopter; сессионными TEMP экспортируемые таблицы не делаются. Встроенные макросы и фильтры датасетов не переназваны: физическое хранение изолировано, семантика интерфейса сохранена.
 
 | GP | ClickHouse | ORDER BY |
 |---|---|---|
-| `usr_cross_data.pa_next_evd_day` | `prod_proteus.pa_next_evd_day` | `(dashboard_id, login, log_dttm)` |
-| `usr_cross_data.pa_next_dash_meta` | `prod_proteus.pa_next_dash_meta` | `(dashboard_id)` |
-| `usr_cross_data.pa_next_emp_attrs` | `prod_proteus.pa_next_emp_attrs` | `(login)` |
-| `usr_cross_data.pa_next_pair` | `prod_proteus.pa_next_pair` | `(dashboard_id, login)` |
-| `usr_cross_data.pa_next_dash_bkt` | `prod_proteus.pa_next_dash_bkt` | `(grain, dashboard_id, k)` |
-| `usr_cross_data.pa_next_login_map` | `prod_proteus.pa_next_login_map` | `(login)` |
-| `usr_cross_data.pa_next_staff` | `prod_proteus.pa_next_staff` | `(login)` |
-| `usr_cross_data.pa_next_dash_acl` | `prod_proteus.pa_next_dash_acl` | `(dashboard_id, kind, principal)` |
-| `usr_cross_data.pa_next_adg_member` | `prod_proteus.pa_next_adg_member` | `(ad_group, login)` |
-| `usr_cross_data.pa_next_dash_ca` | `prod_proteus.pa_next_dash_ca` | `(dashboard_id)` |
-| `usr_cross_data.pa_next_adg_size` | `prod_proteus.pa_next_adg_size` | `(ad_group)` |
-| `usr_cross_data.pa_next_pair_acc` | `prod_proteus.pa_next_pair_acc` | `(dashboard_id, login)` |
+| `pa_next_evd_day` | `prod_proteus.pa_next_evd_day` | `(dashboard_id, login, log_dttm)` |
+| `pa_next_dash_meta` | `prod_proteus.pa_next_dash_meta` | `(dashboard_id)` |
+| `pa_next_emp_attrs` | `prod_proteus.pa_next_emp_attrs` | `(login)` |
+| `pa_next_pair` | `prod_proteus.pa_next_pair` | `(dashboard_id, login)` |
+| `pa_next_dash_bkt` | `prod_proteus.pa_next_dash_bkt` | `(grain, dashboard_id, k)` |
+| `pa_next_login_map` | `prod_proteus.pa_next_login_map` | `(login)` |
+| `pa_next_staff` | `prod_proteus.pa_next_staff` | `(login)` |
+| `pa_next_dash_acl` | `prod_proteus.pa_next_dash_acl` | `(dashboard_id, kind, principal)` |
+| `pa_next_adg_member` | `prod_proteus.pa_next_adg_member` | `(ad_group, login)` |
+| `pa_next_dash_ca` | `prod_proteus.pa_next_dash_ca` | `(dashboard_id)` |
+| `pa_next_adg_size` | `prod_proteus.pa_next_adg_size` | `(ad_group)` |
+| `pa_next_pair_acc` | `prod_proteus.pa_next_pair_acc` | `(dashboard_id, login)` |
 | `pa_next_md` | `prod_proteus.pa_next_md` | `(md)` |
 | `pa_next_dict` | `prod_proteus.pa_next_dict` | `(g, code)` |
 | `pa_next_viewer` | `prod_proteus.pa_next_viewer` | `(login)` |
@@ -75,9 +75,9 @@ flowchart TD
 | `pa_next_cat_grp` | `prod_proteus.pa_next_cat_grp` | `(pub, act, exc, kd, k0)` |
 | `pa_next_cat_aud` | `prod_proteus.pa_next_cat_aud` | `(pub, act, exc, ad, ak0)` |
 
-Все 21 таблицы реально упоминаются в трёх SQL-датасетах; проверка запрещает лишние выгрузки. GP temp `pa_next_acc_any` нужен только внутри параграфа ускорения 1a и не выгружается. Базовые GP-таблицы находятся в `usr_cross_data`, девять витрин ускорения сохраняют исходное размещение без схемы в рабочей схеме Helicopter. Все таблицы содержат прежние бизнес-колонки; 21 экспортируемая таблица получает дополнительную техническую `_pa_next_run` через внешнюю проекцию CTAS.
+Все 21 таблицы реально упоминаются в трёх SQL-датасетах; проверка запрещает лишние выгрузки. GP temp `pa_next_acc_any` нужен только внутри параграфа ускорения 1a и не выгружается. Все GP-таблицы создаются без указания схемы в рабочей/временной схеме Helicopter. Перед каждым GP-параграфом `search_path` сужается до `current_schema()`, чтобы DROP не нашёл старую одноимённую таблицу в `usr_cross_data` через запасной путь поиска. Если текущей рабочей схемы нет или выбрана `usr_cross_data`, системная либо сессионная `pg_temp_*` схема, CREATE останавливается до записи. Все таблицы содержат прежние бизнес-колонки; 21 экспортируемая таблица получает дополнительную техническую `_pa_next_run` через внешнюю проекцию CTAS.
 
-Двенадцать базовых `gp_to_click` взяты из последнего активного Python-параграфа «Для единой вкладки» актуального YAML. AST-аудит подтвердил точное совпадение порядка вызовов, GP/CH имён и всех параметров с прежней подготовленной выгрузкой (включая `array_type_cast` и `order_by_columns`); проверка встроена в сборку и останавливает её при будущем расхождении. Девять дополнительных выгрузок берутся из файла 2a подготовленного ускорения.
+Двенадцать базовых `gp_to_click` взяты из последнего активного Python-параграфа «Для единой вкладки» актуального YAML. AST-аудит подтверждает прежний порядок и все параметры, включая `array_type_cast` и `order_by_columns`; меняются только имена на `pa_next_*` и снимается схема у GP-источника. Проверка встроена в сборку и останавливает её при будущем расхождении. Девять дополнительных выгрузок берутся из файла 2a подготовленного ускорения.
 
 Изменения порядка сортировки/типов без измерений не внесены: ORDER BY и `array_type_cast` взяты из проверенной поставки. Предрасчёт переносит на GP готовые календарные показатели, атрибуты/коды/права, строки каталога для 4 готовых периодов и сочетаний переключателей. Произвольные периоды и нетиповые людские фильтры используют прежний точный fallback. Полный перебор сочетаний ЦА не материализуется.
 
@@ -101,7 +101,7 @@ flowchart TD
 
 - Создать отдельную Helicopter-ноду из `1. Helicopter — pa_next.yaml`; не заменять действующую ноду.
 - До первого запуска убедиться у владельца/в каталоге, что префикс `pa_next_` не занят другим проектом. Дальнейшие запуски намеренно заменяют только эту экспериментальную поставку.
-- Нужны те же доступы на чтение семи GP-источников, создание своих `usr_cross_data.pa_next_*` и таблиц в рабочей схеме, а также выгрузку в `prod_proteus.pa_next_*`. Значения учётных данных в репозиторий не входят.
+- Нужны те же доступы на чтение семи GP-источников, создание всех `pa_next_*` в рабочей схеме, а также выгрузку в `prod_proteus.pa_next_*`. Значения учётных данных в репозиторий не входят.
 - Нужны корпоративные модули `tactuality` и `proteus_py.database.clickhouse`, их исходная авторизация/настройки Helicopter. Используется проверенный в исходной поставке интерфейс `gp_to_click`; отключённый `click_execute`, произвольный DDL ClickHouse и представления не используются.
 - В новой ноде нет старых sid, refresh-cache вызовов и ID рабочего дашборда. Dataset/chart/cache-настройки создаются отдельно по основной инструкции.
 - Живые GP/Helicopter/Proteus в облаке недоступны: факт успешной локальной проверки не подтверждает корпоративные права или реализацию `gp_to_click`.

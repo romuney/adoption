@@ -1,12 +1,13 @@
 title: Proteus Adoption NEXT — отдельный отчёт
 paragraphs:
-- title: PA NEXT · ограничения запуска
+- title: Как запускать эту ноду
   shebang: md
-  code: Параллельный отчёт. Запускать весь ноут сверху вниз; одновременные запуски запрещены. Все изменяемые таблицы имеют
-    префикс pa_next_. При неуспешной выгрузке дальнейшие вызовы прекращаются; исправить причину и перезапустить весь ноут.
-    Старый manifest не подтверждает успех нового запуска. Старый отчёт не изменяется.
+  code: Параллельный отчёт. Запускать весь ноут сверху вниз; одновременные запуски запрещены. Новые GP-таблицы pa_next_* создаются
+    в рабочей схеме этой ноды; usr_cross_data используется только для чтения общих источников. При ошибке «no schema has been
+    selected to create in» выбрать рабочую схему ноды вместо usr_cross_data. При неуспешной выгрузке исправить причину и перезапустить
+    весь ноут. Старый manifest не подтверждает успех нового запуска.
   isEnabled: true
-- title: PA NEXT · готовность источника
+- title: Дождаться обновления источника просмотров
   shebang: python_condition
   code: |-
     import tactuality
@@ -16,27 +17,40 @@ paragraphs:
         ], gp_service='cross'
     )
   isEnabled: true
-- title: PA NEXT · версия запуска
+- title: Создать номер загрузки и статусы публикации
   shebang: gp
   code: |
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
     -- Only this isolated experiment's control tables are changed.
-    DROP TABLE IF EXISTS usr_cross_data.pa_next_run;
-    CREATE TABLE usr_cross_data.pa_next_run AS
+    DROP TABLE IF EXISTS pa_next_run;
+    CREATE TABLE pa_next_run AS
     SELECT md5(current_timestamp::text || random()::text)::text AS run_id
     DISTRIBUTED RANDOMLY;
-    DROP TABLE IF EXISTS usr_cross_data.pa_next_loading;
-    CREATE TABLE usr_cross_data.pa_next_loading AS
-    SELECT run_id, 'loading'::text AS state FROM usr_cross_data.pa_next_run
+    DROP TABLE IF EXISTS pa_next_loading;
+    CREATE TABLE pa_next_loading AS
+    SELECT run_id, 'loading'::text AS state FROM pa_next_run
     DISTRIBUTED RANDOMLY;
-    DROP TABLE IF EXISTS usr_cross_data.pa_next_ready;
-    CREATE TABLE usr_cross_data.pa_next_ready AS
-    SELECT run_id, 'ready'::text AS state FROM usr_cross_data.pa_next_run
+    DROP TABLE IF EXISTS pa_next_ready;
+    CREATE TABLE pa_next_ready AS
+    SELECT run_id, 'ready'::text AS state FROM pa_next_run
     DISTRIBUTED RANDOMLY;
   isEnabled: true
-- title: PA NEXT · исходные события
+- title: Собрать просмотры по действующей методологии
   shebang: gp
-  code: "drop table if exists usr_cross_data.pa_next_source;\ncreate table usr_cross_data.pa_next_source as\n\n/* ГИБРИДНАЯ\
-    \ ИСТОРИЯ ПРОСМОТРОВ:\n   - до 6 октября 2026 (включительно 5 окт): событие dashboard.rendered (полная история с 2025-07-27)\n\
+  code: "-- Keep all new GP tables in this notebook's current working schema.\n-- Pin search_path so DROP cannot fall back\
+    \ to an older usr_cross_data table.\n-- Empty search_path stops CREATE if a physical/source/session schema was selected.\n\
+    SELECT set_config('search_path', CASE\n    WHEN current_schema() IS NOT NULL\n     AND current_schema() NOT IN ('usr_cross_data',\
+    \ 'pg_catalog', 'information_schema')\n     AND current_schema() NOT LIKE 'pg_temp_%'\n    THEN quote_ident(current_schema())\
+    \ ELSE '' END, false);\n\ndrop table if exists pa_next_source;\ncreate table pa_next_source as\n\n/* ГИБРИДНАЯ ИСТОРИЯ\
+    \ ПРОСМОТРОВ:\n   - до 6 октября 2026 (включительно 5 окт): событие dashboard.rendered (полная история с 2025-07-27)\n\
     \   - с 6 октября 2026: событие proteus.dashboard.timeToFirstChartQuery (эталон, зарелижен 5 окт,\n     но полноценно\
     \ работает только с 6 окт — в день релиза 5 окт событие неполное, поэтому\n     день перехода выбран 6 окт, чтобы ничего\
     \ не потерять)\n   День перехода 6 октября выбран, т.к. 5 октября timeToFirstChartQuery работал неполноценно\n   (только\
@@ -77,11 +91,20 @@ paragraphs:
     \ >= date '2026-10-06'\n    and e.event_dttm <= current_date\ngroup by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,\
     \ 15, 16, 17, 18,  19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36;"
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_login_map
+- title: Объединить прежние и текущие логины сотрудников
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_login_map;
-    create table usr_cross_data.pa_next_login_map as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_login_map;
+    create table pa_next_login_map as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with lr as (
@@ -100,7 +123,7 @@ paragraphs:
         select login, rk from lr
         union
         select distinct lower(trim(v.login)), v.mdm_employee_rk
-        from usr_cross_data.pa_next_source v
+        from pa_next_source v
         where v.mdm_employee_rk is not null and nullif(trim(v.login), '') is not null
     )
     select a.login::text as login, min(c.canon)::text as canon
@@ -109,21 +132,30 @@ paragraphs:
     group by a.login
     having count(distinct c.canon) = 1 and min(c.canon) <> a.login
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (login);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · факт отчёт×логин×день» → usr_cross_data.pa_next_evd_day
+    -- Параграф «PA · факт отчёт×логин×день» → pa_next_evd_day
     -- Вселенная куба: без самого борда (13040) и сервисного логина.
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_login_map;
+    ANALYZE pa_next_login_map;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_evd_day
+- title: Собрать просмотры по дням, отчётам и людям
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_evd_day;
-    create table usr_cross_data.pa_next_evd_day as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_evd_day;
+    create table pa_next_evd_day as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     select
@@ -131,32 +163,41 @@ paragraphs:
         coalesce(mp.canon, v.login)::text    as login,   -- старый логин → текущий (pa_next_login_map)
         date_trunc('day', v.log_dttm)        as log_dttm,
         sum(v.action_count)::bigint          as views
-    from usr_cross_data.pa_next_source v
-    left join usr_cross_data.pa_next_login_map mp on mp.login = lower(trim(v.login))
+    from pa_next_source v
+    left join pa_next_login_map mp on mp.login = lower(trim(v.login))
     where v.dashboard_id is not null
       and v.login is not null
       and v.dashboard_id <> 13040
       and v.login <> 'svc_mon_otpp'
     group by 1, 2, 3
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · мета отчётов» → usr_cross_data.pa_next_dash_meta (1 строка на отчёт,
+    -- Параграф «PA · мета отчётов» → pa_next_dash_meta (1 строка на отчёт,
     -- последнее известное состояние по log_dttm).
     -- 2026-10-07: автор и владельцы — АКТУАЛЬНЫМИ логинами (pa_next_login_map, как зрители): у сменившего логин
     -- старый аккаунт Proteus остаётся автором/владельцем его прежних отчётов — без склейки его отчёты «размазаны».
     -- Логины владельцев — lower(trim()), без кавычек и повторов. Тот же канон берёт own_flg в «PA · пары».
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_evd_day;
+    ANALYZE pa_next_evd_day;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_dash_meta
+- title: Определить последние атрибуты отчётов
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_dash_meta;
-    create table usr_cross_data.pa_next_dash_meta as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_dash_meta;
+    create table pa_next_dash_meta as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with t as (
@@ -171,7 +212,7 @@ paragraphs:
             v.certified_by::text                                  as certified_by,
             v.created_dt                                          as created_dt,
             row_number() over (partition by v.dashboard_id order by v.log_dttm desc) as rn
-        from usr_cross_data.pa_next_source v
+        from pa_next_source v
         where v.dashboard_id is not null and v.dashboard_id <> 13040
     ),
     m as (select * from t where rn = 1),
@@ -181,7 +222,7 @@ paragraphs:
             select z.dashboard_id, btrim(lower(trim(z.x)), '"') as o
             from (select dashboard_id, unnest(owners_string) as x from m) z
         ) u
-        left join usr_cross_data.pa_next_login_map mp on mp.login = u.o
+        left join pa_next_login_map mp on mp.login = u.o
         where u.o <> ''
         group by u.dashboard_id
     )
@@ -191,13 +232,13 @@ paragraphs:
            m.collection_names, m.published, m.actual_flg, m.certified_by, m.created_dt
     from m
     left join ow on ow.dashboard_id = m.dashboard_id
-    left join usr_cross_data.pa_next_login_map ma on ma.login = btrim(lower(trim(m.owner_login)), '"')
+    left join pa_next_login_map ma on ma.login = btrim(lower(trim(m.owner_login)), '"')
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · атрибуты зрителей» → usr_cross_data.pa_next_emp_attrs
+    -- Параграф «PA · атрибуты зрителей» → pa_next_emp_attrs
     -- (1 строка на логин: последнее состояние по log_dttm + ФИО и стаж).
     -- НОВОЕ 2026-09-22: fio (Фамилия Имя из proteus_users), exp_nm (группа стажа
     -- из prod_v_emart.mdm_employee_structure_d, last_state_flg = 1) — закрывают хвост «ФИО/стаж — заглушки».
@@ -205,13 +246,22 @@ paragraphs:
     -- для группировки «Оргструктура» в «Кто смотрит» (колонки есть в proteus_views_1).
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_dash_meta;
+    ANALYZE pa_next_dash_meta;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_emp_attrs
+- title: Определить последние атрибуты зрителей
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_emp_attrs;
-    create table usr_cross_data.pa_next_emp_attrs as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_emp_attrs;
+    create table pa_next_emp_attrs as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     select
@@ -243,8 +293,8 @@ paragraphs:
             coalesce(v.ad_groups, array[]::text[])                  as ad_groups,
             v.mdm_employee_rk                                       as mdm_employee_rk,
             row_number() over (partition by coalesce(mp.canon, v.login) order by v.log_dttm desc) as rn
-        from usr_cross_data.pa_next_source v
-        left join usr_cross_data.pa_next_login_map mp on mp.login = lower(trim(v.login))
+        from pa_next_source v
+        left join pa_next_login_map mp on mp.login = lower(trim(v.login))
         where v.login is not null and v.login <> 'svc_mon_otpp'
     ) t
     left join (
@@ -260,11 +310,11 @@ paragraphs:
     ) m on m.mdm_employee_rk = t.mdm_employee_rk
     where t.rn = 1
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (login);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · пары отчёт×логин» → usr_cross_data.pa_next_pair   (НОВЫЙ 2026-09-22)
+    -- Параграф «PA · пары отчёт×логин» → pa_next_pair   (НОВЫЙ 2026-09-22)
     -- Главный предагрегат куба тела: одна строка на пару, всё, что куб раньше
     -- считал на лету из дневного факта, для всех 4 грануляций сразу.
     --   k = возраст бакета от даты свежести md (0 = текущий бакет);
@@ -278,17 +328,26 @@ paragraphs:
     -- месяц; квартал.
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_emp_attrs;
+    ANALYZE pa_next_emp_attrs;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_pair
+- title: Подготовить историю посещений по людям и отчётам
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_pair;
-    create table usr_cross_data.pa_next_pair as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_pair;
+    create table pa_next_pair as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with mx as (
-        select max(log_dttm) as md from usr_cross_data.pa_next_evd_day
+        select max(log_dttm) as md from pa_next_evd_day
     ),
     ev as (
         select
@@ -300,7 +359,7 @@ paragraphs:
             ((extract(year from x.md) * 4 + extract(quarter from x.md))
               - (extract(year from e.log_dttm) * 4 + extract(quarter from e.log_dttm)))::int   as kq,
             x.md
-        from usr_cross_data.pa_next_evd_day e
+        from pa_next_evd_day e
         cross join mx x
     )
     select
@@ -329,31 +388,40 @@ paragraphs:
         max(case when ev.login = any(m.owners_string) then 1 else 0 end)::smallint        as own_flg,
         max(ev.md)                                                                        as md
     from ev
-    left join usr_cross_data.pa_next_dash_meta m on m.dashboard_id = ev.dashboard_id
+    left join pa_next_dash_meta m on m.dashboard_id = ev.dashboard_id
     group by ev.dashboard_id, ev.login
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · просмотры по периодам» → usr_cross_data.pa_next_dash_bkt  (НОВЫЙ 2026-09-23)
+    -- Параграф «PA · просмотры по периодам» → pa_next_dash_bkt  (НОВЫЙ 2026-09-23)
     -- Отчёт × грануляция × возраст бакета k (< n текущего окна): просмотры всех и без
     -- владельцев отчёта. Нужен датасету pa_next_people (правая панель) для линии «Просмотры»
     -- динамики: остальное он теперь считает по pa_next_pair и дневной факт не читает — так
     -- правая панель стала такой же быстрой, как каталог. Возраст k — как в «PA · пары».
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_pair;
+    ANALYZE pa_next_pair;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_dash_bkt
+- title: Разложить посещения по календарным периодам
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_dash_bkt;
-    create table usr_cross_data.pa_next_dash_bkt as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_dash_bkt;
+    create table pa_next_dash_bkt as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with mx as (
-        select max(log_dttm) as md from usr_cross_data.pa_next_evd_day
+        select max(log_dttm) as md from pa_next_evd_day
     ),
     ev as (
         select
@@ -365,9 +433,9 @@ paragraphs:
               - (extract(year from e.log_dttm) * 12 + extract(month from e.log_dttm)))::int    as km,
             ((extract(year from x.md) * 4 + extract(quarter from x.md))
               - (extract(year from e.log_dttm) * 4 + extract(quarter from e.log_dttm)))::int   as kq
-        from usr_cross_data.pa_next_evd_day e
+        from pa_next_evd_day e
         cross join mx x
-        left join usr_cross_data.pa_next_dash_meta m on m.dashboard_id = e.dashboard_id
+        left join pa_next_dash_meta m on m.dashboard_id = e.dashboard_id
     )
     select dashboard_id, 'd'::text as grain, kd::bigint as k, sum(views)::bigint as views,
            sum(case when own = 0 then views else 0 end)::bigint as views_nown
@@ -382,7 +450,7 @@ paragraphs:
     select dashboard_id, 'q', kq::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
     from ev where kq < 8 group by dashboard_id, kq
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
 
 
@@ -401,7 +469,7 @@ paragraphs:
     -- ============================================================================
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · штат» → usr_cross_data.pa_next_staff   (2026-09-25: все, у кого есть ad_login)
+    -- Параграф «PA · штат» → pa_next_staff   (2026-09-25: все, у кого есть ad_login)
     -- База ЦА — все, у кого есть ad_login и кто работает сейчас:
     --  (1) MDM: логин берётся из ЛЮБОЙ строки записи за 13 мес. (в строке последнего состояния
     --      ad_login бывает пуст — такие люди раньше выпадали), атрибуты — из последнего состояния
@@ -412,20 +480,29 @@ paragraphs:
     -- Логины — lower(trim()), как в событиях. src: mdm | viewer — откуда человек в базе.
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_dash_bkt;
+    ANALYZE pa_next_dash_bkt;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_staff
+- title: Собрать актуальный состав сотрудников
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_staff;
-    create table usr_cross_data.pa_next_staff as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_staff;
+    create table pa_next_staff as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with lg as (
         -- логин записи — текущий (pa_next_login_map): старый и новый логины одного человека — одна строка
         select coalesce(mp.canon, lower(trim(m.ad_login))) as login, m.mdm_employee_rk, max(m.business_dt) as dt
         from prod_v_emart.mdm_employee_structure_d m
-        left join usr_cross_data.pa_next_login_map mp on mp.login = lower(trim(m.ad_login))
+        left join pa_next_login_map mp on mp.login = lower(trim(m.ad_login))
         where nullif(trim(m.ad_login), '') is not null
           and m.business_dt >= current_date - interval '13 months'
         group by 1, 2
@@ -441,8 +518,8 @@ paragraphs:
     vw as (
         select coalesce(mp.canon, lower(trim(v.login))) as lg, v.*,
             row_number() over (partition by coalesce(mp.canon, lower(trim(v.login))) order by v.log_dttm desc) as rn
-        from usr_cross_data.pa_next_source v
-        left join usr_cross_data.pa_next_login_map mp on mp.login = lower(trim(v.login))
+        from pa_next_source v
+        left join pa_next_login_map mp on mp.login = lower(trim(v.login))
         where nullif(trim(v.login), '') is not null and v.login <> 'svc_mon_otpp'
     ),
     base as (
@@ -489,23 +566,32 @@ paragraphs:
         group by 1
     ) u on u.username = b.login
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (login);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · права отчётов» → usr_cross_data.pa_next_dash_acl
+    -- Параграф «PA · права отчётов» → pa_next_dash_acl
     -- Отчёт × принципал: kind = 'user' (поимённое право, principal = логин) |
     -- 'group' (AD-группа, principal = имя группы). Только отчёты вселенной (pa_next_dash_meta).
     -- Принципал — lower(trim()): и логин, и имя группы (с ним же сверяется состав групп).
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_staff;
+    ANALYZE pa_next_staff;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_dash_acl
+- title: Собрать правила доступа к отчётам
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_dash_acl;
-    create table usr_cross_data.pa_next_dash_acl as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_dash_acl;
+    create table pa_next_dash_acl as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     select distinct
@@ -515,29 +601,38 @@ paragraphs:
     from prod_v_sse.proteus_dashboard_access a
     where a.access_type in ('user', 'group')
       and a.user_or_group_name is not null and a.user_or_group_name <> ''
-      and a.dashboard_id in (select dashboard_id from usr_cross_data.pa_next_dash_meta)
+      and a.dashboard_id in (select dashboard_id from pa_next_dash_meta)
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · состав групп прав» → usr_cross_data.pa_next_adg_member   (2026-09-26: вложенные группы)
+    -- Параграф «PA · состав групп прав» → pa_next_adg_member   (2026-09-26: вложенные группы)
     -- AD-группа × логин — только группы, которые встречаются в правах отчётов. Человек входит в группу,
     -- если он в ней напрямую ИЛИ в любой её подгруппе (подгруппы подгрупп — до 6 уровней вниз; циклы
     -- не страшны: уровень ограничен, повторы убирает distinct). ad_group — lower(trim()) имени, как в pa_next_dash_acl.
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_dash_acl;
+    ANALYZE pa_next_dash_acl;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_adg_member
+- title: Раскрыть состав AD-групп с вложенными группами
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_adg_member;
-    create table usr_cross_data.pa_next_adg_member as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_adg_member;
+    create table pa_next_adg_member as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with used as (
-        select distinct principal as ad_group from usr_cross_data.pa_next_dash_acl where kind = 'group'
+        select distinct principal as ad_group from pa_next_dash_acl where kind = 'group'
     ),
     items as (
         select guid, lower(trim(account_name))::text as nm, (item_type = 'Person') as is_person
@@ -568,118 +663,154 @@ paragraphs:
     inner join rel r on r.parent = g.guid and r.is_person
     inner join items c on c.guid = r.item
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (ad_group);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · размер групп» → usr_cross_data.pa_next_adg_size   (НОВЫЙ 2026-09-25)
+    -- Параграф «PA · размер групп» → pa_next_adg_size   (НОВЫЙ 2026-09-25)
     -- Сколько людей действующего штата в каждой AD-группе прав — список «AD-группы»
     -- в настройке ЦА (считается раз в сутки, а не на каждый клик).
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_adg_member;
+    ANALYZE pa_next_adg_member;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_adg_size
+- title: Подсчитать численность AD-групп
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_adg_size;
-    create table usr_cross_data.pa_next_adg_size as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_adg_size;
+    create table pa_next_adg_size as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     select m.ad_group::text as ad_group, count(distinct m.login)::bigint as n
-    from usr_cross_data.pa_next_adg_member m
-    inner join usr_cross_data.pa_next_staff s on s.login = m.login
+    from pa_next_adg_member m
+    inner join pa_next_staff s on s.login = m.login
     group by m.ad_group
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (ad_group);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · ЦА отчёта» → usr_cross_data.pa_next_dash_ca
+    -- Параграф «PA · ЦА отчёта» → pa_next_dash_ca
     -- Размер ЦА по правам на отчёт (для колонки «Охват ЦА» каталога) и флаг «широкий
     -- доступ»: ЦА ≥ 30 % штата — проценты охвата по такому знаменателю не показываем.
     -- Владельцы отчёта в ЦА не входят (как в панели при «Без владельцев» — умолчание).
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_adg_size;
+    ANALYZE pa_next_adg_size;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_dash_ca
+- title: Определить целевую аудиторию отчётов
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_dash_ca;
-    create table usr_cross_data.pa_next_dash_ca as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_dash_ca;
+    create table pa_next_dash_ca as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with ca as (
         select a.dashboard_id, a.principal as login
-        from usr_cross_data.pa_next_dash_acl a
+        from pa_next_dash_acl a
         where a.kind = 'user'
         union
         select a.dashboard_id, m.login
-        from usr_cross_data.pa_next_dash_acl a
-        inner join usr_cross_data.pa_next_adg_member m on m.ad_group = a.principal
+        from pa_next_dash_acl a
+        inner join pa_next_adg_member m on m.ad_group = a.principal
         where a.kind = 'group'
     ),
-    hc as (select count(*) as n from usr_cross_data.pa_next_staff)
+    hc as (select count(*) as n from pa_next_staff)
     select c.dashboard_id::int as dashboard_id,
            count(*)::bigint as ca_n,
            (count(*) >= 0.3 * max(hc.n))::int as ca_wide
     from ca c
-    inner join usr_cross_data.pa_next_staff s on s.login = c.login
+    inner join pa_next_staff s on s.login = c.login
     left join (
-        select dashboard_id, lower(unnest(owners_string)) as login from usr_cross_data.pa_next_dash_meta
+        select dashboard_id, lower(unnest(owners_string)) as login from pa_next_dash_meta
     ) ow on ow.dashboard_id = c.dashboard_id and ow.login = c.login
     cross join hc
     where ow.login is null
     group by c.dashboard_id
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
 
     -- ---------------------------------------------------------------------------
-    -- Параграф «PA · доступ зрителей» → usr_cross_data.pa_next_pair_acc   (НОВЫЙ 2026-09-25, после «PA · ЦА отчёта»)
+    -- Параграф «PA · доступ зрителей» → pa_next_pair_acc   (НОВЫЙ 2026-09-25, после «PA · ЦА отчёта»)
     -- Пары «отчёт × зритель» из pa_next_pair, где зритель — действующий сотрудник с AD-логином (pa_next_staff) с правом
     -- на отчёт: поимённо или через AD-группу. Числитель «Охвата ЦА» каталога вкладки: зрители из ЦА, а не все.
     -- Считается от пар к группам зрителя (не от групп ко всем их членам) — без взрыва на широких группах.
     -- ---------------------------------------------------------------------------
 
-    ANALYZE usr_cross_data.pa_next_dash_ca;
+    ANALYZE pa_next_dash_ca;
   isEnabled: true
-- title: PA NEXT · usr_cross_data.pa_next_pair_acc
+- title: Проверить доступ зрителей к просмотренным отчётам
   shebang: gp
   code: |
-    drop table if exists usr_cross_data.pa_next_pair_acc;
-    create table usr_cross_data.pa_next_pair_acc as
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_pair_acc;
+    create table pa_next_pair_acc as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with pr as (
         select distinct p.dashboard_id::int as dashboard_id, lower(p.login)::text as login
-        from usr_cross_data.pa_next_pair p
+        from pa_next_pair p
         where p.login is not null and p.login <> ''
     ),
     acc as (
         select pr.dashboard_id, pr.login
         from pr
-        inner join usr_cross_data.pa_next_dash_acl a
+        inner join pa_next_dash_acl a
             on a.kind = 'user' and a.dashboard_id = pr.dashboard_id and a.principal = pr.login
         union
         select pr.dashboard_id, pr.login
         from pr
-        inner join usr_cross_data.pa_next_adg_member m on m.login = pr.login
-        inner join usr_cross_data.pa_next_dash_acl a
+        inner join pa_next_adg_member m on m.login = pr.login
+        inner join pa_next_dash_acl a
             on a.kind = 'group' and a.dashboard_id = pr.dashboard_id and a.principal = m.ad_group
     )
     select acc.dashboard_id, acc.login
     from acc
-    inner join usr_cross_data.pa_next_staff s on s.login = acc.login
+    inner join pa_next_staff s on s.login = acc.login
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
-    ANALYZE usr_cross_data.pa_next_pair_acc;
+    ANALYZE pa_next_pair_acc;
   isEnabled: true
-- title: PA NEXT · ускорение 1a
+- title: Подготовить атрибуты людей, права и словари (ускорение 1a)
   shebang: gp
   code: |
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
     -- ---- витрина «PA · дата свежести» → pa_next_md
     -- Одна строка: md — дата свежести (как max(md) пар), ds — начало истории событий (первый визит).
     -- Раньше каждый запрос трёх датасетов сканировал ради этих двух чисел всю pa_next_pair.
@@ -688,9 +819,9 @@ paragraphs:
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     select max(coalesce(md, dmax)) as md, min(dmin) as ds
-    from usr_cross_data.pa_next_pair
+    from pa_next_pair
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed randomly;
     analyze pa_next_md;
 
@@ -703,21 +834,21 @@ paragraphs:
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
     with v as (
-        select 'spec'::text as g, coalesce(emp_specialization_desc, '')::text as v from usr_cross_data.pa_next_staff
-        union select 'stream', coalesce(emp_stream_desc, '') from usr_cross_data.pa_next_staff
-        union select 'exp', coalesce(exp_nm, '') from usr_cross_data.pa_next_staff
-        union select 'hq', coalesce(hq_code, '') from usr_cross_data.pa_next_staff
-        union select 'it', coalesce(it_code, '') from usr_cross_data.pa_next_staff
-        union select 'spec', coalesce(emp_specialization_desc, '') from usr_cross_data.pa_next_emp_attrs
-        union select 'stream', coalesce(emp_stream_desc, '') from usr_cross_data.pa_next_emp_attrs
-        union select 'exp', coalesce(exp_nm, '') from usr_cross_data.pa_next_emp_attrs
+        select 'spec'::text as g, coalesce(emp_specialization_desc, '')::text as v from pa_next_staff
+        union select 'stream', coalesce(emp_stream_desc, '') from pa_next_staff
+        union select 'exp', coalesce(exp_nm, '') from pa_next_staff
+        union select 'hq', coalesce(hq_code, '') from pa_next_staff
+        union select 'it', coalesce(it_code, '') from pa_next_staff
+        union select 'spec', coalesce(emp_specialization_desc, '') from pa_next_emp_attrs
+        union select 'stream', coalesce(emp_stream_desc, '') from pa_next_emp_attrs
+        union select 'exp', coalesce(exp_nm, '') from pa_next_emp_attrs
         union select z.g, '' from (select 'spec'::text as g union all select 'stream' union all select 'exp'
                                    union all select 'hq' union all select 'it') z
     )
     select g, v, (row_number() over (partition by g order by convert_to(v, 'UTF8')))::int as code
     from v
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (g);
     analyze pa_next_dict;
 
@@ -731,14 +862,14 @@ paragraphs:
         select a.principal, a.kind,
             bit_or(1 | (case when m.published = 1 then 2 else 0 end) | (case when m.actual_flg = 1 then 4 else 0 end)
                      | (case when m.published = 1 and m.actual_flg = 1 then 8 else 0 end)) as b
-        from usr_cross_data.pa_next_dash_acl a
-        inner join usr_cross_data.pa_next_dash_meta m on m.dashboard_id = a.dashboard_id
+        from pa_next_dash_acl a
+        inner join pa_next_dash_meta m on m.dashboard_id = a.dashboard_id
         group by a.principal, a.kind
     ),
     lb as (
         select principal as lg, b from pf where kind = 'user'
         union all
-        select g.login, pf.b from pf inner join usr_cross_data.pa_next_adg_member g on g.ad_group = pf.principal where pf.kind = 'group'
+        select g.login, pf.b from pf inner join pa_next_adg_member g on g.ad_group = pf.principal where pf.kind = 'group'
     )
     select lg::text as lg, bit_or(b)::int as a4
     from lb
@@ -762,7 +893,7 @@ paragraphs:
         -- Generated by tools/parallel/unicode_empty.py; no GP chr(codepoint).
         select '^(?:(?:0[9acd]|2[012356789acdef]|3[abf]|40|5[bcdf]|7[bd]|c(?:2(?:a[17b]|b[67bf])|dbe|e87)|d(?:59[abcdef]|6(?:8[9a]|be)|7(?:8[036]|b[34])|8(?:8[9acd]|9[bdef])|9a[abcd]|b94|c8[0123456789abcd]|fb[789])|e(?:0(?:a(?:0b[0123456789abcde]|19e|5(?:a[45]|b0)|7bd|9b6|bb0)|b(?:1b7|284|7b4|9(?:8f|9[ab])|c(?:8[456789abcdef]|9[0124]|b[abcd])|e85|f9[012349a]))|1(?:8(?:18[abcdef]|3bb|da[012345678])|9(?:080|9ae|a9[bc]|ba[bcd]|cb[56]|f9[45689a])|a(?:08[0123456789a]|58[45]|89[ef]|aa[012345689abcd]|d(?:9[abcdef]|a0|b[de])|fb[cdef])|b(?:0b[bcdef]|1b[ef]|3(?:8[01234567]|93)))|2(?:8(?:0(?:[9b][0123456789abcdef]|a[01234567])|1(?:8[012356789abcdef]|9[013456789abcde]|b[de])|28[de]|c(?:8[89ab]|a[9a]))|9(?:d(?:a[89abcdef]|b[012345])|f(?:8[56]|a[6789abcdef]))|a(?:6(?:8[3456789abcdef]|9[012345678])|7(?:9[89ab]|b[cd]))|b(?:3b[9abcef]|5b0|8(?:[89b][0123456789abcdef]|a[0123456789abcde])|9(?:8[0123456789abcdef]|9[23456789abcd])))|38(?:0(?:8[12389abcdef]|9[01456789abcdef]|b[0d])|2a0|3bb)|a(?:9(?:3b[ef]|88[def]|9b[3e]|bb[234567])|a(?:1b[4567]|3(?:8[ef]|b[89ac])|4a[ef]|59f|7(?:8[123456789abcd]|9[ef])|99[cdef]|b(?:9[ef]|b[01])|fab))|fb(?:4b[ef]|8(?:9[0123456789]|b[0123456789abcdef])|9(?:8[0123456789abcdef]|9[012456789abcdef]|a[0138ab])|c(?:8[12356789acdef]|9[abf]|a0|b[bcdf])|d(?:9[bdf]|a[012345])))|f09(?:0(?:8(?:48[012]|e9f|f90)|95af|a(?:197|4[9b]f|9(?:9[012345678]|bf)|bb[0123456]|cb[9abcdef]|e9[9abc])|b(?:aad|d9[56789]|e8[6789]))|1(?:8(?:18[789abcd]|2b[bcef]|38[01]|5(?:8[0123]|b[45])|7(?:8[5678d]|9[bdef])|8b[89abcd]|aa9)|9(?:1(?:8[bcdef]|9[abd])|386|7(?:8[123456789abcdef]|9[01234567])|9(?:8[123]|a[0123456789abc])|ab9|cb[cde])|a(?:0bb|58[456]|7a2|8bf|98[0123456]|a(?:9[abcef]|a[012])|c8[0123456789])|b(?:1(?:8[12345]|b[01])|bb[78]|d8[3456789abcdef]|fbf))|2(?:91b[01234]|bfb[12])|6(?:a(?:9a[ef]|bb5|cb[789ab]|d84)|b(?:a9[789a]|fa2))|bb29f|daa8[789ab]|ea59[ef])))*$'::text as re
     ),
-    l as (select distinct login from usr_cross_data.pa_next_pair where login is not null),
+    l as (select distinct login from pa_next_pair where login is not null),
     x as (
         select l.login::text as login, translate(l.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')::text as lg,
             case when s.login is null then 0 else 1 end as stf,
@@ -774,8 +905,8 @@ paragraphs:
             case when coalesce(a.management_head_flg, 0) = 1 then 1 else 0 end as is_head,
             coalesce(a.fio, '')::text as fio, coalesce(a.exp_nm, '')::text as exp_nm
         from l
-        left join usr_cross_data.pa_next_staff s on s.login = translate(l.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
-        left join usr_cross_data.pa_next_emp_attrs a on a.login = l.login
+        left join pa_next_staff s on s.login = translate(l.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
+        left join pa_next_emp_attrs a on a.login = l.login
     ),
     n as (
         select x.*, case when encode(convert_to(a3, 'UTF8'), 'hex') ~ pu.re then ''::text else a3 end as n3, case when encode(convert_to(a4_, 'UTF8'), 'hex') ~ pu.re then ''::text else a4_ end as n4, case when encode(convert_to(a5, 'UTF8'), 'hex') ~ pu.re then ''::text else a5 end as n5,
@@ -797,7 +928,7 @@ paragraphs:
     inner join pa_next_dict dq on dq.g = 'hq' and dq.v = o.hq
     inner join pa_next_dict di on di.g = 'it' and di.v = o.it
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (login);
     analyze pa_next_viewer;
 
@@ -824,7 +955,7 @@ paragraphs:
             coalesce(s.hq_code, '')::text as hqc, coalesce(s.it_code, '')::text as itc,
             case when coalesce(s.management_head_flg, 0) = 1 then 1 else 0 end as hdf,
             coalesce(s.fio, '')::text as fio, coalesce(s.exp_nm, '')::text as sexp
-        from usr_cross_data.pa_next_staff s
+        from pa_next_staff s
     ),
     n as (
         select x.*, case when encode(convert_to(a3, 'UTF8'), 'hex') ~ pu.re then ''::text else a3 end as n3, case when encode(convert_to(a4_, 'UTF8'), 'hex') ~ pu.re then ''::text else a4_ end as n4, case when encode(convert_to(a5, 'UTF8'), 'hex') ~ pu.re then ''::text else a5 end as n5,
@@ -847,13 +978,22 @@ paragraphs:
     inner join pa_next_dict dq on dq.g = 'hq' and dq.v = o.hqc
     inner join pa_next_dict di on di.g = 'it' and di.v = o.itc
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (login);
     analyze pa_next_staffx;
   isEnabled: true
-- title: PA NEXT · ускорение 1b
+- title: Рассчитать дневные показатели и календари (ускорение 1b)
   shebang: gp
   code: |
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
     -- ---- витрина «PA · календарь отчёта по дням» → pa_next_dash_day
     -- Отчёт × день: зрителей и просмотров — всех и без владельцев отчёта (пары own_flg = 1). «Календарь» панели
     -- по одному отчёту и «Календарь» мгновенной панели каталога (20 недель / 12 месяцев / 8 кварталов) берут дни
@@ -867,12 +1007,12 @@ paragraphs:
         count(distinct case when coalesce(p.own_flg, 0) = 0 then e.login end)::bigint as users_nown,
         sum(e.views)::bigint as views,
         sum(case when coalesce(p.own_flg, 0) = 0 then e.views else 0 end)::bigint as views_nown
-    from usr_cross_data.pa_next_evd_day e
-    left join usr_cross_data.pa_next_pair p on p.dashboard_id = e.dashboard_id and p.login = e.login
+    from pa_next_evd_day e
+    left join pa_next_pair p on p.dashboard_id = e.dashboard_id and p.login = e.login
     where e.login is not null
     group by 1, 2
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
     analyze pa_next_dash_day;
 
@@ -889,21 +1029,30 @@ paragraphs:
         count(distinct case when coalesce(p.own_flg, 0) = 0 then e.login end)::bigint as users_nown,
         sum(e.views)::bigint as views,
         sum(case when coalesce(p.own_flg, 0) = 0 then e.views else 0 end)::bigint as views_nown
-    from usr_cross_data.pa_next_evd_day e
-    inner join usr_cross_data.pa_next_dash_meta m on m.dashboard_id = e.dashboard_id
-    left join usr_cross_data.pa_next_pair p on p.dashboard_id = e.dashboard_id and p.login = e.login
+    from pa_next_evd_day e
+    inner join pa_next_dash_meta m on m.dashboard_id = e.dashboard_id
+    left join pa_next_pair p on p.dashboard_id = e.dashboard_id and p.login = e.login
     cross join (select 0 as pub, 0 as act union all select 1, 0 union all select 0, 1 union all select 1, 1) f
     where e.login is not null
       and (f.pub = 0 or m.published = 1) and (f.act = 0 or m.actual_flg = 1)
     group by 1, 2, 3
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dt);
     analyze pa_next_all_day;
   isEnabled: true
-- title: PA NEXT · ускорение 1c
+- title: Подготовить строки каталога и аудитории (ускорение 1c)
   shebang: gp
   code: |
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
     -- ---- витрина «PA · каталог — строки отчётов» → pa_next_cat_rep
     -- Строки вкладки «Отчёты» каталога, когда людских условий нет (ни фильтра «Кто смотрит», ни ЦА по условиям, ни своего
     -- периода) — так открывается борд и так он пересчитывается на период и переключатели. Строка — отчёт × exc (1 — без
@@ -922,8 +1071,8 @@ paragraphs:
             case when length(replace((coalesce(p.msk_d, 0) & 1073741823)::bit(64)::text, '0', '')) >= 12 then 4 when length(replace((coalesce(p.msk_w, 0) & 255)::bit(64)::text, '0', '')) >= 6 then 3
                  when length(replace((coalesce(p.msk_m, 0) & 7)::bit(64)::text, '0', '')) >= 2 then 2 when (coalesce(p.msk_m, 0) & 7) <> 0 then 1 else 0 end as rc,
             case when a.login is null then 0 else 1 end as acc
-        from usr_cross_data.pa_next_pair p
-        left join usr_cross_data.pa_next_pair_acc a on a.dashboard_id = p.dashboard_id and a.login = translate(p.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
+        from pa_next_pair p
+        left join pa_next_pair_acc a on a.dashboard_id = p.dashboard_id and a.login = translate(p.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
         where p.login is not null
     ),
     ex as (select 0 as exc union all select 1)
@@ -937,7 +1086,7 @@ paragraphs:
     where e.exc = 0 or p.own = 0
     group by e.exc, p.dashboard_id
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (dashboard_id);
     analyze pa_next_cat_rep;
 
@@ -950,12 +1099,12 @@ paragraphs:
     create table pa_next_cat_grp as
     SELECT payload.*, generation.run_id AS _pa_next_run
     FROM (
-    with ox as (select dashboard_id, unnest(owners_string) as x from usr_cross_data.pa_next_dash_meta),
+    with ox as (select dashboard_id, unnest(owners_string) as x from pa_next_dash_meta),
     oz as (select dashboard_id, bool_or(coalesce(x, '') <> '') as ne from ox group by dashboard_id),
     own as (    -- владельцы отчёта: все из owners_string (без пустых, латиница — строчными, без повторов), пусто — автор owner_login
         select o.dashboard_id, translate(trim(coalesce(o.x, '')), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') as o from ox o inner join oz z on z.dashboard_id = o.dashboard_id where z.ne
         union
-        select m.dashboard_id, translate(trim(coalesce(m.owner_login, '')), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') from usr_cross_data.pa_next_dash_meta m
+        select m.dashboard_id, translate(trim(coalesce(m.owner_login, '')), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz') from pa_next_dash_meta m
         left join oz z on z.dashboard_id = m.dashboard_id where coalesce(z.ne, false) = false
     ),
     cb as (    -- 8 сочетаний переключателей «Считать» шапки
@@ -964,11 +1113,11 @@ paragraphs:
         cross join (select 0 as exc union all select 1) c
     ),
     k as (
-        select dashboard_id, 0 as kd, ''::text as k0 from usr_cross_data.pa_next_dash_meta
+        select dashboard_id, 0 as kd, ''::text as k0 from pa_next_dash_meta
         union all
         select dashboard_id, 2, o from own where o <> ''
         union all
-        select dashboard_id, 3, c from (select dashboard_id, unnest(collection_names)::text as c from usr_cross_data.pa_next_dash_meta) z where coalesce(c, '') <> ''
+        select dashboard_id, 3, c from (select dashboard_id, unnest(collection_names)::text as c from pa_next_dash_meta) z where coalesce(c, '') <> ''
     ),
     lk as (    -- человек × строка × сочетание: маски и просмотры по всем его отчётам строки
         select c.pub, c.act, c.exc, k.kd, k.k0, p.login, max(p.dmax) as dmax,
@@ -976,8 +1125,8 @@ paragraphs:
             bit_or(coalesce(p.msk_w, 0)) as m_w, sum(coalesce(p.v_w, 0)) as v_w,
             bit_or(coalesce(p.msk_m, 0)) as m_m, sum(coalesce(p.v_m, 0)) as v_m,
             bit_or(coalesce(p.msk_q, 0)) as m_q, sum(coalesce(p.v_q, 0)) as v_q
-        from usr_cross_data.pa_next_pair p
-        inner join usr_cross_data.pa_next_dash_meta m on m.dashboard_id = p.dashboard_id
+        from pa_next_pair p
+        inner join pa_next_dash_meta m on m.dashboard_id = p.dashboard_id
         inner join k on k.dashboard_id = p.dashboard_id
         inner join cb c on (c.pub = 0 or m.published = 1) and (c.act = 0 or m.actual_flg = 1) and (c.exc = 0 or coalesce(p.own_flg, 0) = 0)
         where p.login is not null
@@ -991,7 +1140,7 @@ paragraphs:
     from lk cross join pa_next_md x
     group by pub, act, exc, kd, k0
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (k0);
     analyze pa_next_cat_grp;
 
@@ -1015,8 +1164,8 @@ paragraphs:
             bit_or(coalesce(p.msk_w, 0)) as m_w, sum(coalesce(p.v_w, 0)) as v_w,
             bit_or(coalesce(p.msk_m, 0)) as m_m, sum(coalesce(p.v_m, 0)) as v_m,
             bit_or(coalesce(p.msk_q, 0)) as m_q, sum(coalesce(p.v_q, 0)) as v_q
-        from usr_cross_data.pa_next_pair p
-        inner join usr_cross_data.pa_next_dash_meta m on m.dashboard_id = p.dashboard_id
+        from pa_next_pair p
+        inner join pa_next_dash_meta m on m.dashboard_id = p.dashboard_id
         inner join cb c on (c.pub = 0 or m.published = 1) and (c.act = 0 or m.actual_flg = 1) and (c.exc = 0 or coalesce(p.own_flg, 0) = 0)
         where p.login is not null
         group by c.pub, c.act, c.exc, translate(p.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
@@ -1060,11 +1209,11 @@ paragraphs:
     from vz
     group by pub, act, exc
     ) payload
-    CROSS JOIN usr_cross_data.pa_next_run generation
+    CROSS JOIN pa_next_run generation
     distributed by (ak0);
     analyze pa_next_cat_aud;
   isEnabled: true
-- title: PA NEXT · выгрузка и публикация версии
+- title: Выгрузить витрины в ClickHouse и подтвердить готовность
   shebang: python_condition
   code: |
     # Uses the same supported gp_to_click API as the production notebook.
@@ -1072,20 +1221,20 @@ paragraphs:
     import proteus_py.database.clickhouse as ppy
     # Invalidate publication BEFORE the first data table changes. If this fails,
     # execution raises and no data export below runs.
-    ppy.gp_to_click('usr_cross_data.pa_next_loading', 'prod_proteus.pa_next_manifest',
+    ppy.gp_to_click('pa_next_loading', 'prod_proteus.pa_next_manifest',
                     order_by_columns='(run_id)')
-    ppy.gp_to_click('usr_cross_data.pa_next_evd_day', 'prod_proteus.pa_next_evd_day', partition_by_columns='toYYYYMM(log_dttm)', order_by_columns='(dashboard_id, login, log_dttm)')
-    ppy.gp_to_click('usr_cross_data.pa_next_dash_meta', 'prod_proteus.pa_next_dash_meta', order_by_columns='(dashboard_id)', array_type_cast=True)
-    ppy.gp_to_click('usr_cross_data.pa_next_emp_attrs', 'prod_proteus.pa_next_emp_attrs', order_by_columns='(login)', array_type_cast=True)
-    ppy.gp_to_click('usr_cross_data.pa_next_pair', 'prod_proteus.pa_next_pair', order_by_columns='(dashboard_id, login)')
-    ppy.gp_to_click('usr_cross_data.pa_next_dash_bkt', 'prod_proteus.pa_next_dash_bkt', order_by_columns='(grain, dashboard_id, k)')
-    ppy.gp_to_click('usr_cross_data.pa_next_login_map', 'prod_proteus.pa_next_login_map', order_by_columns='(login)')
-    ppy.gp_to_click('usr_cross_data.pa_next_staff', 'prod_proteus.pa_next_staff', order_by_columns='(login)')
-    ppy.gp_to_click('usr_cross_data.pa_next_dash_acl', 'prod_proteus.pa_next_dash_acl', order_by_columns='(dashboard_id, kind, principal)')
-    ppy.gp_to_click('usr_cross_data.pa_next_adg_member', 'prod_proteus.pa_next_adg_member', order_by_columns='(ad_group, login)')
-    ppy.gp_to_click('usr_cross_data.pa_next_dash_ca', 'prod_proteus.pa_next_dash_ca', order_by_columns='(dashboard_id)')
-    ppy.gp_to_click('usr_cross_data.pa_next_adg_size', 'prod_proteus.pa_next_adg_size', order_by_columns='(ad_group)')
-    ppy.gp_to_click('usr_cross_data.pa_next_pair_acc', 'prod_proteus.pa_next_pair_acc', order_by_columns='(dashboard_id, login)')
+    ppy.gp_to_click('pa_next_evd_day', 'prod_proteus.pa_next_evd_day', partition_by_columns='toYYYYMM(log_dttm)', order_by_columns='(dashboard_id, login, log_dttm)')
+    ppy.gp_to_click('pa_next_dash_meta', 'prod_proteus.pa_next_dash_meta', order_by_columns='(dashboard_id)', array_type_cast=True)
+    ppy.gp_to_click('pa_next_emp_attrs', 'prod_proteus.pa_next_emp_attrs', order_by_columns='(login)', array_type_cast=True)
+    ppy.gp_to_click('pa_next_pair', 'prod_proteus.pa_next_pair', order_by_columns='(dashboard_id, login)')
+    ppy.gp_to_click('pa_next_dash_bkt', 'prod_proteus.pa_next_dash_bkt', order_by_columns='(grain, dashboard_id, k)')
+    ppy.gp_to_click('pa_next_login_map', 'prod_proteus.pa_next_login_map', order_by_columns='(login)')
+    ppy.gp_to_click('pa_next_staff', 'prod_proteus.pa_next_staff', order_by_columns='(login)')
+    ppy.gp_to_click('pa_next_dash_acl', 'prod_proteus.pa_next_dash_acl', order_by_columns='(dashboard_id, kind, principal)')
+    ppy.gp_to_click('pa_next_adg_member', 'prod_proteus.pa_next_adg_member', order_by_columns='(ad_group, login)')
+    ppy.gp_to_click('pa_next_dash_ca', 'prod_proteus.pa_next_dash_ca', order_by_columns='(dashboard_id)')
+    ppy.gp_to_click('pa_next_adg_size', 'prod_proteus.pa_next_adg_size', order_by_columns='(ad_group)')
+    ppy.gp_to_click('pa_next_pair_acc', 'prod_proteus.pa_next_pair_acc', order_by_columns='(dashboard_id, login)')
     ppy.gp_to_click('pa_next_md', 'prod_proteus.pa_next_md', order_by_columns='(md)')
     ppy.gp_to_click('pa_next_dict', 'prod_proteus.pa_next_dict', order_by_columns='(g, code)')
     ppy.gp_to_click('pa_next_viewer', 'prod_proteus.pa_next_viewer', order_by_columns='(login)', array_type_cast=True)
@@ -1096,7 +1245,7 @@ paragraphs:
     ppy.gp_to_click('pa_next_cat_grp', 'prod_proteus.pa_next_cat_grp', order_by_columns='(pub, act, exc, kd, k0)')
     ppy.gp_to_click('pa_next_cat_aud', 'prod_proteus.pa_next_cat_aud', order_by_columns='(pub, act, exc, ad, ak0)')
     # Publish ready LAST; exceptions propagate and stop subsequent export calls.
-    ppy.gp_to_click('usr_cross_data.pa_next_ready', 'prod_proteus.pa_next_manifest',
+    ppy.gp_to_click('pa_next_ready', 'prod_proteus.pa_next_manifest',
                     order_by_columns='(run_id)')
     print('PA NEXT: all data tables uploaded; generation published ready')
   isEnabled: true

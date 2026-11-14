@@ -33,7 +33,7 @@ def main():
             writes = re.findall(r'\b(?:create\s+(?:temp\s+)?table|drop\s+table\s+(?:if\s+exists\s+)?|truncate\s+(?:table\s+)?|insert\s+into|update|delete\s+from|analyze)\s*([\w.]+)', sql, re.I)
             assert writes, ('No GP writes found', p['title'])
             for name in writes:
-                assert basename(name).startswith('pa_next_'), ('Non-isolated write', name)
+                assert name.startswith('pa_next_') and '.' not in name, ('Write outside working schema', name)
             names = {basename(n) for n in re.findall(r'\bcreate\s+(?:temp\s+)?table\s+([\w.]+)',sql,re.I)}
             uses = {basename(n) for n in re.findall(r'\b(?:\w+\.)?(pa_next_\w+)\b',sql)}
             created.update(names)
@@ -48,7 +48,7 @@ def main():
                         assert node.func.id not in {'exec','eval','compile'}, 'Dynamic Python must be reviewed'
                     if isinstance(node.func, ast.Attribute) and node.func.attr == 'gp_to_click':
                         gp, ch = [ast.literal_eval(x) for x in node.args[:2]]
-                        assert basename(gp).startswith('pa_next_') and ch.startswith('prod_proteus.pa_next_'), (gp,ch)
+                        assert gp.startswith('pa_next_') and '.' not in gp and ch.startswith('prod_proteus.pa_next_'), (gp,ch)
                         export_calls.append((basename(gp),basename(ch)))
                         exported.add(basename(ch))
             assert 'cache_warmup' not in code and 'refresh_cache' not in code

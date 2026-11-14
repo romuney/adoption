@@ -7,7 +7,7 @@
 WITH
 report_max AS (
   SELECT dashboard_id, max(log_dttm) AS md
-  FROM usr_cross_data.pa_next_source
+  FROM pa_next_source
   WHERE dashboard_id IS NOT NULL AND dashboard_id <> 13040
   GROUP BY dashboard_id
 ),
@@ -19,14 +19,14 @@ report_variants AS (
       coalesce(v.published::integer, 0), coalesce(v.actual_flg::integer, 0),
       v.certified_by::text, v.created_dt
     )) AS variants
-  FROM usr_cross_data.pa_next_source v
+  FROM pa_next_source v
   JOIN report_max d ON d.dashboard_id = v.dashboard_id AND d.md = v.log_dttm
   GROUP BY v.dashboard_id
 ),
 viewers AS (
   SELECT coalesce(mp.canon, v.login)::text AS canon, v.*
-  FROM usr_cross_data.pa_next_source v
-  LEFT JOIN usr_cross_data.pa_next_login_map mp ON mp.login = lower(trim(v.login))
+  FROM pa_next_source v
+  LEFT JOIN pa_next_login_map mp ON mp.login = lower(trim(v.login))
   WHERE v.login IS NOT NULL AND v.login <> 'svc_mon_otpp'
 ),
 viewer_max AS (

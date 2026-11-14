@@ -109,7 +109,8 @@ uv --cache-dir /workspace/.cache/uv pip install \
 python3 tools/parallel/verify_data.py
 # Временная отдельная CH-база: generation/nonce, смешанные и пустые состояния.
 /workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_publication.py
-# Отдельная локальная PG-база: все GP-параграфы и 12 базовых таблиц.
+# Отдельная локальная PG-база: 17 GP-параграфов, 12 базовых таблиц,
+# рабочая схема, источники без права записи, таблицы-приманки и второе соединение.
 /workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_gp_pipeline.py
 # Три отдельные локальные PG-базы: Unicode и полные поля ФИО против CH 24.8.
 # Воспроизводит chr(894) и скрытую порчу ФИО в старом коде SQL_ASCII.

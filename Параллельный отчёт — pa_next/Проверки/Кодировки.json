@@ -1,7 +1,7 @@
 {
   "status": "passed",
   "completed": true,
-  "candidate_yaml_sha256": "ec8f09068cc58db5a6dc7129add899ea8169cb799a165ce7dc9a6107f53405de",
+  "candidate_yaml_sha256": "85c095f30b5240804a79b2b8c3d4d748fa217b5a72717106bbcf9cb049df585d",
   "frozen_codepoints_sha256": "4cdce17d50c1b295773cb3e020a56a9941e4f0ab3af1bb9c4f18d47db1759060",
   "frozen_codepoints": 847,
   "codepoints_and_neighbors": 1205,

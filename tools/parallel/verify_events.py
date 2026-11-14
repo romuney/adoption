@@ -15,6 +15,20 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 AS_OF = '2026-11-13'
+WORKSPACE = 'pa_next_workspace'
+
+
+def created_tables(sql):
+    code = re.sub(r'/\*.*?\*/|--[^\n]*', '', sql, flags=re.S)
+    return re.findall(r'(?i)\bcreate\s+(?:temp(?:orary)?\s+)?table\s+([\w.]+)', code)
+
+
+def paragraph_creating(notebook, table):
+    found = [p for p in notebook['paragraphs']
+             if p.get('shebang') == 'gp' and table in created_tables(p.get('code', ''))]
+    if len(found) != 1:
+        raise RuntimeError('Expected exactly one GP paragraph creating ' + table)
+    return found[0]
 
 def freeze_date(sql, as_of=AS_OF):
     date.fromisoformat(as_of)
@@ -41,7 +55,8 @@ def main():
     admin.close()
     connection = psycopg2.connect(dbname=db); connection.autocommit = True
     with connection.cursor() as cur:
-        cur.execute('DROP SCHEMA IF EXISTS prod_v_sse_crossdata CASCADE; DROP SCHEMA IF EXISTS usr_cross_data CASCADE; CREATE SCHEMA prod_v_sse_crossdata; CREATE SCHEMA usr_cross_data;')
+        cur.execute('DROP SCHEMA IF EXISTS prod_v_sse_crossdata CASCADE; DROP SCHEMA IF EXISTS usr_cross_data CASCADE; CREATE SCHEMA prod_v_sse_crossdata; CREATE SCHEMA usr_cross_data; DROP SCHEMA IF EXISTS '+WORKSPACE+' CASCADE; CREATE SCHEMA '+WORKSPACE)
+        cur.execute('SET search_path TO '+WORKSPACE+', usr_cross_data, public')
         cur.execute(freeze_date("SELECT current_date, (current_date - interval '15 months')::date", args.as_of))
         today, start = cur.fetchone()
         columns = {
@@ -82,18 +97,18 @@ def main():
         execute_values(cur,'INSERT INTO prod_v_sse_crossdata.event_physical_report VALUES %s',rows)
         old_doc=yaml.safe_load(args.production.read_text()); new_doc=yaml.safe_load(args.candidate.read_text())
         baseline=[p['code'] for p in old_doc['paragraphs'] if p.get('title')=='Финальная таблица из event_physical_report']
-        candidate=[p['code'] for p in new_doc['paragraphs'] if p.get('title')=='PA NEXT · исходные события']
+        candidate=[paragraph_creating(new_doc, 'pa_next_source')['code']]
         if len(baseline)!=1 or len(candidate)!=1:
             raise RuntimeError('Source paragraph absent or ambiguous')
         for paragraph in new_doc['paragraphs']:
-            if paragraph.get('shebang') == 'gp' and paragraph.get('title') != 'PA NEXT · исходные события':
+            if paragraph.get('shebang') == 'gp' and 'pa_next_source' not in created_tables(paragraph.get('code', '')):
                 code = re.sub(r'/\*.*?\*/|--[^\n]*', '', paragraph.get('code',''), flags=re.S)
                 if re.search(r'\bmax_date\b', code, flags=re.I):
                     raise AssertionError('max_date has a downstream GP consumer; removal is not allowed')
         outputs=[]
         for side, sql in enumerate([baseline[0],candidate[0]]):
-            names=re.findall(r'(?i)create\s+table\s+([\w.]+)',sql)
-            if len(names)!=1 or names[0] not in ('usr_cross_data.proteus_views_1','usr_cross_data.pa_next_source'):
+            names=created_tables(sql)
+            if names != [('usr_cross_data.proteus_views_1', 'pa_next_source')[side]]:
                 raise RuntimeError('Unexpected output table in test paragraph')
             cur.execute(freeze_date(sql, args.as_of))
             cur.execute('SELECT * FROM '+names[0])
@@ -106,13 +121,13 @@ def main():
             outputs.append((fields,sorted(json.dumps(r,default=str,ensure_ascii=False) for r in projected)))
         if outputs[0]!=outputs[1]:
             raise AssertionError('Raw event business result differs from supplied production node')
-        cur.execute('SELECT sum(action_count) FROM usr_cross_data.pa_next_source')
+        cur.execute('SELECT sum(action_count) FROM '+WORKSPACE+'.pa_next_source')
         views=int(cur.fetchone()[0])
         if views!=12:
             raise AssertionError(f'Independent expected 12 views after duplicate-dimension multiplicity, got {views}')
     connection.close()
     report=dict(status='passed',input_events=len(events),expected_views=12,actual_views=views,
-                same_columns=True,same_business_rows=True,excluded_unused_column='max_date',candidate_max_date_all_null=True,today=str(today),cutoff=str(start),time_mode='current_date frozen identically in both test copies; shipment unchanged',
+                same_columns=True,same_business_rows=True,workspace_schema=WORKSPACE,excluded_unused_column='max_date',candidate_max_date_all_null=True,today=str(today),cutoff=str(start),time_mode='current_date frozen identically in both test copies; shipment unchanged',
                 cases=['history cutoff before/exact','old/new event before/exact cutover','today midnight included; midday excluded',
                        'wrong event type ignored','duplicate source events preserved','duplicate dimension join multiplicity preserved'],
                 production_sha256=hashlib.sha256(args.production.read_bytes()).hexdigest(),

@@ -60,11 +60,15 @@ function installViewport(shell, ST) {
     var shellStyle = window.getComputedStyle(shell);
     var layoutAvailable = Math.max(0, available - (parseFloat(shellStyle.paddingTop) || 0) - (parseFloat(shellStyle.paddingBottom) || 0));
     var remaining = Math.max(0, layoutAvailable - headHeight);
-    var target = Math.min(800, layoutAvailable);
+    var comfortable = Math.min(800, layoutAvailable);
     // The 800px production target is a comfortable height, not a hard minimum.
     // A wrapped label or fractional line-height must not create a 1–16px scroll
     // on an otherwise fully fitting desktop. Keep the standard 16px tolerance.
-    var next = Math.max(usefulHeight(), Math.floor(remaining >= target - 16 ? remaining : target));
+    // If scrolling is needed, analytics occupy the entire visible height.
+    // Capping that surface at800px left the bottom edge of the header onscreen
+    // in taller laptop windows even at the maximum scroll position.
+    var target = remaining >= comfortable - 16 ? remaining : layoutAvailable;
+    var next = Math.max(usefulHeight(), Math.floor(target));
     var nextHeight = next + 'px', surfaceHeight = available + 'px', surfaceTop = top + 'px';
     if (shell.style.height !== surfaceHeight) shell.style.height = surfaceHeight;
     if (shell.style.top !== surfaceTop) shell.style.top = surfaceTop;

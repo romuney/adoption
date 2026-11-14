@@ -356,8 +356,13 @@
   var renderers = __RENDERERS__;
   function render(part, rows) {
     if (part === 'one') ST.preview = null;
-    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, function () { status(); deferStatus(); }, uiKey, brandImage, brandLoading);
+    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, function () {
+      status(); deferStatus(); ST.interaction.refresh();
+    }, uiKey, brandImage, brandLoading);
     ST.mounted[part] = true;
+    // Cards can arrive after the initial layout without changing host size.
+    // Centre the grip after each mount, including a catalogue arriving last.
+    ST.interaction.refresh();
   }
   function receive(part, rows, serial) {
     var request = responseKey(part, rows), record = request === null ? null : ST.issued[part][request];

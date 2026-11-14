@@ -83,7 +83,7 @@ def main():
         for height in [760,1080]:
             page.set_viewport_size({'width':1440,'height':height})
             host = page.locator(chart_selector).bounding_box()
-            assert abs(host['y']+host['height']-(height-8)) <= 1, ('viewport fit before iframe',height,host)
+            assert abs(host['y']+host['height']-(height-16)) <= 1, ('viewport fit before iframe',height,host)
             for selector in ['.chart-slice','.dashboard-chart','.chart-container','.slice_container','.react_sanbbox']:
                 rect = page.locator(chart_selector+' '+selector).bounding_box()
                 assert abs(rect['height']-host['height']) <= 1, ('pre-iframe height chain',selector,rect,host)
@@ -102,7 +102,7 @@ def main():
             page.set_viewport_size({'width':1440,'height':height})
             host = page.locator(chart_selector).bounding_box()
             frame = page.locator(chart_selector+' iframe').bounding_box()
-            assert abs(host['y']+host['height']-(height-8)) <= 1, ('viewport fit after iframe',height,host)
+            assert abs(host['y']+host['height']-(height-16)) <= 1, ('viewport fit after iframe',height,host)
             assert abs(frame['height']-host['height']) <= 1 and abs(frame['y']-host['y']) <= 1, ('iframe full cell',frame,host)
         print('PASS: iframe fills chart across resize; helper scripts run with positive dimensions and no display:none ancestors')
 
@@ -114,7 +114,7 @@ def main():
             host = page.locator(chart_selector).bounding_box()
             assert page.locator('.dashboard-header-container').bounding_box()['y'] == 48
             assert page.locator('.grid-container').evaluate('(el)=>getComputedStyle(el).getPropertyValue("--pa-next-nav-height")') == '48px', ('missing menu ID incorrectly reclaimed navigation height', host)
-            assert abs(host['y']+host['height']-(height-8)) <= 1, ('corporate navigation viewport fit',height,host)
+            assert abs(host['y']+host['height']-(height-16)) <= 1, ('corporate navigation viewport fit',height,host)
             assert page.get_by_role('button', name='Редактировать', exact=True).is_visible()
         print('PASS: corporate navigation without #main-menu keeps its 48px reserve across resize')
 
@@ -133,10 +133,10 @@ def main():
         page.locator('#corporate-navigation').evaluate('(el)=>el.remove()')
         page.locator('.grid-container').evaluate('(el)=>el.style.setProperty("--pa-next-nav-height","0px")')
         host = page.locator(chart_selector).bounding_box()
-        assert abs(host['y']+host['height']-(1080-8)) <= 1, ('standalone viewport fit',host)
+        assert abs(host['y']+host['height']-(1080-16)) <= 1, ('standalone viewport fit',host)
         page.locator('.dashboard-header-container').evaluate('(el)=>el.remove()')
         host = page.locator(chart_selector).bounding_box()
-        assert abs(host['y']+host['height']-(1080-8)) <= 1, ('standalone without dashboard header',host)
+        assert abs(host['y']+host['height']-(1080-16)) <= 1, ('standalone without dashboard header',host)
         # Restore the ordinary visible header before checking the editor.
         page.locator('.dashboard').evaluate('''el=>{
           const header=document.createElement('div');header.className='dashboard-header-container';

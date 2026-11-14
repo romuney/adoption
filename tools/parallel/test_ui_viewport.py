@@ -70,7 +70,7 @@ sizePlatform();new ResizeObserver(function(){if(platformTick===null)platformTick
 
 def geometry(frame):
     return frame.evaluate('''() => {
-      function rect(selector){var n=document.querySelector(selector),r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,client:n.clientHeight,scroll:n.scrollHeight,scrollTop:n.scrollTop};}
+      function rect(selector){var n=document.querySelector(selector),r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom,left:r.left,right:r.right,width:r.width,height:r.height,client:n.clientHeight,scroll:n.scrollHeight,scrollTop:n.scrollTop,clientWidth:n.clientWidth,offsetWidth:n.offsetWidth};}
       return {shell:rect('.pa-next-shell'),head:rect('.pa-next-head'),content:rect('.pa-next-content'),body:rect('.pone-panel-b'),
         svgs:Array.from(document.querySelectorAll('svg[data-dyn-svg]'),n=>{var r=n.getBoundingClientRect();return {top:r.top,bottom:r.bottom,width:r.width,height:r.height,viewWidth:n.viewBox.baseVal.width};}),
         iframe:{height:innerHeight,width:innerWidth,scrollY:scrollY,documentHeight:document.documentElement.scrollHeight,documentWidth:document.documentElement.scrollWidth},
@@ -84,7 +84,10 @@ def assert_canvas_fits(frame, label):
     assert data['iframe']['documentWidth'] <= data['iframe']['width'], (label, 'horizontal document overflow', data)
     assert data['iframe']['documentHeight'] <= data['iframe']['height'] + 1, (label, 'vertical document overflow', data)
     assert data['body']['scroll'] <= data['body']['client'] + 1, (label, 'Dynamics has a second vertical scrollbar', data)
+    assert data['body']['clientWidth'] == data['body']['offsetWidth'], (label, 'Dynamics reserves a vertical scrollbar', data['body'])
     assert len(data['svgs']) == 2, (label, 'two Dynamics charts required', data)
+    if data['shell']['scroll'] > data['shell']['client'] + 1 and abs(data['shell']['scroll'] - data['shell']['client'] - data['shell']['scrollTop']) <= 1:
+        assert data['head']['bottom'] <= data['shell']['top'] - 1, (label, 'header remnant at maximum scroll', data)
     for svg in data['svgs']:
         assert svg['top'] >= max(data['body']['top'], data['shell']['top'], data['band']['top']) - 1, (label, 'SVG clipped above', data)
         assert svg['bottom'] <= min(data['body']['bottom'], data['shell']['bottom'], data['band']['bottom']) + 1, (label, 'SVG clipped below', data)
@@ -252,6 +255,7 @@ def main():
         # bottom; use wheel input over the report for each scenario.
         adversarial = [
             ('short-720', 1366, 720, None), ('short-600', 1366, 600, None),
+            ('laptop-1000', 1440, 1000, None),
             ('zoom125-equivalent', 1093, 614, None), ('zoom150-equivalent', 911, 512, None),
             ('dashboard-header130', 1366, 768, 'header'),
             ('navigation64', 1366, 768, 'nav'), ('tall-iframe1200', 1366, 768, 'iframe'),
@@ -275,8 +279,8 @@ def main():
             page.wait_for_timeout(650)
             if variant == 'production-nav':
                 iframe_box = page.locator('iframe[name="head"]').bounding_box()
-                assert iframe_box['y'] == 129 and iframe_box['height'] == 824, ('production diagnostic geometry', iframe_box)
-                assert iframe_box['y'] + iframe_box['height'] == 953, ('production iframe exceeds viewport', iframe_box)
+                assert iframe_box['y'] == 129 and iframe_box['height'] == 816, ('production diagnostic geometry', iframe_box)
+                assert iframe_box['y'] + iframe_box['height'] == 945, ('production iframe exceeds viewport', iframe_box)
                 assert page.locator('.board-scroller').evaluate('(n)=>n.scrollHeight <= n.clientHeight'), 'Corporate board needs an outer scroll to reach the chart bottom'
             for _ in range(3):
                 wheel_over_chart(page, frame, 1000)

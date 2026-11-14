@@ -7,7 +7,7 @@ OUT = ROOT / 'Параллельный отчёт — pa_next'
 CAT = ['mode_param','sel_f','aud_org_f','aud_spec_f','aud_stream_f','aud_hq_f','aud_it_f','aud_head_f']
 ONE = ['org_f','spec_f','stream_f','adg_f','heads_f','login_f','exl_f','freq_f']
 HEAD = ['period_param','pub_f','act_f','exc_f','ca_org_f','ca_spec_f','ca_stream_f','ca_hq_f','ca_it_f','ca_head_f','ca_adg_f']
-CSS = '''.pa-next-shell{position:absolute;inset:0;display:flex;flex-direction:column;background:#f6f6f6;color:#23272e;font:14px Arial,Helvetica,sans-serif;box-sizing:border-box;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior-y:auto}.pa-next-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.pa-next-head{position:relative;flex:0 0 112px;min-width:0;z-index:30;margin-bottom:12px}.pa-next-content{display:grid;grid-template-columns:minmax(300px,38fr) minmax(450px,62fr);gap:12px;flex:0 0 auto;min-height:0;box-sizing:border-box;padding:0 8px}.pa-next-cat,.pa-next-one{position:relative;min-width:0;min-height:0;border-radius:10px;background:#fff}.pa-next-cat{container-type:inline-size;container-name:pa-next-cat}.pa-next-one{container-type:inline-size;container-name:pa-next-one}.pa-next-wait{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(246,246,246,.96);padding:24px;text-align:center;line-height:1.6;box-sizing:border-box}.pa-next-help{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px}.pa-next-help>div{background:white;border-radius:12px;max-width:600px;max-height:85vh;overflow:auto;padding:24px;font:14px/1.6 Arial,Helvetica,sans-serif}.pa-next-help h2{font-size:20px}.pa-next-help button{font:700 14px Arial;padding:10px 18px;border:0;border-radius:8px;background:#245fd4;color:white;cursor:pointer}.pa-next-shell button:focus-visible,.pa-next-shell [role=button]:focus-visible,.pa-next-shell input:focus-visible{outline:2px solid #245fd4;outline-offset:2px}@media(max-width:820px){.pa-next-content{grid-template-columns:minmax(280px,38fr) minmax(380px,62fr);overflow-x:auto}.pa-next-head{min-width:680px}.pa-next-shell{overflow-x:auto}}@media(prefers-reduced-motion:reduce){.pa-next-shell *{transition:none!important;animation:none!important}}'''
+CSS = '''.pa-next-shell{position:absolute;inset:0;display:flex;flex-direction:column;background:#f6f6f6;color:#23272e;font:14px Arial,Helvetica,sans-serif;box-sizing:border-box;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:auto}.pa-next-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.pa-next-head{position:relative;flex:0 0 112px;min-width:0;z-index:30;margin-bottom:12px}.pa-next-content{display:grid;grid-template-columns:minmax(300px,38fr) minmax(450px,62fr);gap:12px;flex:0 0 auto;min-height:0;box-sizing:border-box;padding:0}.pa-next-cat,.pa-next-one{position:relative;min-width:0;min-height:0;border-radius:10px;background:#fff}.pa-next-cat{container-type:inline-size;container-name:pa-next-cat}.pa-next-one{container-type:inline-size;container-name:pa-next-one}.pa-next-wait{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(246,246,246,.96);padding:24px;text-align:center;line-height:1.6;box-sizing:border-box}.pa-next-help{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px}.pa-next-help>div{background:white;border-radius:12px;max-width:600px;max-height:85vh;overflow:auto;padding:24px;font:14px/1.6 Arial,Helvetica,sans-serif}.pa-next-help h2{font-size:20px}.pa-next-help button{font:700 14px Arial;padding:10px 18px;border:0;border-radius:8px;background:#245fd4;color:white;cursor:pointer}.pa-next-shell button:focus-visible,.pa-next-shell [role=button]:focus-visible,.pa-next-shell input:focus-visible{outline:2px solid #245fd4;outline-offset:2px}@media(max-width:820px){.pa-next-content{grid-template-columns:minmax(280px,38fr) minmax(380px,62fr);overflow-x:auto}.pa-next-head{min-width:680px}.pa-next-shell{overflow-x:auto}}@media(prefers-reduced-motion:reduce){.pa-next-shell *{transition:none!important;animation:none!important}}'''
 
 CSS += '''.pa-next-head{flex:0 0 auto}.pa-next-head .phead-overlay{position:relative!important;height:auto!important}.pa-next-head .phead-root{height:auto!important;min-height:112px}.pa-next-head .phead-strip,.pa-next-head .phead-bar{flex-wrap:wrap}.pa-next-head .phead-togs{flex-shrink:0}.pa-next-pending-block{position:relative!important}.pa-next-pending-block>:not(.pa-next-wait){visibility:hidden!important}.pa-next-wait{background:#f6f6f6;border-radius:12px;flex-direction:column;overflow:hidden;pointer-events:none}.pa-next-one.pa-next-stale .pone-selg,.pa-next-one[data-pa-next-state=preview] .pone-selg{display:none!important}'''
 
@@ -21,14 +21,31 @@ CSS += '.pa-next-analysis-pending>.pone-topbar{visibility:visible!important}.pa-
 # Selecting a report must not expand its name beyond the same three lines.
 # The source row tooltip already contains the complete report name.
 CSS += '.pa-next-cat .prb-ptable tbody tr.sel .prb-rname-n{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}'
+CSS += '.pa-next-one .pone-k-sub b{white-space:nowrap}'
+# The unified shell owns vertical scrolling for Dynamics. usefulHeight keeps
+# both plots and controls visible, including in short windows. Retain the
+# body's horizontal scroll for narrow panels; avoid a second native Y bar.
+CSS += '.pa-next-one .pone-panel-b.dyn-wrap{overflow-y:hidden}'
+# A shrinking control row feeds its reduced height back into SVG allocation.
+CSS += '.pa-next-one .pone-panel-b.dyn-wrap>.pone-dynhead{flex-shrink:0}'
 
-# Keep native scrolling/keyboard behavior; OS overlay visibility remains native.
-CSS += '''.pa-next-shell,.pa-next-shell *{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent}.pa-next-shell::-webkit-scrollbar,.pa-next-shell *::-webkit-scrollbar{width:8px;height:8px}.pa-next-shell::-webkit-scrollbar-track,.pa-next-shell *::-webkit-scrollbar-track{background:transparent}.pa-next-shell::-webkit-scrollbar-thumb,.pa-next-shell *::-webkit-scrollbar-thumb{background:#b9c1ce;border-radius:8px;border:2px solid transparent;background-clip:padding-box}.pa-next-shell::-webkit-scrollbar-thumb:hover,.pa-next-shell *::-webkit-scrollbar-thumb:hover{background-color:#8a96a8}.pa-next-shell::-webkit-scrollbar-corner,.pa-next-shell *::-webkit-scrollbar-corner{background:transparent}@media(forced-colors:active){.pa-next-shell,.pa-next-shell *{scrollbar-color:auto}}'''
-
-# Native overlay scrollbars ignore scrollbar-gutter. Leave an explicit clear
-# lane at the content edge too, so macOS overlay thumbs cannot cover numbers.
-# The outer shell owns the bottom lane; do not stack it on renderer wrappers.
-CSS += '''.pa-next-shell{padding-inline-end:10px;padding-block-end:10px}.pa-next-shell .prb-overlay,.pa-next-shell .pone-overlay{padding-inline-end:10px;scrollbar-gutter:stable}.pa-next-shell .prb-tscroll,.pa-next-shell .pone-tbl-scroll{padding-inline-end:10px;padding-block-end:10px;scrollbar-gutter:stable;box-sizing:border-box}.pa-next-shell .pone-ct-wrap{padding-bottom:10px}.pa-next-shell .pone-panel-b,.pa-next-shell .pone-wo-ex,.pa-next-shell .pone-pickbox{scrollbar-gutter:stable}body .phead-list,body .phead-sel{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent;scrollbar-gutter:stable;padding-inline-end:10px;box-sizing:border-box}'''
+# User preference: narrow native scrollbars, no reserved gutters or extra
+# content padding. Chromium/Safari use4px; standards-only engines use thin.
+SCROLL = ['.pa-next-shell', '.pa-next-shell *', 'body .phead-list', 'body .phead-sel']
+SCROLL_ALL = ','.join(SCROLL)
+CSS += SCROLL_ALL + '{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent;scrollbar-gutter:auto}'
+# Non-auto CSS Scrollbars values override WebKit pseudo-element sizing in
+# Chromium. Reset those values only when the precise4px path is supported.
+CSS += '@supports selector(::-webkit-scrollbar){' + SCROLL_ALL + '{scrollbar-width:auto;scrollbar-color:auto}}'
+for pseudo, rules in [
+    ('', 'width:4px;height:4px'),
+    ('-track', 'background:transparent'),
+    ('-thumb', 'background:#b9c1ce;border-radius:4px'),
+    ('-thumb:hover', 'background-color:#8a96a8'),
+    ('-corner', 'background:transparent')
+]:
+    CSS += ','.join(selector + '::-webkit-scrollbar' + pseudo for selector in SCROLL) + '{' + rules + '}'
+CSS += '@media(forced-colors:active){' + SCROLL_ALL + '{scrollbar-color:auto}}'
 
 CSS += (OUT/'src/brand.css').read_text().replace('\n','')
 
@@ -74,6 +91,11 @@ def renderer(part, name):
         assert s.count(hook)==1, 'header branding hook changed'
         s=s.replace(hook, "'><i aria-hidden=\"true\">?</i>Как работать</button>' + PA_NEXT_BRAND(true) + '</div>');")
     if part == 'one':
+        # Keep the formatted audience denominator together on narrow cards.
+        # The numerator is already in a no-wrap element; this is plain text.
+        hook="sub: '<b>' + nf(t.reach) + '</b> из ' + nf(t.ca)"
+        assert s.count(hook)==1, 'audience KPI formatting hook changed'
+        s=s.replace(hook, hook+".replace(/ /g, '\\u00a0')")
         start=s.index('function pvPendHtml(what) {')
         end=s.index('\n}',start)+2
         s=s[:start]+'''function pvPendHtml(what) {
@@ -96,6 +118,12 @@ def renderer(part, name):
         # The controller's absolute loading cover is not a flex item and must
         # not subtract another gap from the available plot height.
         s=s.replace(hook, "Math.max(0, Array.prototype.filter.call(body.children, function (child) { return !child.classList.contains('pa-next-wait'); }).length - 1) * (parseFloat(cs.rowGap) || CFG.spacing.stackGap)")
+        # Leave one rounding pixel inside the existing chart body. Fractional
+        # flex heights can otherwise produce a native scrollbar with no scroll
+        # range, even when rounded scrollHeight equals clientHeight.
+        hook='avail = Math.max(200, Math.floor(avail));'
+        assert s.count(hook)==1, 'Dynamics height rounding hook changed'
+        s=s.replace(hook, 'avail = Math.max(200, Math.floor(avail) - 1);')
         hook='state.onWinResize = function () { syncOvr(); var w = syncSvgWidth(), hh = syncDynH(), fh = syncFnH(); if (w || hh || fh) render(); if (state.tip) renderTip(); };'
         assert s.count(hook)==1, 'scoped resize hook changed'
         s=s.replace(hook, '''state.onWinResize = function () {
@@ -191,9 +219,9 @@ def build(main,cat,one,channel,check=False):
    Скрыты только шапки чартов и native filters; единый чарт следует высоте окна.
    Редактор сохраняет штатные заголовки, меню и ручные размеры ячеек.
    Меню Proteus: 48px, шапка борда: 65px (из боевого профиля),
-   поля борда сверху/снизу: 16/8px, один ряд загрузчиков: 2px.
-   Внутри JS снизу ещё один общий резерв 10px под скролл: видимое поле ≈18px.
-   Высота = окно - 139px. Отсутствие #main-menu не означает отсутствие меню:
+   поля борда сверху/снизу: 16/16px, один ряд загрузчиков: 2px.
+   Внутренние поля под скролл не резервируются; полосы прокрутки тонкие.
+   Высота = окно - 147px. Отсутствие #main-menu не означает отсутствие меню:
    диагностика Proteus 14.11.2026 подтвердила 48px над шапкой без этого ID.
    Для встраивания без меню задайте --pa-next-nav-height:0px явно на grid-container.
    Резерв отсутствующей шапки борда снимается автоматически.
@@ -203,10 +231,10 @@ def build(main,cat,one,channel,check=False):
 {board} [data-test="filter-bar"],
 {board} .sidebar-resizer{{display:none!important}}
 {board} .dashboard-content:has({mainholder}){{margin-left:0!important}}
-{grid}{{--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px 8px!important;padding:0!important}}
+{grid}{{--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px!important;padding:0!important}}
 body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-height:0px}}
 {mainrow}{{margin:0!important;padding:0!important}}
-.resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 26px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 26px))!important;min-height:0!important}}
+.resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 34px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 34px))!important;min-height:0!important}}
 {mainholder}{{padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important}}
 .dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-{main},{helper}) :is(.chart-header,[data-test="slice-header"],.header-title,.header-controls){{display:none!important}}
 .dashboard-chart-id-{main} :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){{display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}}

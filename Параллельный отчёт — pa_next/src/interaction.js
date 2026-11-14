@@ -19,7 +19,7 @@ function installInteraction(shell, ST) {
     '.pa-next-catalog-rail{display:none;grid-column:1;grid-row:1;align-items:center;gap:14px;flex-direction:column;box-sizing:border-box;width:34px;min-height:0;height:100%;padding:14px 4px;border:0;border-radius:12px;background:#fff;color:#8a909c;font:12px Arial,Helvetica,sans-serif;cursor:pointer;touch-action:manipulation}' +
     '.pa-next-catalog-rail:hover{background:#f0f4fc;color:#245fd4}.pa-next-catalog-rail span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;letter-spacing:.3px}.pa-next-cat{grid-column:1;grid-row:1}.pa-next-one{grid-column:3;grid-row:1}' +
     '.pa-next-splitter{grid-column:2;grid-row:1;position:relative;min-width:12px;cursor:col-resize;touch-action:none;align-self:stretch;z-index:35}' +
-    '.pa-next-splitter:before{content:"";position:absolute;width:2px;height:44px;left:5px;top:calc(50% - 22px);border-radius:4px;background:#d8dde4}' +
+    '.pa-next-splitter:before{content:"";position:absolute;width:2px;height:44px;left:50%;top:var(--pa-next-grip-y,50%);transform:translate(-50%,-50%);border-radius:4px;background:#d8dde4}' +
     '.pa-next-splitter:hover:before,.pa-next-splitter:focus-visible:before{background:#245fd4}.pa-next-splitter:focus-visible{outline:2px solid #245fd4;outline-offset:-2px}' +
     '.pa-next-shell.pa-next-resizing,.pa-next-shell.pa-next-resizing *{cursor:col-resize!important;user-select:none!important}.pa-next-shell.pa-next-catalog-hidden .pa-next-cat,.pa-next-shell.pa-next-catalog-hidden .pa-next-splitter{display:none!important}.pa-next-shell.pa-next-catalog-hidden .pa-next-catalog-rail{display:flex}' +
     '.pa-next-tour{display:block;padding:0;background:transparent;font:12.5px/1.55 Arial,Helvetica,sans-serif;color:#23272e;overflow:hidden}' +
@@ -64,7 +64,23 @@ function installInteraction(shell, ST) {
     splitter.setAttribute('aria-valuemin', String(s.min)); splitter.setAttribute('aria-valuemax', String(s.max));
     splitter.setAttribute('aria-valuenow', String(width)); splitter.setAttribute('aria-valuetext', width + ' пикселей');
     settleResize();
+    alignGrip();
     if (tour) placeTour();
+  }
+  function alignGrip() {
+    if (layout.hidden) return;
+    var card = catalog.querySelector('.prb-panel');
+    var first = panel.querySelector('.pone-top') || panel.querySelector('.pone-panel');
+    var last = panel.querySelector('.pone-panel');
+    if (!card || !first || !last) return;
+    // Centre the grip between the visible cards, excluding the filter/tab row.
+    // Keep it reachable when the report is taller than the laptop viewport.
+    var a = card.getBoundingClientRect(), b = first.getBoundingClientRect();
+    var c = last.getBoundingClientRect(), visible = shell.getBoundingClientRect();
+    var top = Math.max(a.top, b.top, visible.top), bottom = Math.min(a.bottom, c.bottom, visible.bottom);
+    if (bottom <= top) return;
+    var y = ((top + bottom) / 2 - splitter.getBoundingClientRect().top) + 'px';
+    if (splitter.style.getPropertyValue('--pa-next-grip-y') !== y) splitter.style.setProperty('--pa-next-grip-y', y);
   }
   function setWidth(width) {
     var s = size();
@@ -164,7 +180,7 @@ function installInteraction(shell, ST) {
       { selector: '[data-pa-next-host="cat"] tr[data-rep], [data-pa-next-host="cat"] tr[data-sel]', title: 'Выбор области', text: 'Нажми строку, чтобы посмотреть её аналитику справа. Повторный клик снимает выбор. Выбор людей в аналитике, в свою очередь, уточняет каталог.' },
       { selector: '.pa-next-splitter', title: 'Ширина каталога', text: 'Потяни разделитель влево или вправо. Когда разделитель в фокусе, его можно двигать стрелками на клавиатуре; Home и End задают крайние положения.' },
       { selector: '.pa-next-cat-toggle', title: 'Только аналитика', text: 'Каретка в шапке каталога сворачивает его в узкую полосу слева. Нажми эту полосу, чтобы вернуть каталог с прежним выбором и шириной.' },
-      { selector: '.pone-kpis', title: 'Показатели', text: 'Эти показатели относятся к текущему периоду, выбранной области и условиям аудитории. Подсказки рядом с названиями объясняют расчёт.' },
+      { selector: '.pone-kpis', title: 'Показатели', text: 'Показатели учитывают выбранную область и условия аудитории. Большинство — за выбранный период; MAU — за последний закрытый календарный месяц. Подсказки рядом с названиями объясняют расчёт.' },
       { selector: '.pone-obs', title: 'Что видно в данных', text: 'Наблюдения помогают прочитать показатели: где вырос интерес и как меняется использование. Они рассчитываются по тем же данным отчёта.' },
       { selector: '[data-pa-next-host="one"] [data-view^="view:"]', parent: true, title: 'Вкладки аналитики', text: 'Динамика показывает изменение по периодам, календарь — посещения по дням. Путь ЦА, «Кто смотрит» и закрепляемость раскрывают детали. Ещё не полученные детали догружаются в своей вкладке.' },
       { selector: '[data-tourstart]', title: 'Гид всегда под рукой', text: 'Нажми «Как работать», чтобы пройти гид снова. Escape закрывает его, стрелки ← → переключают шаги.' }

@@ -49,7 +49,7 @@
     "validate catalogue preview before render",
     "keep tabs active while metric blocks load",
     "resizable catalogue with inline collapse caret and left rail",
-    "viewport board height and hidden service chrome"
+    "viewport board height; visible dashboard header; hidden chart headers"
   ],
   "calculations": "Original buildModel and metric functions are preserved verbatim.",
   "minifier": "terser 5.51.2 via pinned playbook kit/min.cjs",

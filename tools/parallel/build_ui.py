@@ -97,21 +97,23 @@ def build(main,cat,one,channel,check=False):
     mainrow=f'.dragdroppable-row:not(.dashboard--editing *):has({mainholder}):not(:has(.dragdroppable-row {mainholder}))'
     helperrow=f'.dragdroppable-row:not(.dashboard--editing *):has(.dashboard-component-chart-holder:is({helper})):not(:has(.dashboard-component-chart-holder:not(:is({helper}))))'
     css=f'''/* Самостоятельный CSS pa_next. Вставить целиком в CSS нового борда.
-   Просмотр: единый чарт по высоте окна; native filters, заголовки и служебные меню скрыты.
+   Просмотр: верхняя шапка борда и кнопка редактирования остаются видимыми.
+   Скрыты только шапки чартов и native filters; единый чарт следует высоте окна.
    Редактор сохраняет штатные заголовки, меню и ручные размеры ячеек.
-   Меню Proteus: 48px (из боевого профиля), поля сверху/снизу: 16/24px,
-   один ряд загрузчиков: 2px. Высота = окно - 90px; без меню Proteus = окно - 42px.
+   Меню Proteus: 48px, шапка борда: 65px (из боевого профиля),
+   поля сверху/снизу: 16/24px, один ряд загрузчиков: 2px.
+   Высота = окно - 155px; резерв отсутствующего меню/шапки снимается.
    Селекторы dashboard-header-container, dashboard-filters-panel и filter-bar
    сверены с исходником Superset 2.1.0; форк Proteus локально не подключён. */
-{board} .dashboard-header-container,
 {board} [data-test="dashboard-filters-panel"],
 {board} [data-test="filter-bar"],
 {board} .sidebar-resizer{{display:none!important}}
 {board} .dashboard-content:has({mainholder}){{margin-left:0!important}}
-{grid}{{--pa-next-nav-height:48px;margin:16px 24px 24px!important;padding:0!important}}
+{grid}{{--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px 24px!important;padding:0!important}}
 body:not(:has(#main-menu)) {grid}{{--pa-next-nav-height:0px}}
+body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-height:0px}}
 {mainrow}{{margin:0!important;padding:0!important}}
-.resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - 42px))!important;min-height:0!important}}
+.resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;min-height:0!important}}
 {mainholder}{{padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important}}
 .dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-{main},{helper}) :is(.chart-header,[data-test="slice-header"],.header-title,.header-controls){{display:none!important}}
 .dashboard-chart-id-{main} :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){{display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}}
@@ -131,7 +133,7 @@ body:not(:has(#main-menu)) {grid}{{--pa-next-nav-height:0px}}
     metadata={'cross_filters_enabled':True,'chart_configuration':{str(main):{'id':main,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main]},'chartsInScope':[cat,one]}},str(cat):{'id':cat,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,cat]},'chartsInScope':[one]}},str(one):{'id':one,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,one]},'chartsInScope':[cat]}}},'global_chart_configuration':{'scope':{'rootPath':['ROOT_ID'],'excluded':[]},'chartsInScope':[main,cat,one]}}
     metadata.update(show_native_filters=False,native_filter_configuration=[])
     write('10. JSON — области фильтров.json',json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
-    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height and hidden service chrome'], 'calculations':'Original buildModel and metric functions are preserved verbatim.'}
+    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height; visible dashboard header; hidden chart headers'], 'calculations':'Original buildModel and metric functions are preserved verbatim.'}
     report['minifier']='terser 5.51.2 via pinned playbook kit/min.cjs'
     report['linter']='eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)'
     report['lint_messages_by_rule']=lint_summary

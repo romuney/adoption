@@ -1,19 +1,21 @@
 /* Самостоятельный CSS pa_next. Вставить целиком в CSS нового борда.
-   Просмотр: единый чарт по высоте окна; native filters, заголовки и служебные меню скрыты.
+   Просмотр: верхняя шапка борда и кнопка редактирования остаются видимыми.
+   Скрыты только шапки чартов и native filters; единый чарт следует высоте окна.
    Редактор сохраняет штатные заголовки, меню и ручные размеры ячеек.
-   Меню Proteus: 48px (из боевого профиля), поля сверху/снизу: 16/24px,
-   один ряд загрузчиков: 2px. Высота = окно - 90px; без меню Proteus = окно - 42px.
+   Меню Proteus: 48px, шапка борда: 65px (из боевого профиля),
+   поля сверху/снизу: 16/24px, один ряд загрузчиков: 2px.
+   Высота = окно - 155px; резерв отсутствующего меню/шапки снимается.
    Селекторы dashboard-header-container, dashboard-filters-panel и filter-bar
    сверены с исходником Superset 2.1.0; форк Proteus локально не подключён. */
-body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .dashboard-header-container,
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) [data-test="dashboard-filters-panel"],
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) [data-test="filter-bar"],
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .sidebar-resizer{display:none!important}
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .dashboard-content:has(.dashboard-component-chart-holder.dashboard-chart-id-859562){margin-left:0!important}
-.grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-nav-height:48px;margin:16px 24px 24px!important;padding:0!important}
+.grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px 24px!important;padding:0!important}
 body:not(:has(#main-menu)) .grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-nav-height:0px}
+body:not(:has(.dashboard-header-container)) .grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-board-header-height:0px}
 .dragdroppable-row:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dragdroppable-row .dashboard-component-chart-holder.dashboard-chart-id-859562)){margin:0!important;padding:0!important}
-.resizable-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.resizable-container .dashboard-component-chart-holder.dashboard-chart-id-859562)){height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - 42px))!important;min-height:0!important}
+.resizable-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.resizable-container .dashboard-component-chart-holder.dashboard-chart-id-859562)){height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;min-height:0!important}
 .dashboard-component-chart-holder.dashboard-chart-id-859562{padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important}
 .dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-859562,.dashboard-chart-id-859563,.dashboard-chart-id-859564) :is(.chart-header,[data-test="slice-header"],.header-title,.header-controls){display:none!important}
 .dashboard-chart-id-859562 :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}

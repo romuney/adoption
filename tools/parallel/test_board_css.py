@@ -38,7 +38,7 @@ def main():
     def row(charts, name):
         return f'<div id="{name}" class="dragdroppable dragdroppable-row"><div class="with-popover-menu"><div class="grid-row">'+''.join(map(holder, charts))+'</div></div></div>'
 
-    skeleton = '''body{margin:0}#main-menu{height:48px}.dashboard-header-container{height:65px}
+    skeleton = '''body{margin:0}#main-menu{height:48px}.dashboard-header-container{height:65px;display:flex;align-items:center;gap:16px}.dashboard-header-container h1{margin:0}
 [data-test="filter-bar"]{height:40px}[data-test="dashboard-filters-panel"]{position:absolute;width:200px;height:500px}
 .dashboard-content{display:flow-root}.grid-container{margin:24px 32px}.grid-row{display:flex;gap:16px}.dragdroppable-row{margin-bottom:16px}
 .dragdroppable-column{flex:1}.dashboard-component-chart-holder{box-sizing:border-box;height:100%;padding:16px;border:2px solid transparent;background:white}
@@ -47,7 +47,7 @@ def main():
 
     def markup(rows):
         return ('<style>'+skeleton+css+'</style><header id="main-menu">Proteus</header>'
-                '<div class="dashboard-header-container"><h1>Dashboard title</h1><button>Settings</button></div>'
+                '<div class="dashboard-header-container"><h1 class="header-title">Dashboard title</h1><div class="header-controls"><button data-test="edit-dashboard" onclick="window.editClicked=true">Редактировать</button></div></div>'
                 '<div data-test="dashboard-filters-panel">Vertical filters</div><div data-test="filter-bar">Horizontal filters</div>'
                 '<div class="dashboard"><div class="dashboard-content" style="margin-left:200px"><div class="grid-container">'
                 '<div class="dashboard-grid"><div class="grid-content">'+rows+'</div></div></div></div></div>')
@@ -69,11 +69,15 @@ def main():
         assert page.locator('#other [data-test="slice-header"]').is_visible()
         assert page.locator('#loaders').bounding_box()['height'] <= 4
         assert page.locator('#loaders').evaluate('(el)=>getComputedStyle(el).marginBottom') == '0px'
-        for selector in ['.dashboard-header-container','[data-test="dashboard-filters-panel"]','[data-test="filter-bar"]',chart_selector+' [data-test="slice-header"]']:
+        for selector in ['[data-test="dashboard-filters-panel"]','[data-test="filter-bar"]',chart_selector+' [data-test="slice-header"]']:
             assert not page.locator(selector).is_visible(), ('view-mode service chrome visible',selector)
         assert page.locator('#main-menu').is_visible()
+        assert page.locator('.dashboard-header-container').is_visible()
+        assert page.locator('.dashboard-header-container .header-title').is_visible()
+        page.get_by_role('button', name='Редактировать', exact=True).click()
+        assert page.evaluate('window.editClicked') is True
         assert page.locator('.dashboard-content').evaluate('(el)=>getComputedStyle(el).marginLeft') == '0px'
-        print('PASS: native filters disabled in metadata; service chrome hidden, unrelated chart unchanged')
+        print('PASS: dashboard header/title/edit button visible and clickable; chart headers/native filters hidden; unrelated chart unchanged')
 
         # First load: stale platform pixel heights must not keep any layer at 520px.
         for height in [760,1080]:
@@ -116,6 +120,14 @@ def main():
         page.locator('#main-menu').evaluate('(el)=>el.remove()')
         host = page.locator(chart_selector).bounding_box()
         assert abs(host['y']+host['height']-(1080-24)) <= 1, ('standalone viewport fit',host)
+        page.locator('.dashboard-header-container').evaluate('(el)=>el.remove()')
+        host = page.locator(chart_selector).bounding_box()
+        assert abs(host['y']+host['height']-(1080-24)) <= 1, ('standalone without dashboard header',host)
+        # Restore the ordinary visible header before checking the editor.
+        page.locator('.dashboard').evaluate('''el=>{
+          const header=document.createElement('div');header.className='dashboard-header-container';
+          header.textContent='Dashboard title';el.before(header);
+        }''')
         page.locator('.dashboard-chart-id-'+str(helpers[0])).evaluate(
             '(el)=>document.querySelector("#other .grid-row").appendChild(el.closest(".dragdroppable-column"))')
         assert page.locator('#other').bounding_box()['height'] >= 600

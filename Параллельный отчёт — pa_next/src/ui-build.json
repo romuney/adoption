@@ -55,8 +55,14 @@
     "bounded session cache keyed by exact business masks and generation",
     "atomic selection and preview; one local delayed loader",
     "preserve empty filter values; explicit retry for command errors",
-    "calendar width follows embedded panel"
+    "calendar width follows embedded panel",
+    "approved CROSS DATA soft accent and local animated loading signature",
+    "retain existing KPI values while preview detail tabs load"
   ],
+  "brand_sha256": {
+    "cross-data-accent-source.png": "1a6ad9e99bf49979b0b27114544f4e78102a9a11e9d89042b9426b8ee73bf309",
+    "cross-data-accent.webp": "7cd4eb9ea17228b4589aa531d3a7057dd97909ce8af6a993252321558d6ac33a"
+  },
   "calculations": "Original buildModel and metric functions are preserved verbatim.",
   "minifier": "terser 5.51.2 via pinned playbook kit/min.cjs",
   "linter": "eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)",

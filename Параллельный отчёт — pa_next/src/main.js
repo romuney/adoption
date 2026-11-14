@@ -5,6 +5,7 @@
   });
   if (ST.on) window.removeEventListener('message', ST.on);
   if (ST.timer) clearInterval(ST.timer);
+  __BRAND__
   ST.apply = typeof applyCrossFilter === 'function' ? applyCrossFilter : null;
   var hosts = document.querySelectorAll('[_echarts_instance_]'), host = hosts.length ? hosts[hosts.length - 1] : null;
   if (!host) return;
@@ -248,7 +249,7 @@
   }
   function loadingNode() {
     var node = document.createElement('div'); node.className = 'pa-next-wait'; node.setAttribute('role', 'status');
-    node.innerHTML = '<div class="pa-next-loading"><i class="pa-next-spinner" aria-hidden="true"></i><span></span><div class="pa-next-skeleton" aria-hidden="true"><i></i><i></i><i></i></div></div>';
+    node.innerHTML = brandLoading('', '');
     return node;
   }
   function markWaiting(el, waiting, message) {
@@ -260,7 +261,7 @@
     var cover = Array.prototype.filter.call(el.children, function (n) { return n.classList.contains('pa-next-wait'); })[0];
     if (waiting && !cover) { cover = loadingNode(); el.appendChild(cover); }
     if (!waiting && cover) cover.parentNode.removeChild(cover);
-    if (waiting && cover.querySelector('span').textContent !== message) cover.querySelector('span').textContent = message;
+    if (waiting && cover.querySelector('.pa-next-loading-message').textContent !== message) cover.querySelector('.pa-next-loading-message').textContent = message;
   }
   function status() {
     var issues = [], now = Date.now();
@@ -343,7 +344,7 @@
   var renderers = __RENDERERS__;
   function render(part, rows) {
     if (part === 'one') ST.preview = null;
-    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, deferStatus, uiKey);
+    renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, deferStatus, uiKey, brandImage, brandLoading);
     ST.mounted[part] = true;
   }
   function receive(part, rows, serial) {

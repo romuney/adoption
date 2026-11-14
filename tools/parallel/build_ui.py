@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build isolated pa_next UI: retain metric renderers; adapt only hosts and transport."""
-import argparse, hashlib, json, re, subprocess, os
+import argparse, hashlib, json, re, subprocess, os, base64
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'Параллельный отчёт — pa_next'
@@ -9,9 +9,11 @@ ONE = ['org_f','spec_f','stream_f','adg_f','heads_f','login_f','exl_f','freq_f']
 HEAD = ['period_param','pub_f','act_f','exc_f','ca_org_f','ca_spec_f','ca_stream_f','ca_hq_f','ca_it_f','ca_head_f','ca_adg_f']
 CSS = '''.pa-next-shell{position:absolute;inset:0;display:flex;flex-direction:column;background:#f6f6f6;color:#23272e;font:14px Arial,Helvetica,sans-serif;box-sizing:border-box;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior-y:contain}.pa-next-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.pa-next-head{position:relative;flex:0 0 112px;min-width:0;z-index:30;margin-bottom:12px}.pa-next-content{display:grid;grid-template-columns:minmax(300px,38fr) minmax(450px,62fr);gap:12px;flex:0 0 auto;min-height:0;box-sizing:border-box;padding:0 8px}.pa-next-cat,.pa-next-one{position:relative;min-width:0;min-height:0;border-radius:10px;background:#fff}.pa-next-cat{container-type:inline-size;container-name:pa-next-cat}.pa-next-one{container-type:inline-size;container-name:pa-next-one}.pa-next-wait{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(246,246,246,.96);padding:24px;text-align:center;line-height:1.6;box-sizing:border-box}.pa-next-help{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px}.pa-next-help>div{background:white;border-radius:12px;max-width:600px;max-height:85vh;overflow:auto;padding:24px;font:14px/1.6 Arial,Helvetica,sans-serif}.pa-next-help h2{font-size:20px}.pa-next-help button{font:700 14px Arial;padding:10px 18px;border:0;border-radius:8px;background:#245fd4;color:white;cursor:pointer}.pa-next-shell button:focus-visible,.pa-next-shell [role=button]:focus-visible,.pa-next-shell input:focus-visible{outline:2px solid #245fd4;outline-offset:2px}@media(max-width:820px){.pa-next-content{grid-template-columns:minmax(280px,38fr) minmax(380px,62fr);overflow-x:auto}.pa-next-head{min-width:680px}.pa-next-shell{overflow-x:auto}}@media(prefers-reduced-motion:reduce){.pa-next-shell *{transition:none!important;animation:none!important}}'''
 
-CSS += '''.pa-next-head{flex:0 0 auto}.pa-next-head .phead-overlay{position:relative!important;height:auto!important}.pa-next-head .phead-root{height:auto!important;min-height:112px}.pa-next-head .phead-strip,.pa-next-head .phead-bar{flex-wrap:wrap}.pa-next-head .phead-togs{flex-shrink:0}.pa-next-pending-block{position:relative!important}.pa-next-pending-block>:not(.pa-next-wait){visibility:hidden!important}.pa-next-wait{background:#f6f6f6;border-radius:12px;flex-direction:column;overflow:hidden;pointer-events:none}.pa-next-loading{display:flex;align-items:center;flex-direction:column;gap:12px;width:min(100%,360px);color:#69717e;font:12px/1.5 Arial,Helvetica,sans-serif}.pa-next-spinner{display:block;width:22px;height:22px;border:2px solid #dce5f6;border-top-color:#245fd4;border-radius:50%;animation:pa-next-spin .8s linear infinite;box-sizing:border-box;flex:none}.pa-next-skeleton{display:flex;gap:10px;align-items:flex-end;height:56px;width:100%}.pa-next-skeleton i{height:100%;flex:1;border-radius:8px;background:linear-gradient(100deg,#e7e9ee 25%,#f7f8fa 45%,#e7e9ee 65%);background-size:250% 100%;animation:pa-next-shimmer 1.6s ease-in-out infinite}.pa-next-skeleton i:nth-child(2){height:70%}.pa-next-skeleton i:nth-child(3){height:88%}.pa-next-one.pa-next-stale .pone-selg,.pa-next-one[data-pa-next-state=preview] .pone-selg{display:none!important}.pone-panel-h>.pa-next-wait,.pone-topbar .pa-next-wait{padding:2px 8px}.pone-panel-h>.pa-next-wait .pa-next-loading,.pone-topbar .pa-next-loading{flex-direction:row;justify-content:center;gap:8px}.pone-panel-h>.pa-next-wait .pa-next-skeleton,.pone-topbar .pa-next-skeleton{display:none}.pone-panel-h>.pa-next-wait .pa-next-spinner,.pone-topbar .pa-next-spinner{width:14px;height:14px}@keyframes pa-next-spin{to{transform:rotate(360deg)}}@keyframes pa-next-shimmer{to{background-position:-150% 0}}@media(prefers-reduced-motion:reduce){.pa-next-spinner,.pa-next-skeleton i{animation:none!important}}'''
+CSS += '''.pa-next-head{flex:0 0 auto}.pa-next-head .phead-overlay{position:relative!important;height:auto!important}.pa-next-head .phead-root{height:auto!important;min-height:112px}.pa-next-head .phead-strip,.pa-next-head .phead-bar{flex-wrap:wrap}.pa-next-head .phead-togs{flex-shrink:0}.pa-next-pending-block{position:relative!important}.pa-next-pending-block>:not(.pa-next-wait){visibility:hidden!important}.pa-next-wait{background:#f6f6f6;border-radius:12px;flex-direction:column;overflow:hidden;pointer-events:none}.pa-next-one.pa-next-stale .pone-selg,.pa-next-one[data-pa-next-state=preview] .pone-selg{display:none!important}'''
 
-CSS += '.pa-next-has-error .pa-next-spinner,.pa-next-has-error .pa-next-skeleton{display:none}.pa-next-wait button{pointer-events:auto;border:1px solid #dce2eb;border-radius:8px;padding:8px 12px;background:white;color:#245fd4;font:700 12px Arial;cursor:pointer}.pa-next-quiet .pa-next-loading{visibility:hidden}.pa-next-one.pa-next-stale .pone-frow{visibility:hidden}.pa-next-one.pa-next-stale .pone-h-area{visibility:hidden}'
+CSS += '.pa-next-wait button{pointer-events:auto;border:1px solid #dce2eb;border-radius:8px;padding:8px 12px;background:white;color:#245fd4;font:700 12px Arial;cursor:pointer}.pa-next-quiet .pa-next-loading{visibility:hidden}.pa-next-one.pa-next-stale .pone-frow{visibility:hidden}.pa-next-one.pa-next-stale .pone-h-area{visibility:hidden}'
+
+CSS += (OUT/'src/brand.css').read_text().replace('\n','')
 
 def renderer(part, name):
     p=ROOT/'Виджеты'/name
@@ -50,7 +52,22 @@ def renderer(part, name):
   window.addEventListener('message', state.onSelMsg);
   return function () {};
 }'''+s[end:]
+    if part == 'head':
+        hook="'><i aria-hidden=\"true\">?</i>Как работать</button></div>');"
+        assert s.count(hook)==1, 'header branding hook changed'
+        s=s.replace(hook, "'><i aria-hidden=\"true\">?</i>Как работать</button>' + PA_NEXT_BRAND(true) + '</div>');")
     if part == 'one':
+        start=s.index('function pvPendHtml(what) {')
+        end=s.index('\n}',start)+2
+        s=s[:start]+'''function pvPendHtml(what) {
+  return '<div class="' + CFG.ns + '-pend" role="status" aria-live="polite">' + PA_NEXT_LOADING('Загружаем детали', what + ' — догружается') + '</div>';
+}'''+s[end:]
+        hook="if (MODEL.kpi && view === 'dyn') h.push("
+        assert s.count(hook)==1, 'preview KPI hook changed'
+        s=s.replace(hook, "if (MODEL.kpi && pend) h.push('<div class=\"' + N + '-top\">' + kpisHtml() + '</div>');\n  " + hook)
+        hook="state.pendT = setInterval(function () { if (MODEL.preview && overlay.querySelector('.' + CFG.ns + '-pend')) render(); }, 5000);"
+        assert s.count(hook)==1, 'preview timer hook changed'
+        s=s.replace(hook, 'state.pendT = null;')
         hook='return window.innerWidth <= 760 ? w :'
         assert s.count(hook)==1, 'calendar width bridge changed'
         s=s.replace(hook, 'var panel = document.querySelector(\'[data-pa-next-host="one"]\'); return (panel ? panel.clientWidth : window.innerWidth) <= 760 ? w :')
@@ -73,10 +90,10 @@ def renderer(part, name):
     # Namespaced internal protocol: current report cannot affect embedded regions.
     s=s.replace('PA_', 'PA_NEXT_INTERNAL_')
     # Restore bridge identifiers after namespacing source message literals.
-    for old,new in [('PA_NEXT_INTERNAL_NEXT_BUS','PA_NEXT_BUS'),('PA_NEXT_INTERNAL_NEXT_SIGNAL','PA_NEXT_SIGNAL'),('PA_NEXT_INTERNAL_NEXT_HELP','PA_NEXT_HELP'),('PA_NEXT_INTERNAL_NEXT_PREVIEW','PA_NEXT_PREVIEW'),('PA_NEXT_INTERNAL_NEXT_RENDERED','PA_NEXT_RENDERED'),('PA_NEXT_INTERNAL_NEXT_KEY','PA_NEXT_KEY')]: s=s.replace(old,new)
+    for old,new in [('PA_NEXT_INTERNAL_NEXT_BUS','PA_NEXT_BUS'),('PA_NEXT_INTERNAL_NEXT_SIGNAL','PA_NEXT_SIGNAL'),('PA_NEXT_INTERNAL_NEXT_HELP','PA_NEXT_HELP'),('PA_NEXT_INTERNAL_NEXT_PREVIEW','PA_NEXT_PREVIEW'),('PA_NEXT_INTERNAL_NEXT_RENDERED','PA_NEXT_RENDERED'),('PA_NEXT_INTERNAL_NEXT_KEY','PA_NEXT_KEY'),('PA_NEXT_INTERNAL_NEXT_BRAND','PA_NEXT_BRAND'),('PA_NEXT_INTERNAL_NEXT_LOADING','PA_NEXT_LOADING')]: s=s.replace(old,new)
     s=s.replace('@media (max-width:', '@container pa-next-'+part+' (max-width:')
     # Source transforms are deliberately structural, never numeric/formula replacements.
-    return 'function(data, applyCrossFilter, PA_NEXT_BUS, PA_NEXT_HELP, PA_NEXT_PREVIEW, PA_NEXT_RENDERED, PA_NEXT_KEY) {\nvar option; function PA_NEXT_SIGNAL() {}\n'+s+'\n}'
+    return 'function(data, applyCrossFilter, PA_NEXT_BUS, PA_NEXT_HELP, PA_NEXT_PREVIEW, PA_NEXT_RENDERED, PA_NEXT_KEY, PA_NEXT_BRAND, PA_NEXT_LOADING) {\nvar option; function PA_NEXT_SIGNAL() {}\n'+s+'\n}'
 
 def build(main,cat,one,channel,check=False):
     expected={}
@@ -88,8 +105,9 @@ def build(main,cat,one,channel,check=False):
     if not isinstance(channel,str) or not channel.strip(): raise ValueError('Channel must be nonempty')
     config=dict(main=main,cat=cat,one=one,channel=channel,echoColumns=HEAD+CAT+ONE)
     sources={'head':'pa-head.chart.js','cat':'pa-reports-body.chart.js','one':'pa-one.chart.js'}
+    brand=(OUT/'src/brand.js').read_text().replace('__BRAND_DATA__',json.dumps('data:image/webp;base64,'+base64.b64encode((OUT/'src/assets/cross-data-accent.webp').read_bytes()).decode('ascii')))
     wrappers='{'+','.join(json.dumps(k)+':'+renderer(k,v) for k,v in sources.items())+'}'
-    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',(OUT/'src/interaction.js').read_text()).replace('__VIEWPORT__',(OUT/'src/viewport.js').read_text())
+    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',(OUT/'src/interaction.js').read_text()).replace('__VIEWPORT__',(OUT/'src/viewport.js').read_text()).replace('__BRAND__',brand)
     text=text.replace("msg.type === 'PA_TOUR_GO'", "msg.type === 'PA_NEXT_INTERNAL_TOUR_GO'")
     outputs={'4. JS — весь отчёт.js':text}
     for part,name in [('cat','6. JS — загрузчик каталога.js'),('one','8. JS — загрузчик панели.js')]:
@@ -160,7 +178,7 @@ body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-heigh
     metadata={'cross_filters_enabled':True,'chart_configuration':{str(main):{'id':main,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main]},'chartsInScope':[cat,one]}},str(cat):{'id':cat,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,cat]},'chartsInScope':[one]}},str(one):{'id':one,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,one]},'chartsInScope':[cat]}}},'global_chart_configuration':{'scope':{'rootPath':['ROOT_ID'],'excluded':[]},'chartsInScope':[main,cat,one]}}
     metadata.update(show_native_filters=False,native_filter_configuration=[])
     write('10. JSON — области фильтров.json',json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
-    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height; visible dashboard header; hidden chart headers','scroll report filters away on laptop; preserve useful analytics height','single-flight query queue with exact request completion','bounded session cache keyed by exact business masks and generation','atomic selection and preview; one local delayed loader','preserve empty filter values; explicit retry for command errors','calendar width follows embedded panel'], 'calculations':'Original buildModel and metric functions are preserved verbatim.'}
+    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height; visible dashboard header; hidden chart headers','scroll report filters away on laptop; preserve useful analytics height','single-flight query queue with exact request completion','bounded session cache keyed by exact business masks and generation','atomic selection and preview; one local delayed loader','preserve empty filter values; explicit retry for command errors','calendar width follows embedded panel','approved CROSS DATA soft accent and local animated loading signature','retain existing KPI values while preview detail tabs load'], 'brand_sha256':{n:hashlib.sha256((OUT/'src/assets'/n).read_bytes()).hexdigest() for n in ['cross-data-accent-source.png','cross-data-accent.webp']},'calculations':'Original buildModel and metric functions are preserved verbatim.'}
     report['minifier']='terser 5.51.2 via pinned playbook kit/min.cjs'
     report['linter']='eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)'
     report['lint_messages_by_rule']=lint_summary

@@ -95,9 +95,9 @@ def main():
         # Correctness protection is immediate; the visible spinner has a400ms
         # grace period. Check both without changing the shipped runtime clock.
         if frame.evaluate('Date.now()-window.__paNext.started<400'):
-            assert not frame.locator('.pone-panel-b .pa-next-spinner').is_visible()
+            assert not frame.locator('.pone-panel-b .pa-next-progress').is_visible()
         frame.wait_for_function('()=>Date.now()-window.__paNext.started>=430')
-        frame.locator('.pone-panel-b .pa-next-spinner').wait_for(state='visible',timeout=2500)
+        frame.locator('.pone-panel-b .pa-next-progress').wait_for(state='visible',timeout=2500)
         helper.evaluate('(payload)=>{data=payload.rows;'+scripts['cat']+'}',{'rows':rows['cat']})
         page.wait_for_timeout(100)
         assert frame.locator('[data-pa-next-host="cat"]').get_attribute('aria-busy')=='true'

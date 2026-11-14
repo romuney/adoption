@@ -170,3 +170,21 @@ python3 tools/parallel/test_ui_viewport.py
 Queue-стенд фиксирует маски и nonce при **старте** каждого запроса. Занятый получатель либо отбрасывает новый запрос, либо сохраняет последний — две отдельные политики. Завершение подаётся явно; `--trace` печатает START/FINISH/DROP_BUSY/ACK. Значения KPI и рядов — фактические SQL-ответы локальных фикстур. Эти задержки измеряют локальный обмен, а не производительность корпоративного SQL. Не менять JS во время регрессии: итоговые отчёты проверяют хэш сборки.
 
 Кэш проверяется на точные строки/пустые атрибуты/дефолты, смену поколения, ограничение памяти и подтверждённую ошибку команды с явным повтором. Viewport-стенд использует непрозрачный sandbox, настоящий CSS борда, пиксельные размеры host с ResizeObserver и видимые системные полосы прокрутки. Проверяет колесо над графиком, обе SVG, 1366×768 / 1440×900 / 1920×1080, resize, каталог, календарь, 13 шагов гида и кнопку редактирования.
+
+
+## Смещение загрузки, высота и консольная диагностика
+
+На готовых SQL-фикстурах (экспорт выше, chdb повторно открывать не нужно):
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_loading_layout.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_viewport.py \
+  --periods /tmp/pa-next-periods/d --screenshots /tmp/pa-next-viewport-fixed-sql
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_viewport.py \
+  --screenshots /tmp/pa-next-viewport-fixed-synthetic
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_browser_diagnostics.py
+```
+
+`test_ui_loading_layout.py` измеряет каждый кадр ready → preview → full на вкладках деталей при двух высотах окна. `test_ui_viewport.py` использует локальную модель борда, pixel-sized host и обычные полосы прокрутки; проверяет низкие окна, высокую шапку, навигацию 64 px и iframe 1200 px, реальное колесо мыши и достижимость обеих SVG. Эквиваленты zoom моделируются размерами CSS viewport, это не тест нативного браузерного zoom.
+
+`test_browser_diagnostics.py` проверяет файл 13 в top и изолированном iframe: отсутствие изменений DOM/фильтров, сокрытие значений, снимки до и после прокрутки, остановку наблюдения и повторный запуск. Порядок запуска на живом Proteus — в [инструкции](<../../Параллельный отчёт — pa_next/Проверки/Как снять диагностику браузера.md>).

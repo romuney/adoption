@@ -71,7 +71,10 @@
     ST.viewportObserver = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) { visible[entry.target.getAttribute('data-pa-next-y')] = entry.isIntersecting && entry.intersectionRatio >= 0.99; });
       var ys = Object.keys(visible).filter(function (k) { return visible[k]; }).map(Number).sort(function (a,b) { return a-b; });
-      if (ys.length) ST.visibleBand = { top: ys[0], bottom: Math.min(window.innerHeight, ys[ys.length-1]+16) };
+      if (ys.length) {
+        ST.visibleBand = { top: ys[0], bottom: Math.min(window.innerHeight, ys[ys.length-1]+16) };
+        if (ST.viewport) ST.viewport.refresh();
+      }
       clampTips();
     }, { threshold: 0.99 });
     for (var y=0;y<window.innerHeight;y+=16) {

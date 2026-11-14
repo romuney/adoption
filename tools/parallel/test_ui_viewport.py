@@ -6,6 +6,7 @@ Unlike a full-page chart mock, the ECharts host here is sized in pixels by the
 platform's ResizeObserver and the iframe is sized by the delivered board CSS.
 """
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
@@ -85,8 +86,8 @@ def assert_canvas_fits(frame, label):
     assert data['body']['scroll'] <= data['body']['client'] + 1, (label, 'Dynamics has a second vertical scrollbar', data)
     assert len(data['svgs']) == 2, (label, 'two Dynamics charts required', data)
     for svg in data['svgs']:
-        assert svg['top'] >= max(data['body']['top'], data['shell']['top']) - 1, (label, 'SVG clipped above', data)
-        assert svg['bottom'] <= min(data['body']['bottom'], data['shell']['bottom']) + 1, (label, 'SVG clipped below', data)
+        assert svg['top'] >= max(data['body']['top'], data['shell']['top'], data['band']['top']) - 1, (label, 'SVG clipped above', data)
+        assert svg['bottom'] <= min(data['body']['bottom'], data['shell']['bottom'], data['band']['bottom']) + 1, (label, 'SVG clipped below', data)
         assert abs(svg['width'] - svg['viewWidth']) <= 5, (label, 'SVG resize did not settle', data)
     return data
 
@@ -96,7 +97,16 @@ def wheel_over_chart(page, frame, dy):
     # container must not eat the scroll that reveals the analytics on a laptop.
     bounds = frame.locator('.pone-panel-b').bounding_box()
     outer = page.locator('iframe[name="head"]').bounding_box()
-    top, bottom = max(bounds['y'], outer['y']), min(bounds['y'] + bounds['height'], outer['y'] + outer['height'])
+    assert bounds is not None, ('chart body has no visible box before wheel', geometry(frame), outer,
+                                frame.locator('.pone-panel-b').evaluate('(n)=>({display:getComputedStyle(n).display,visibility:getComputedStyle(n).visibility,connected:n.isConnected})'))
+    top = max(bounds['y'], outer['y'], 0)
+    bottom = min(bounds['y'] + bounds['height'], outer['y'] + outer['height'], page.viewport_size['height'])
+    if bottom <= top:
+        # At 150% zoom the initial chart body can start below the visible band.
+        # Scroll on the visible KPI surface first; subsequent input hits charts.
+        bounds = frame.locator('.pa-next-one').bounding_box()
+        top = max(bounds['y'], outer['y'], 0)
+        bottom = min(bounds['y'] + bounds['height'], outer['y'] + outer['height'], page.viewport_size['height'])
     assert bottom > top, (bounds, outer)
     page.mouse.move(bounds['x'] + bounds['width'] / 2, (top + bottom) / 2)
     page.mouse.wheel(0, dy)
@@ -106,9 +116,14 @@ def wheel_over_chart(page, frame, dy):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--screenshots', type=Path, default=Path('/tmp/pa-next-viewport'))
+    parser.add_argument('--periods', type=Path, help='Optional actual-SQL fixture directory containing head/cat/one.json')
     args = parser.parse_args()
+    if args.periods:
+        for part in ['head', 'cat', 'one']:
+            rows[part] = json.loads((args.periods / (part + '.json')).read_text())
     args.screenshots.mkdir(parents=True, exist_ok=True)
-    measurements = {}
+    script_hashes = {part:hashlib.sha256(code.encode()).hexdigest() for part, code in scripts.items()}
+    measurements = {'script_sha256':script_hashes}
     with sync_playwright() as p:
         browser = p.chromium.launch(executable_path='/usr/bin/chromium', headless=True,
                                     ignore_default_args=['--hide-scrollbars'])
@@ -198,8 +213,72 @@ def main():
         frame.locator('[data-tour-action="next"]').press('Escape')
         assert geometry(frame)['shell']['scrollTop'] == prior_scroll
         assert page.evaluate('scrollY') == 0
+
+        # Regressions that a fixed 768px screenshot missed: browser chrome/zoom,
+        # wrapped dashboard title, a different menu height, and stale pixel
+        # height on a real sandbox. No programmatic scrollTo hides an unreachable
+        # bottom; use wheel input over the report for each scenario.
+        adversarial = [
+            ('short-720', 1366, 720, None), ('short-600', 1366, 600, None),
+            ('zoom125-equivalent', 1093, 614, None), ('zoom150-equivalent', 911, 512, None),
+            ('dashboard-header130', 1366, 768, 'header'),
+            ('navigation64', 1366, 768, 'nav'), ('tall-iframe1200', 1366, 768, 'iframe'),
+        ]
+        for label, width, height, variant in adversarial:
+            page.set_viewport_size({'width':width, 'height':height})
+            frame = mount(page)
+            if variant == 'header':
+                page.locator('.dashboard-header-container').evaluate('(n)=>n.style.height="130px"')
+            elif variant == 'nav':
+                page.locator('#main-menu').evaluate('(n)=>n.style.height="64px"')
+                page.locator('.board-scroller').evaluate('(n)=>n.style.height="calc(100vh - 64px)"')
+            elif variant == 'iframe':
+                page.locator('iframe[name="head"]').evaluate('(n)=>n.closest(".resizable-container").style.setProperty("height","1200px","important")')
+            page.wait_for_timeout(650)
+            for _ in range(3):
+                wheel_over_chart(page, frame, 1000)
+            current = assert_canvas_fits(frame, label)
+            assert current['body']['client'] >= 300, (label, 'minimum useful Dynamics height lost', current)
+            assert current['shell']['height'] <= current['band']['bottom'] - current['band']['top'] + 1, (label, current)
+            # Loading an unrelated tab must not reduce the measured minimum and
+            # jump the catalogue/analytics grid vertically.
+            size = current['content']['height']
+            band_height = current['band']['bottom'] - current['band']['top']
+            minimum = frame.evaluate('window.__paNext.viewportMinimum')
+            for tab in ['who', 'cal', 'dyn']:
+                frame.locator('[data-view="view:' + tab + '"]').click()
+                page.wait_for_timeout(250)
+                after_tab = geometry(frame)
+                assert frame.evaluate('window.__paNext.viewportMinimum') == minimum, (label, tab, minimum, after_tab)
+                # Clicking a previously offscreen tab can scroll the OUTER board
+                # in the deliberately oversized-iframe case. Then visible-band
+                # height changes and fitting to the new band is intentional.
+                next_band_height = after_tab['band']['bottom'] - after_tab['band']['top']
+                if abs(next_band_height - band_height) <= 1:
+                    assert abs(after_tab['content']['height'] - size) <= 1, (label, tab, size, after_tab)
+                size, band_height = after_tab['content']['height'], next_band_height
+            for _ in range(2):
+                wheel_over_chart(page, frame, 1000)
+            measurements[label] = assert_canvas_fits(frame, label + ' after tabs')
+            page.mouse.move(12, 20)
+            page.screenshot(path=str(args.screenshots / (label + '-analytics.png')))
+            assert page.get_by_role('button', name='Редактировать', exact=True).is_visible()
+            print('PASS:', label, 'both charts reachable through one report scroll surface')
+        page.wait_for_timeout(650)
+        settled = frame.evaluate('''() => new Promise(resolve => {
+          var shell=document.querySelector('.pa-next-shell'),content=document.querySelector('.pa-next-content');
+          var changes=0,initial=[shell.style.height,shell.style.top,content.style.height,window.__paNext.viewportMinimum];
+          var observer=new MutationObserver(function(records){changes+=records.length});
+          observer.observe(shell,{attributes:true,attributeFilter:['style']});
+          observer.observe(content,{attributes:true,attributeFilter:['style']});
+          setTimeout(function(){observer.disconnect();resolve({changes:changes,initial:initial,final:[shell.style.height,shell.style.top,content.style.height,window.__paNext.viewportMinimum]})},1000);
+        })''')
+        assert settled['changes'] == 0 and settled['initial'] == settled['final'], settled
+        print('PASS: viewport sizing settles without repeated style writes or ResizeObserver loops')
         assert not errors, errors
         measurements['errors'] = errors
+        names = {'head':'4. JS — весь отчёт.js','cat':'6. JS — загрузчик каталога.js','one':'8. JS — загрузчик панели.js'}
+        assert script_hashes == {part:hashlib.sha256((OUT / name).read_bytes()).hexdigest() for part, name in names.items()}, 'Delivery changed while viewport tests were running'
         (args.screenshots / 'metrics.json').write_text(json.dumps(measurements, ensure_ascii=False, indent=2))
         print('PASS: calendar and', count, 'guide steps fit visible band; zero page/ResizeObserver errors')
         print('Screenshots and measurements:', args.screenshots)

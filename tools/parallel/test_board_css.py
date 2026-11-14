@@ -106,6 +106,18 @@ def main():
             assert abs(frame['height']-host['height']) <= 1 and abs(frame['y']-host['y']) <= 1, ('iframe full cell',frame,host)
         print('PASS: iframe fills chart across resize; helper scripts run with positive dimensions and no display:none ancestors')
 
+        # Production diagnostic (2026-11-14): the 48px navigation exists without
+        # #main-menu. Its missing ID must not reclaim the menu's actual height.
+        page.locator('#main-menu').evaluate('(el)=>{el.style.height="48px";el.id="corporate-navigation"}')
+        for height in [760, 963, 1080]:
+            page.set_viewport_size({'width':1658,'height':height})
+            host = page.locator(chart_selector).bounding_box()
+            assert page.locator('.dashboard-header-container').bounding_box()['y'] == 48
+            assert page.locator('.grid-container').evaluate('(el)=>getComputedStyle(el).getPropertyValue("--pa-next-nav-height")') == '48px', ('missing menu ID incorrectly reclaimed navigation height', host)
+            assert abs(host['y']+host['height']-(height-24)) <= 1, ('corporate navigation viewport fit',height,host)
+            assert page.get_by_role('button', name='Редактировать', exact=True).is_visible()
+        print('PASS: corporate navigation without #main-menu keeps its 48px reserve across resize')
+
         # Updating a mounted chart must not let the platform's loading layer capture clicks.
         page.locator(chart_selector+' .chart-container').evaluate('''el=>{
             el.style.pointerEvents='none';
@@ -116,8 +128,10 @@ def main():
         assert page.locator(chart_selector+' iframe').evaluate('(el)=>getComputedStyle(el).pointerEvents') == 'auto'
         print('PASS: platform loading overlay no longer blocks the mounted interactive chart')
 
-        # The embedded/standalone page has no Proteus navigation; do not leave its 48px reserve.
-        page.locator('#main-menu').evaluate('(el)=>el.remove()')
+        # A genuinely embedded page can explicitly release the navigation
+        # reserve. The absence of an implementation-specific ID is not proof.
+        page.locator('#corporate-navigation').evaluate('(el)=>el.remove()')
+        page.locator('.grid-container').evaluate('(el)=>el.style.setProperty("--pa-next-nav-height","0px")')
         host = page.locator(chart_selector).bounding_box()
         assert abs(host['y']+host['height']-(1080-24)) <= 1, ('standalone viewport fit',host)
         page.locator('.dashboard-header-container').evaluate('(el)=>el.remove()')

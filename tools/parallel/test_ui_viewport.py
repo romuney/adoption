@@ -223,6 +223,7 @@ def main():
             ('zoom125-equivalent', 1093, 614, None), ('zoom150-equivalent', 911, 512, None),
             ('dashboard-header130', 1366, 768, 'header'),
             ('navigation64', 1366, 768, 'nav'), ('tall-iframe1200', 1366, 768, 'iframe'),
+            ('production-navigation-no-id', 1658, 963, 'production-nav'),
         ]
         for label, width, height, variant in adversarial:
             page.set_viewport_size({'width':width, 'height':height})
@@ -234,7 +235,17 @@ def main():
                 page.locator('.board-scroller').evaluate('(n)=>n.style.height="calc(100vh - 64px)"')
             elif variant == 'iframe':
                 page.locator('iframe[name="head"]').evaluate('(n)=>n.closest(".resizable-container").style.setProperty("height","1200px","important")')
+            elif variant == 'production-nav':
+                # Measured in the owner's board: header y48, main iframe y129,
+                # helpers AFTER the main row; navigation has no #main-menu ID.
+                page.locator('#main-menu').evaluate('(n)=>{n.style.height="48px";n.id="corporate-navigation"}')
+                page.locator('iframe[name="cat"]').evaluate('(n)=>{var row=n.closest(".dragdroppable-row");row.parentNode.appendChild(row)}')
             page.wait_for_timeout(650)
+            if variant == 'production-nav':
+                iframe_box = page.locator('iframe[name="head"]').bounding_box()
+                assert iframe_box['y'] == 129 and iframe_box['height'] == 808, ('production diagnostic geometry', iframe_box)
+                assert iframe_box['y'] + iframe_box['height'] == 937, ('production iframe exceeds viewport', iframe_box)
+                assert page.locator('.board-scroller').evaluate('(n)=>n.scrollHeight <= n.clientHeight'), 'Corporate board needs an outer scroll to reach the chart bottom'
             for _ in range(3):
                 wheel_over_chart(page, frame, 1000)
             current = assert_canvas_fits(frame, label)

@@ -144,7 +144,10 @@ def build(main,cat,one,channel,check=False):
    Редактор сохраняет штатные заголовки, меню и ручные размеры ячеек.
    Меню Proteus: 48px, шапка борда: 65px (из боевого профиля),
    поля сверху/снизу: 16/24px, один ряд загрузчиков: 2px.
-   Высота = окно - 155px; резерв отсутствующего меню/шапки снимается.
+   Высота = окно - 155px. Отсутствие #main-menu не означает отсутствие меню:
+   диагностика Proteus 14.11.2026 подтвердила 48px над шапкой без этого ID.
+   Для встраивания без меню задайте --pa-next-nav-height:0px явно на grid-container.
+   Резерв отсутствующей шапки борда снимается автоматически.
    Селекторы dashboard-header-container, dashboard-filters-panel и filter-bar
    сверены с исходником Superset 2.1.0; форк Proteus локально не подключён. */
 {board} [data-test="dashboard-filters-panel"],
@@ -152,7 +155,6 @@ def build(main,cat,one,channel,check=False):
 {board} .sidebar-resizer{{display:none!important}}
 {board} .dashboard-content:has({mainholder}){{margin-left:0!important}}
 {grid}{{--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px 24px!important;padding:0!important}}
-body:not(:has(#main-menu)) {grid}{{--pa-next-nav-height:0px}}
 body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-height:0px}}
 {mainrow}{{margin:0!important;padding:0!important}}
 .resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;min-height:0!important}}

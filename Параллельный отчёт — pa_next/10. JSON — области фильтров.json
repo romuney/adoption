@@ -1,54 +1,54 @@
 {
   "cross_filters_enabled": true,
   "chart_configuration": {
-    "910001": {
-      "id": 910001,
+    "859562": {
+      "id": 859562,
       "crossFilters": {
         "scope": {
           "rootPath": [
             "ROOT_ID"
           ],
           "excluded": [
-            910001
+            859562
           ]
         },
         "chartsInScope": [
-          910002,
-          910003
+          859563,
+          859564
         ]
       }
     },
-    "910002": {
-      "id": 910002,
+    "859563": {
+      "id": 859563,
       "crossFilters": {
         "scope": {
           "rootPath": [
             "ROOT_ID"
           ],
           "excluded": [
-            910001,
-            910002
+            859562,
+            859563
           ]
         },
         "chartsInScope": [
-          910003
+          859564
         ]
       }
     },
-    "910003": {
-      "id": 910003,
+    "859564": {
+      "id": 859564,
       "crossFilters": {
         "scope": {
           "rootPath": [
             "ROOT_ID"
           ],
           "excluded": [
-            910001,
-            910003
+            859562,
+            859564
           ]
         },
         "chartsInScope": [
-          910002
+          859563
         ]
       }
     }
@@ -61,9 +61,9 @@
       "excluded": []
     },
     "chartsInScope": [
-      910001,
-      910002,
-      910003
+      859562,
+      859563,
+      859564
     ]
   }
 }

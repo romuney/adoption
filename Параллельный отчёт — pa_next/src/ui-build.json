@@ -1,9 +1,9 @@
 {
   "configuration": {
-    "main": 910001,
-    "cat": 910002,
-    "one": 910003,
-    "channel": "proteus-adoption-next-v1",
+    "main": 859562,
+    "cat": 859563,
+    "one": 859564,
+    "channel": "proteus-adoption-next-859562",
     "echoColumns": [
       "period_param",
       "pub_f",

@@ -27,7 +27,8 @@ CSS += '''.pa-next-shell,.pa-next-shell *{scrollbar-width:thin;scrollbar-color:#
 
 # Native overlay scrollbars ignore scrollbar-gutter. Leave an explicit clear
 # lane at the content edge too, so macOS overlay thumbs cannot cover numbers.
-CSS += '''.pa-next-shell{padding-inline-end:10px;padding-block-end:10px}.pa-next-shell .prb-overlay,.pa-next-shell .pone-overlay{padding-inline-end:10px;padding-block-end:10px;scrollbar-gutter:stable}.pa-next-shell .prb-tscroll,.pa-next-shell .pone-tbl-scroll{padding-inline-end:10px;padding-block-end:10px;scrollbar-gutter:stable;box-sizing:border-box}.pa-next-shell .pone-ct-wrap{padding-bottom:10px}.pa-next-shell .pone-panel-b,.pa-next-shell .pone-wo-ex,.pa-next-shell .pone-pickbox{scrollbar-gutter:stable}body .phead-list,body .phead-sel{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent;scrollbar-gutter:stable;padding-inline-end:10px;box-sizing:border-box}'''
+# The outer shell owns the bottom lane; do not stack it on renderer wrappers.
+CSS += '''.pa-next-shell{padding-inline-end:10px;padding-block-end:10px}.pa-next-shell .prb-overlay,.pa-next-shell .pone-overlay{padding-inline-end:10px;scrollbar-gutter:stable}.pa-next-shell .prb-tscroll,.pa-next-shell .pone-tbl-scroll{padding-inline-end:10px;padding-block-end:10px;scrollbar-gutter:stable;box-sizing:border-box}.pa-next-shell .pone-ct-wrap{padding-bottom:10px}.pa-next-shell .pone-panel-b,.pa-next-shell .pone-wo-ex,.pa-next-shell .pone-pickbox{scrollbar-gutter:stable}body .phead-list,body .phead-sel{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent;scrollbar-gutter:stable;padding-inline-end:10px;box-sizing:border-box}'''
 
 CSS += (OUT/'src/brand.css').read_text().replace('\n','')
 
@@ -190,8 +191,9 @@ def build(main,cat,one,channel,check=False):
    Скрыты только шапки чартов и native filters; единый чарт следует высоте окна.
    Редактор сохраняет штатные заголовки, меню и ручные размеры ячеек.
    Меню Proteus: 48px, шапка борда: 65px (из боевого профиля),
-   поля сверху/снизу: 16/24px, один ряд загрузчиков: 2px.
-   Высота = окно - 155px. Отсутствие #main-menu не означает отсутствие меню:
+   поля борда сверху/снизу: 16/8px, один ряд загрузчиков: 2px.
+   Внутри JS снизу ещё один общий резерв 10px под скролл: видимое поле ≈18px.
+   Высота = окно - 139px. Отсутствие #main-menu не означает отсутствие меню:
    диагностика Proteus 14.11.2026 подтвердила 48px над шапкой без этого ID.
    Для встраивания без меню задайте --pa-next-nav-height:0px явно на grid-container.
    Резерв отсутствующей шапки борда снимается автоматически.
@@ -201,10 +203,10 @@ def build(main,cat,one,channel,check=False):
 {board} [data-test="filter-bar"],
 {board} .sidebar-resizer{{display:none!important}}
 {board} .dashboard-content:has({mainholder}){{margin-left:0!important}}
-{grid}{{--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px 24px!important;padding:0!important}}
+{grid}{{--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px 8px!important;padding:0!important}}
 body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-height:0px}}
 {mainrow}{{margin:0!important;padding:0!important}}
-.resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 42px))!important;min-height:0!important}}
+.resizable-container:not(.dashboard--editing *):has({mainholder}):not(:has(.resizable-container {mainholder})){{height:max(320px,calc(100vh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 26px))!important;height:max(320px,calc(100dvh - var(--pa-next-nav-height,48px) - var(--pa-next-board-header-height,65px) - 26px))!important;min-height:0!important}}
 {mainholder}{{padding:0!important;border:0!important;box-shadow:none!important;background:transparent!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;height:100%!important;min-height:0!important}}
 .dashboard-component-chart-holder:not(.dashboard--editing *):is(.dashboard-chart-id-{main},{helper}) :is(.chart-header,[data-test="slice-header"],.header-title,.header-controls){{display:none!important}}
 .dashboard-chart-id-{main} :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){{display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}}

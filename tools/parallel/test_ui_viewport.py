@@ -113,6 +113,30 @@ def wheel_over_chart(page, frame, dy):
     page.wait_for_timeout(350)
 
 
+def assert_outer_spacing(page, frame, label):
+    """Compare the visible card edges, including both parent and iframe gaps."""
+    iframe = page.locator('iframe[name="head"]').bounding_box()
+    header = page.locator('.dashboard-header-container').bounding_box()
+    top = iframe['y'] - header['y'] - header['height']
+    cards = frame.evaluate('''() => {
+      var out={};
+      for(var selector of ['.pa-next-cat','.pone-panel'])out[selector]=document.querySelector(selector).getBoundingClientRect().bottom;
+      for(var selector of ['.prb-overlay','.pone-overlay']){
+        var n=document.querySelector(selector);out[selector+'-overflow-x']=n.scrollWidth-n.clientWidth;
+      }
+      return out;
+    }''')
+    bottoms = {name:page.viewport_size['height']-iframe['y']-cards[name] for name in ['.pa-next-cat','.pone-panel']}
+    for name, bottom in bottoms.items():
+        assert abs(bottom-top) <= 5, (label,'bottom spacing exceeds top spacing',top,bottoms)
+    assert abs(bottoms['.pa-next-cat']-bottoms['.pone-panel']) <= 1, (label,'card bottoms misaligned',bottoms)
+    # At these standard widths the renderer wrappers have no horizontal scroll.
+    # The380px panel can still scroll horizontally; inner content keeps its own
+    # bottom padding without adding a second lane to every renderer wrapper.
+    assert cards['.prb-overlay-overflow-x'] <= 1 and cards['.pone-overlay-overflow-x'] <= 1, (label,cards)
+    return {'top':top,'bottoms':bottoms}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--screenshots', type=Path, default=Path('/tmp/pa-next-viewport'))
@@ -158,6 +182,14 @@ def main():
             page.wait_for_timeout(100)
             page.screenshot(path=str(args.screenshots / (label + '-analytics.png')))
             measurements[label] = {'initial':initial, 'analytics':final}
+            measurements[label]['spacing'] = {}
+            for tab in ['dyn','cal','who','path','coh']:
+                frame.locator('[data-view="view:'+tab+'"]').evaluate('(n)=>n.click()')
+                page.wait_for_timeout(200)
+                frame.locator('.pa-next-shell').evaluate('(n)=>n.scrollTop=n.scrollHeight')
+                page.wait_for_timeout(100)
+                measurements[label]['spacing'][tab] = assert_outer_spacing(page,frame,label+' '+tab)
+            frame.locator('[data-view="view:dyn"]').evaluate('(n)=>n.click()')
             print('PASS:', label, 'wheel reveals both charts; dashboard Edit remains available')
 
         # Same mounted instance: browser resize must pass through platform pixel
@@ -243,8 +275,8 @@ def main():
             page.wait_for_timeout(650)
             if variant == 'production-nav':
                 iframe_box = page.locator('iframe[name="head"]').bounding_box()
-                assert iframe_box['y'] == 129 and iframe_box['height'] == 808, ('production diagnostic geometry', iframe_box)
-                assert iframe_box['y'] + iframe_box['height'] == 937, ('production iframe exceeds viewport', iframe_box)
+                assert iframe_box['y'] == 129 and iframe_box['height'] == 824, ('production diagnostic geometry', iframe_box)
+                assert iframe_box['y'] + iframe_box['height'] == 953, ('production iframe exceeds viewport', iframe_box)
                 assert page.locator('.board-scroller').evaluate('(n)=>n.scrollHeight <= n.clientHeight'), 'Corporate board needs an outer scroll to reach the chart bottom'
             for _ in range(3):
                 wheel_over_chart(page, frame, 1000)
@@ -271,6 +303,8 @@ def main():
             for _ in range(2):
                 wheel_over_chart(page, frame, 1000)
             measurements[label] = assert_canvas_fits(frame, label + ' after tabs')
+            if variant == 'production-nav':
+                measurements[label]['spacing'] = assert_outer_spacing(page,frame,label)
             page.mouse.move(12, 20)
             page.screenshot(path=str(args.screenshots / (label + '-analytics.png')))
             assert page.get_by_role('button', name='Редактировать', exact=True).is_visible()

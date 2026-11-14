@@ -1,0 +1,62 @@
+{
+  "script_sha256": {
+    "head": "edcede4c123d6e0290e4414c7086dba06f891d7c4f7f7763515e221e43e90ea0",
+    "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+    "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+  },
+  "cases": [
+    {
+      "tab": "dyn",
+      "pointer_samples": 23,
+      "painted_frames": 94,
+      "min_width": 380,
+      "max_width": 1404,
+      "svg_text_samples": 14274,
+      "max_svg_scale_error": 0
+    },
+    {
+      "tab": "cal",
+      "pointer_samples": 23,
+      "painted_frames": 73,
+      "min_width": 380,
+      "max_width": 1404,
+      "svg_text_samples": 0,
+      "max_svg_scale_error": 0
+    },
+    {
+      "tab": "path",
+      "pointer_samples": 23,
+      "painted_frames": 74,
+      "min_width": 380,
+      "max_width": 1404,
+      "svg_text_samples": 1067,
+      "max_svg_scale_error": 0
+    },
+    {
+      "tab": "who",
+      "pointer_samples": 23,
+      "painted_frames": 92,
+      "min_width": 380,
+      "max_width": 1404,
+      "svg_text_samples": 0,
+      "max_svg_scale_error": 0
+    },
+    {
+      "tab": "coh",
+      "pointer_samples": 23,
+      "painted_frames": 82,
+      "min_width": 380,
+      "max_width": 1404,
+      "svg_text_samples": 0,
+      "max_svg_scale_error": 0
+    }
+  ],
+  "pending": {
+    "scroll_events": 8,
+    "scroll_redraws": 0,
+    "drag_samples": 7,
+    "visible_stale_metrics": 0
+  },
+  "completed": true,
+  "errors": []
+}

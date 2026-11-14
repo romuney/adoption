@@ -1,0 +1,13 @@
+script_sha256: edcede4c123d6e0290e4414c7086dba06f891d7c4f7f7763515e221e43e90ea0
+PASS: inline caret at 420px is visible, separate from search; Enter/Space, separator keys and pointer drag work without queries
+PASS: touch pointer movement resizes; cancellation releases selection lock
+PASS: one caret survives catalogue search and all four mode rerenders; collapse preserves mode and emits no filters
+PASS: hide/show retains catalogue state; both SVGs fit at scale 1:1 immediately and after ResizeObserver
+PASS: catalogue caret/rail preserve the active analytics tab and return focus to the caret
+PASS: full chart rerun retains collapsed state and width, with one caret/rail/separator and no duplicate handlers
+PASS: complete interactive tour, targets, keyboard/focus trap and hidden catalogue restoration; no filters emitted
+CHECK: interactive guide at viewport 1280
+CHECK: interactive guide at viewport 900
+CHECK: interactive guide at viewport 700
+CHECK: interactive guide at viewport 390
+PASS: Escape, repeated tours, responsive visible-viewport placement at 1280/900/700/390; no browser errors

@@ -29,12 +29,18 @@
   ST.cache = ST.cache || { cat: [], one: [] };
   ST.commandError = ST.commandError || {};
   if (ST.statusTick) cancelAnimationFrame(ST.statusTick);
-  if (ST.interaction) ST.interaction.destroy();
   __INTERACTION__
-  ST.interaction = installInteraction(shell, ST);
-  if (ST.viewport) ST.viewport.destroy();
+  // A platform rerun reuses this sandbox. Tearing down its geometry briefly
+  // collapses the content and clamps the user's scroll position back to zero.
+  if (!ST.interaction || ST.interaction.shell !== shell) {
+    if (ST.interaction) ST.interaction.destroy();
+    ST.interaction = installInteraction(shell, ST);
+  } else ST.interaction.refresh();
   __VIEWPORT__
-  ST.viewport = installViewport(shell, ST);
+  if (!ST.viewport || ST.viewport.shell !== shell) {
+    if (ST.viewport) ST.viewport.destroy();
+    ST.viewport = installViewport(shell, ST);
+  } else ST.viewport.refresh();
   if (ST.keyboard) shell.removeEventListener('keydown', ST.keyboard);
   ST.keyboard = function (ev) {
     var node = ev.target;
@@ -49,7 +55,7 @@
   if (ST.viewportObserver) ST.viewportObserver.disconnect();
   (ST.viewportProbes || []).forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
   if (ST.viewportResize) window.removeEventListener('resize', ST.viewportResize);
-  ST.visibleBand = { top: 0, bottom: Math.min(window.innerHeight, window.screen.availHeight || 700) };
+  ST.visibleBand = ST.visibleBand || { top: 0, bottom: Math.min(window.innerHeight, window.screen.availHeight || 700) };
   function clampTips() {
     var band = ST.visibleBand;
     Array.prototype.forEach.call(document.querySelectorAll('body > .phead-tip,body > .prb-tip,body > .pone-tip'), function (tip) {

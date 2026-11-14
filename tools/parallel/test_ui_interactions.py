@@ -95,7 +95,7 @@ def main():
         after_key = cat.bounding_box()['width']
         assert original + 20 <= after_key <= original + 28
         splitter.press('Home')
-        assert cat.bounding_box()['width'] == 280
+        assert cat.bounding_box()['width'] == 420
         assert splitter.get_attribute('aria-valuenow') == splitter.get_attribute('aria-valuemin')
         assert_inline_caret(frame)
         page.screenshot(path='/tmp/pa-next-ui-inline-narrow.png')
@@ -103,7 +103,7 @@ def main():
         assert not cat.is_visible() and rail.is_visible()
         assert rail.evaluate('(el)=>el===document.activeElement')
         rail.press('Space')
-        assert cat.is_visible() and cat.bounding_box()['width'] == 280
+        assert cat.is_visible() and cat.bounding_box()['width'] == 420
         assert caret.evaluate('(el)=>el===document.activeElement')
         splitter.press('End')
         assert panel.bounding_box()['width'] >= 380
@@ -119,7 +119,7 @@ def main():
         assert not frame.locator('.pa-next-resizing').count()
         assert frame.evaluate('window.__paNext.layout.ratio > 0')
         assert page.evaluate('emits') == []
-        print('PASS: inline caret at 280px is visible, separate from search; Enter/Space, separator keys and pointer drag work without queries')
+        print('PASS: inline caret at 420px is visible, separate from search; Enter/Space, separator keys and pointer drag work without queries')
 
         # Pointer Events cover touch as well: cancellation releases the drag lock.
         before_touch = cat.bounding_box()['width']

@@ -57,8 +57,10 @@ function installViewport(shell, ST) {
     // Like the production layout, retain a useful analytics surface on laptops:
     // the report's filters scroll away, while the dashboard header stays outside
     // this sandbox. On a tall screen the filters and analytics fit together.
-    var remaining = Math.max(0, available - headHeight);
-    var target = Math.min(800, available);
+    var shellStyle = window.getComputedStyle(shell);
+    var layoutAvailable = Math.max(0, available - (parseFloat(shellStyle.paddingTop) || 0) - (parseFloat(shellStyle.paddingBottom) || 0));
+    var remaining = Math.max(0, layoutAvailable - headHeight);
+    var target = Math.min(800, layoutAvailable);
     // The 800px production target is a comfortable height, not a hard minimum.
     // A wrapped label or fractional line-height must not create a 1–16px scroll
     // on an otherwise fully fitting desktop. Keep the standard 16px tolerance.
@@ -87,6 +89,7 @@ function installViewport(shell, ST) {
   window.addEventListener('resize', refresh);
   refresh();
   return {
+    shell: shell,
     refresh: refresh,
     destroy: function () {
       destroyed = true;

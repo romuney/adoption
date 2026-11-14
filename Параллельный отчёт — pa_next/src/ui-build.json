@@ -57,7 +57,10 @@
     "preserve empty filter values; explicit retry for command errors",
     "calendar width follows embedded panel",
     "approved CROSS DATA soft accent and local animated loading signature",
-    "stable detail-tab layout during loading; shared scroll for short viewports"
+    "stable detail-tab layout during loading; shared scroll for short viewports",
+    "preserve geometry and scroll across same-sandbox reruns",
+    "fixed SVG type during splitter drag; 420px catalogue minimum; selected names limited to three lines",
+    "styled native scrollbars"
   ],
   "brand_sha256": {
     "cross-data-accent-source.png": "1a6ad9e99bf49979b0b27114544f4e78102a9a11e9d89042b9426b8ee73bf309",

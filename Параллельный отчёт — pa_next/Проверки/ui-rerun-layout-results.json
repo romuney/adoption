@@ -1,0 +1,6466 @@
+{
+  "completed": true,
+  "main_sha256": "edcede4c123d6e0290e4414c7086dba06f891d7c4f7f7763515e221e43e90ea0",
+  "cases": [
+    {
+      "case": "dyn-max",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 227.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 285.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 227.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 285.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 227.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 285.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 227.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 285.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 59
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 227.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 285.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 227.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 285.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 227.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 285.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 227.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 285.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 53
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "dyn-top",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 356.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 414.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 356.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 414.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 356.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 414.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 356.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 414.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 46
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 356.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 414.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 356.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 414.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 356.1875,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 414.1875,
+              "w": 944,
+              "h": 502.40625,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:dyn",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 356.1875,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 414.1875,
+            "w": 944,
+            "h": 502.40625,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:dyn",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 42
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "cal-max",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 45
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 48
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "cal-top",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 47
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:cal",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:cal",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 47
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "who-max",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 46
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 46
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "who-top",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 43
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:who",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:who",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 44
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "path-max",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 45
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 43
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "path-top",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 51
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:path",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:path",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 44
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "coh-max",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 44
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 129,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": -129,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": -0.40625,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": -0.40625,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": -0.40625,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 41.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 99.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 129,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": -129,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": -0.40625,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": -0.40625,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": -0.40625,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 41.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 99.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 46
+      },
+      "interaction": "passed"
+    },
+    {
+      "case": "coh-top",
+      "ready": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "ready",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "ready",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 47
+      },
+      "loading": {
+        "before": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "immediate": [
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          },
+          {
+            ".pa-next-shell": {
+              "x": 0,
+              "y": 0,
+              "w": 1610,
+              "h": 808,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-head": {
+              "x": 0,
+              "y": 0,
+              "w": 1590,
+              "h": 116.59375,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-content": {
+              "x": 0,
+              "y": 128.59375,
+              "w": 1590,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-cat": {
+              "x": 8,
+              "y": 128.59375,
+              "w": 598,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pa-next-one": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-overlay": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 964,
+              "h": 798,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-topbar": {
+              "x": 618,
+              "y": 128.59375,
+              "w": 944,
+              "h": 34,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-h": {
+              "x": 618,
+              "y": 170.59375,
+              "w": 944,
+              "h": 58,
+              "scroll": 0,
+              "left": 0
+            },
+            ".pone-panel-b": {
+              "x": 618,
+              "y": 228.59375,
+              "w": 944,
+              "h": 688,
+              "scroll": 0,
+              "left": 0
+            },
+            "grid": "798px",
+            "state": "loading",
+            "tab": "view:coh",
+            "rails": 1,
+            "splitters": 1
+          }
+        ],
+        "settled": {
+          ".pa-next-shell": {
+            "x": 0,
+            "y": 0,
+            "w": 1610,
+            "h": 808,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-head": {
+            "x": 0,
+            "y": 0,
+            "w": 1590,
+            "h": 116.59375,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-content": {
+            "x": 0,
+            "y": 128.59375,
+            "w": 1590,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-cat": {
+            "x": 8,
+            "y": 128.59375,
+            "w": 598,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pa-next-one": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-overlay": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 964,
+            "h": 798,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-topbar": {
+            "x": 618,
+            "y": 128.59375,
+            "w": 944,
+            "h": 34,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-h": {
+            "x": 618,
+            "y": 170.59375,
+            "w": 944,
+            "h": 58,
+            "scroll": 0,
+            "left": 0
+          },
+          ".pone-panel-b": {
+            "x": 618,
+            "y": 228.59375,
+            "w": 944,
+            "h": 688,
+            "scroll": 0,
+            "left": 0
+          },
+          "grid": "798px",
+          "state": "loading",
+          "tab": "view:coh",
+          "rails": 1,
+          "splitters": 1
+        },
+        "frames": 47
+      },
+      "interaction": "passed"
+    }
+  ]
+}

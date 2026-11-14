@@ -1,0 +1,52 @@
+[
+  {
+    "baseline": "d148",
+    "expected_failure": true,
+    "assertion": [
+      "dyn-max ready immediate 0",
+      ".pa-next-shell",
+      "scroll",
+      {
+        "x": 0,
+        "y": 0,
+        "w": 1610,
+        "h": 808,
+        "scroll": 121,
+        "left": 0
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "w": 1610,
+        "h": 808,
+        "scroll": 0,
+        "left": 0
+      }
+    ]
+  },
+  {
+    "baseline": "d148",
+    "expected_failure": true,
+    "assertion": [
+      "dyn-max loading immediate 0",
+      ".pa-next-shell",
+      "scroll",
+      {
+        "x": 0,
+        "y": 0,
+        "w": 1610,
+        "h": 808,
+        "scroll": 121,
+        "left": 0
+      },
+      {
+        "x": 0,
+        "y": 0,
+        "w": 1610,
+        "h": 808,
+        "scroll": 0,
+        "left": 0
+      }
+    ]
+  }
+]

@@ -44,15 +44,17 @@ function installInteraction(shell, ST) {
   rail.setAttribute('aria-controls', catalog.id);
   content.insertBefore(splitter, panel);
   var destroyed = false, drag = null, tour = null, resizeObserver = null, resizeTick = null;
-  var oldGrid = content.style.gridTemplateColumns, oldGap = content.style.gap;
+  var fitted = [{}, {}];
+  var oldGrid = content.style.gridTemplateColumns, oldGap = content.style.gap, oldOverflowX = content.style.overflowX;
   content.style.gap = '0';
+  content.style.overflowX = 'auto';
   function persist() {
     try { window.localStorage.setItem(storageKey, JSON.stringify(layout)); } catch (ignore) { /* session state still persists */ }
   }
   function size() {
     var css = window.getComputedStyle(content);
     var width = Math.max(0, content.clientWidth - (parseFloat(css.paddingLeft) || 0) - (parseFloat(css.paddingRight) || 0));
-    return { width: width, min: 280, max: Math.max(280, width - 392) };
+    return { width: width, min: 420, max: Math.max(420, width - 392) };
   }
   function paint() {
     if (destroyed) return;
@@ -61,6 +63,7 @@ function installInteraction(shell, ST) {
     content.style.gridTemplateColumns = layout.hidden ? '34px 12px minmax(380px,1fr)' : width + 'px 12px minmax(380px,1fr)';
     splitter.setAttribute('aria-valuemin', String(s.min)); splitter.setAttribute('aria-valuemax', String(s.max));
     splitter.setAttribute('aria-valuenow', String(width)); splitter.setAttribute('aria-valuetext', width + ' пикселей');
+    settleResize();
     if (tour) placeTour();
   }
   function setWidth(width) {
@@ -69,10 +72,21 @@ function installInteraction(shell, ST) {
     paint();
   }
   function settleResize() {
-    // The existing renderers synchronously fit their SVG viewBox on window resize.
-    // Use this only after a discrete layout action, never from paint/ResizeObserver.
-    // Pointer moves retain the renderer's debounced path until the drag ends.
-    if (!destroyed) window.dispatchEvent(new Event('resize'));
+    // Fit the panel in the same task as the grid write, before the browser can
+    // paint a stretched SVG. Do not emit a global resize: that rebuilds visible-
+    // band probes and unrelated renderers on every pointer move.
+    if (destroyed) return;
+    [catalog, panel].forEach(function (region, index) {
+      var fit = region.__paNextResize;
+      if (typeof fit !== 'function') return;
+      var rect = region.getBoundingClientRect(), previous = fitted[index];
+      if (!rect.width || !rect.height) return;
+      // A scroll refresh only moves the host. Re-rendering at the same size
+      // would tear down pending overlays and do unnecessary work every frame.
+      if (previous.fit === fit && Math.abs(previous.width - rect.width) < 0.01 && Math.abs(previous.height - rect.height) < 0.01) return;
+      fitted[index] = { fit: fit, width: rect.width, height: rect.height };
+      fit();
+    });
   }
   function adjust(amount) { setWidth(catalog.getBoundingClientRect().width + amount); settleResize(); persist(); }
   function toggleCatalog() {
@@ -261,7 +275,7 @@ function installInteraction(shell, ST) {
   window.addEventListener('keydown', tourKey, true);
   window.addEventListener('scroll', refresh, true);
   paint();
-  return { help: help, refresh: refresh, destroy: function () {
+  return { shell: shell, help: help, refresh: refresh, destroy: function () {
     closeTour(); destroyed = true; dragEnd();
     if (resizeObserver) resizeObserver.disconnect();
     if (resizeTick !== null) cancelAnimationFrame(resizeTick);
@@ -274,6 +288,6 @@ function installInteraction(shell, ST) {
     window.removeEventListener('blur', dragEnd);
     shell.removeEventListener('click', catalogToggle, true);
     [rail, splitter, style].forEach(function (node) { if (node.parentNode) node.parentNode.removeChild(node); });
-    content.style.gridTemplateColumns = oldGrid; content.style.gap = oldGap;
+    content.style.gridTemplateColumns = oldGrid; content.style.gap = oldGap; content.style.overflowX = oldOverflowX;
   } };
 }

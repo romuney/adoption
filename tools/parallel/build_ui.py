@@ -13,6 +13,21 @@ CSS += '''.pa-next-head{flex:0 0 auto}.pa-next-head .phead-overlay{position:rela
 
 CSS += '.pa-next-wait button{pointer-events:auto;border:1px solid #dce2eb;border-radius:8px;padding:8px 12px;background:white;color:#245fd4;font:700 12px Arial;cursor:pointer}.pa-next-quiet .pa-next-loading{visibility:hidden}.pa-next-one.pa-next-stale .pone-frow{visibility:hidden}.pa-next-one.pa-next-stale .pone-h-area{visibility:hidden}'
 
+# Source resize may rebuild its DOM before the deferred status callback runs.
+# Keep stale numbers hidden in that interval as well.
+CSS += '.pa-next-one.pa-next-stale .pone-top,.pa-next-one.pa-next-stale .pone-panel-b>:not(.pa-next-wait){visibility:hidden!important}'
+
+# Selecting a report must not expand its name beyond the same three lines.
+# The source row tooltip already contains the complete report name.
+CSS += '.pa-next-cat .prb-ptable tbody tr.sel .prb-rname-n{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}'
+
+# Keep native scrolling/keyboard behavior; OS overlay visibility remains native.
+CSS += '''.pa-next-shell,.pa-next-shell *{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent}.pa-next-shell::-webkit-scrollbar,.pa-next-shell *::-webkit-scrollbar{width:8px;height:8px}.pa-next-shell::-webkit-scrollbar-track,.pa-next-shell *::-webkit-scrollbar-track{background:transparent}.pa-next-shell::-webkit-scrollbar-thumb,.pa-next-shell *::-webkit-scrollbar-thumb{background:#b9c1ce;border-radius:8px;border:2px solid transparent;background-clip:padding-box}.pa-next-shell::-webkit-scrollbar-thumb:hover,.pa-next-shell *::-webkit-scrollbar-thumb:hover{background-color:#8a96a8}.pa-next-shell::-webkit-scrollbar-corner,.pa-next-shell *::-webkit-scrollbar-corner{background:transparent}@media(forced-colors:active){.pa-next-shell,.pa-next-shell *{scrollbar-color:auto}}'''
+
+# Native overlay scrollbars ignore scrollbar-gutter. Leave an explicit clear
+# lane at the content edge too, so macOS overlay thumbs cannot cover numbers.
+CSS += '''.pa-next-shell{padding-inline-end:10px;padding-block-end:10px}.pa-next-shell .prb-overlay,.pa-next-shell .pone-overlay{padding-inline-end:10px;padding-block-end:10px;scrollbar-gutter:stable}.pa-next-shell .prb-tscroll,.pa-next-shell .pone-tbl-scroll{padding-inline-end:10px;padding-block-end:10px;scrollbar-gutter:stable;box-sizing:border-box}.pa-next-shell .pone-ct-wrap{padding-bottom:10px}.pa-next-shell .pone-panel-b,.pa-next-shell .pone-wo-ex,.pa-next-shell .pone-pickbox{scrollbar-gutter:stable}body .phead-list,body .phead-sel{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent;scrollbar-gutter:stable;padding-inline-end:10px;box-sizing:border-box}'''
+
 CSS += (OUT/'src/brand.css').read_text().replace('\n','')
 
 def renderer(part, name):
@@ -68,12 +83,43 @@ def renderer(part, name):
         hook='return window.innerWidth <= 760 ? w :'
         assert s.count(hook)==1, 'calendar width bridge changed'
         s=s.replace(hook, 'var panel = document.querySelector(\'[data-pa-next-host="one"]\'); return (panel ? panel.clientWidth : window.innerWidth) <= 760 ? w :')
+        # The unified splitter changes a container, not the iframe window. Fit
+        # synchronously through a scoped hook so no painted frame scales SVG
+        # text while the original 150ms ResizeObserver timer is pending.
+        hook='var w = svgs[0].clientWidth || 0;\n      if (!w || Math.abs(w - SVG_W) <= 2) return false;'
+        assert s.count(hook)==1, 'SVG resize measurement hook changed'
+        s=s.replace(hook, 'var w = svgs[0].getBoundingClientRect().width || 0;\n      if (!w || Math.abs(w - SVG_W) < 0.01) return false;')
+        hook='Math.max(0, body.children.length - 1) * (parseFloat(cs.rowGap) || CFG.spacing.stackGap)'
+        assert s.count(hook)==1, 'Dynamics flow-gap measurement hook changed'
+        # The controller's absolute loading cover is not a flex item and must
+        # not subtract another gap from the available plot height.
+        s=s.replace(hook, "Math.max(0, Array.prototype.filter.call(body.children, function (child) { return !child.classList.contains('pa-next-wait'); }).length - 1) * (parseFloat(cs.rowGap) || CFG.spacing.stackGap)")
+        hook='state.onWinResize = function () { syncOvr(); var w = syncSvgWidth(), hh = syncDynH(), fh = syncFnH(); if (w || hh || fh) render(); if (state.tip) renderTip(); };'
+        assert s.count(hook)==1, 'scoped resize hook changed'
+        s=s.replace(hook, '''state.onWinResize = function () {
+      // A scrollbar/container breakpoint can change the width once more after
+      // rendering. Bound settling to three passes in this same paint task.
+      for (var pass = 0; pass < 3; pass++) {
+        syncOvr();
+        var w = syncSvgWidth(), hh = syncDynH(), fh = syncFnH(), ch = syncCalH();
+        if (!(w || hh || fh || ch)) break;
+        render();
+      }
+      if (state.tip) renderTip();
+    };
+    host.__paNextResize = state.onWinResize;''')
+        # The wide Path layout follows its embedded panel, just like the narrow
+        # layouts below; the enclosing unified iframe can remain much wider.
+        s=s.replace('@media (min-width:', '@container pa-next-one (min-width:')
         for hook in ['function pvFits(p) {', "m.sig = 'pv|' + p.key + '|' + p.grain;", 'state.scr = scrSnap();\n      renderTip();']:
             assert s.count(hook)==1, ('preview bridge changed', hook)
         s=s.replace('function pvFits(p) {', 'function pvFits(p) { if (!PA_NEXT_PREVIEW(p, false)) return false;')
         s=s.replace("m.sig = 'pv|' + p.key + '|' + p.grain;", "m.sig = 'pv|' + p.key + '|' + p.grain; PA_NEXT_PREVIEW(p, true);")
         s=s.replace('state.scr = scrSnap();\n      renderTip();', 'state.scr = scrSnap();\n      renderTip(); PA_NEXT_RENDERED();')
     if part == 'cat':
+        hook="window.addEventListener('resize', state.onCatRs);"
+        assert s.count(hook)==1, 'catalogue resize hook changed'
+        s=s.replace(hook, hook+'\n    host.__paNextResize = state.onCatRs;')
         start=s.index('    function catSend(fl) {')
         end=s.index('\n    }',start)+6
         s=s[:start]+'    function catSend(fl) { catSendNow(fl); }'+s[end:]
@@ -177,7 +223,7 @@ body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-heigh
     metadata={'cross_filters_enabled':True,'chart_configuration':{str(main):{'id':main,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main]},'chartsInScope':[cat,one]}},str(cat):{'id':cat,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,cat]},'chartsInScope':[one]}},str(one):{'id':one,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,one]},'chartsInScope':[cat]}}},'global_chart_configuration':{'scope':{'rootPath':['ROOT_ID'],'excluded':[]},'chartsInScope':[main,cat,one]}}
     metadata.update(show_native_filters=False,native_filter_configuration=[])
     write('10. JSON — области фильтров.json',json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
-    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height; visible dashboard header; hidden chart headers','scroll report filters away on laptop; preserve useful analytics height','single-flight query queue with exact request completion','bounded session cache keyed by exact business masks and generation','atomic selection and preview; one local delayed loader','preserve empty filter values; explicit retry for command errors','calendar width follows embedded panel','approved CROSS DATA soft accent and local animated loading signature','stable detail-tab layout during loading; shared scroll for short viewports'], 'brand_sha256':{n:hashlib.sha256((OUT/'src/assets'/n).read_bytes()).hexdigest() for n in ['cross-data-accent-source.png','cross-data-accent.webp']},'calculations':'Original buildModel and metric functions are preserved verbatim.'}
+    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height; visible dashboard header; hidden chart headers','scroll report filters away on laptop; preserve useful analytics height','single-flight query queue with exact request completion','bounded session cache keyed by exact business masks and generation','atomic selection and preview; one local delayed loader','preserve empty filter values; explicit retry for command errors','calendar width follows embedded panel','approved CROSS DATA soft accent and local animated loading signature','stable detail-tab layout during loading; shared scroll for short viewports','preserve geometry and scroll across same-sandbox reruns','fixed SVG type during splitter drag; 420px catalogue minimum; selected names limited to three lines','styled native scrollbars'], 'brand_sha256':{n:hashlib.sha256((OUT/'src/assets'/n).read_bytes()).hexdigest() for n in ['cross-data-accent-source.png','cross-data-accent.webp']},'calculations':'Original buildModel and metric functions are preserved verbatim.'}
     report['minifier']='terser 5.51.2 via pinned playbook kit/min.cjs'
     report['linter']='eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)'
     report['lint_messages_by_rule']=lint_summary

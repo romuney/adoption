@@ -128,9 +128,11 @@ def main():
         page.set_viewport_size({'width':1440,'height':800})
         frame=mount(page,1600)
         targets=frame.locator('[data-pa-next-host="cat"] tr[data-rep]')
-        near_bottom=[el for el in targets.all() if 680<=el.bounding_box()['y']<740]
+        # Read all row positions atomically; ResizeObserver can replace a row
+        # between separate Playwright resolve/getBoxModel calls after mounting.
+        near_bottom=targets.evaluate_all('nodes=>nodes.filter(n=>{const r=n.getBoundingClientRect();return r.height>0&&r.top>=680&&r.top<740}).map(n=>n.getAttribute("data-rep"))')
         assert near_bottom,'No visible row near bottom for tooltip fixture'
-        near_bottom[-1].hover()
+        frame.locator('[data-pa-next-host="cat"] tr[data-rep="'+near_bottom[-1]+'"]').hover()
         page.wait_for_timeout(350)
         tip=frame.locator('body>.prb-tip')
         assert tip.is_visible()

@@ -1,0 +1,58 @@
+{
+  "completed": true,
+  "main_sha256": "edcede4c123d6e0290e4414c7086dba06f891d7c4f7f7763515e221e43e90ea0",
+  "cases": [
+    {
+      "gutter": "classic",
+      "title": {
+        "height": 42,
+        "font": 12.5,
+        "clamp": "3"
+      },
+      "lanes": {
+        "cat": {
+          "right": 20,
+          "bottomPadding": 10,
+          "rightPadding": 10,
+          "gutter": 10
+        },
+        "people": {
+          "right": 20,
+          "bottomPadding": 10,
+          "rightPadding": 10,
+          "gutter": 10
+        },
+        "outerLane": 20,
+        "shellBottomPadding": 10,
+        "outerPanelPadding": 10
+      },
+      "errors": []
+    },
+    {
+      "gutter": "zero-width",
+      "title": {
+        "height": 42,
+        "font": 12.5,
+        "clamp": "3"
+      },
+      "lanes": {
+        "cat": {
+          "right": 10,
+          "bottomPadding": 10,
+          "rightPadding": 10,
+          "gutter": 0
+        },
+        "people": {
+          "right": 10,
+          "bottomPadding": 10,
+          "rightPadding": 10,
+          "gutter": 0
+        },
+        "outerLane": 10,
+        "shellBottomPadding": 10,
+        "outerPanelPadding": 10
+      },
+      "errors": []
+    }
+  ]
+}

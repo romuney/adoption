@@ -180,7 +180,11 @@ def build(main,cat,one,channel,check=False):
     sources={'head':'pa-head.chart.js','cat':'pa-reports-body.chart.js','one':'pa-one.chart.js'}
     brand=(OUT/'src/brand.js').read_text().replace('__BRAND_DATA__',json.dumps('data:image/webp;base64,'+base64.b64encode((OUT/'src/assets/cross-data-accent.webp').read_bytes()).decode('ascii')))
     wrappers='{'+','.join(json.dumps(k)+':'+renderer(k,v) for k,v in sources.items())+'}'
-    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',(OUT/'src/interaction.js').read_text()).replace('__VIEWPORT__',(OUT/'src/viewport.js').read_text()).replace('__BRAND__',brand)
+    interaction=(OUT/'src/task-guide.js').read_text()+'\n'+(OUT/'src/interaction.js').read_text()
+    viewport=(OUT/'src/viewport.js').read_text()
+    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',interaction).replace('__VIEWPORT__',viewport).replace('__BRAND__',brand)
+    text=text.replace('__INTERACTION_REVISION__',hashlib.sha256(interaction.encode()).hexdigest()).replace('__VIEWPORT_REVISION__',hashlib.sha256(viewport.encode()).hexdigest())
+    text=text.replace('__RENDERERS_REVISION__',hashlib.sha256(wrappers.encode()).hexdigest())
     text=text.replace("msg.type === 'PA_TOUR_GO'", "msg.type === 'PA_NEXT_INTERNAL_TOUR_GO'")
     outputs={'4. JS — весь отчёт.js':text}
     for part,name in [('cat','6. JS — загрузчик каталога.js'),('one','8. JS — загрузчик панели.js')]:

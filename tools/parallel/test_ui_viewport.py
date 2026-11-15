@@ -229,6 +229,7 @@ def main():
         assert drop['height'] > 300 and drop['top'] >= band['top'] and drop['bottom'] <= band['bottom'] + 1, (drop, band)
         dropdown.locator('[data-cpcancel]').click()
         frame.get_by_text('Как работать', exact=False).first.click()
+        frame.locator('[data-tour-route="overview"]').click()
         count = 0
         while frame.locator('.pa-next-tour').count():
             count += 1
@@ -244,6 +245,7 @@ def main():
         wheel_over_chart(page, frame, 1000)
         prior_scroll = geometry(frame)['shell']['scrollTop']
         frame.evaluate('window.__paNext.interaction.help()')
+        frame.locator('[data-tour-route="overview"]').click()
         frame.locator('[data-tour-action="next"]').click()
         frame.locator('[data-tour-action="next"]').press('Escape')
         assert geometry(frame)['shell']['scrollTop'] == prior_scroll

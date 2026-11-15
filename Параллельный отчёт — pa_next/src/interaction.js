@@ -43,7 +43,7 @@ function installInteraction(shell, ST) {
   splitter.setAttribute('aria-controls', catalog.id);
   rail.setAttribute('aria-controls', catalog.id);
   content.insertBefore(splitter, panel);
-  var destroyed = false, drag = null, tour = null, resizeObserver = null, resizeTick = null;
+  var destroyed = false, drag = null, tour = null, task = null, resizeObserver = null, resizeTick = null;
   var fitted = [{}, {}];
   var oldGrid = content.style.gridTemplateColumns, oldGap = content.style.gap, oldOverflowX = content.style.overflowX;
   content.style.gap = '0';
@@ -262,7 +262,7 @@ function installInteraction(shell, ST) {
       ev.preventDefault(); buttons[next].focus({ preventScroll: true });
     }
   }
-  function help() {
+  function overview() {
     if (tour || destroyed) return;
     var focus = document.activeElement, hidden = layout.hidden, scrollLeft = content.scrollLeft, scrollTop = shell.scrollTop;
     layout.hidden = false; paint(); settleResize();
@@ -288,10 +288,20 @@ function installInteraction(shell, ST) {
     tour.timer = setInterval(placeTour, 200);
     showStep(0);
   }
+  function help() {
+    if (destroyed || tour) return;
+    if (task) { task.focus(); return; }
+    task = installTaskGuide(shell, ST, {
+      closed: function () { task = null; },
+      overview: overview,
+      revealCatalog: function () { layout.hidden = false; paint(); }
+    });
+  }
   window.addEventListener('keydown', tourKey, true);
   window.addEventListener('scroll', refresh, true);
   paint();
   return { shell: shell, help: help, refresh: refresh, destroy: function () {
+    if (task) task.destroy();
     closeTour(); destroyed = true; dragEnd();
     if (resizeObserver) resizeObserver.disconnect();
     if (resizeTick !== null) cancelAnimationFrame(resizeTick);

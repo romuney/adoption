@@ -9,17 +9,59 @@
   ST.apply = typeof applyCrossFilter === 'function' ? applyCrossFilter : null;
   var hosts = document.querySelectorAll('[_echarts_instance_]'), host = hosts.length ? hosts[hosts.length - 1] : null;
   if (!host) return;
+  // Platform pixel dimensions can lag behind the dashboard CSS. Only the
+  // report's own scroll surfaces may consume space inside this sandbox.
+  document.documentElement.style.overflow = 'hidden';
+  if (document.body) document.body.style.overflow = 'hidden';
+  host.style.overflow = 'hidden'; host.style.maxWidth = '100%'; host.style.boxSizing = 'border-box';
   var shell = host.querySelector('.pa-next-shell');
+  var shellCSS = '__SHELL_CSS__';
+  var interactionRevision = '__INTERACTION_REVISION__', viewportRevision = '__VIEWPORT_REVISION__';
+  var renderersRevision = '__RENDERERS_REVISION__';
+  var upgrade = !!shell && (ST.interactionRevision !== interactionRevision || ST.viewportRevision !== viewportRevision || ST.renderersRevision !== renderersRevision);
+  var oldShellStyle = shell && shell.querySelector('style[data-pa-next-shell-css]');
+  if (!oldShellStyle && shell && shell.firstElementChild && shell.firstElementChild.tagName === 'STYLE') oldShellStyle = shell.firstElementChild;
+  if (shell && (!oldShellStyle || oldShellStyle.textContent !== shellCSS)) upgrade = true;
+  var positions = [], geometry = null;
+  if (upgrade) {
+    var contentBeforeUpgrade = shell.querySelector('.pa-next-content');
+    geometry = { height: shell.style.height, top: shell.style.top, contentHeight: contentBeforeUpgrade.style.height };
+    ['.pa-next-shell','.pa-next-content','.prb-overlay','.prb-tscroll','.pone-overlay','.pone-panel-b','.pone-tbl-scroll','.pone-wo-ex','.pone-pickbox','.pone-ct-wrap'].forEach(function (selector) {
+      var nodes = selector === '.pa-next-shell' ? [shell] : shell.querySelectorAll(selector);
+      Array.prototype.forEach.call(nodes, function (node, index) { positions.push({ selector: selector, index: index, top: node.scrollTop, left: node.scrollLeft }); });
+    });
+  }
+  function preserveGeometry() {
+    if (!geometry) return;
+    shell.style.height = geometry.height; shell.style.top = geometry.top;
+    shell.querySelector('.pa-next-content').style.height = geometry.contentHeight;
+  }
+  function restorePositions() {
+    positions.forEach(function (position) {
+      var nodes = position.selector === '.pa-next-shell' ? [shell] : shell.querySelectorAll(position.selector);
+      var node = nodes[position.index]; if (!node) return;
+      if (node.scrollTop !== position.top) node.scrollTop = position.top;
+      if (node.scrollLeft !== position.left) node.scrollLeft = position.left;
+    });
+  }
+  if (ST.upgradeScrollTick) cancelAnimationFrame(ST.upgradeScrollTick);
+  ST.upgradeScrollTick = null;
   if (!shell) {
     Array.prototype.forEach.call(host.querySelectorAll('canvas'), function (c) { c.style.display = 'none'; });
     host.style.position = 'relative';
     shell = document.createElement('div'); shell.className = 'pa-next-shell';
-    shell.innerHTML = '<style>__SHELL_CSS__</style>' +
+    shell.innerHTML = '<style data-pa-next-shell-css>' + shellCSS + '</style>' +
       '<div class="pa-next-status" role="status" aria-live="polite"></div>' +
       '<div class="pa-next-head" data-pa-next-host="head" aria-label="Настройки отчёта"></div>' +
       '<div class="pa-next-content"><section class="pa-next-cat" data-pa-next-host="cat" aria-label="Каталог отчётов"></section>' +
       '<section class="pa-next-one" data-pa-next-host="one" aria-label="Показатели выбранной области"></section></div>';
     host.appendChild(shell); ST.mounted = {};
+  } else {
+    // A dataset refresh reuses this DOM; importing a new JS must replace the
+    // old shell rules too, not only the JavaScript functions around them.
+    if (!oldShellStyle) { oldShellStyle = document.createElement('style'); shell.insertBefore(oldShellStyle, shell.firstChild); }
+    oldShellStyle.setAttribute('data-pa-next-shell-css', '');
+    if (oldShellStyle.textContent !== shellCSS) oldShellStyle.textContent = shellCSS;
   }
   ST.shell = shell;
   ST.intent = ST.intent || {};
@@ -32,15 +74,19 @@
   __INTERACTION__
   // A platform rerun reuses this sandbox. Tearing down its geometry briefly
   // collapses the content and clamps the user's scroll position back to zero.
-  if (!ST.interaction || ST.interaction.shell !== shell) {
+  if (!ST.interaction || ST.interaction.shell !== shell || ST.interactionRevision !== interactionRevision) {
     if (ST.interaction) ST.interaction.destroy();
+    preserveGeometry();
     ST.interaction = installInteraction(shell, ST);
   } else ST.interaction.refresh();
+  ST.interactionRevision = interactionRevision;
   __VIEWPORT__
-  if (!ST.viewport || ST.viewport.shell !== shell) {
+  if (!ST.viewport || ST.viewport.shell !== shell || ST.viewportRevision !== viewportRevision) {
     if (ST.viewport) ST.viewport.destroy();
+    preserveGeometry();
     ST.viewport = installViewport(shell, ST);
   } else ST.viewport.refresh();
+  ST.viewportRevision = viewportRevision;
   if (ST.keyboard) shell.removeEventListener('keydown', ST.keyboard);
   ST.keyboard = function (ev) {
     var node = ev.target;
@@ -431,8 +477,22 @@
   ['cat','one'].forEach(function (part) { if (!ST.issued[part][requestKey(part, ST.masks)]) register(part); });
   if (gen) render('head', head);
   else shell.querySelector('[data-pa-next-host="head"]').textContent = 'Витрины pa_next ещё не опубликованы. Заверши запуск ноутбука и принудительно обнови все чарты дашборда.';
+  if (ST.renderersRevision !== renderersRevision) {
+    // A code upgrade is not a new selection or a SQL request. Rebuild the
+    // accepted rows with current renderer hooks; their namespace state keeps
+    // tabs, search, pagination and a still-valid catalogue preview.
+    ['cat','one'].forEach(function (part) {
+      var accepted = ST.accepted[part];
+      if (accepted && accepted.generation === gen) render(part, accepted.rows);
+    });
+    ST.renderersRevision = renderersRevision;
+  }
   ['cat', 'one'].forEach(restore);
   status(); broadcastAsk();
+  if (upgrade) {
+    restorePositions();
+    ST.upgradeScrollTick = requestAnimationFrame(function () { ST.upgradeScrollTick = null; restorePositions(); });
+  }
   ST.timer = setInterval(function () {
     ['cat', 'one'].forEach(function (part) { if (ST.pending[part] && !ST.commandError[part]) send(part, 'COMMAND', ST.pending[part]); if (!ST.mounted[part] || (ST.error[part] && !ST.commandError[part === 'cat' ? 'one' : 'cat'])) send(part, 'ASK'); });
     status();

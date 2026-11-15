@@ -175,6 +175,7 @@ def overlays(page, frame, output, label):
     assert org['visible'], (label, org)
     frame.locator('body').press('Escape')
     frame.locator('[data-tourstart]').click()
+    frame.locator('[data-tour-route="overview"]').click()
     count = 0
     while frame.locator('.pa-next-tour').count():
         count += 1

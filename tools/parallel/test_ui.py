@@ -56,7 +56,7 @@ def main():
         if help_buttons.count():
             help_buttons.first.click()
             frame.locator('.pa-next-help').wait_for(state='visible')
-            frame.locator('.pa-next-help [data-tour-action=next]').press('Escape')
+            frame.locator('.pa-next-help [data-tour-route=audience]').press('Escape')
             assert frame.locator('.pa-next-help').count()==0
         print('PASS: accessible help opens and closes with Escape')
         # Old production messages must not mutate wrapped renderer states.

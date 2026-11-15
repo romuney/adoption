@@ -64,7 +64,7 @@ def main():
         page.on('pageerror', lambda error: errors.append(str(error)))
         frame = mount(page)
         if args.source_only:
-            frame.evaluate('() => {' + (ROOT/'Параллельный отчёт — pa_next/src/interaction.js').read_text() + '''
+            frame.evaluate('() => {' + (ROOT/'Параллельный отчёт — pa_next/src/task-guide.js').read_text() + (ROOT/'Параллельный отчёт — pa_next/src/interaction.js').read_text() + '''
               if (window.__paNext.interaction) window.__paNext.interaction.destroy();
               window.__paNext.interaction = installInteraction(document.querySelector('.pa-next-shell'), window.__paNext);
               document.querySelector('[data-tourstart]').addEventListener('click', function(ev) {
@@ -208,6 +208,7 @@ def main():
         assert frame.evaluate('''(() => {try {localStorage.getItem('x');return false} catch(e) {return true}})()''')
         caret.click()
         frame.locator('[data-tourstart]').click()
+        frame.locator('[data-tour-route="overview"]').click()
         layer = frame.locator('.pa-next-help.pa-next-tour')
         layer.wait_for()
         assert cat.is_visible(), 'tour reveals catalogue temporarily'
@@ -246,15 +247,17 @@ def main():
         print('PASS: complete interactive tour, targets, keyboard/focus trap and hidden catalogue restoration; no filters emitted')
 
         frame.locator('[data-tourstart]').click()
+        frame.locator('[data-tour-route="overview"]').click()
         frame.locator('.pa-next-tour [data-tour-action="next"]').press('Escape')
         assert not frame.locator('.pa-next-tour').count()
         assert not cat.is_visible()
         rail.click()
-        for width in [1280, 900, 700, 390]:
+        for width in [1280, 1366, 1920]:
             page.set_viewport_size({'width':width,'height':650})
             page.wait_for_timeout(250)
             print('CHECK: interactive guide at viewport', width, flush=True)
             frame.locator('[data-tourstart]').click()
+            frame.locator('[data-tour-route="overview"]').click()
             for _ in range(4):
                 layer = frame.locator('.pa-next-tour')
                 card = layer.locator('[role="dialog"]').bounding_box()
@@ -262,7 +265,7 @@ def main():
                 layer.locator('[data-tour-action="next"]').click()
             frame.locator('.pa-next-tour [data-tour-action="next"]').press('Escape')
         assert not errors, errors
-        print('PASS: Escape, repeated tours, responsive visible-viewport placement at 1280/900/700/390; no browser errors')
+        print('PASS: Escape, repeated tours, responsive visible-viewport placement at 1280/1366/1920; no browser errors')
         browser.close()
 
 

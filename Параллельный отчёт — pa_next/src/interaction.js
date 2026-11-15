@@ -45,22 +45,61 @@ function installInteraction(shell, ST) {
   content.insertBefore(splitter, panel);
   var destroyed = false, drag = null, tour = null, task = null, resizeObserver = null, resizeTick = null;
   var fitted = [{}, {}];
+  var measuredKpis = null;
   var oldGrid = content.style.gridTemplateColumns, oldGap = content.style.gap, oldOverflowX = content.style.overflowX;
   content.style.gap = '0';
   content.style.overflowX = 'auto';
   function persist() {
     try { window.localStorage.setItem(storageKey, JSON.stringify(layout)); } catch (ignore) { /* session state still persists */ }
   }
+  function panelMinimum() {
+    // Six KPI cards need useful space even before their data has arrived. Keep
+    // that bound on every tab, so switching views/loading cannot move the split.
+    var minimum = Math.max(740, ST.panelMinimum || 0);
+    var grid = panel.querySelector('.pone-kpis');
+    if (!grid || !grid.children.length) return minimum;
+    var signature = grid.textContent;
+    if (signature === measuredKpis) return minimum;
+    measuredKpis = signature;
+    // Measure intrinsic content only when KPI text changes. The current grid
+    // width is intentionally irrelevant: it may already have been squeezed.
+    // Labels have explicit ellipsis; values, deltas and unbroken comparison
+    // numbers must keep their complete text at the existing font size.
+    var probe = grid.cloneNode(true);
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;display:flex;width:max-content;gap:0';
+    Array.prototype.forEach.call(probe.children, function (card) {
+      card.style.width = 'min-content'; card.style.flex = 'none';
+      var label = card.querySelector('.pone-k-label');
+      if (label) { label.style.width = '0'; label.style.maxWidth = '0'; }
+    });
+    grid.parentNode.appendChild(probe);
+    var widest = 0;
+    Array.prototype.forEach.call(probe.children, function (card) {
+      var css = window.getComputedStyle(card);
+      var padding = (parseFloat(css.paddingLeft) || 0) + (parseFloat(css.paddingRight) || 0);
+      // The narrow-card breakpoint uses smaller padding. Budget the regular
+      // padding as well, avoiding a feedback loop around that breakpoint.
+      widest = Math.max(widest, card.getBoundingClientRect().width + Math.max(0, 28 - padding));
+    });
+    var css = window.getComputedStyle(grid), count = probe.children.length;
+    var gap = parseFloat(css.columnGap) || 0;
+    probe.parentNode.removeChild(probe);
+    minimum = Math.max(740, Math.ceil(widest + 1) * count + gap * (count - 1));
+    ST.panelMinimum = minimum;
+    return minimum;
+  }
   function size() {
     var css = window.getComputedStyle(content);
     var width = Math.max(0, content.clientWidth - (parseFloat(css.paddingLeft) || 0) - (parseFloat(css.paddingRight) || 0));
-    return { width: width, min: 420, max: Math.max(420, width - 392) };
+    var panelMin = panelMinimum();
+    return { width: width, min: 420, max: Math.max(420, width - 12 - panelMin), panel: panelMin };
   }
   function paint() {
     if (destroyed) return;
     var s = size(), width = Math.round(Math.max(s.min, Math.min(s.max, s.width * layout.ratio)));
     shell.classList.toggle('pa-next-catalog-hidden', layout.hidden);
-    content.style.gridTemplateColumns = layout.hidden ? '34px 12px minmax(380px,1fr)' : width + 'px 12px minmax(380px,1fr)';
+    content.style.gridTemplateColumns = (layout.hidden ? '34px' : width + 'px') + ' 12px minmax(' + s.panel + 'px,1fr)';
     splitter.setAttribute('aria-valuemin', String(s.min)); splitter.setAttribute('aria-valuemax', String(s.max));
     splitter.setAttribute('aria-valuenow', String(width)); splitter.setAttribute('aria-valuetext', width + ' пикселей');
     settleResize();

@@ -158,7 +158,10 @@ def main():
                 second.execute('SELECT count(*) FROM '+name)
                 export_checks.append({'table': name, 'rows': second.fetchone()[0], 'permanent': True})
         reader.close()
-        assert len(export_checks) == 21
+        assert len(export_checks) == len(manifest['exports'])
+        assert 'pa_next_person_id_map' in {item['table'] for item in export_checks}
+        c.execute('SELECT master_id,login,status FROM pa_next_person_id_map ORDER BY master_id')
+        assert c.fetchall() == [('100','fixture_never','ready'),('99','fixture_new','ready')]
         control = paragraph_creating(candidate, 'pa_next_run')['code']
         rejected_paths = []
         rejection_details = []
@@ -186,11 +189,11 @@ def main():
                                 'shared_decoys_unchanged':len(made),'unsafe_search_paths_rejected':rejected_paths,
                                 'unsafe_workspace_details':rejection_details,
                                 'second_connection_exports':export_checks,'paragraph_helper_is_temp':True},
-            'source_views':12,'checks':['canonical login merge','nested AD membership','all 21 export run stamps'],
+            'source_views':12,'checks':['canonical login merge','nested AD membership','current Master ID mapping','all export run stamps'],
             'limitation':'PostgreSQL local model; DISTRIBUTED clauses removed; no corporate services invoked'}
     path=Path('/tmp/pa-next-gp-pipeline-results.json')
     path.write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
-    print('PASS:',len(executed),'GP paragraphs executed; all 12 base tables exact; 21 stamped exports; canonical login/nested group checks')
+    print('PASS:',len(executed),'GP paragraphs executed; all 12 base tables exact;',len(export_checks),'stamped exports; canonical login/nested group/Master ID checks')
 
 if __name__=='__main__':
     main()

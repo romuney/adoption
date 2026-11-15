@@ -14,6 +14,9 @@
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) [data-test="dashboard-filters-panel"],
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) [data-test="filter-bar"],
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .sidebar-resizer{display:none!important}
+/* Superset native-filter closed state adds -32px on the draggable ancestor
+   of the board header. Override only that ancestor in this report's viewer. */
+body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .dragdroppable:has(.dashboard-header-container){margin-left:0!important}
 body:has(.dashboard-component-chart-holder.dashboard-chart-id-859562):not(:has(.dashboard--editing)) .dashboard-content:has(.dashboard-component-chart-holder.dashboard-chart-id-859562){margin-left:0!important}
 .grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px!important;padding:0!important}
 body:not(:has(.dashboard-header-container)) .grid-container:not(.dashboard--editing *):has(.dashboard-component-chart-holder.dashboard-chart-id-859562){--pa-next-board-header-height:0px}

@@ -1,5 +1,5 @@
 -- PA NEXT: read-only check after the entire notebook completes.
--- Expected: 21 rows; each ready=1, publication_state=ready, same published_run.
+-- Expected: 22 rows; each ready=1, publication_state=ready, same published_run.
 -- Empty business tables are allowed. Any query error or ready=0: stop installation.
 SELECT t.*, m.run_id AS published_run, m.state AS publication_state,
        toUInt8(m.records = 1 AND m.state = 'ready' AND
@@ -46,6 +46,8 @@ UNION ALL
 SELECT 'prod_proteus.pa_next_cat_grp' AS table_name, count() AS rows, min(_pa_next_run) AS min_run, max(_pa_next_run) AS max_run FROM prod_proteus.pa_next_cat_grp
 UNION ALL
 SELECT 'prod_proteus.pa_next_cat_aud' AS table_name, count() AS rows, min(_pa_next_run) AS min_run, max(_pa_next_run) AS max_run FROM prod_proteus.pa_next_cat_aud
+UNION ALL
+SELECT 'prod_proteus.pa_next_person_id_map' AS table_name, count() AS rows, min(_pa_next_run) AS min_run, max(_pa_next_run) AS max_run FROM prod_proteus.pa_next_person_id_map
 ) AS t
 CROSS JOIN (
   SELECT count() AS records, any(run_id) AS run_id, any(state) AS state

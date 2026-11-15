@@ -165,6 +165,13 @@
       "options": {
         "order_by_columns": "(pub, act, exc, ad, ak0)"
       }
+    },
+    {
+      "gp": "pa_next_person_id_map",
+      "ch": "prod_proteus.pa_next_person_id_map",
+      "options": {
+        "order_by_columns": "(master_id, login)"
+      }
     }
   ],
   "datasets": {
@@ -194,6 +201,7 @@
         "pa_next_md",
         "pa_next_pair",
         "pa_next_pair_acc",
+        "pa_next_person_id_map",
         "pa_next_staffx"
       ]
     },
@@ -209,8 +217,10 @@
         "pa_next_dict",
         "pa_next_emp_attrs",
         "pa_next_evd_day",
+        "pa_next_login_map",
         "pa_next_md",
         "pa_next_pair",
+        "pa_next_person_id_map",
         "pa_next_staff",
         "pa_next_staffx",
         "pa_next_viewer"
@@ -240,6 +250,7 @@
     "pa_next_adg_size": "Подсчитать численность AD-групп",
     "pa_next_dash_ca": "Определить целевую аудиторию отчётов",
     "pa_next_pair_acc": "Проверить доступ зрителей к просмотренным отчётам",
+    "pa_next_person_id_map": "Связать Master ID с текущими сотрудниками для списка ЦА",
     "1a": "Подготовить атрибуты людей, права и словари (ускорение 1a)",
     "1b": "Рассчитать дневные показатели и календари (ускорение 1b)",
     "1c": "Подготовить строки каталога и аудитории (ускорение 1c)",

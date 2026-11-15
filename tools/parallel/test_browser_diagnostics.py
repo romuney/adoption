@@ -14,6 +14,19 @@ def main():
         errors = []
         page.on('pageerror', lambda error: errors.append(str(error)))
         frame = mount(page)
+        # The Proteus fork can use a different nav id and an offset app wrapper.
+        # Record their geometry/rules, never title text or private input values.
+        page.evaluate('''() => {
+          document.querySelector('#main-menu').id='fork-navigation';
+          document.querySelector('#fork-navigation').setAttribute('role','navigation');
+          document.querySelector('#fork-navigation').style.height='48px';
+          var header=document.querySelector('.dashboard-header-container'),wrapper=document.createElement('div');
+          wrapper.id='app';wrapper.className='diagnostic-offset-wrapper';
+          header.parentNode.insertBefore(wrapper,header);wrapper.appendChild(header);
+          var style=document.createElement('style');style.textContent='.diagnostic-offset-wrapper{margin-left:-32px;width:calc(100% + 32px)}';document.querySelector('head').appendChild(style);
+          header.querySelector('h1').textContent='PRIVATE-TITLE-DO-NOT-EXPORT';
+          var input=document.createElement('input');input.value='PRIVATE-INPUT-DO-NOT-EXPORT';header.appendChild(input);
+        }''')
         before = frame.evaluate('''() => ({html:document.body.innerHTML, masks:JSON.stringify(__paNext.masks)})''')
         emissions = page.evaluate('emits.length')
         assert page.evaluate(collector)['scope'] == 'board'
@@ -38,6 +51,8 @@ def main():
         board_text = page.evaluate('__paNextDebug.finish()')
         report, board = json.loads(report_text), json.loads(board_text)
         assert secret not in report_text + board_text
+        assert 'PRIVATE-TITLE-DO-NOT-EXPORT' not in board_text
+        assert 'PRIVATE-INPUT-DO-NOT-EXPORT' not in board_text
         assert '987654321' not in report_text + board_text
         messages = [e for e in report['events'] if e['kind'] == 'protocol' and e['data']['type'] == payload['type']]
         assert len(messages) == 1, messages
@@ -47,6 +62,11 @@ def main():
         assert report['final']['elements']['shell']['scrollTop'] > 0, 'Initial snapshot was rewritten'
         assert board['initial']['iframes'][2]['sameOriginDOM'] is False
         assert board['initial']['elements']['header']['height'] == 65
+        assert board['initial']['elements']['nav']['height'] == 48
+        assert board['initial']['elements']['headerTitle']['node'].startswith('h1')
+        assert board['initial']['headerAncestors'][1]['x'] == -32
+        assert board['initial']['headerWrapper']['style']['margin-left'] == '-32px'
+        assert any(rule['selector']=='.diagnostic-offset-wrapper' for rule in board['initial']['css']['externalLayoutRules'])
         assert report['initial']['state']['accepted']['one']['rows']['length'] > 0
         assert report['initial']['css']['layoutRules']
         count = len(report['samples']), len(report['events'])

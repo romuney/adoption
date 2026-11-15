@@ -47,6 +47,7 @@ class AudienceBoard(QueueBoard):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--fixtures', type=Path, default=Path('/tmp/pa-next-audience-task'))
+    parser.add_argument('--periods', type=Path, default=Path('/tmp/pa-next-periods/d'))
     parser.add_argument('--output', type=Path, default=Path('/tmp/pa-next-task-guide'))
     args = parser.parse_args(); args.output.mkdir(parents=True, exist_ok=True)
     meta = json.loads((args.fixtures/'metadata.json').read_text()); assert meta['completed']
@@ -57,8 +58,10 @@ def main():
     report = meta['report_id']; facts = meta['reports'][report]['facts']
     assert 0 < facts['ca_reach'] <= 20, 'This check compares every reached login on one page'
     assert facts['ca_never'] > 0
+    period_meta = json.loads((args.periods.parent/'metadata.json').read_text())
+    assert period_meta['source_sha256'] == meta['source_sha256']
     for part in ['head', 'cat', 'one']:
-        ui.rows[part] = json.loads(Path('/tmp/pa-next-periods/d', part+'.json').read_text())
+        ui.rows[part] = json.loads((args.periods/(part+'.json')).read_text())
     ui.rows['head'] = json.loads((args.fixtures/'head.json').read_text())
     sha = hashlib.sha256((ui.OUT/'4. JS — весь отчёт.js').read_bytes()).hexdigest()
     results = {'completed': False, 'main_sha256': sha, 'scope': 'Local Chromium, actual SQL fixtures, user-driven CA/report choice; no corporate service access', 'cases': []}

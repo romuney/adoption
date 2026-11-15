@@ -17,8 +17,8 @@
   var shell = host.querySelector('.pa-next-shell');
   var shellCSS = '__SHELL_CSS__';
   var interactionRevision = '__INTERACTION_REVISION__', viewportRevision = '__VIEWPORT_REVISION__';
-  var renderersRevision = '__RENDERERS_REVISION__';
-  var upgrade = !!shell && (ST.interactionRevision !== interactionRevision || ST.viewportRevision !== viewportRevision || ST.renderersRevision !== renderersRevision);
+  var renderersRevision = '__RENDERERS_REVISION__', motionRevision = '__MOTION_REVISION__';
+  var upgrade = !!shell && (ST.interactionRevision !== interactionRevision || ST.viewportRevision !== viewportRevision || ST.renderersRevision !== renderersRevision || ST.motionRevision !== motionRevision);
   var oldShellStyle = shell && shell.querySelector('style[data-pa-next-shell-css]');
   if (!oldShellStyle && shell && shell.firstElementChild && shell.firstElementChild.tagName === 'STYLE') oldShellStyle = shell.firstElementChild;
   if (shell && (!oldShellStyle || oldShellStyle.textContent !== shellCSS)) upgrade = true;
@@ -87,6 +87,12 @@
     ST.viewport = installViewport(shell, ST);
   } else ST.viewport.refresh();
   ST.viewportRevision = viewportRevision;
+  __MOTION__
+  if (!ST.motion || ST.motion.shell !== shell || ST.motionRevision !== motionRevision) {
+    if (ST.motion) ST.motion.destroy();
+    ST.motion = installMotion(shell, ST);
+  }
+  ST.motionRevision = motionRevision;
   if (ST.keyboard) shell.removeEventListener('keydown', ST.keyboard);
   ST.keyboard = function (ev) {
     var node = ev.target;
@@ -185,7 +191,12 @@
     }); return o;
   }
   function canonical(o) {
-    var out = {}; C.echoColumns.forEach(function (k) { out[k] = (o[k] || []).slice(); });
+    var out = {}; C.echoColumns.forEach(function (k) {
+      // An absent new people condition must retain the exact legacy cache key
+      // during a code update in an already mounted iframe.
+      if ((k === 'ca_login_f' || k === 'ca_master_f') && !(o[k] || []).length) return;
+      out[k] = (o[k] || []).slice();
+    });
     ['period_param','pub_f','act_f','exc_f'].forEach(function (k) { if (!out[k].length) out[k] = [k === 'period_param' ? 'd' : '1']; });
     if (!out.mode_param.length && !out.sel_f.length) out.mode_param = ['report'];
     return out;
@@ -331,6 +342,7 @@
       var el = shell.querySelector('[data-pa-next-host="' + part + '"]');
       var ready = current(part) && (part !== 'one' || !ST.preview), partial = part === 'one' && !!ST.preview && previewAllowed(ST.preview);
       var usable = ready || partial;
+      if (part === 'one' && !usable && ST.motion) ST.motion.cancel();
       var message = ST.error[part] || (!ST.generation ? 'Витрины обновляются или не опубликованы.' : 'Загружаем данные для выбранных фильтров…');
       if (now - ST.started > 45000 && !ST.error[part]) message = 'Запрос ещё выполняется. Данные появятся здесь после его завершения.';
       el.setAttribute('aria-busy', ready ? 'false' : 'true');
@@ -403,7 +415,7 @@
   function render(part, rows) {
     if (part === 'one') ST.preview = null;
     renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, function () {
-      status(); deferStatus(); ST.interaction.refresh();
+      status(); deferStatus(); ST.interaction.refresh(); if (ST.motion) ST.motion.rendered();
     }, uiKey, brandImage, brandLoading);
     ST.mounted[part] = true;
     // Cards can arrive after the initial layout without changing host size.

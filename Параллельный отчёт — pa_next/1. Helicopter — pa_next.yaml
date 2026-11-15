@@ -799,6 +799,96 @@ paragraphs:
     distributed by (dashboard_id);
     ANALYZE pa_next_pair_acc;
   isEnabled: true
+- title: Связать Master ID с текущими сотрудниками для списка ЦА
+  shebang: gp
+  code: |
+    -- Keep all new GP tables in this notebook's current working schema.
+    -- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+    -- Empty search_path stops CREATE if a physical/source/session schema was selected.
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    -- Master ID is mdm_employee_rk, kept as text (never JavaScript Number).
+    -- MDM current login uses the SAME lr/cur rule as the existing login map.
+    -- A fired/ambiguous record cannot inherit another employee's reused login.
+    DROP TABLE IF EXISTS pa_next_person_id_map;
+    CREATE TABLE pa_next_person_id_map AS
+    SELECT payload.*, generation.run_id AS _pa_next_run
+    FROM (
+    WITH lr AS (
+        SELECT lower(trim(m.ad_login)) AS login, m.mdm_employee_rk AS rk, max(m.business_dt) AS dt
+        FROM prod_v_emart.mdm_employee_structure_d m
+        WHERE nullif(trim(m.ad_login), '') IS NOT NULL
+          AND m.business_dt >= current_date - interval '13 months'
+        GROUP BY 1, 2
+    ), cur AS (
+        SELECT rk, login FROM (
+            SELECT rk, login, row_number() OVER (PARTITION BY rk ORDER BY dt DESC, login) AS rn FROM lr
+        ) x WHERE rn = 1
+    ), ids AS (
+        SELECT rk FROM cur WHERE rk IS NOT NULL
+        UNION SELECT mdm_employee_rk FROM pa_next_source WHERE mdm_employee_rk IS NOT NULL
+    ), states AS (
+        SELECT m.mdm_employee_rk AS rk,
+               count(DISTINCT coalesce(m.company_fire_flg::int, 0)) AS variants,
+               min(coalesce(m.company_fire_flg::int, 0)) AS fired
+        FROM prod_v_emart.mdm_employee_structure_d m
+        WHERE m.last_state_flg = 1 AND m.mdm_employee_rk IN (SELECT rk FROM ids)
+        GROUP BY 1
+    ), mc AS (
+        SELECT c.rk, coalesce(mp.canon, c.login) AS login, s.variants, s.fired
+        FROM cur c LEFT JOIN pa_next_login_map mp ON mp.login = c.login
+        LEFT JOIN states s ON s.rk = c.rk
+    ), vr AS (
+        SELECT v.mdm_employee_rk AS rk,
+               coalesce(mp.canon, lower(trim(v.login))) AS login,
+               coalesce(v.company_fire_flg::int, 0) AS fired,
+               dense_rank() OVER (PARTITION BY v.mdm_employee_rk ORDER BY v.log_dttm DESC) AS rn
+        FROM pa_next_source v LEFT JOIN pa_next_login_map mp ON mp.login = lower(trim(v.login))
+        WHERE v.mdm_employee_rk IS NOT NULL AND nullif(trim(v.login), '') IS NOT NULL
+          -- MDM branches never consume the event fallback. Exclude them before
+          -- ranking; remove NULL IDs explicitly so NOT IN cannot reject all rows.
+          AND v.mdm_employee_rk NOT IN (
+              SELECT rk FROM cur WHERE rk IS NOT NULL UNION SELECT rk FROM states
+          )
+    ), vs AS (
+        SELECT rk, min(login) AS login, count(DISTINCT login) AS logins,
+               min(fired) AS fired, count(DISTINCT fired) AS variants
+        FROM vr WHERE rn = 1 GROUP BY rk
+    ), decision AS (
+        SELECT i.rk::text AS master_id,
+          coalesce(mc.login, vs.login, '')::text AS candidate,
+          CASE
+            WHEN mc.rk IS NOT NULL OR st.rk IS NOT NULL THEN
+              CASE WHEN st.variants > 1 THEN 'ambiguous'
+                   WHEN st.fired <> 0 THEN 'inactive'
+                   WHEN st.variants IS NULL OR mc.login IS NULL THEN 'unknown'
+                   WHEN sm.login IS NULL OR sm.src <> 'mdm' THEN 'unknown'
+                   ELSE 'ready' END
+            WHEN vs.logins > 1 OR vs.variants > 1 THEN 'ambiguous'
+            WHEN vs.fired <> 0 THEN 'inactive'
+            WHEN sv.src = 'mdm' THEN 'ambiguous'
+            WHEN vs.login IS NULL OR sv.login IS NULL THEN 'unknown'
+            ELSE 'ready'
+          END::text AS status
+        FROM ids i
+        LEFT JOIN mc ON mc.rk = i.rk
+        LEFT JOIN states st ON st.rk = i.rk
+        LEFT JOIN vs ON vs.rk = i.rk
+        LEFT JOIN pa_next_staff sm ON sm.login = mc.login
+        LEFT JOIN pa_next_staff sv ON sv.login = vs.login
+    )
+    SELECT master_id, CASE WHEN status = 'ready' THEN candidate ELSE '' END::text AS login, status
+    FROM decision
+    ) payload
+    CROSS JOIN pa_next_run generation
+    DISTRIBUTED BY (master_id);
+
+    ANALYZE pa_next_person_id_map;
+  isEnabled: true
 - title: Подготовить атрибуты людей, права и словари (ускорение 1a)
   shebang: gp
   code: |
@@ -1244,6 +1334,7 @@ paragraphs:
     ppy.gp_to_click('pa_next_cat_rep', 'prod_proteus.pa_next_cat_rep', order_by_columns='(exc, dashboard_id)')
     ppy.gp_to_click('pa_next_cat_grp', 'prod_proteus.pa_next_cat_grp', order_by_columns='(pub, act, exc, kd, k0)')
     ppy.gp_to_click('pa_next_cat_aud', 'prod_proteus.pa_next_cat_aud', order_by_columns='(pub, act, exc, ad, ak0)')
+    ppy.gp_to_click('pa_next_person_id_map', 'prod_proteus.pa_next_person_id_map', order_by_columns='(master_id, login)')
     # Publish ready LAST; exceptions propagate and stop subsequent export calls.
     ppy.gp_to_click('pa_next_ready', 'prod_proteus.pa_next_manifest',
                     order_by_columns='(run_id)')

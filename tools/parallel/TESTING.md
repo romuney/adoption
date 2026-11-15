@@ -237,3 +237,21 @@ PA_DB=/workspace/.cache/pa-next-db /workspace/.venvs/pa-next-test/bin/python too
 `test_ui_board_settle.py` проверяет задержанное изменение размеров host, внешнюю полосу борда и CSS, а также настоящий переход с прежней поставки из Git в текущую без пересоздания iframe. Состояния: готово, ожидание, preview, скрытый каталог. Сравниваются принятые данные, выбор, очередь, вкладка, прокрутка и число запросов. Повтор той же версии обязан сохранить экземпляры контроллеров и DOM. Исторический commit берётся из скрипта; в shallow checkout при отсутствии объекта доставьте именно его. Внешние изменения ширины могут закономерно менять координаты панелей; ручка всё равно должна оставаться по центру зазора.
 
 Это локальная модель Proteus/Superset, а не запуск внутри корпоративного борда. Экраны и итоговые JSON текущего прогона привязаны к SHA готового файла 4.
+
+
+## Список ЦА, раскрытие выводов и анимации
+
+`verify_audience_people.py` проверяет новый GP mapping на локальном PostgreSQL и выполняет настоящие запросы ClickHouse 24.8. Перед запуском укажи существующие PA_DB/PGHOST/PGPORT. Он использует отдельные синтетические случаи сопоставления, затем сравнивает новые условия людей с независимым множеством через прежний AD-group predicate. Сравнение охватывает все бизнес-секции, включая `aa/all`, а не только карточки. Для отсутствующего списка сравнивается прежний SQL из `--baseline-ref` (зафиксировать коммит до изменения) с новым d/w/m/q. Входные ID и логины остаются строками. Проверка изменяет только локальный синтетический мир; корпоративных подключений нет. Не выполнять параллельно другие процессы chdb на PA_DB.
+
+```bash
+PGHOST=/workspace/.cache/pa-next-pgsocket PGPORT=55432 PA_DB=/workspace/.cache/pa-next-db /workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_audience_people.py --baseline-ref 8acb2e2
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_audience_people.py --delivery
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_observations.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_motion.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_split_bounds.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_board_header.py
+```
+
+Флаги fixture/output уточняются через `--help` соответствующего скрипта. `test_ui_audience_people.py` без `--delivery` проверяет renderer-transform из исходника, с ним — готовый минифицированный файл и три iframe. Сценарии ввода: Excel, ручные разделители, JSON строки, повторные значения, невалидные токены, большие Master ID, отмена, reset, draft/apply, лимиты, видимая область и фокус. Тест анимаций использует управляемые часы для точной проверки промежуточного DOM/AX и настоящий таймер для записи длительностей графиков; времена кадров локального headless не обещают скорость прода.
+
+Ширины/выводы проверяются в локальной модели борда на фиксированных реальных SQL-ответах. Исторический fixture может использоваться для чистой UI-проверки только с явным указанием несовпадения SQL SHA; это не доказательство числовой сходимости текущего SQL. Свежие числовые проверки и новые экспорты выполняются отдельно. Header-test содержит отрицательный контроль −32px и проверку адресного CSS, включая редактор и меню без #main-menu.

@@ -100,7 +100,8 @@ def main():
             for sample in samples:
                 check_sample(sample, baseline, tab + ' rAF width ' + str(sample['width']))
             assert payload(frame) == data, (tab, 'metric/bucket/tooltip payload changed on resize')
-            assert min(sample['width'] for sample in immediate) <= 381
+            minimum = frame.evaluate('window.__paNext.panelMinimum || 740')
+            assert minimum <= min(sample['width'] for sample in immediate) <= minimum + 1
             assert max(sample['width'] for sample in immediate) > 1280
             if tab == 'path':
                 assert any(sample['width'] > 1280 and sample['pathLayout'] == 'row' for sample in immediate), 'wide Path must use its panel breakpoint'

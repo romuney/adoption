@@ -13,7 +13,7 @@ for item in manifest['exports']:
         raise ValueError(table)
     parts.append("SELECT '"+table+"' AS table_name, count() AS rows, min(_pa_next_run) AS min_run, max(_pa_next_run) AS max_run FROM "+table)
 sql="""-- PA NEXT: read-only check after the entire notebook completes.
--- Expected: 21 rows; each ready=1, publication_state=ready, same published_run.
+-- Expected: TABLE_COUNT rows; each ready=1, publication_state=ready, same published_run.
 -- Empty business tables are allowed. Any query error or ready=0: stop installation.
 SELECT t.*, m.run_id AS published_run, m.state AS publication_state,
        toUInt8(m.records = 1 AND m.state = 'ready' AND
@@ -27,9 +27,10 @@ CROSS JOIN (
 ) AS m
 ORDER BY table_name
 """
+sql=sql.replace('TABLE_COUNT', str(len(manifest['exports'])))
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--check',action='store_true');a=p.parse_args()
 target=OUT/'11. SQL Lab — готовность витрин.sql'
 if a.check:
     assert target.read_text()==sql,'SQL Lab probe needs rebuild'
 else:target.write_text(sql)
-print('PASS SQL Lab probe: 21 data tables, one read-only statement')
+print('PASS SQL Lab probe:', len(manifest['exports']), 'data tables, one read-only statement')

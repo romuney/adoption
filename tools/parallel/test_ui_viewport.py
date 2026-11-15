@@ -99,6 +99,10 @@ def wheel_over_chart(page, frame, dy):
     # Real wheel input, at the visible portion of a chart body. A nested overflow
     # container must not eat the scroll that reveals the analytics on a laptop.
     bounds = frame.locator('.pone-panel-b').bounding_box()
+    for attempt in range(3):
+        if bounds is not None: break
+        frame.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+        bounds = frame.locator('.pone-panel-b').bounding_box()
     outer = page.locator('iframe[name="head"]').bounding_box()
     assert bounds is not None, ('chart body has no visible box before wheel', geometry(frame), outer,
                                 frame.locator('.pone-panel-b').evaluate('(n)=>({display:getComputedStyle(n).display,visibility:getComputedStyle(n).visibility,connected:n.isConnected})'))

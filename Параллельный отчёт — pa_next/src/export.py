@@ -26,6 +26,7 @@ ppy.gp_to_click('pa_next_all_day', 'prod_proteus.pa_next_all_day', order_by_colu
 ppy.gp_to_click('pa_next_cat_rep', 'prod_proteus.pa_next_cat_rep', order_by_columns='(exc, dashboard_id)')
 ppy.gp_to_click('pa_next_cat_grp', 'prod_proteus.pa_next_cat_grp', order_by_columns='(pub, act, exc, kd, k0)')
 ppy.gp_to_click('pa_next_cat_aud', 'prod_proteus.pa_next_cat_aud', order_by_columns='(pub, act, exc, ad, ak0)')
+ppy.gp_to_click('pa_next_person_id_map', 'prod_proteus.pa_next_person_id_map', order_by_columns='(master_id, login)')
 # Publish ready LAST; exceptions propagate and stop subsequent export calls.
 ppy.gp_to_click('pa_next_ready', 'prod_proteus.pa_next_manifest',
                 order_by_columns='(run_id)')

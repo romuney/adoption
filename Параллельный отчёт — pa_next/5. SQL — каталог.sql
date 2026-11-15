@@ -123,7 +123,31 @@
 {% set cahead = filter_values('ca_head_f')|first|default('', true) %}{% set cahead = cahead if cahead in ['1', 'n'] else '' %}
 {% for v in (filter_values('ca_adg_f') or []) %}{% if v|string != '' %}{% set _ = caadg.append(v|string) %}{% endif %}{% endfor %}
 {% endif %}
-{% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' or caadg %}
+
+{# Explicit people are an additional CA intersection, never the people-panel bus.
+   Nonempty malformed/oversized input fails closed; it cannot fall back to all staff. #}
+{% set cap = namespace(on=false, bad=false, count=0, chars=0) %}
+{% set calogin = [] %}{% set camaster = [] %}
+{% for col, dest, allowed, maxlen in [('ca_login_f', calogin, 'abcdefghijklmnopqrstuvwxyz0123456789._@-', 128), ('ca_master_f', camaster, '0123456789', 32)] %}
+{% for raw in filter_values(col) %}
+{% set value = raw|string|trim %}{% if col == 'ca_login_f' %}{% set value = value|lower %}{% endif %}
+{% if value %}{% set cap.on = true %}{% set cap.count = cap.count + 1 %}
+{% if value|length > maxlen or cap.count > 10000 %}{% set cap.bad = true %}
+{% else %}{% for ch in value %}{% if ch not in allowed %}{% set cap.bad = true %}{% endif %}{% endfor %}
+{% if value not in dest %}{% set _ = dest.append(value) %}{% set cap.chars = cap.chars + value|length %}{% endif %}{% endif %}
+{% endif %}{% endfor %}
+{% if dest|length > 5000 %}{% set cap.bad = true %}{% endif %}
+{% endfor %}
+{% if cap.chars > 32000 %}{% set cap.bad = true %}{% endif %}
+{% macro capcond() -%}
+{% if cap.bad %} AND 0
+{% else %}
+{% if calogin %} AND lg IN (SELECT login FROM cap_logins){% endif %}
+{% if camaster %} AND lg IN (SELECT login FROM cap_masters){% endif %}
+{% endif %}
+{%- endmacro %}
+
+{% set custom = caorg or caspec or castrm or cahq or cait or cahead != '' or caadg or cap.on %}
 {#- Кнопка «Мои» (2026-10-07): пользователь борда — ДОСЛОВНО как в боевом датасете proteus_adoption_virt (борд 13896):
     '{{ cache_key_wrapper(current_username()) }}' прямо в тексте SQL — логин подставляется И попадает в ключ кэша
     (у каждого пользователя свой ответ). Логин Proteus может быть прежним — в секции me он переводится в актуальный
@@ -151,6 +175,7 @@ SELECT lg FROM (
       {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
       {%- if cahead == '1' %} AND hdf = 1{% elif cahead == 'n' %} AND hdf = 0{% endif %}
       {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_next_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
+{{ capcond() }}
 {%- endmacro %}
 {% set pplf = loginf or exlf or attrson or freqf or custom or segv %}
 {#- Готовые строки (GP-витрины pa_cat_rep / pa_cat_grp / pa_cat_aud, поставка 2026-10-23): без людских условий и своего
@@ -198,7 +223,7 @@ SELECT lg FROM (
 {%- if vs -%}{%- set _ = OC.append('arrayStringConcat([' ~ OCOL[:L]|join(', ') ~ "], ' › ') IN " ~ q(vs)) -%}{%- endif -%}{%- endfor -%}
 {#- Эхо применённых кросс-фильтров (сверка выбора в чартах, 2026-09-29): сырые filter_values колонок,
     которые шлют чарты борда; «"», «\» и переводы строк выкинуты — в ключе сверки чарта их тоже нет. -#}
-{% set FLT = [] %}{% for c in ['mode_param', 'sel_f', 'period_param', 'pub_f', 'act_f', 'exc_f', 'org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'seg_f', 'ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f'] %}{% set fv = [] %}{% for v in (filter_values(c) or []) %}{% if v|string|length < 2000 %}{% set _ = fv.append('"' ~ (v|string|replace('"', '')|replace('\\', '')|replace('\n', '')|replace('\r', '')|replace("'", "''")) ~ '"') %}{% endif %}{% endfor %}{% if fv %}{% set _ = FLT.append('"' ~ c ~ '":[' ~ fv|join(',') ~ ']') %}{% endif %}{% endfor %}
+{% set FLT = [] %}{% for c in ['mode_param', 'sel_f', 'period_param', 'pub_f', 'act_f', 'exc_f', 'org_f', 'spec_f', 'stream_f', 'adg_f', 'heads_f', 'login_f', 'exl_f', 'freq_f', 'seg_f', 'ca_org_f', 'ca_spec_f', 'ca_stream_f', 'ca_hq_f', 'ca_it_f', 'ca_head_f', 'ca_adg_f', 'ca_login_f', 'ca_master_f'] %}{% set fv = [] %}{% for v in (filter_values(c) or []) %}{% if v|string|length < 2000 %}{% set _ = fv.append('"' ~ (v|string|replace('"', '')|replace('\\', '')|replace('\n', '')|replace('\r', '')|replace("'", "''")) ~ '"') %}{% endif %}{% endfor %}{% if fv %}{% set _ = FLT.append('"' ~ c ~ '":[' ~ fv|join(',') ~ ']') %}{% endif %}{% endfor %}
 {% set SJ = ['"period":"' ~ grain ~ '"'] %}
 {% set _ = SJ.append('"flt":{' ~ FLT|join(',') ~ '}') %}
 {% if pubv == '0' %}{% set _ = SJ.append('"pub":"0"') %}{% endif %}
@@ -233,6 +258,20 @@ SELECT lg FROM (
 {%- endmacro %}
 {% set RC = "multiIf(bitCount(bitAnd(pd, 1073741823)) >= 12, 4, bitCount(bitAnd(pw, 255)) >= 6, 3, bitCount(bitAnd(pm, 7)) >= 2, 2, bitAnd(pm, 7) != 0, 1, 0)" %}
 WITH
+
+{% if not cap.bad %}
+{% if calogin %}
+cap_input AS (SELECT {% call H() %}arrayJoin({{ qa(calogin) }}){% endcall %} AS login),
+cap_logins AS (
+  SELECT toString(lm.canon) AS login FROM prod_proteus.pa_next_login_map lm WHERE lm.login IN (SELECT login FROM cap_input)
+  UNION ALL SELECT login FROM cap_input WHERE login NOT IN (SELECT login FROM prod_proteus.pa_next_login_map)
+),
+{% endif %}
+{% if camaster %}
+cap_master_input AS (SELECT {% call H() %}arrayJoin({{ qa(camaster) }}){% endcall %} AS master_id),
+cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE status = 'ready' AND master_id IN (SELECT master_id FROM cap_master_input)),
+{% endif %}
+{% endif %}
   {# Дата свежести: md пары; запасной источник — последний визит (при пустом md gp_to_click). #}
   maxd AS (SELECT max(assumeNotNull(md)) AS md FROM prod_proteus.pa_next_md),
   dash_ok AS (
@@ -351,6 +390,7 @@ WITH
     {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
     {%- if cahead == '1' %} AND hdf = 1{% elif cahead == 'n' %} AND hdf = 0{% endif %}
     {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_next_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
+{{ capcond() }}
     {%- if loginf %} AND lg IN (SELECT lower(x0) FROM (SELECT {% call H() %}arrayJoin({{ qa(loginf) }}){% endcall %} AS x0)){% endif %}
     {%- if exlf %} AND lg NOT IN (SELECT lower(x0) FROM (SELECT {% call H() %}arrayJoin({{ qa(exlf) }}){% endcall %} AS x0)){% endif %}
     {%- if spcf %} AND sp IN {{ q(spcf) }}{% endif %}{% if strm %} AND st IN {{ q(strm) }}{% endif %}
@@ -574,7 +614,7 @@ FROM (
 UNION ALL
 SELECT 'pa_next_version' AS section, 'cat' AS g,
   (SELECT any(toString(run_id)) FROM prod_proteus.pa_next_manifest) AS k,
-  if((SELECT count() = 1 AND countIf(state = 'ready') = 1 FROM prod_proteus.pa_next_manifest) AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_adg_member) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_aud) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_grp) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_rep) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_bkt) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_ca) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_day) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_meta) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_emp_attrs) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_evd_day) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_login_map) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_md) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_pair) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_pair_acc) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_staffx) = 0, 'ready', 'loading') AS parent,
+  if((SELECT count() = 1 AND countIf(state = 'ready') = 1 FROM prod_proteus.pa_next_manifest) AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_adg_member) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_aud) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_grp) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_rep) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_bkt) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_ca) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_day) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_meta) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_emp_attrs) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_evd_day) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_login_map) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_md) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_pair) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_pair_acc) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_person_id_map) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_staffx) = 0, 'ready', 'loading') AS parent,
   toInt64(parent = 'ready') AS n
 
 {% set PA_REQ = namespace(value='', seen=false) %}

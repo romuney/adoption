@@ -2,11 +2,14 @@
 """Build isolated pa_next UI: retain metric renderers; adapt only hosts and transport."""
 import argparse, hashlib, json, re, subprocess, os, base64
 from pathlib import Path
+from ui_audience_people import augment_head
+from ui_observations import augment_observations
+from ui_motion import apply_motion
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'Параллельный отчёт — pa_next'
 CAT = ['mode_param','sel_f','aud_org_f','aud_spec_f','aud_stream_f','aud_hq_f','aud_it_f','aud_head_f']
 ONE = ['org_f','spec_f','stream_f','adg_f','heads_f','login_f','exl_f','freq_f']
-HEAD = ['period_param','pub_f','act_f','exc_f','ca_org_f','ca_spec_f','ca_stream_f','ca_hq_f','ca_it_f','ca_head_f','ca_adg_f']
+HEAD = ['period_param','pub_f','act_f','exc_f','ca_org_f','ca_spec_f','ca_stream_f','ca_hq_f','ca_it_f','ca_head_f','ca_adg_f','ca_login_f','ca_master_f']
 CSS = '''.pa-next-shell{position:absolute;inset:0;display:flex;flex-direction:column;background:#f6f6f6;color:#23272e;font:14px Arial,Helvetica,sans-serif;box-sizing:border-box;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:auto}.pa-next-status{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}.pa-next-head{position:relative;flex:0 0 112px;min-width:0;z-index:30;margin-bottom:12px}.pa-next-content{display:grid;grid-template-columns:minmax(300px,38fr) minmax(450px,62fr);gap:12px;flex:0 0 auto;min-height:0;box-sizing:border-box;padding:0}.pa-next-cat,.pa-next-one{position:relative;min-width:0;min-height:0;border-radius:10px;background:#fff}.pa-next-cat{container-type:inline-size;container-name:pa-next-cat}.pa-next-one{container-type:inline-size;container-name:pa-next-one}.pa-next-wait{position:absolute;inset:0;z-index:80;display:flex;align-items:center;justify-content:center;background:rgba(246,246,246,.96);padding:24px;text-align:center;line-height:1.6;box-sizing:border-box}.pa-next-help{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;padding:16px}.pa-next-help>div{background:white;border-radius:12px;max-width:600px;max-height:85vh;overflow:auto;padding:24px;font:14px/1.6 Arial,Helvetica,sans-serif}.pa-next-help h2{font-size:20px}.pa-next-help button{font:700 14px Arial;padding:10px 18px;border:0;border-radius:8px;background:#245fd4;color:white;cursor:pointer}.pa-next-shell button:focus-visible,.pa-next-shell [role=button]:focus-visible,.pa-next-shell input:focus-visible{outline:2px solid #245fd4;outline-offset:2px}@media(max-width:820px){.pa-next-content{grid-template-columns:minmax(280px,38fr) minmax(380px,62fr);overflow-x:auto}.pa-next-head{min-width:680px}.pa-next-shell{overflow-x:auto}}@media(prefers-reduced-motion:reduce){.pa-next-shell *{transition:none!important;animation:none!important}}'''
 
 CSS += '''.pa-next-head{flex:0 0 auto}.pa-next-head .phead-overlay{position:relative!important;height:auto!important}.pa-next-head .phead-root{height:auto!important;min-height:112px}.pa-next-head .phead-strip,.pa-next-head .phead-bar{flex-wrap:wrap}.pa-next-head .phead-togs{flex-shrink:0}.pa-next-pending-block{position:relative!important}.pa-next-pending-block>:not(.pa-next-wait){visibility:hidden!important}.pa-next-wait{background:#f6f6f6;border-radius:12px;flex-direction:column;overflow:hidden;pointer-events:none}.pa-next-one.pa-next-stale .pone-selg,.pa-next-one[data-pa-next-state=preview] .pone-selg{display:none!important}'''
@@ -46,6 +49,9 @@ for pseudo, rules in [
 ]:
     CSS += ','.join(selector + '::-webkit-scrollbar' + pseudo for selector in SCROLL) + '{' + rules + '}'
 CSS += '@media(forced-colors:active){' + SCROLL_ALL + '{scrollbar-color:auto}}'
+
+CSS += '.pa-next-one [data-obs]{cursor:pointer}.pa-next-one [data-obs]:focus-visible{outline:2px solid #245fd4;outline-offset:2px}.pa-next-one .pone-obs-tog{display:inline-flex;align-items:center}'
+CSS += '.pa-next-one .pone-cov-help{flex-shrink:0;color:#737d90;font:11px/1.45 Arial;margin:0 0 4px}.pa-next-one .pone-cov-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:3px;color:#555f70}.pone-cov-legend>span{display:inline-flex;align-items:center;gap:6px}.pone-cov-line{display:inline-block;width:25px;border-top:2px solid #245fd4}.pone-cov-line.pone-cov-dash{border-top:2px dashed #7fa3ea}'
 
 CSS += (OUT/'src/brand.css').read_text().replace('\n','')
 
@@ -87,10 +93,33 @@ def renderer(part, name):
   return function () {};
 }'''+s[end:]
     if part == 'head':
+        s=augment_head(s, (OUT/'src/audience-people.js').read_text())
         hook="'><i aria-hidden=\"true\">?</i>Как работать</button></div>');"
         assert s.count(hook)==1, 'header branding hook changed'
         s=s.replace(hook, "'><i aria-hidden=\"true\">?</i>Как работать</button>' + PA_NEXT_BRAND(true) + '</div>');")
     if part == 'one':
+        s=apply_motion(augment_observations(s))
+        hook="'ca_it_f', 'ca_head_f', 'ca_adg_f'];"
+        assert s.count(hook)==1, 'person CA preview columns hook changed'
+        s=s.replace(hook, "'ca_it_f', 'ca_head_f', 'ca_adg_f', 'ca_login_f', 'ca_master_f'];")
+        hook="ca_it_f: 'it', ca_adg_f: 'adg' }, on = false;"
+        assert s.count(hook)==1, 'person CA preview mode hook changed'
+        s=s.replace(hook, "ca_it_f: 'it', ca_adg_f: 'adg', ca_login_f: 'login', ca_master_f: 'master' }, on = false;")
+        hook="heads: ca.head || '', adg: ca.adg || [] };"
+        assert s.count(hook)==1, 'person CA model summary hook changed'
+        s=s.replace(hook, "heads: ca.head || '', adg: ca.adg || [], login: ca.login || [], master: ca.master || [] };")
+        hook="  return parts;\n}\n\n// ---------- БЛОК 4:"
+        assert s.count(hook)==1, 'person CA label hook changed'
+        s=s.replace(hook, "  if (c.login && c.login.length) parts.push('Список логинов: ' + c.login.length);\n  if (c.master && c.master.length) parts.push('Master ID: ' + c.master.length);\n"+hook)
+        s=s.replace("пунктир — заходили в этом ' + gu0 + '.'", "пунктир — заходили за ' + ({d:'день',w:'неделю',m:'месяц',q:'квартал'}[grain] || gu0) + '.'")
+        hook="  var t = tc0;\n  h += !t.ca ?"
+        assert s.count(hook)==1, 'coverage legend hook changed'
+        legend = """  if (tc0.ca && !wide()) h += '<div class="pone-cov-help"><div class="pone-cov-legend" aria-label="Легенда охвата ЦА"><span><i class="pone-cov-line"></i>С начала периода</span><span><i class="pone-cov-line pone-cov-dash"></i>За ' + ({d:'день',w:'неделю',m:'месяц',q:'квартал'}[grain] || 'шаг') + '</span></div><div>Обе линии — % от одной ЦА. С начала периода каждый человек учитывается один раз.</div></div>';
+"""
+        s=s.replace(hook, legend+hook)
+        hook="body.querySelectorAll('.' + CFG.ns + '-tbl-note, .' + CFG.ns + '-dynov')"
+        assert s.count(hook)==1, 'coverage legend height hook changed'
+        s=s.replace(hook, "body.querySelectorAll('.' + CFG.ns + '-tbl-note, .' + CFG.ns + '-dynov, .pone-cov-help')")
         # Keep the formatted audience denominator together on narrow cards.
         # The numerator is already in a no-wrap element; this is plain text.
         hook="sub: '<b>' + nf(t.reach) + '</b> из ' + nf(t.ca)"
@@ -147,6 +176,12 @@ def renderer(part, name):
         s=s.replace("m.sig = 'pv|' + p.key + '|' + p.grain;", "m.sig = 'pv|' + p.key + '|' + p.grain; PA_NEXT_PREVIEW(p, true);")
         s=s.replace('state.scr = scrSnap();\n      renderTip();', 'state.scr = scrSnap();\n      renderTip(); PA_NEXT_RENDERED();')
     if part == 'cat':
+        hook='  var tMax = Math.round(460 + sumM * kM + 40);'
+        assert s.count(hook)==1, 'catalogue table width hook changed'
+        s=s.replace(hook, '')
+        hook=' style="max-width:\' + tMax + \'px"'
+        assert s.count(hook)==1, 'catalogue table max-width hook changed'
+        s=s.replace(hook, '')
         hook="window.addEventListener('resize', state.onCatRs);"
         assert s.count(hook)==1, 'catalogue resize hook changed'
         s=s.replace(hook, hook+'\n    host.__paNextResize = state.onCatRs;')
@@ -182,8 +217,10 @@ def build(main,cat,one,channel,check=False):
     wrappers='{'+','.join(json.dumps(k)+':'+renderer(k,v) for k,v in sources.items())+'}'
     interaction=(OUT/'src/task-guide.js').read_text()+'\n'+(OUT/'src/interaction.js').read_text()
     viewport=(OUT/'src/viewport.js').read_text()
-    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',interaction).replace('__VIEWPORT__',viewport).replace('__BRAND__',brand)
+    motion=(OUT/'src/motion.js').read_text()
+    text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',interaction).replace('__VIEWPORT__',viewport).replace('__MOTION__',motion).replace('__BRAND__',brand)
     text=text.replace('__INTERACTION_REVISION__',hashlib.sha256(interaction.encode()).hexdigest()).replace('__VIEWPORT_REVISION__',hashlib.sha256(viewport.encode()).hexdigest())
+    text=text.replace('__MOTION_REVISION__',hashlib.sha256(motion.encode()).hexdigest())
     text=text.replace('__RENDERERS_REVISION__',hashlib.sha256(wrappers.encode()).hexdigest())
     text=text.replace("msg.type === 'PA_TOUR_GO'", "msg.type === 'PA_NEXT_INTERNAL_TOUR_GO'")
     outputs={'4. JS — весь отчёт.js':text}
@@ -234,6 +271,9 @@ def build(main,cat,one,channel,check=False):
 {board} [data-test="dashboard-filters-panel"],
 {board} [data-test="filter-bar"],
 {board} .sidebar-resizer{{display:none!important}}
+/* Superset native-filter closed state adds -32px on the draggable ancestor
+   of the board header. Override only that ancestor in this report's viewer. */
+{board} .dragdroppable:has(.dashboard-header-container){{margin-left:0!important}}
 {board} .dashboard-content:has({mainholder}){{margin-left:0!important}}
 {grid}{{--pa-next-nav-height:48px;--pa-next-board-header-height:65px;margin:16px 24px!important;padding:0!important}}
 body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-height:0px}}

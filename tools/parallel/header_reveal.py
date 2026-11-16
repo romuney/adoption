@@ -63,8 +63,8 @@ def header_reveal_css(main: int) -> str:
 {board} {close_link}{{visibility:hidden!important;pointer-events:none!important}}
 {opened} {open_link}{{pointer-events:none!important}}
 {opened} {close_link}{{visibility:visible!important;pointer-events:auto!important}}
-{opened} {close_link}::after{{content:"Свернуть ↑";position:absolute!important;top:16px!important;right:24px!important;width:112px!important;height:32px!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;border:1px solid #e7e9ee!important;border-radius:6px!important;background:#f6f7fb!important;color:#454b55!important;font:12px Arial,Helvetica,sans-serif!important;white-space:nowrap!important;pointer-events:auto!important;cursor:pointer!important}}
-{opened} {close_link}:hover::after{{background:#eef2f9!important;color:#245fd4!important;border-color:#c5d2ed!important}}
+{opened} {close_link}::after{{content:"Свернуть ↑";position:absolute!important;top:16px!important;right:24px!important;width:112px!important;height:32px!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;border:1px solid #e7e9ee!important;border-radius:6px!important;background:#fff!important;color:#454b55!important;font:12px Arial,Helvetica,sans-serif!important;white-space:nowrap!important;pointer-events:auto!important;cursor:pointer!important}}
+{opened} {close_link}:hover::after{{background:#fff!important;color:#245fd4!important;border-color:#c5d2ed!important}}
 {board} {any_link}:focus-visible{{outline:2px solid #245fd4!important;outline-offset:-2px!important}}
 {opened} {close_link}:focus-visible{{outline:none!important}}
 {opened} {close_link}:focus-visible::after{{outline:2px solid #245fd4!important;outline-offset:2px!important}}

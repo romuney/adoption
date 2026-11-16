@@ -99,16 +99,20 @@
   }
   function css(nodes) {
     var found = [], matchedRules = [], sheets = [], scanned = 0, truncated = false;
+    var allSheets = Array.prototype.slice.call(document.styleSheets);
+    var droppedHeaderRules = 0, droppedLayoutRules = 0;
     function walk(rules, context, sheetIndex) {
       for (var i = 0; i < rules.length; i++) {
         var rule = rules[i]; scanned++;
-        if (scanned > 60000) { truncated = true; return; }
+        if (scanned > 200000) { truncated = true; return; }
         if (rule.selectorText) {
           var relevant = /pa-next-header-closed|Открыть шапку|#app.*:target|dashboard-header-container/.test(rule.selectorText);
           var matched = [];
           nodes.forEach(function (n) { if (matches(n,rule.selectorText) === true) matched.push(label(n)); });
-          if ((relevant && found.length < 200) || (!relevant && matchedRules.length < 120 && matched.length && properties.some(function (p) { return !!rule.style.getPropertyValue(p); }))) {
-            (relevant ? found : matchedRules).push({ sheet:sheetIndex, selector:rule.selectorText, context:context, matches:matched, declarations:styles(rule.style) });
+          if (relevant || (matched.length && properties.some(function (p) { return !!rule.style.getPropertyValue(p); }))) {
+            if (relevant ? found.length < 500 : matchedRules.length < 250) {
+              (relevant ? found : matchedRules).push({ sheet:sheetIndex, selector:rule.selectorText, context:context, matches:matched, declarations:styles(rule.style) });
+            } else if (relevant) droppedHeaderRules++; else droppedLayoutRules++;
           }
         }
         try {
@@ -121,7 +125,9 @@
         } catch (e) { errors.push({ kind:'css-group', name:e.name }); }
       }
     }
-    limit(document.styleSheets, 150).forEach(function (sheet, i) {
+    // Emotion/the Proteus fork may insert the dashboard CSS after hundreds of
+    // component styles. Never silently sample only the first N stylesheets.
+    allSheets.forEach(function (sheet, i) {
       var entry = { index:i, disabled:sheet.disabled, media:sheet.media.mediaText, owner:label(sheet.ownerNode), external:!!sheet.href };
       if (sheet.ownerNode && sheet.ownerNode.tagName === 'STYLE') {
         var text = sheet.ownerNode.textContent || '';
@@ -134,7 +140,9 @@
       catch (e) { entry.inaccessible = e.name; }
       sheets.push(entry);
     });
-    return { stylesheets:sheets, headerRules:found, matchedLayoutRules:matchedRules, scanned:scanned, truncated:truncated };
+    return { stylesheets:sheets, stylesheetsTotal:allSheets.length, stylesheetsProcessed:sheets.length,
+      headerRules:found, matchedLayoutRules:matchedRules, scanned:scanned, truncated:truncated,
+      droppedHeaderRules:droppedHeaderRules, droppedLayoutRules:droppedLayoutRules };
   }
   function snapshot(reason, includeCSS) {
     var links = controls(), header = document.querySelector('.dashboard-header-container');
@@ -186,7 +194,7 @@
       [0,350,1200].forEach(function (delay) { timers.push(setTimeout(function () { record.defaultPreventedAfterDispatch = e.defaultPrevented; sample(e.type + '+' + delay); },delay)); });
     }
   }
-  var report = { version:'pa-next-header-diag-1', started:new Date().toISOString(),
+  var report = { version:'pa-next-header-diag-2', started:new Date().toISOString(),
     context:window === window.top ? 'top' : 'iframe-wrong-context', browser:navigator.userAgent,
     support:{ has:CSS.supports('selector(:has(*))'), focusWithin:CSS.supports('selector(:focus-within)'), clipPath:CSS.supports('clip-path','inset(100% 0 0 0)') },
     selectors:checks, events:events, samples:samples, errors:errors, initial:snapshot('initial',true) };

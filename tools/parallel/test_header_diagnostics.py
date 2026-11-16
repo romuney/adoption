@@ -33,6 +33,16 @@ def main():
         page.goto('http://pa-next.test/dashboard/?token=PRIVATE-URL-TOKEN')
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
+        # Production has at least 150 sheets before the header rules. The first
+        # collector silently omitted everything after sheet 149. Keep the real
+        # helper at the end to verify complete stylesheet inventory.
+        page.evaluate('''() => {
+          var helper=document.querySelectorAll('style')[1];
+          for(var i=0;i<175;i++){
+            var s=document.createElement('style');s.textContent='.unrelated-sheet-'+i+'{color:black}';document.head.appendChild(s);
+          }
+          document.head.appendChild(helper);
+        }''')
         before = page.locator('body').inner_html()
         rect_before = page.locator('.dashboard-header-container').bounding_box()
         result = page.evaluate(source)
@@ -58,6 +68,11 @@ def main():
         assert initial['links'][0]['expectedTitle']
         assert initial['links'][0]['ancestors'][1]['node'] == 'p'
         assert any(s.get('v2Marker') for s in initial['css']['stylesheets'])
+        assert initial['css']['stylesheetsTotal'] == initial['css']['stylesheetsProcessed'] == 177
+        assert initial['css']['stylesheets'][-1]['v2Marker']
+        assert not initial['css']['truncated']
+        assert initial['css']['droppedHeaderRules'] == 0
+        assert any(r['sheet'] == 176 and r['matches'] for r in initial['css']['headerRules'])
         assert any(r['matches'] for r in initial['css']['headerRules'])
         assert initial['controlsDOM'][0]['node'] == 'p'
         assert any(e['kind'] == 'hashchange' for e in data['events'])
@@ -84,7 +99,7 @@ def main():
         iframe.evaluate('__paHeaderDiag.stop()')
         assert not errors, errors
         browser.close()
-        print('PASS: no DOM/layout writes; selectors, CSS, real open/close events; redaction; JSON download; stop/restart; opaque iframe warning')
+        print('PASS: all 177 stylesheets including late helper; no DOM/layout writes; selectors, CSS, real open/close events; redaction; JSON download; stop/restart; opaque iframe warning')
 
 
 if __name__ == '__main__':

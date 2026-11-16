@@ -25,16 +25,24 @@ def header_reveal_css(main: int) -> str:
     open_link = f':is({legacy_open},{app_open})'
     close_link = f'a[href$="#pa-next-header-closed-{main}"]{same_window}'
     any_link = f':is({open_link},{close_link})'
-    board = f'body:has({holder}):has({open_link}):has({close_link}):not(.dashboard--editing):not(:has(.dashboard--editing))'
-    enabled = board + f':is(:has({legacy_open}):has(#chart-id-{main}),:has({app_open}):has(#app))'
+    # Proteus wraps dashboard CSS in @scope and rewrites top-level body rules
+    # to :scope, but leaves body inside @supports untouched. Use :scope directly:
+    # it is the dashboard scope root there, and html in an ordinary stylesheet.
+    # #app may contain the scope root, be that root, or be its descendant.
+    app_present = ':is(#app,:has(#app),#app *)'
+    app_target = ':is(#app:target,:has(#app:target),#app:target *)'
+    board = f':scope:has({holder}):has({open_link}):has({close_link}):not(.dashboard--editing):not(:has(.dashboard--editing)):not(.dashboard--editing *)'
+    enabled = board + f':is(:has({legacy_open}):has(#chart-id-{main}),:has({app_open}){app_present})'
     header = f'{enabled} .dashboard-header-container'
     # Do not toggle on opener focus: covering it on mousedown would cancel
     # native anchor activation. Collapse the control row before chart mount,
     # but keep the native header visible until a real target exists.
-    opened = enabled + f':is(:has(.dashboard-header-container:focus-within),:has(.dashboard-header-container .ant-dropdown-open),:has(.dashboard-header-container [aria-expanded="true"]),:has(#chart-id-{main}:target),:has({app_open}):has(#app:target))'
+    opened = enabled + f':is(:has(.dashboard-header-container:focus-within),:has(.dashboard-header-container .ant-dropdown-open),:has(.dashboard-header-container [aria-expanded="true"]),:has(#chart-id-{main}:target),:has({app_open}){app_target})'
     row = f'.dragdroppable-row:has(> .with-popover-menu > .grid-row > .dragdroppable:only-child > .with-popover-menu {any_link}):not(:has(.dashboard-chart)):not(:has(.dragdroppable-row))'
     component = f':is(.dashboard-markdown,.dashboard-component-markdown,.resizable-container,.dashboard-component-chart-holder):has({any_link}):not(:has(.dashboard-chart))'
-    return f'''/* Optional native-header control v2. Ordinary same-window Markdown links.
+    return f'''/* Optional native-header control v3. Ordinary same-window Markdown links.
+   Explicit :scope works in Proteus @scope and ordinary global stylesheets.
+   App-root target checks include ancestors outside the dashboard scope.
    No required Markdown class or sibling paragraph. The new control does
    not depend on the mounted chart ID; legacy controls wait for their target.
    The new link targets the permanent Superset SPA root #app; v1 links work too.

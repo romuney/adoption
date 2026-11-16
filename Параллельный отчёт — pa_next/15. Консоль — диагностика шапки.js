@@ -120,6 +120,7 @@
             var group = { kind:rule.constructor.name, condition:rule.conditionText || rule.media && rule.media.mediaText || '' };
             if (group.kind === 'CSSSupportsRule') { try { group.active = CSS.supports(group.condition); } catch (e) { group.active = 'unknown'; } }
             if (group.kind === 'CSSMediaRule') group.active = matchMedia(group.condition).matches;
+            if (group.kind === 'CSSScopeRule') { group.start = rule.start || null; group.end = rule.end || null; }
             walk(rule.cssRules, context.concat([group]), sheetIndex);
           } else if (rule.styleSheet) { walk(rule.styleSheet.cssRules, context.concat([{kind:'import'}]),sheetIndex); }
         } catch (e) { errors.push({ kind:'css-group', name:e.name }); }
@@ -133,6 +134,8 @@
         var text = sheet.ownerNode.textContent || '';
         entry.bytes = text.length;
         entry.v2Marker = text.indexOf('Optional native-header control v2') >= 0;
+        var version = /Optional native-header control v(\d+)/.exec(text);
+        entry.headerControlVersion = version ? Number(version[1]) : null;
         entry.anyMarker = text.indexOf('Optional native-header control') >= 0;
         entry.hasCloseSelector = text.indexOf('pa-next-header-closed') >= 0;
       }
@@ -142,6 +145,7 @@
     });
     return { stylesheets:sheets, stylesheetsTotal:allSheets.length, stylesheetsProcessed:sheets.length,
       headerRules:found, matchedLayoutRules:matchedRules, scanned:scanned, truncated:truncated,
+      matchesMeaning:'Element.matches only; does not evaluate @scope context or the CSS cascade. Use computed style and scope boundaries.',
       droppedHeaderRules:droppedHeaderRules, droppedLayoutRules:droppedLayoutRules };
   }
   function snapshot(reason, includeCSS) {

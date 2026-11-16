@@ -52,7 +52,7 @@ def stable(before,after,label):
     assert after['scroll']==before['scroll'],(label,'native anchor scrolled board',before,after)
 
 
-def page_and_report(browser,width,height,portal=False):
+def page_and_report(browser,width,height,portal=False,scope=None,css_override=None):
     page=browser.new_page(viewport={'width':width,'height':height},reduced_motion='reduce')
     page.route('http://pa-next.local.test/**',lambda route:route.fulfill(content_type='text/html',body='<!doctype html><html><body></body></html>'))
     page.goto(URL)
@@ -62,7 +62,17 @@ def page_and_report(browser,width,height,portal=False):
     # moving an already mounted iframe would reload its document.
     set_content=page.set_content
     def app_content(html,**kwargs):
-        html=html.replace('<div class="board-scroller">','<div id="app"><div class="board-scroller">',1)
+        if scope or css_override is not None:
+            current=(ui.OUT/'9. CSS — дашборд.css').read_text()
+            replacement=css_override if css_override is not None else current
+            if scope:
+                # Observed in production: top-level body selectors are changed
+                # to :scope, while selectors nested in @supports retain body.
+                prefix,helper=replacement.split('/* Optional native-header control',1)
+                replacement='@scope ('+scope+') {'+prefix.replace('body:',':scope:')+'/* Optional native-header control'+helper+'}'
+            assert current in html
+            html=html.replace(current,replacement,1)
+        html=html.replace('<div class="board-scroller">','<div id="app"><div class="board-scroller dashboard-container">',1)
         html=html.replace('</body>','</div></body>')
         return set_content(html,**kwargs)
     page.set_content=app_content

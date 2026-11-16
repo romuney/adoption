@@ -67,9 +67,9 @@ def main():
         assert initial['selectorCounts']['opened'] == 0
         assert initial['links'][0]['expectedTitle']
         assert initial['links'][0]['ancestors'][1]['node'] == 'p'
-        assert any(s.get('headerControlVersion') == 3 for s in initial['css']['stylesheets'])
+        assert any(s.get('headerControlVersion') == 4 for s in initial['css']['stylesheets'])
         assert initial['css']['stylesheetsTotal'] == initial['css']['stylesheetsProcessed'] == 177
-        assert initial['css']['stylesheets'][-1]['headerControlVersion'] == 3
+        assert initial['css']['stylesheets'][-1]['headerControlVersion'] == 4
         assert not initial['css']['truncated']
         assert initial['css']['droppedHeaderRules'] == 0
         assert any(r['sheet'] == 176 and r['selector'].startswith(':scope:') and r['declarations'].get('position') == 'fixed !important' for r in initial['css']['headerRules'])

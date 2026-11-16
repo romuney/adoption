@@ -47,7 +47,11 @@ def state(page):
 
 
 def stable(before,after,label):
-    assert after['iframe']==before['iframe'],(label,'chart moved',before,after)
+    expected=dict(before['iframe'])
+    if after['style']['position']=='relative':
+        expected['y']+=65;expected['h']-=65;expected['bottom']=expected['y']+expected['h']
+        assert after['headerReservation']=='65px',(label,'open header space not reserved',after)
+    assert after['iframe']==expected,(label,'unexpected chart geometry',expected,after)
     assert after['nav']==before['nav'],(label,'global navigation moved',before,after)
     assert after['scroll']==before['scroll'],(label,'native anchor scrolled board',before,after)
 

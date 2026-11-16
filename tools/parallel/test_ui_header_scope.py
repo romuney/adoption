@@ -18,7 +18,7 @@ from test_ui_header_focus import page_and_report, stable, state
 from header_reveal import header_control_markdown, header_reveal_css
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = Path('/tmp/pa-next-header-scope')
+OUT = Path('/tmp/pa-next-header-flow')
 DIAG = ui.OUT / 'pa-next-header-diagnostic (1).json'
 PREVIOUS = '315d5f5'
 
@@ -74,6 +74,17 @@ def main():
             result['negative'].append({'scope':scope,'state':broken})
             assert not errors,errors
             page.close()
+        # Reproduce the next production complaint: v3 revealed its fixed header
+        # over the report's own title instead of returning it to document flow.
+        overlay_css=subprocess.check_output(['git','show','f77879c:Параллельный отчёт — pa_next/9. CSS — дашборд.css'],text=True)
+        page,frame,errors=page_and_report(browser,1366,768,scope='.dashboard-container',css_override=overlay_css)
+        production_control(page,tree);page.wait_for_timeout(100)
+        closed_v3=state(page);page.mouse.click(683,52);page.wait_for_timeout(150)
+        open_v3=state(page);title_v3=frame.locator('.pa-next-titlebar h1').bounding_box()
+        assert open_v3['iframe']==closed_v3['iframe']
+        assert title_v3['y'] < open_v3['header']['bottom'] and title_v3['y']+title_v3['height'] > open_v3['header']['y']
+        result['overlayNegative']={'closed':closed_v3,'open':open_v3,'coveredTitle':title_v3}
+        page.screenshot(path=str(OUT/'v3-covered-title.png'));page.close()
         for scope in [None,'#app','.dashboard-container']:
             for app in [False,True]:
                 for width,height in [(1366,768),(1920,1080)]:
@@ -88,6 +99,8 @@ def main():
                     assert closed['headerReservation']=='0px',(label,closed)
                     assert closed['iframe']['h']==baseline['iframe']['h']+65,(label,baseline,closed)
                     assert all(x['height']==8 and x['font']=='0px' for x in closed['links']),(label,closed)
+                    title_before=frame.locator('.pa-next-titlebar h1').bounding_box()
+                    title_font=frame.locator('.pa-next-titlebar h1').evaluate('(n)=>getComputedStyle(n).fontSize')
                     accepted=frame.evaluate('JSON.stringify(__paNext.accepted)');emits=page.evaluate('emits.length')
                     page.mouse.move(width/2,52);page.wait_for_timeout(150)
                     assert state(page)['header']['bottom']==48,'Hover must not open'
@@ -95,6 +108,21 @@ def main():
                     opened=state(page)
                     assert opened['header']['y']==48 and opened['target']==('app' if app else 'chart-id-859562'),(label,opened)
                     stable(closed,opened,label)
+                    title_open=frame.locator('.pa-next-titlebar h1').bounding_box()
+                    assert abs(title_open['y']-title_before['y']-65)<=1,(label,title_before,title_open)
+                    assert title_open['y']>=opened['header']['bottom'],(label,'report title covered',title_open,opened)
+                    assert frame.locator('.pa-next-titlebar h1').evaluate('(n)=>getComputedStyle(n).fontSize')==title_font
+                    close=page.locator('[data-test="header-control-row"] a').last
+                    hint=close.evaluate('(n)=>getComputedStyle(n,"::after").content')
+                    assert 'Свернуть' in hint
+                    edit_box=page.locator('[data-test="edit-dashboard"]').bounding_box()
+                    assert edit_box['x']+edit_box['width']<=width-24-112-8,(label,'collapse overlaps edit',edit_box)
+                    assert page.evaluate('([x,y])=>document.elementFromPoint(x,y)===document.querySelector("[data-test=header-control-row] a:last-child")',[width-80,80])
+                    page.mouse.click(width-80,80);page.wait_for_timeout(120)
+                    assert state(page)['header']['bottom']==48,'Visible collapse action did not work'
+                    stable(closed,state(page),label)
+                    page.mouse.click(width/2,52);page.wait_for_timeout(120)
+                    stable(closed,state(page),label)
                     page.evaluate('document.activeElement.blur()');page.wait_for_timeout(100)
                     assert state(page)['header']['y']==48,'URL state must survive blur'
                     if width==1366:page.screenshot(path=str(OUT/(label+'-open.png')))
@@ -112,7 +140,7 @@ def main():
                     page.keyboard.press('Enter');page.wait_for_timeout(100)
                     assert state(page)['style']['position']!='fixed' and state(page)['style']['clip']=='none'
                     assert not errors,errors
-                    result['cases'].append({'label':label,'scope':scope,'closed':closed,'open':opened,'closedAgain':reclosed,'queriesAdded':0})
+                    result['cases'].append({'label':label,'scope':scope,'closed':closed,'open':opened,'closedAgain':reclosed,'titleClosed':title_before,'titleOpen':title_open,'collapseLabel':hint,'queriesAdded':0})
                     (OUT/'metrics.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
                     print('PASS:',label,flush=True);page.close()
         browser.close()

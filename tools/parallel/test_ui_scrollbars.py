@@ -13,11 +13,12 @@ from test_ui import OUT
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--main', type=Path, help='Previous JS delivery for a negative regression check')
+    ap.add_argument('--periods', type=Path, default=Path('/tmp/pa-next-periods/d'))
     ap.add_argument('--output', type=Path, default=Path('/tmp/pa-next-scrollbar-results.json'))
     args = ap.parse_args()
     if args.main:
         ui.scripts['head'] = args.main.read_text()
-    original = {part: json.loads(Path('/tmp/pa-next-periods/d', part + '.json').read_text())
+    original = {part: json.loads((args.periods / (part + '.json')).read_text())
                 for part in ['head', 'cat', 'one']}
     title = 'Очень длинное название отчёта с показателями подразделений и динамикой использования ' * 6
     ui.rows = copy.deepcopy(original)
@@ -73,7 +74,7 @@ def main():
               return out;
             }''')
             for selector, box in geometry.items():
-                assert box['rightPadding']==0 and box['bottomPadding']==0, (gutter,selector,'reserved padding',box)
+                assert box['rightPadding']==(6 if selector in ('.prb-tscroll','.pone-tbl-scroll') else 0) and box['bottomPadding']==0, (gutter,selector,'reserved padding',box)
                 assert box['gutterStyle']=='auto', (gutter,selector,'permanent scrollbar gutter',box)
                 assert box['gutter'] <= 4, (gutter,selector,'scrollbar wider than4px',box)
                 if not box['verticalOverflow'] or gutter=='zero-width':

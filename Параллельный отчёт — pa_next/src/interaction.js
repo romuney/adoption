@@ -336,10 +336,12 @@ function installInteraction(shell, ST) {
       revealCatalog: function () { layout.hidden = false; paint(); }
     });
   }
+  var scrollbars = installScrollbars(shell);
   window.addEventListener('keydown', tourKey, true);
   window.addEventListener('scroll', refresh, true);
   paint();
   return { shell: shell, help: help, refresh: refresh, destroy: function () {
+    scrollbars.destroy();
     if (task) task.destroy();
     closeTour(); destroyed = true; dragEnd();
     if (resizeObserver) resizeObserver.disconnect();

@@ -5,6 +5,8 @@ from pathlib import Path
 from ui_audience_people import augment_head
 from ui_observations import augment_observations
 from ui_motion import apply_motion
+from ui_report_header import augment_report_header
+from header_reveal import header_reveal_css, header_control_markdown
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'Параллельный отчёт — pa_next'
 CAT = ['mode_param','sel_f','aud_org_f','aud_spec_f','aud_stream_f','aud_hq_f','aud_it_f','aud_head_f']
@@ -48,10 +50,22 @@ for pseudo, rules in [
     ('-corner', 'background:transparent')
 ]:
     CSS += ','.join(selector + '::-webkit-scrollbar' + pseudo for selector in SCROLL) + '{' + rules + '}'
-CSS += '@media(forced-colors:active){' + SCROLL_ALL + '{scrollbar-color:auto}}'
+# Opacity/color changes never add/remove native scrollbar space.
+CSS += SCROLL_ALL + '{scrollbar-color:transparent transparent!important}'
+CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SCROLL) + '{background-color:transparent!important;transition:background-color 160ms ease}'
+SHOW = ['.pa-next-shell[data-pa-next-scroll-active]', '.pa-next-shell [data-pa-next-scroll-active]', 'body .phead-list[data-pa-next-scroll-active]', 'body .phead-sel[data-pa-next-scroll-active]', '.pa-next-shell:focus-visible', '.pa-next-shell :focus-visible']
+CSS += ','.join(SHOW) + '{scrollbar-color:#b9c1ce transparent!important}'
+CSS += '@supports selector(::-webkit-scrollbar){' + ','.join(SCROLL + SHOW) + '{scrollbar-color:auto!important}}'
+CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SHOW) + '{background-color:#b9c1ce!important}'
+CSS += ','.join(x+'::-webkit-scrollbar-thumb:hover' for x in SHOW) + '{background-color:#8a96a8!important}'
+CSS += '.pa-next-shell .prb-tscroll,.pa-next-shell .pone-tbl-scroll{margin-right:-6px;padding-right:6px;box-sizing:border-box}'
+CSS += '@media(prefers-reduced-motion:reduce){' + ','.join(x+'::-webkit-scrollbar-thumb' for x in SCROLL) + '{transition:none}}'
+CSS += '@media(forced-colors:active){' + ','.join(SCROLL + SHOW) + '{scrollbar-color:auto!important}' + ','.join(x+'::-webkit-scrollbar-thumb'+state for x in SCROLL + SHOW for state in ['', ':hover']) + '{background-color:ButtonText!important}}'
 
 CSS += '.pa-next-one [data-obs]{cursor:pointer}.pa-next-one [data-obs]:focus-visible{outline:2px solid #245fd4;outline-offset:2px}.pa-next-one .pone-obs-tog{display:inline-flex;align-items:center}'
 CSS += '.pa-next-one .pone-cov-help{flex-shrink:0;color:#737d90;font:11px/1.45 Arial;margin:0 0 4px}.pa-next-one .pone-cov-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:3px;color:#555f70}.pone-cov-legend>span{display:inline-flex;align-items:center;gap:6px}.pone-cov-line{display:inline-block;width:25px;border-top:2px solid #245fd4}.pone-cov-line.pone-cov-dash{border-top:2px dashed #7fa3ea}'
+
+CSS += '.pa-next-titlebar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;min-height:34px;margin-bottom:10px}.pa-next-titlebar h1{margin:0;font:700 18px/1.35 Arial,Helvetica,sans-serif;color:#23272e}.pa-next-title-actions{display:flex;align-items:center;gap:12px}.pa-next-title-actions .phead-help{margin-left:0}'
 
 CSS += (OUT/'src/brand.css').read_text().replace('\n','')
 
@@ -94,9 +108,7 @@ def renderer(part, name):
 }'''+s[end:]
     if part == 'head':
         s=augment_head(s, (OUT/'src/audience-people.js').read_text())
-        hook="'><i aria-hidden=\"true\">?</i>Как работать</button></div>');"
-        assert s.count(hook)==1, 'header branding hook changed'
-        s=s.replace(hook, "'><i aria-hidden=\"true\">?</i>Как работать</button>' + PA_NEXT_BRAND(true) + '</div>');")
+        s=augment_report_header(s)
     if part == 'one':
         s=apply_motion(augment_observations(s))
         hook="'ca_it_f', 'ca_head_f', 'ca_adg_f'];"
@@ -215,7 +227,7 @@ def build(main,cat,one,channel,check=False):
     sources={'head':'pa-head.chart.js','cat':'pa-reports-body.chart.js','one':'pa-one.chart.js'}
     brand=(OUT/'src/brand.js').read_text().replace('__BRAND_DATA__',json.dumps('data:image/webp;base64,'+base64.b64encode((OUT/'src/assets/cross-data-accent.webp').read_bytes()).decode('ascii')))
     wrappers='{'+','.join(json.dumps(k)+':'+renderer(k,v) for k,v in sources.items())+'}'
-    interaction=(OUT/'src/task-guide.js').read_text()+'\n'+(OUT/'src/interaction.js').read_text()
+    interaction=(OUT/'src/task-guide.js').read_text()+'\n'+(OUT/'src/scrollbars.js').read_text()+'\n'+(OUT/'src/interaction.js').read_text()
     viewport=(OUT/'src/viewport.js').read_text()
     motion=(OUT/'src/motion.js').read_text()
     text=(OUT/'src/main.js').read_text().replace('__CONFIG__',json.dumps(config)).replace('__SHELL_CSS__',CSS.replace("'","\\'")).replace('__RENDERERS__',wrappers).replace('__INTERACTION__',interaction).replace('__VIEWPORT__',viewport).replace('__MOTION__',motion).replace('__BRAND__',brand)
@@ -294,11 +306,13 @@ body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-heigh
 {helperrow},{helperrow}>.with-popover-menu>.grid-row{{height:2px!important;min-height:0!important;max-height:2px!important;margin:0!important;padding:0!important;gap:0!important;overflow:hidden!important}}
 .dashboard-component-chart-holder:not(.dashboard--editing *):is({helper}) iframe{{display:block!important;visibility:visible!important;min-width:2px!important;min-height:2px!important;width:2px!important;height:2px!important}}
 '''
+    css += header_reveal_css(main)
     write('9. CSS — дашборд.css',css)
+    write('14. Markdown — управление шапкой.md', header_control_markdown(main))
     metadata={'cross_filters_enabled':True,'chart_configuration':{str(main):{'id':main,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main]},'chartsInScope':[cat,one]}},str(cat):{'id':cat,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,cat]},'chartsInScope':[one]}},str(one):{'id':one,'crossFilters':{'scope':{'rootPath':['ROOT_ID'],'excluded':[main,one]},'chartsInScope':[cat]}}},'global_chart_configuration':{'scope':{'rootPath':['ROOT_ID'],'excluded':[]},'chartsInScope':[main,cat,one]}}
     metadata.update(show_native_filters=False,native_filter_configuration=[])
     write('10. JSON — области фильтров.json',json.dumps(metadata,ensure_ascii=False,indent=2)+'\n')
-    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height; visible dashboard header; hidden chart headers','scroll report filters away on laptop; preserve useful analytics height','single-flight query queue with exact request completion','bounded session cache keyed by exact business masks and generation','atomic selection and preview; one local delayed loader','preserve empty filter values; explicit retry for command errors','calendar width follows embedded panel','approved CROSS DATA soft accent and local animated loading signature','stable detail-tab layout during loading; shared scroll for short viewports','preserve geometry and scroll across same-sandbox reruns','fixed SVG type during splitter drag; 420px catalogue minimum; selected names limited to three lines','styled native scrollbars'], 'brand_sha256':{n:hashlib.sha256((OUT/'src/assets'/n).read_bytes()).hexdigest() for n in ['cross-data-accent-source.png','cross-data-accent.webp']},'calculations':'Original buildModel and metric functions are preserved verbatim.'}
+    report={'configuration':config,'source_sha256':{name:hashlib.sha256((ROOT/'Виджеты'/name).read_bytes()).hexdigest() for name in sources.values()},'transforms':['scope host selectors','replace global broadcast with local bus','namespace internal PA messages','suppress screenshot expansion (single iframe)','replace distributed tour with local interactive guide','use container queries for embedded region width','validate catalogue preview before render','keep tabs active while metric blocks load','resizable catalogue with inline collapse caret and left rail','viewport board height; visible dashboard header; hidden chart headers','scroll report filters away on laptop; preserve useful analytics height','single-flight query queue with exact request completion','bounded session cache keyed by exact business masks and generation','atomic selection and preview; one local delayed loader','preserve empty filter values; explicit retry for command errors','calendar width follows embedded panel','approved CROSS DATA soft accent and local animated loading signature','stable detail-tab layout during loading; shared scroll for short viewports','preserve geometry and scroll across same-sandbox reruns','fixed SVG type during splitter drag; 420px catalogue minimum; selected names limited to three lines','styled native scrollbars','activity-only scrollbar thumbs with fixed dimensions','report title and help/brand above filters','optional click-only native-header control with fail-open Markdown links'], 'brand_sha256':{n:hashlib.sha256((OUT/'src/assets'/n).read_bytes()).hexdigest() for n in ['cross-data-accent-source.png','cross-data-accent.webp']},'calculations':'Original metric formulas are retained; model changes are limited to the documented filter/transport bridges.'}
     report['minifier']='terser 5.51.2 via pinned playbook kit/min.cjs'
     report['linter']='eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)'
     report['lint_messages_by_rule']=lint_summary

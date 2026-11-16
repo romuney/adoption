@@ -64,7 +64,7 @@ def main():
         page.on('pageerror', lambda error: errors.append(str(error)))
         frame = mount(page)
         if args.source_only:
-            frame.evaluate('() => {' + (ROOT/'Параллельный отчёт — pa_next/src/task-guide.js').read_text() + (ROOT/'Параллельный отчёт — pa_next/src/interaction.js').read_text() + '''
+            frame.evaluate('() => {' + (ROOT/'Параллельный отчёт — pa_next/src/task-guide.js').read_text() + (ROOT/'Параллельный отчёт — pa_next/src/scrollbars.js').read_text() + (ROOT/'Параллельный отчёт — pa_next/src/interaction.js').read_text() + '''
               if (window.__paNext.interaction) window.__paNext.interaction.destroy();
               window.__paNext.interaction = installInteraction(document.querySelector('.pa-next-shell'), window.__paNext);
               document.querySelector('[data-tourstart]').addEventListener('click', function(ev) {

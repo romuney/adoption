@@ -62,13 +62,16 @@
     "stable detail-tab layout during loading; shared scroll for short viewports",
     "preserve geometry and scroll across same-sandbox reruns",
     "fixed SVG type during splitter drag; 420px catalogue minimum; selected names limited to three lines",
-    "styled native scrollbars"
+    "styled native scrollbars",
+    "activity-only scrollbar thumbs with fixed dimensions",
+    "report title and help/brand above filters",
+    "optional click-only native-header control with fail-open Markdown links"
   ],
   "brand_sha256": {
     "cross-data-accent-source.png": "1a6ad9e99bf49979b0b27114544f4e78102a9a11e9d89042b9426b8ee73bf309",
     "cross-data-accent.webp": "7cd4eb9ea17228b4589aa531d3a7057dd97909ce8af6a993252321558d6ac33a"
   },
-  "calculations": "Original buildModel and metric functions are preserved verbatim.",
+  "calculations": "Original metric formulas are retained; model changes are limited to the documented filter/transport bridges.",
   "minifier": "terser 5.51.2 via pinned playbook kit/min.cjs",
   "linter": "eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)",
   "lint_messages_by_rule": {

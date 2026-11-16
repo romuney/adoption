@@ -179,7 +179,10 @@ def main():
                 assert final['shell']['scrollTop'] > 100, (label, 'wheel did not reveal analytics', final)
                 assert final['head']['bottom'] <= final['shell']['top'] + 1, (label, 'report filters remain onscreen', final)
             else:
-                assert final['shell']['scrollTop'] == 0, (label, 'desktop must fit together', final)
+                # With the optional native-header control absent, both the
+                # fallback platform title and the new internal title are shown.
+                # If this needs scrolling, the entire report head must clear.
+                assert final['shell']['scrollTop'] == 0 or final['head']['bottom'] <= final['shell']['top'] + 1, (label, 'desktop fallback leaves a header remnant', final)
             assert page.evaluate('scrollY') == 0
             assert page.locator('.board-scroller').evaluate('(n)=>n.scrollTop') == 0
             assert page.locator('.dashboard-header-container').bounding_box()['y'] == 48

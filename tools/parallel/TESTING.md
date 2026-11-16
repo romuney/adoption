@@ -255,3 +255,17 @@ PGHOST=/workspace/.cache/pa-next-pgsocket PGPORT=55432 PA_DB=/workspace/.cache/p
 Флаги fixture/output уточняются через `--help` соответствующего скрипта. `test_ui_audience_people.py` без `--delivery` проверяет renderer-transform из исходника, с ним — готовый минифицированный файл и три iframe. Сценарии ввода: Excel, ручные разделители, JSON строки, повторные значения, невалидные токены, большие Master ID, отмена, reset, draft/apply, лимиты, видимая область и фокус. Тест анимаций использует управляемые часы для точной проверки промежуточного DOM/AX и настоящий таймер для записи длительностей графиков; времена кадров локального headless не обещают скорость прода.
 
 Ширины/выводы проверяются в локальной модели борда на фиксированных реальных SQL-ответах. Исторический fixture может использоваться для чистой UI-проверки только с явным указанием несовпадения SQL SHA; это не доказательство числовой сходимости текущего SQL. Свежие числовые проверки и новые экспорты выполняются отдельно. Header-test содержит отрицательный контроль −32px и проверку адресного CSS, включая редактор и меню без #main-menu.
+
+
+## Автоскрытие и безопасный доступ к внешней шапке
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_autohide.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_scrollbars.py --periods /tmp/pa-next-people-periods/d
+npm install --prefix /tmp/pa-next-markdown-render --no-audit --no-fund react@18.2.0 react-dom@18.2.0 react-markdown@8.0.3 rehype-sanitize@5.0.1 rehype-raw@6.1.1
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_header_reveal.py --delivered
+```
+
+`test_ui_autohide.py` использует текущие реальные ответы из `/tmp/pa-next-people-periods/d` и закреплённую предыдущую поставку `ccc074e` для проверки неизменной ширины данных при сдвиге thumb на6px. Сценарии: настоящий wheel и перетаскивание native thumb, ожидание под неподвижным курсором, край, выход из iframe, общая область и Who, forced colors, повторный JS без новых запросов. Classic native и zero-width geometry проверяются в локальном Chromium; это не запуск Safari/macOS.
+
+`test_ui_header_reveal.py` проверяет настоящий ReactMarkdown8.0.3 в трёх режимах HTML/sanitize, все варианты дают одну пару ordinary links без target. Затем внешний DOM Superset, CSS9 и JS4: отсутствующий/сломанный/blank control и отсутствующий target сохраняют шапку; отдельная строка0px; mixed row сохраняет соседний виджет; hoverнеоткрывает; click/secondclick/Enter/Tab, меню и Edit доступны. Открытие не меняет iframe/nav/scroll, обе диаграммы доступны через wheel; на большом экране с включённым контролом они помещаются вместе с фильтрами. В fallback режиме (контрол ещё не установлен) две строки названия могут требовать общей прокрутки.

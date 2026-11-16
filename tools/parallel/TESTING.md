@@ -269,3 +269,12 @@ npm install --prefix /tmp/pa-next-markdown-render --no-audit --no-fund react@18.
 `test_ui_autohide.py` использует текущие реальные ответы из `/tmp/pa-next-people-periods/d` и закреплённую предыдущую поставку `ccc074e` для проверки неизменной ширины данных при сдвиге thumb на6px. Сценарии: настоящий wheel и перетаскивание native thumb, ожидание под неподвижным курсором, край, выход из iframe, общая область и Who, forced colors, повторный JS без новых запросов. Classic native и zero-width geometry проверяются в локальном Chromium; это не запуск Safari/macOS.
 
 `test_ui_header_reveal.py` проверяет настоящий ReactMarkdown8.0.3 в трёх режимах HTML/sanitize, все варианты дают одну пару ordinary links без target. Затем внешний DOM Superset, CSS9 и JS4: отсутствующий/сломанный/blank control и отсутствующий target сохраняют шапку; отдельная строка0px; mixed row сохраняет соседний виджет; hoverнеоткрывает; click/secondclick/Enter/Tab, меню и Edit доступны. Открытие не меняет iframe/nav/scroll, обе диаграммы доступны через wheel; на большом экране с включённым контролом они помещаются вместе с фильтрами. В fallback режиме (контрол ещё не установлен) две строки названия могут требовать общей прокрутки.
+
+
+## Исправление header-контрола v2
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_header_focus.py --output /tmp/pa-next-header-focus
+```
+
+Нужны уже описанные ReactMarkdown8.0.3 dependencies. Тест использует закреплённую старую поставку696213e как отрицательный контроль (объект должен присутствовать в Git) и текущий CSS9 как положительный. Передача --delivered старой точке test_ui_header_reveal.py поддержана; она запускает новый regression. Контрольный сценарий подтверждает именно нативную смену URL/target, а не только :focus, и проверяет30кадров после blur. Данные/iframe не пересоздаются при переключении. Существующие ссылки поддержаны для обновления только общего CSS; новая Markdown-поставка использует #app с title-маркером.

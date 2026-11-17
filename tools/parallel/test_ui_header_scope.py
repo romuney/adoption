@@ -18,7 +18,7 @@ from test_ui_header_focus import page_and_report, stable, state
 from header_reveal import header_control_markdown, header_reveal_css
 
 ROOT = Path(__file__).resolve().parents[2]
-OUT = Path('/tmp/pa-next-header-flow')
+OUT = Path('/tmp/pa-next-header-corner')
 DIAG = ui.OUT / 'pa-next-header-diagnostic (1).json'
 PREVIOUS = '315d5f5'
 
@@ -85,11 +85,25 @@ def main():
         assert title_v3['y'] < open_v3['header']['bottom'] and title_v3['y']+title_v3['height'] > open_v3['header']['y']
         result['overlayNegative']={'closed':closed_v3,'open':open_v3,'coveredTitle':title_v3}
         page.screenshot(path=str(OUT/'v3-covered-title.png'));page.close()
+        # The previous cosmetic change whitened only the button. Reproduce the
+        # fork's white inner header on a transparent outer header/padding, and
+        # the old full-width hotspot opening from the left of the page.
+        previous_css=subprocess.check_output(['git','show','f04b300:Параллельный отчёт — pa_next/9. CSS — дашборд.css'],text=True)
+        page,frame,errors=page_and_report(browser,1366,768,scope='.dashboard-container',css_override=previous_css)
+        page.locator('head').evaluate('(n)=>{var s=document.createElement("style");s.textContent=".dashboard-header-container{background:transparent}.header-with-actions{background:white}";n.appendChild(s)}')
+        production_control(page,tree);page.wait_for_timeout(100)
+        page.mouse.click(48,52);page.wait_for_timeout(100)
+        assert state(page)['style']['position']=='relative','Old left-hand hotspot was not exercised'
+        previous_bg=page.locator('.dashboard-header-container').evaluate('(n)=>getComputedStyle(n).backgroundColor')
+        assert previous_bg=='rgba(0, 0, 0, 0)'
+        result['cornerNegative']={'clicked':[48,52],'background':previous_bg,'state':state(page)}
+        page.screenshot(path=str(OUT/'v4-grey-reserved-space.png'));page.close()
         for scope in [None,'#app','.dashboard-container']:
             for app in [False,True]:
                 for width,height in [(1366,768),(1920,1080)]:
                     label=f'{scope or "global"}-{"app" if app else "legacy"}-{width}'.replace('#','').replace('.','')
                     page,frame,errors=page_and_report(browser,width,height,portal=True,scope=scope)
+                    page.locator('head').evaluate('(n)=>{var s=document.createElement("style");s.textContent=".dashboard-header-container{background:transparent}.header-with-actions{background:white}";n.appendChild(s)}')
                     baseline=state(page)
                     assert baseline['style']['position']!='fixed'
                     production_control(page,tree,app)
@@ -99,14 +113,24 @@ def main():
                     assert closed['headerReservation']=='0px',(label,closed)
                     assert closed['iframe']['h']==baseline['iframe']['h']+65,(label,baseline,closed)
                     assert all(x['height']==8 and x['font']=='0px' for x in closed['links']),(label,closed)
+                    assert all(x['width']==112 and x['left']==width-136 and x['right']==width-24 for x in closed['links']),(label,'hotspot not confined to right corner',closed)
+                    outside=[8,width/2,width-137,width-23]
+                    for x in outside:
+                        page.mouse.click(x,52);page.wait_for_timeout(25)
+                        assert state(page)['header']['bottom']==48,(label,'outside click opened the header',x)
                     title_before=frame.locator('.pa-next-titlebar h1').bounding_box()
                     title_font=frame.locator('.pa-next-titlebar h1').evaluate('(n)=>getComputedStyle(n).fontSize')
                     accepted=frame.evaluate('JSON.stringify(__paNext.accepted)');emits=page.evaluate('emits.length')
-                    page.mouse.move(width/2,52);page.wait_for_timeout(150)
+                    page.mouse.move(width-80,52);page.wait_for_timeout(150)
                     assert state(page)['header']['bottom']==48,'Hover must not open'
-                    page.mouse.click(width/2,52);page.wait_for_timeout(120)
+                    page.mouse.click(width-80,52);page.wait_for_timeout(120)
                     opened=state(page)
                     assert opened['header']['y']==48 and opened['target']==('app' if app else 'chart-id-859562'),(label,opened)
+                    background=page.locator('.dashboard-header-container').evaluate('(n)=>getComputedStyle(n).backgroundColor')
+                    assert background=='rgb(255, 255, 255)',(label,'reserved area behind collapse is not white',background)
+                    for x in outside:
+                        page.mouse.click(x,52);page.wait_for_timeout(25)
+                        assert state(page)['header']['y']==48,(label,'outside click closed the header',x)
                     stable(closed,opened,label)
                     title_open=frame.locator('.pa-next-titlebar h1').bounding_box()
                     assert abs(title_open['y']-title_before['y']-65)<=1,(label,title_before,title_open)
@@ -121,7 +145,7 @@ def main():
                     page.mouse.click(width-80,80);page.wait_for_timeout(120)
                     assert state(page)['header']['bottom']==48,'Visible collapse action did not work'
                     stable(closed,state(page),label)
-                    page.mouse.click(width/2,52);page.wait_for_timeout(120)
+                    page.mouse.click(width-80,52);page.wait_for_timeout(120)
                     stable(closed,state(page),label)
                     page.evaluate('document.activeElement.blur()');page.wait_for_timeout(100)
                     assert state(page)['header']['y']==48,'URL state must survive blur'
@@ -130,7 +154,7 @@ def main():
                     page.locator('[data-test="native-menu-item"]').focus()
                     assert state(page)['header']['y']==48
                     page.locator('[data-test="native-menu-item"]').click()
-                    page.mouse.click(width/2,52);page.wait_for_timeout(120)
+                    page.mouse.click(width-80,52);page.wait_for_timeout(120)
                     reclosed=state(page);assert reclosed['header']['bottom']==48,(label,reclosed)
                     stable(closed,reclosed,label)
                     assert frame.evaluate('JSON.stringify(__paNext.accepted)')==accepted
@@ -140,7 +164,7 @@ def main():
                     page.keyboard.press('Enter');page.wait_for_timeout(100)
                     assert state(page)['style']['position']!='fixed' and state(page)['style']['clip']=='none'
                     assert not errors,errors
-                    result['cases'].append({'label':label,'scope':scope,'closed':closed,'open':opened,'closedAgain':reclosed,'titleClosed':title_before,'titleOpen':title_open,'collapseLabel':hint,'queriesAdded':0})
+                    result['cases'].append({'label':label,'scope':scope,'closed':closed,'open':opened,'closedAgain':reclosed,'titleClosed':title_before,'titleOpen':title_open,'collapseLabel':hint,'headerBackground':background,'outsideClicksIgnored':outside,'queriesAdded':0})
                     (OUT/'metrics.json').write_text(json.dumps(result,ensure_ascii=False,indent=2))
                     print('PASS:',label,flush=True);page.close()
         browser.close()

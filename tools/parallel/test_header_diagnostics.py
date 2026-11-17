@@ -50,14 +50,14 @@ def main():
         assert page.locator('body').inner_html() == before
         assert page.locator('.dashboard-header-container').bounding_box() == rect_before
         # Real hit testing and anchor navigation, including the final event state.
-        page.mouse.click(600, 50)
+        page.mouse.click(1286, 50)
         page.wait_for_timeout(400)
         assert page.evaluate('location.hash') == '#app'
-        page.mouse.click(600, 50)
+        page.mouse.click(1286, 50)
         page.wait_for_timeout(400)
         assert page.evaluate('location.hash') == '#pa-next-header-closed-859562'
         page.evaluate('document.addEventListener("click",e=>e.preventDefault(),{once:true})')
-        page.mouse.click(600, 50)
+        page.mouse.click(1286, 50)
         page.wait_for_timeout(400)
         assert page.evaluate('location.hash') == '#pa-next-header-closed-859562'
         text = page.evaluate('__paHeaderDiag.finish()')
@@ -67,9 +67,9 @@ def main():
         assert initial['selectorCounts']['opened'] == 0
         assert initial['links'][0]['expectedTitle']
         assert initial['links'][0]['ancestors'][1]['node'] == 'p'
-        assert any(s.get('headerControlVersion') == 4 for s in initial['css']['stylesheets'])
+        assert any(s.get('headerControlVersion') == 5 for s in initial['css']['stylesheets'])
         assert initial['css']['stylesheetsTotal'] == initial['css']['stylesheetsProcessed'] == 177
-        assert initial['css']['stylesheets'][-1]['headerControlVersion'] == 4
+        assert initial['css']['stylesheets'][-1]['headerControlVersion'] == 5
         assert not initial['css']['truncated']
         assert initial['css']['droppedHeaderRules'] == 0
         assert any(r['sheet'] == 176 and r['selector'].startswith(':scope:') and r['declarations'].get('position') == 'fixed !important' for r in initial['css']['headerRules'])
@@ -81,7 +81,7 @@ def main():
         assert any(e['kind'] == 'click' and e['defaultPreventedAfterDispatch'] is True for e in data['events'])
         for secret in ['PRIVATE-NAV-TITLE', 'PRIVATE-REPORT-TITLE', 'PRIVATE-FILTER-VALUE', 'PRIVATE-LOGIN', 'PRIVATE-URL-TOKEN']:
             assert secret not in text, secret
-        page.mouse.click(600, 50)
+        page.mouse.click(1286, 50)
         assert page.evaluate('__paHeaderDiag.finish()') == text, 'finish must stop recording'
         # A normal stylesheet applied late by a fork can override the header.
         page.add_style_tag(content='.dashboard-header-container{transform:none!important;clip-path:none!important}')

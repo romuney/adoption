@@ -41,7 +41,7 @@ def state(page):
       var row=document.querySelector('[data-test="header-control-row"]'),active=document.activeElement;
       return {hash:location.hash,target:document.querySelector(':target')&&document.querySelector(':target').id,focusHref:active&&active.getAttribute('href'),
         row:row?{height:row.getBoundingClientRect().height,top:row.getBoundingClientRect().top}:null,
-        links:row?Array.from(row.querySelectorAll('a'),n=>{var r=n.getBoundingClientRect(),s=getComputedStyle(n),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return {href:n.getAttribute('href'),focused:n===active,top:r.top,height:r.height,visibility:s.visibility,pointer:s.pointerEvents,color:s.color,font:s.fontSize,exposed:hit===n||n.contains(hit)}}):[]};
+        links:row?Array.from(row.querySelectorAll('a'),n=>{var r=n.getBoundingClientRect(),s=getComputedStyle(n),hit=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);return {href:n.getAttribute('href'),focused:n===active,left:r.left,right:r.right,width:r.width,top:r.top,height:r.height,visibility:s.visibility,pointer:s.pointerEvents,color:s.color,font:s.fontSize,exposed:hit===n||n.contains(hit)}}):[]};
     }'''))
     return result
 
@@ -166,7 +166,7 @@ def main():
                     late_ready=state(page)
                     assert late_ready['style']['position']!='fixed' and late_ready['row']['height']==0,(label,'missing target must preserve native header without reserving control-row height',late_ready)
                     assert page.locator('[data-test="edit-dashboard"]').is_visible()
-                    page.mouse.click(width/2,52);page.wait_for_timeout(80)
+                    page.mouse.click(width-80,52);page.wait_for_timeout(80)
                     assert state(page)['style']['position']!='fixed',(label,'anchor without target hid the native header')
                     page.evaluate('()=>{document.activeElement.blur();history.replaceState(null,"",location.pathname+location.search)}')
                     page.locator('#fork-chart-container').evaluate('(n,id)=>n.id=id',f'chart-id-{main_id}')
@@ -180,10 +180,10 @@ def main():
                 accepted=frame.evaluate('JSON.stringify(window.__paNext.accepted)');emits=page.evaluate('emits.length')
                 # An unrelated fragment and pointer motion are not activation.
                 page.evaluate('(hash)=>history.replaceState(null,"",hash)',f'#pa-next-header-open-{main_id}')
-                page.mouse.move(width/2,52);page.wait_for_timeout(1000)
+                page.mouse.move(width-80,52);page.wait_for_timeout(1000)
                 assert state(page)['header']['bottom']==48,(label,'hash or hover opened the header')
                 page.screenshot(path=str(args.output/(label+'-closed.png')))
-                page.mouse.click(width/2,52);page.wait_for_timeout(100)
+                page.mouse.click(width-80,52);page.wait_for_timeout(100)
                 opened=state(page)
                 assert opened['header']['y']==48,(label,'native anchor click did not reveal',opened)
                 if label.startswith('app-'):
@@ -201,7 +201,7 @@ def main():
                 assert all(s['y']==48 for s in samples),(label,'header was unstable across paints',samples)
                 if label.startswith('app-'):assert all(s['focus'] is None for s in samples),(label,'blur probe retained link focus',samples)
                 page.screenshot(path=str(args.output/(label+'-open.png')))
-                page.mouse.click(width/2,52);page.wait_for_timeout(100)
+                page.mouse.click(width-80,52);page.wait_for_timeout(100)
                 reclosed=state(page)
                 assert reclosed['header']['bottom']==48,(label,'second click did not close',reclosed)
                 stable(closed,reclosed,label)

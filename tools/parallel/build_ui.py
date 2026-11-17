@@ -7,6 +7,7 @@ from ui_observations import augment_observations
 from ui_motion import apply_motion
 from ui_report_header import augment_report_header
 from header_reveal import header_reveal_css, header_control_markdown
+from ui_tooltips import augment_tooltips
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'Параллельный отчёт — pa_next'
 CAT = ['mode_param','sel_f','aud_org_f','aud_spec_f','aud_stream_f','aud_hq_f','aud_it_f','aud_head_f']
@@ -206,6 +207,7 @@ def renderer(part, name):
         assert s.count(hook)==1, 'catalogue header changed'
         caret='<button type="button" class="pa-next-cat-toggle" data-layout="collapse" aria-label="Свернуть каталог" title="Свернуть каталог" aria-expanded="true" aria-controls="pa-next-catalog"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>'
         s=s.replace(hook, hook+"\n      (o.cls === 'cat' ? "+json.dumps(caret,ensure_ascii=False)+" : '') +")
+    s=augment_tooltips(s, (OUT/'src/tooltips.js').read_text(), part)
     s=s.replace('function tourStart() {', 'function tourStart() { PA_NEXT_HELP(); return;')
     # Namespaced internal protocol: current report cannot affect embedded regions.
     s=s.replace('PA_', 'PA_NEXT_INTERNAL_')

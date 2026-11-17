@@ -30,7 +30,8 @@ def response_for(part, masks, grain):
 def main():
     with sync_playwright() as p:
         browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True)
-        page=browser.new_page(viewport={'width':1600,'height':1100})
+        # This test compares final cached numbers, not animation frames.
+        page=browser.new_page(viewport={'width':1600,'height':1100},reduced_motion='reduce')
         errors=[]; page.on('pageerror',lambda e:errors.append(str(e)))
         page.set_content('<html><body style="margin:0"><iframe name="head" sandbox="allow-scripts" style="width:100%;height:1080px;border:0"></iframe><iframe name="cat" sandbox="allow-scripts" style="height:2px;width:2px;opacity:0"></iframe><iframe name="one" sandbox="allow-scripts" style="height:2px;width:2px;opacity:0"></iframe><script>window.emits=[];addEventListener("message",function(e){if(e.data.type==="TEST_EMIT")emits.push(e.data)});</script></body></html>')
         for key in ['cat','one','head']:

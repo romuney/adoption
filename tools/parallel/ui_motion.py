@@ -14,11 +14,12 @@ def apply_motion(source):
     replace('ANIM = ak !== state.animSig;',
             "ANIM = ak !== state.animSig && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);")
     replace("var d = +(els[i].getAttribute('data-d') || 0);",
-            'var d = 0; // No per-point stagger: all data is visible within 220 ms.')
+            'var d = 0; // No per-point stagger: charts settle together within 420 ms.')
     replace("{ dur: 480, ease: E1 });\n  run('svg .ln'",
-            "{ dur: 220, ease: E1 });\n  run('svg .ln'")
-    replace("{ dur: 760, ease: E2 });", "{ dur: 220, ease: E2 });")
-    replace("{ dur: 350, delay: 250 });", "{ dur: 180, delay: 0 });")
-    replace("{ dur: 480, ease: E1 });\n}", "{ dur: 220, ease: E1 });\n}")
-    replace('dur="0.76s"', 'dur="0.22s"')
+            "{ dur: 420, ease: E1 });\n  run('svg .ln'")
+    replace("{ dur: 760, ease: E2 });", "{ dur: 420, ease: E2 });")
+    replace("{ dur: 350, delay: 250 });", "{ dur: 260, delay: 0 });")
+    replace("{ dur: 480, ease: E1 });\n}", "{ dur: 420, ease: E1 });\n}")
+    replace("var E1 = 'cubic-bezier(.22,.61,.36,1)'", "var E1 = 'cubic-bezier(.25,.1,.25,1)'")
+    replace('dur="0.76s"', 'dur="0.42s"')
     return source

@@ -1,69 +1,108 @@
 function installScrollbars(shell) {
   // Keep native scrolling and its dimensions. Only the thumb's paint changes.
-  var active = [], edge = null, held = null, timer = null, edgeTimer = null, stopped = false;
+  var active = [], entries = [], timer = null, frame = null, stopped = false, intentUntil = 0, held = false;
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
   function inside(node) {
     return node && node.nodeType === 1 && (node === shell || shell.contains(node) || node.matches('body .phead-list,body .phead-sel'));
   }
   function scrollable(node) { return node.scrollHeight > node.clientHeight + 1 || node.scrollWidth > node.clientWidth + 1; }
-  function paint(node) {
-    if (active.indexOf(node) >= 0 || node === edge || node === held) {
-      if (!node.hasAttribute('data-pa-next-scroll-active')) node.setAttribute('data-pa-next-scroll-active', '');
-    } else if (node.hasAttribute('data-pa-next-scroll-active')) node.removeAttribute('data-pa-next-scroll-active');
-  }
-  function clearActive() {
-    var previous = active; active = []; timer = null;
-    previous.forEach(function (node) { paint(node); });
-  }
-  function scrolling(ev) {
-    var node = ev.target;
-    if (stopped || !inside(node) || !scrollable(node)) return;
-    if (active.indexOf(node) < 0) active.push(node);
-    paint(node); clearTimeout(timer); timer = setTimeout(clearActive, 1000);
-  }
-  function atEdge(ev) {
+  function intent() { intentUntil = performance.now() + 700; }
+  function down(ev) {
     var node = ev.target && ev.target.nodeType === 1 ? ev.target : null;
     while (node && node !== document.body) {
       if (inside(node) && scrollable(node)) {
         var r = node.getBoundingClientRect();
-        var vertical = node.scrollHeight > node.clientHeight + 1 && ev.clientX >= r.right - 10 && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
-        var horizontal = node.scrollWidth > node.clientWidth + 1 && ev.clientY >= r.bottom - 10 && ev.clientY <= r.bottom && ev.clientX >= r.left && ev.clientX <= r.right;
-        if (vertical || horizontal) return node;
+        if (ev.button === 1 || (node.scrollHeight > node.clientHeight + 1 && ev.clientX >= r.right - 5 && ev.clientX <= r.right) ||
+            (node.scrollWidth > node.clientWidth + 1 && ev.clientY >= r.bottom - 5 && ev.clientY <= r.bottom)) { held = true; intent(); return; }
       }
       node = node.parentElement;
     }
-    return null;
   }
-  function pointer(ev) {
-    var next = atEdge(ev), previous = edge;
-    edge = next; if (previous) paint(previous); if (edge) paint(edge);
-    // Some native scrollbar implementations swallow iframe leave events and
-    // retain :hover. Bound edge discovery by activity too: it cannot stick.
-    clearTimeout(edgeTimer); edgeTimer = edge ? setTimeout(leave, 1000) : null;
+  function up() { held = false; }
+  function move() { if (held) intent(); }
+  function key(ev) { if (/^(ArrowUp|ArrowDown|ArrowLeft|ArrowRight|PageUp|PageDown|Home|End| |Spacebar)$/.test(ev.key || '')) intent(); }
+  function opacity(item, value) {
+    item.value = value;
+    if (value > 0 || item.to === 1) {
+      item.node.setAttribute('data-pa-next-scroll-active', '');
+      item.node.style.setProperty('--pa-next-scroll-opacity', value.toFixed(3));
+    } else {
+      item.node.removeAttribute('data-pa-next-scroll-active');
+      item.node.style.removeProperty('--pa-next-scroll-opacity');
+    }
   }
-  function down(ev) { pointer(ev); held = edge; if (held) paint(held); }
-  function up() { var previous = held; held = null; if (previous) paint(previous); }
-  function leave() { clearTimeout(edgeTimer); edgeTimer = null; var previous = edge; edge = null; if (previous) paint(previous); }
-  function out(ev) { if (!ev.relatedTarget) leave(); }
-  function blur() { leave(); up(); clearTimeout(timer); clearActive(); }
+  function tick(now) {
+    frame = null;
+    var moving = false;
+    entries.forEach(function (item) {
+      var progress = reduced && reduced.matches ? 1 : Math.min(1, Math.max(0, (now - item.started) / item.duration));
+      var ease = progress * progress * (3 - 2 * progress);
+      opacity(item, item.from + (item.to - item.from) * ease);
+      if (progress < 1) moving = true;
+    });
+    entries = entries.filter(function (item) { return item.to !== 0 || item.value > 0; });
+    if (moving && !stopped) frame = requestAnimationFrame(tick);
+  }
+  function paint(node, immediate) {
+    var to = active.indexOf(node) >= 0 ? 1 : 0;
+    var item = entries.filter(function (value) { return value.node === node; })[0];
+    if (!item) { item = {node:node,value:0,to:0}; entries.push(item); }
+    if (item.to === to && !immediate) return;
+    item.from = item.value; item.to = to; item.started = performance.now();
+    item.duration = (to ? 280 : 450) * Math.max(0.001, Math.abs(to - item.value));
+    if (immediate || (reduced && reduced.matches)) {
+      item.from = to; item.duration = 1; opacity(item, to);
+    } else opacity(item, item.value);
+    if (frame === null && !stopped) frame = requestAnimationFrame(tick);
+  }
+  function schedule() {
+    clearTimeout(timer); timer = null;
+    var next = Infinity;
+    entries.forEach(function (item) { if (active.indexOf(item.node) >= 0) next = Math.min(next, item.until); });
+    if (next < Infinity) timer = setTimeout(clearActive, Math.max(0, Math.ceil(next - performance.now())));
+  }
+  function clearActive() {
+    var now = performance.now(), previous = active;
+    active = previous.filter(function (node) {
+      var item = entries.filter(function (value) { return value.node === node; })[0];
+      return item && item.until > now;
+    });
+    previous.forEach(function (node) { if (active.indexOf(node) < 0) paint(node); });
+    schedule();
+  }
+  function scrolling(ev) {
+    var node = ev.target;
+    if (stopped || !inside(node) || !scrollable(node) || (!held && performance.now() > intentUntil)) return;
+    intentUntil = performance.now() + 300;
+    if (active.indexOf(node) < 0) active.push(node);
+    paint(node);
+    entries.forEach(function (item) { if (item.node === node) item.until = performance.now() + 1400; });
+    schedule();
+  }
+  function blur() {
+    held = false; intentUntil = 0; clearTimeout(timer); timer = null; active = [];
+    entries.forEach(function (item) { paint(item.node, true); });
+    entries = []; if (frame !== null) cancelAnimationFrame(frame); frame = null;
+  }
   document.addEventListener('scroll', scrolling, true);
-  document.addEventListener('pointermove', pointer, { passive: true });
-  document.addEventListener('pointerdown', down, { passive: true });
-  document.addEventListener('pointerup', up, { passive: true });
-  document.addEventListener('pointercancel', up, { passive: true });
-  document.documentElement.addEventListener('pointerleave', leave);
-  document.addEventListener('pointerout', out);
-  document.addEventListener('mouseout', out);
+  document.addEventListener('wheel', intent, {capture:true,passive:true});
+  document.addEventListener('touchmove', intent, {capture:true,passive:true});
+  document.addEventListener('keydown', key, true);
+  document.addEventListener('pointerdown', down, {passive:true});
+  document.addEventListener('pointermove', move, {passive:true});
+  document.addEventListener('pointerup', up, {passive:true});
+  document.addEventListener('pointercancel', up, {passive:true});
   window.addEventListener('blur', blur);
   return { destroy: function () {
     stopped = true; blur();
     document.removeEventListener('scroll', scrolling, true);
-    document.removeEventListener('pointermove', pointer);
+    document.removeEventListener('wheel', intent, true);
+    document.removeEventListener('touchmove', intent, true);
+    document.removeEventListener('keydown', key, true);
     document.removeEventListener('pointerdown', down);
+    document.removeEventListener('pointermove', move);
     document.removeEventListener('pointerup', up);
     document.removeEventListener('pointercancel', up);
-    document.documentElement.removeEventListener('pointerleave', leave);
-    document.removeEventListener('pointerout', out);
-    document.removeEventListener('mouseout', out);
     window.removeEventListener('blur', blur);
   } };
 }

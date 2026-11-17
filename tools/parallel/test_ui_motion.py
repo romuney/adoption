@@ -63,12 +63,25 @@ def isolated(browser):
     page.evaluate("window.animNode=document.querySelector('.pa-next-kpi-motion');motion.rendered()")
     assert page.evaluate("animNode===document.querySelector('.pa-next-kpi-motion')")
     page.evaluate("window.tickMutations=0;window.tickObserver=new MutationObserver(function(records){tickMutations+=records.length});tickObserver.observe(animNode,{childList:true})")
-    page.clock.run_for(260)
+    page.clock.run_for(180)
+    assert page.locator('.pa-next-kpi-motion').count() == 7, 'Counters finished too abruptly'
+    page.clock.run_for(280)
     assert page.evaluate('tickMutations') == 0, 'counter frames must not trigger viewport childList observation'
     page.evaluate('tickObserver.disconnect()')
     assert page.locator('.pa-next-kpi-motion').count() == 0
     assert page.locator('.pone-k-val').all_text_contents() == final
     assert page.locator('.pone-k-val').evaluate_all('(ns)=>ns.map(n=>n.innerHTML)') == original
+    changed=list(values);changed[0]='24 567'
+    page.evaluate(INSTALL, {'values':changed,'key':'report:B'})
+    page.evaluate('motion.rendered()')
+    assert page.locator('.pa-next-kpi-motion').count()==1,'Unchanged figures should stay still'
+    assert page.locator('.pa-next-kpi-motion').inner_text()=='12 345','Compatible counters restarted at zero'
+    page.clock.run_for(200)
+    midway=int(page.locator('.pa-next-kpi-motion').inner_text().replace(' ',''))
+    assert 12345<midway<24567,midway
+    page.clock.run_for(260)
+    assert page.locator('.pone-k-val').first.inner_text()=='24 567'
+    page.evaluate(INSTALL, {'values':values,'key':'report:A'});page.evaluate('motion.rendered()');page.clock.run_for(460)
     # Full response after preview, resize, same-key DOM replacement, tab return.
     for _ in range(2):
         page.evaluate(INSTALL, {'values': values, 'key': 'report:A'})
@@ -94,7 +107,7 @@ def isolated(browser):
     page.evaluate('motion.rendered()')
     assert page.locator('.pa-next-kpi-motion').count() == 0
     page.evaluate("ST.generation='g2';motion.rendered()")
-    assert page.locator('.pa-next-kpi-motion').count() == 7
+    assert page.locator('.pa-next-kpi-motion').count() == 0, 'Same exact values must not bounce on a new generation'
     page.emulate_media(reduced_motion='reduce')
     page.clock.run_for(60)
     assert page.locator('.pone-k-val').all_text_contents() == final
@@ -113,14 +126,14 @@ def profile(browser, scripts, periods, fixtures, reduced=False):
     board.frame.evaluate(TRACE)
     board.select('2')
     board.wait_mask('cat', 'sel_f', ['2'])
-    board.page.wait_for_timeout(360)
+    board.page.wait_for_timeout(550)
     preview = board.frame.locator('.pone-k-val').all_text_contents()
     assert board.frame.locator('.pa-next-kpi-motion').count() == 0
     if reduced:
         assert board.frame.locator('svg animate').count() == 0, 'preview SMIL must respect reduced motion'
     board.push('one', json.loads((fixtures/'d/2.json').read_text()))
     board.state('ready')
-    board.page.wait_for_timeout(320)
+    board.page.wait_for_timeout(550)
     full = board.frame.locator('.pone-k-val').all_text_contents()
     assert full[:5] == preview[:5], (preview, full)
     assert board.frame.locator('.pa-next-kpi-motion').count() == 0
@@ -134,7 +147,8 @@ def profile(browser, scripts, periods, fixtures, reduced=False):
     # A preview and its full response are the expected two paints, not a
     # resize loop. The helper changes KPI children, never the overlay markup.
     assert 1 <= len(trace['writes']) <= 3, trace['writes']
-    assert trace['max_duration_delay_ms'] <= 220, trace['max_duration_delay_ms']
+    assert trace['max_duration_delay_ms'] <= 420, trace['max_duration_delay_ms']
+    if not reduced:assert trace['max_duration_delay_ms']==420,'Expected the new slower chart timing'
     if reduced:
         assert not trace['animations'] and not trace['kpi']
         assert board.frame.locator('svg animate').count() == 0

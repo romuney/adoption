@@ -300,3 +300,11 @@ npm install --prefix /tmp/pa-next-markdown-render --no-audit --no-fund react@18.
 `test_ui_header_scope.py` теперь пишет в `/tmp/pa-next-header-corner/`: проверяет белый фон outer native header поверх модели с белым inner header/прозрачным outer, ширину зоны112px и отсутствие реакции на клики слева, по центру и снаружи границ зоны. Старый CSS `f04b300` служит дополнительным отрицательным контролем широкой зоны и прозрачного резерва. Остальные проверки потока, обеих ссылок, CSS scope и Edit сохранены.
 
 `python3 tools/parallel/test_ui_tooltips.py` сравнивает HTML подсказок с `f04b300` в четырёх вкладках каталога, календаре, закрепляемости и таблице людей, записывает скрывающие style-writes при реальных переходах мыши, проверяет непрерывную видимость одного узла, границы iframe, dismiss, slow gap/nested scroll и multi-month calendar с reduced motion. Метрики — `/tmp/pa-next-tooltip-results/metrics.json`. `ui_tooltips.py` отдельно утверждает побайтовую неизменность части renderer до mount (модель, вычисления, форматирование).
+
+## Свои даты, scroll-only и замедление motion
+
+`python3 tools/parallel/test_ui_custom_dates.py`: отрицательный контроль заглушки из c72ee62, активный own-mode/инструкции/keyboard, отсутствие запросов при draft/cancel/Escape/outside, блокировка незавершённого Apply, идемпотентный повтор own. Шесть сценариев применения сравниваются с оригинальными cpSnap/cpPrev/cpParam: прямые/обратные дни, один день, недели, месяцы и возврат к пресету7. Метрики и снимки — `/tmp/pa-next-custom-dates/`.
+
+`test_ui_autohide.py` теперь проверяет, что край не раскрывает thumb. Изолированный clock-профиль воспроизводит старый hover из c72ee62, проверяет fade-in/out, независимые idle deadlines, отсутствие показа от программного restore/одного intent, reduced motion и destroy. Доставленный JS проверяется real wheel/drag в каталоге, shell и людской таблице, с классическими и zero-width scrollbar geometries и forced colors.
+
+`test_ui_motion.py` ожидает KPI400ms и графики420ms. Проверяет интерполяцию от предыдущего совместимого числа, неподвижность неизменных значений, exact final HTML/AX, отсутствие childList-мутаций на счёте, preview→full, resize/loading/reduced guards и отсутствие лишних перерисовок. Source date/math/widget/SQL не меняются; отрицательные и сравнительные проверки не являются проверкой установки на живом Proteus/macOS.

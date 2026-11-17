@@ -8,6 +8,7 @@ from ui_motion import apply_motion
 from ui_report_header import augment_report_header
 from header_reveal import header_reveal_css, header_control_markdown
 from ui_tooltips import augment_tooltips
+from ui_custom_dates import augment_custom_dates
 ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'Параллельный отчёт — pa_next'
 CAT = ['mode_param','sel_f','aud_org_f','aud_spec_f','aud_stream_f','aud_hq_f','aud_it_f','aud_head_f']
@@ -53,12 +54,12 @@ for pseudo, rules in [
     CSS += ','.join(selector + '::-webkit-scrollbar' + pseudo for selector in SCROLL) + '{' + rules + '}'
 # Opacity/color changes never add/remove native scrollbar space.
 CSS += SCROLL_ALL + '{scrollbar-color:transparent transparent!important}'
-CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SCROLL) + '{background-color:transparent!important;transition:background-color 160ms ease}'
-SHOW = ['.pa-next-shell[data-pa-next-scroll-active]', '.pa-next-shell [data-pa-next-scroll-active]', 'body .phead-list[data-pa-next-scroll-active]', 'body .phead-sel[data-pa-next-scroll-active]', '.pa-next-shell:focus-visible', '.pa-next-shell :focus-visible']
-CSS += ','.join(SHOW) + '{scrollbar-color:#b9c1ce transparent!important}'
+CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SCROLL) + '{background-color:transparent!important}'
+SHOW = ['.pa-next-shell[data-pa-next-scroll-active]', '.pa-next-shell [data-pa-next-scroll-active]', 'body .phead-list[data-pa-next-scroll-active]', 'body .phead-sel[data-pa-next-scroll-active]']
+CSS += ','.join(SHOW) + '{scrollbar-color:rgba(185,193,206,var(--pa-next-scroll-opacity,1)) transparent!important}'
 CSS += '@supports selector(::-webkit-scrollbar){' + ','.join(SCROLL + SHOW) + '{scrollbar-color:auto!important}}'
-CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SHOW) + '{background-color:#b9c1ce!important}'
-CSS += ','.join(x+'::-webkit-scrollbar-thumb:hover' for x in SHOW) + '{background-color:#8a96a8!important}'
+CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SHOW) + '{background-color:rgba(185,193,206,var(--pa-next-scroll-opacity,1))!important}'
+CSS += ','.join(x+'::-webkit-scrollbar-thumb:hover' for x in SHOW) + '{background-color:rgba(138,150,168,var(--pa-next-scroll-opacity,1))!important}'
 CSS += '.pa-next-shell .prb-tscroll,.pa-next-shell .pone-tbl-scroll{margin-right:-6px;padding-right:6px;box-sizing:border-box}'
 CSS += '@media(prefers-reduced-motion:reduce){' + ','.join(x+'::-webkit-scrollbar-thumb' for x in SCROLL) + '{transition:none}}'
 CSS += '@media(forced-colors:active){' + ','.join(SCROLL + SHOW) + '{scrollbar-color:auto!important}' + ','.join(x+'::-webkit-scrollbar-thumb'+state for x in SCROLL + SHOW for state in ['', ':hover']) + '{background-color:ButtonText!important}}'
@@ -110,6 +111,7 @@ def renderer(part, name):
     if part == 'head':
         s=augment_head(s, (OUT/'src/audience-people.js').read_text())
         s=augment_report_header(s)
+        s=augment_custom_dates(s)
     if part == 'one':
         s=apply_motion(augment_observations(s))
         hook="'ca_it_f', 'ca_head_f', 'ca_adg_f'];"

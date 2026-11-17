@@ -4,7 +4,7 @@ function installMotion(shell, ST) {
   var panel = shell.querySelector('[data-pa-next-host="one"]');
   var reduced = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
   var active = null, frame = null, last = null, destroyed = false;
-  var duration = 200;
+  var duration = 400;
   function allowed() {
     var state = panel && panel.getAttribute('data-pa-next-state');
     return !destroyed && (state === 'ready' || state === 'preview') &&
@@ -24,8 +24,8 @@ function installMotion(shell, ST) {
     return { value: value, sign: m[1], group: group ? group[0] : '', decimal: m[3] || '',
       places: m[4] ? m[4].length : 0, suffix: m[5] };
   }
-  function format(n, progress) {
-    var parts = (n.value * progress).toFixed(n.places).split('.');
+  function format(n, progress, from) {
+    var parts = ((from || 0) + (n.value - (from || 0)) * progress).toFixed(n.places).split('.');
     if (n.group) parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, n.group);
     return n.sign + parts[0] + (n.places ? n.decimal + parts[1] : '') + n.suffix;
   }
@@ -49,10 +49,10 @@ function installMotion(shell, ST) {
     if (!allowed() || !panel.contains(active.nodes[0])) { cancel(); return; }
     var elapsed = Math.max(0, now - active.started), progress = Math.min(1, elapsed / duration);
     if (progress >= 1) { cancel(); return; }
-    var eased = 1 - Math.pow(1 - progress, 3);
+    var eased = progress * progress * (3 - 2 * progress);
     // The viewport watches childList mutations. Update the existing text node,
     // so each counter frame does not schedule another full geometry pass.
-    active.items.forEach(function (item) { item.visual.firstChild.nodeValue = format(item.number, eased); });
+    active.items.forEach(function (item) { item.visual.firstChild.nodeValue = format(item.number, eased, item.from); });
     frame = requestAnimationFrame(tick);
   }
   function rendered() {
@@ -74,6 +74,10 @@ function installMotion(shell, ST) {
       if (previous && previous.key === key && previous.values[index] === values[index]) return;
       var parsed = number(values[index]);
       if (!parsed) return;
+      var prior = previous ? number(previous.values[index]) : null;
+      var compatible = prior && prior.suffix === parsed.suffix && prior.places === parsed.places && prior.sign === parsed.sign;
+      if (compatible && prior.value === parsed.value) return;
+      var from = compatible ? prior.value : 0;
       var exact = document.createElement('span'), visual = document.createElement('span');
       // opacity preserves the exact final value in the accessibility tree;
       // aria-hidden prevents intermediate animation frames being announced.
@@ -82,8 +86,8 @@ function installMotion(shell, ST) {
       visual.setAttribute('aria-hidden', 'true');
       visual.className = 'pa-next-kpi-motion';
       visual.style.cssText = 'position:absolute;left:0;top:0;white-space:nowrap;pointer-events:none';
-      visual.textContent = format(parsed, 0);
-      var item = { node: node, exact: exact, visual: visual, number: parsed, position: node.style.position };
+      visual.textContent = format(parsed, 0, from);
+      var item = { node: node, exact: exact, visual: visual, number: parsed, from: from, position: node.style.position };
       node.style.position = 'relative';
       node.setAttribute('data-pa-next-animating', '');
       node.appendChild(exact); node.appendChild(visual); items.push(item);

@@ -40,17 +40,59 @@ function caPeopleOpen(overlay, render, openDd) {
   var layer = document.createElement('div'), block = overlay.closest('.pa-next-shell') || overlay;
   var oldInert = block.inert, oldHidden = block.getAttribute('aria-hidden');
   layer.className = 'pa-next-people';
-  layer.innerHTML = '<style>.pa-next-people{position:fixed;inset:0;z-index:100200;background:rgba(35,39,46,.32);font:13px/1.5 Arial,Helvetica,sans-serif;color:#23272e}.pa-next-people *{box-sizing:border-box}.pa-next-people-dialog{position:absolute;left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 24px));display:flex;flex-direction:column;background:#fff;border:1px solid #e7e9ee;border-radius:12px;box-shadow:0 8px 32px rgba(35,39,46,.16);overflow:hidden}.pa-next-people-head{padding:16px 20px 8px;flex-shrink:0}.pa-next-people h2{font-size:16px;line-height:1.4;margin:0 0 6px}.pa-next-people p{margin:6px 0;color:#737d90;font-size:12px}.pa-next-people-body{padding:0 20px 12px;overflow:auto;overscroll-behavior:contain;min-height:0}.pa-next-people-mode{display:flex;gap:4px;padding:3px;background:#eef0f3;border-radius:8px;margin:8px 0 10px}.pa-next-people button{font:13px Arial,Helvetica,sans-serif;cursor:pointer;border:1px solid #e7e9ee;border-radius:8px;background:#fff;color:#454b55;padding:8px 12px;touch-action:manipulation}.pa-next-people-mode button{flex:1;background:transparent;border-color:transparent}.pa-next-people-mode button[aria-pressed=true]{background:white;color:#245fd4;font-weight:700;box-shadow:0 1px 3px #0001}.pa-next-people label{display:block;font-weight:700;margin-bottom:4px}.pa-next-people textarea{display:block;width:100%;height:180px;min-height:80px;resize:vertical;border:1px solid #d8dee8;border-radius:8px;padding:10px 12px;font:13px/1.5 Arial,Helvetica,sans-serif;color:#23272e;overflow-wrap:anywhere}.pa-next-people textarea[aria-invalid=true]{border-color:#c43b3b}.pa-next-people-status{min-height:36px;margin-top:8px;color:#737d90;font-size:12px}.pa-next-people-errors{color:#a12c2c;overflow-wrap:anywhere;font-size:12px}.pa-next-people-tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.pa-next-people-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid #e7e9ee;flex-shrink:0}.pa-next-people button.primary{background:#245fd4;color:#fff;border-color:#245fd4;font-weight:700}.pa-next-people button:hover{border-color:#8ba8e1}.pa-next-people button:focus-visible,.pa-next-people textarea:focus-visible{outline:2px solid #245fd4;outline-offset:2px}.pa-next-people button[aria-disabled=true]{opacity:.55}.pa-next-people-count{font-variant-numeric:tabular-nums}</style>' +
-    '<div class="pa-next-people-dialog" role="dialog" aria-modal="true" aria-labelledby="pa-next-people-title"><div class="pa-next-people-head"><h2 id="pa-next-people-title">Список людей для целевой аудитории</h2><p>Идентификаторы пересекаются с остальными условиями ЦА. Поиск по ФИО не выполняется.</p></div><div class="pa-next-people-body"><div class="pa-next-people-mode" role="group" aria-label="Тип идентификатора"><button type="button" data-person-mode="login">Логины</button><button type="button" data-person-mode="master">Master ID</button></div><label for="pa-next-people-input">Идентификаторы</label><textarea id="pa-next-people-input" name="audience_people" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="pa-next-people-hint pa-next-people-status pa-next-people-errors"></textarea><p id="pa-next-people-hint"></p><p>Из Excel: скопируй один столбец без заголовка. Вручную — с новой строки или через ;. Также принимаются табуляция, пробел и запятая. До 5 000 уникальных значений и 32 000 символов в них.</p><div id="pa-next-people-status" class="pa-next-people-status pa-next-people-count" role="status" aria-live="polite"></div><div id="pa-next-people-errors" class="pa-next-people-errors" role="alert"></div><div class="pa-next-people-tools"><button type="button" data-person-action="clean">Убрать повторы и оформить</button><button type="button" data-person-action="clear">Очистить список</button></div><p>При смене типа текст сохраняется отдельно до закрытия редактора. Сохраняется только выбранный тип.</p><p>Число введённых ID не равно числу найденных сотрудников. Точная ЦА появится в панели после общего «Применить».</p></div><div class="pa-next-people-foot"><button type="button" data-person-action="cancel">Отмена</button><button type="button" class="primary" data-person-action="save">Сохранить в условия</button></div></div>';
+  // Reuse the report's header controls and tokens, including outside its inert shell.
+  var C = CFG.colors, N = CFG.ns, F = CFG.fonts.family;
+  layer.innerHTML = '<style>' + [
+    '.pa-next-people{position:fixed;inset:0;z-index:100200;background:rgba(35,39,46,.16);font:400 12.5px/1.4 ' + F + ';color:' + C.ink2 + '}',
+    '.pa-next-people *{box-sizing:border-box}',
+    '.pa-next-people-dialog{position:absolute;left:50%;transform:translateX(-50%);width:min(480px,calc(100% - 24px));display:flex;flex-direction:column;background:' + C.card + ';border:1px solid ' + C.line + ';border-radius:10px;box-shadow:0 10px 28px rgba(20,30,50,.18);overflow:hidden}',
+    '.pa-next-people-head{padding:14px 16px 10px;flex-shrink:0}',
+    '.pa-next-people h2{font:700 14.5px/1.4 ' + F + ';color:' + C.ink + ';margin:0 0 2px}',
+    '.pa-next-people p{margin:6px 0 0;font-size:11.5px;line-height:1.4}',
+    '.pa-next-people-head p{margin-top:2px}',
+    '.pa-next-people-body{padding:0 16px 12px;overflow:auto;overscroll-behavior:contain;min-height:0}',
+    '.pa-next-people-mode{margin:0 0 12px}',
+    '.pa-next-people button{touch-action:manipulation}',
+    '.pa-next-people label{display:block;font-size:10.5px;font-weight:400;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}',
+    '.pa-next-people textarea{display:block;width:100%;height:120px;min-height:88px;max-height:260px;resize:vertical;border:1px solid ' + C.line + ';border-radius:9px;padding:8px 10px;font:400 12.5px/1.4 ' + F + ';color:' + C.ink + ';background:' + C.card + ';overflow-wrap:anywhere}',
+    '.pa-next-people textarea::placeholder{color:' + C.mut + ';opacity:1}',
+    '.pa-next-people textarea[aria-invalid=true]{border-color:#c43b3b}',
+    '.pa-next-people-status{min-height:32px;margin-top:8px;font-size:11.5px}',
+    '.pa-next-people-errors{color:#a12c2c;overflow-wrap:anywhere;white-space:pre-line;font-size:11.5px}',
+    '.pa-next-people-tools{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 8px}',
+    '.pa-next-people-tools button:first-child{margin-left:-8px}',
+    '.pa-next-people details{font-size:11.5px}',
+    '.pa-next-people summary{cursor:pointer;color:' + C.act + ';width:fit-content;border-radius:4px}',
+    '.pa-next-people-foot{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 16px;border-top:1px solid ' + C.line + ';flex-shrink:0}',
+    '.pa-next-people :is(button,textarea,summary):focus-visible{outline:2px solid ' + C.act + ';outline-offset:2px}',
+    '.pa-next-people button[aria-disabled=true]{opacity:.45;cursor:default}',
+    '.pa-next-people-count{font-variant-numeric:tabular-nums}'
+  ].join('') + '</style>' +
+    '<div class="pa-next-people-dialog" role="dialog" aria-modal="true" aria-labelledby="pa-next-people-title" aria-describedby="pa-next-people-purpose">' +
+      '<div class="pa-next-people-head"><h2 id="pa-next-people-title">Список людей</h2><p id="pa-next-people-purpose">Кого учитывать в целевой аудитории</p></div>' +
+      '<div class="pa-next-people-body">' +
+        '<div class="pa-next-people-mode ' + N + '-strip-seg" role="group" aria-label="Тип идентификатора"><button type="button" data-person-mode="login">Логины</button><button type="button" data-person-mode="master">Master ID</button></div>' +
+        '<label for="pa-next-people-input">Идентификаторы</label><textarea id="pa-next-people-input" name="audience_people" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="pa-next-people-paste pa-next-people-hint pa-next-people-status pa-next-people-errors"></textarea>' +
+        '<p id="pa-next-people-paste">Скопируй столбец из Excel без заголовка и вставь сюда.<br>Вручную — по одному значению на строку или через ;</p>' +
+        '<div id="pa-next-people-status" class="pa-next-people-status pa-next-people-count" role="status" aria-live="polite"></div>' +
+        '<div id="pa-next-people-errors" class="pa-next-people-errors" role="alert"></div>' +
+        '<div class="pa-next-people-tools"><button type="button" class="' + N + '-btn sm" data-person-action="clean">Убрать повторы и оформить</button><button type="button" class="' + N + '-btn sm" data-person-action="clear">Очистить список</button></div>' +
+        '<details><summary>Формат и ограничения</summary><p id="pa-next-people-hint"></p>' +
+          '<p>До 5 000 уникальных значений и 32 000 символов в них. Разделители: новая строка, табуляция, пробел, запятая и ;. Можно вставить JSON-массив строк. Поиск по ФИО не выполняется.</p>' +
+          '<p>При смене типа текст сохраняется отдельно до закрытия редактора. Сохраняется только выбранный тип.</p></details>' +
+        '<p>Список пересекается с остальными условиями ЦА. Найденных сотрудников увидишь после общего «Применить».</p>' +
+      '</div><div class="pa-next-people-foot"><button type="button" class="' + N + '-btn" data-person-action="cancel">Отмена</button><button type="button" class="' + N + '-btn primary" data-person-action="save">Сохранить в условия</button></div></div>';
   document.body.appendChild(layer);
-  var dialog = layer.querySelector('[role=dialog]'), input = layer.querySelector('textarea'), statusNode = layer.querySelector('[role=status]'), errorsNode = layer.querySelector('[role=alert]'), lastBand = '', positionTimer;
+  var dialog = layer.querySelector('[role=dialog]'), input = layer.querySelector('textarea'), statusNode = layer.querySelector('[role=status]'), errorsNode = layer.querySelector('[role=alert]'), lastBand = '', positionTimer, sizeObserver;
   block.inert = true; block.setAttribute('aria-hidden', 'true');
   function place() {
     var band = window.__paNext && window.__paNext.visibleBand || { top: 0, bottom: Math.min(window.innerHeight, window.screen.availHeight || 700) };
     var top = Math.max(0, band.top), bottom = Math.min(window.innerHeight, band.bottom);
-    lastBand = top + '|' + bottom + '|' + window.innerWidth;
+    var bandKey = top + '|' + bottom + '|' + window.innerWidth, recenter = lastBand !== bandKey;
+    lastBand = bandKey;
     dialog.style.maxHeight = Math.max(160, bottom - top - 24) + 'px';
-    dialog.style.top = Math.max(top + 12, top + (bottom - top - dialog.offsetHeight) / 2) + 'px';
+    var y = recenter ? top + (bottom - top - dialog.offsetHeight) / 2 : parseFloat(dialog.style.top);
+    dialog.style.top = Math.max(top + 12, Math.min(y, bottom - dialog.offsetHeight - 12)) + 'px';
   }
   function update() {
     texts[mode] = input.value;
@@ -64,7 +106,7 @@ function caPeopleOpen(overlay, render, openDd) {
     place(); return parsed;
   }
   function showMode() {
-    Array.prototype.forEach.call(layer.querySelectorAll('[data-person-mode]'), function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-person-mode') === mode ? 'true' : 'false'); });
+    Array.prototype.forEach.call(layer.querySelectorAll('[data-person-mode]'), function (b) { var selected = b.getAttribute('data-person-mode') === mode; b.setAttribute('aria-pressed', selected ? 'true' : 'false'); b.classList.toggle('on', selected); });
     input.value = texts[mode];
     input.placeholder = mode === 'master' ? '123456\n987654…' : 'ivanov\npetrova…';
     layer.querySelector('#pa-next-people-hint').textContent = mode === 'master' ? 'Master ID — mdm_employee_rk: 1–32 цифры. Используй текстовый формат Excel; ведущие нули сохраняются, дроби и экспонента не принимаются.' : 'Логины приводятся к нижнему регистру; пробелы по краям и повторы убираются. Допустимы латинские буквы, цифры и . _ @ - (до 128 символов).';
@@ -72,6 +114,7 @@ function caPeopleOpen(overlay, render, openDd) {
   }
   function close(focusBack) {
     clearInterval(positionTimer);
+    if (sizeObserver) sizeObserver.disconnect();
     window.removeEventListener('resize', place);
     if (layer.parentNode) layer.parentNode.removeChild(layer);
     block.inert = oldInert;
@@ -81,6 +124,7 @@ function caPeopleOpen(overlay, render, openDd) {
   }
   state.peopleClose = close;
   input.addEventListener('input', update);
+  layer.querySelector('details').addEventListener('toggle', place);
   layer.addEventListener('click', function (ev) {
     var button = ev.target.closest('button'); if (!button || !layer.contains(button)) return;
     var nextMode = button.getAttribute('data-person-mode'), action = button.getAttribute('data-person-action');
@@ -110,5 +154,7 @@ function caPeopleOpen(overlay, render, openDd) {
     var b = window.__paNext && window.__paNext.visibleBand;
     if (b && lastBand !== Math.max(0, b.top) + '|' + Math.min(window.innerHeight, b.bottom) + '|' + window.innerWidth) place();
   }, 150);
+  // Textarea dragging and expanded help can change height without a window resize.
+  if (window.ResizeObserver) { sizeObserver = new ResizeObserver(place); sizeObserver.observe(dialog); }
   window.addEventListener('resize', place); showMode(); input.focus({ preventScroll: true });
 }

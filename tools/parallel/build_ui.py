@@ -38,7 +38,7 @@ CSS += '.pa-next-one .pone-panel-b.dyn-wrap>.pone-dynhead{flex-shrink:0}'
 
 # User preference: narrow native scrollbars, no reserved gutters or extra
 # content padding. Chromium/Safari use4px; standards-only engines use thin.
-SCROLL = ['.pa-next-shell', '.pa-next-shell *', 'body .phead-list', 'body .phead-sel']
+SCROLL = ['.pa-next-shell', '.pa-next-shell *', 'body .phead-list', 'body .phead-sel', 'body .pa-next-people-body', 'body .pa-next-people textarea']
 SCROLL_ALL = ','.join(SCROLL)
 CSS += SCROLL_ALL + '{scrollbar-width:thin;scrollbar-color:#b9c1ce transparent;scrollbar-gutter:auto}'
 # Non-auto CSS Scrollbars values override WebKit pseudo-element sizing in
@@ -55,7 +55,7 @@ for pseudo, rules in [
 # Opacity/color changes never add/remove native scrollbar space.
 CSS += SCROLL_ALL + '{scrollbar-color:transparent transparent!important}'
 CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SCROLL) + '{background-color:transparent!important}'
-SHOW = ['.pa-next-shell[data-pa-next-scroll-active]', '.pa-next-shell [data-pa-next-scroll-active]', 'body .phead-list[data-pa-next-scroll-active]', 'body .phead-sel[data-pa-next-scroll-active]']
+SHOW = ['.pa-next-shell[data-pa-next-scroll-active]', '.pa-next-shell [data-pa-next-scroll-active]', 'body .phead-list[data-pa-next-scroll-active]', 'body .phead-sel[data-pa-next-scroll-active]', 'body .pa-next-people-body[data-pa-next-scroll-active]', 'body .pa-next-people textarea[data-pa-next-scroll-active]']
 CSS += ','.join(SHOW) + '{scrollbar-color:rgba(185,193,206,var(--pa-next-scroll-opacity,1)) transparent!important}'
 CSS += '@supports selector(::-webkit-scrollbar){' + ','.join(SCROLL + SHOW) + '{scrollbar-color:auto!important}}'
 CSS += ','.join(x+'::-webkit-scrollbar-thumb' for x in SHOW) + '{background-color:rgba(185,193,206,var(--pa-next-scroll-opacity,1))!important}'

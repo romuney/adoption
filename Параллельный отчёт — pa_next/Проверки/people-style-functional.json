@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "completed": true,
+  "mode": "delivery",
+  "main_sha256": "0a10f30de0a0bf7822d16982737db01c1b88358f3cdc101574c58704de65d472",
+  "module_sha256": "0c181344fd80955a99549d498ab78593270568ffb4d66bb8152070ef809d7627",
+  "finished_utc": "2026-11-18T16:34:37.896287+00:00",
+  "scope": "Parser, UI state, filter transport and transformed preview contract on synthetic mocks; no production or SQL metric equivalence claim.",
+  "viewport": {
+    "width": 1366,
+    "height": 768,
+    "iframe_height": 1600
+  },
+  "javascript_errors": [],
+  "checks": [
+    "Excel CRLF/tab/NBSP, manual delimiters, lowercase and duplicate removal",
+    "JSON string arrays, numeric JSON rejected",
+    "5000 unique and 32000 normalized characters accepted at boundary; overflow rejected without truncation",
+    "Master ID leading zeros and 32 digits preserved as strings; exponent/fraction/negative rejected",
+    "Preview flt and sj.ca retain login/master and conditional CA mode",
+    "Editor Save changes draft only; global Apply emits exact selected-mode filter",
+    "Invalid and oversized input cannot partially change draft",
+    "Cancel and Escape preserve draft; empty list removes filter",
+    "Unique ID count does not claim matched employee count; facets explicitly exclude person list",
+    "Focus trap/return, visible footer, rerender cleanup and zero JavaScript errors",
+    "Parent scroll keeps dialog within visible iframe band"
+  ],
+  "short_5000_login_mask_json_bytes": 45051,
+  "screenshot": "/tmp/pa-next-people-delivery.png"
+}

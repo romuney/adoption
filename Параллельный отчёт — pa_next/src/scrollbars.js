@@ -3,7 +3,7 @@ function installScrollbars(shell) {
   var active = [], entries = [], timer = null, frame = null, stopped = false, intentUntil = 0, held = false;
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)');
   function inside(node) {
-    return node && node.nodeType === 1 && (node === shell || shell.contains(node) || node.matches('body .phead-list,body .phead-sel'));
+    return node && node.nodeType === 1 && (node === shell || shell.contains(node) || node.matches('body .phead-list,body .phead-sel,body .pa-next-people-body,body .pa-next-people textarea'));
   }
   function scrollable(node) { return node.scrollHeight > node.clientHeight + 1 || node.scrollWidth > node.clientWidth + 1; }
   function intent() { intentUntil = performance.now() + 700; }

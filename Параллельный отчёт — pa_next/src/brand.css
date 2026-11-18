@@ -4,14 +4,14 @@
 .pa-next-brand{display:block;width:110px;height:28px;object-fit:cover;opacity:.65;flex:none}
 .pa-next-brand-header{width:120px;height:32.75px;flex:0 0 120px;margin-left:10px;opacity:.60}
 .pa-next-head .phead-strip>.phead-lbl,.pa-next-head .phead-strip>.phead-sep{display:none}
-.pa-next-head .phead-strip-seg button{padding-left:8px;padding-right:8px;font-size:11.5px}
+.pa-next-head .phead-strip-seg button,.pa-next-people .phead-strip-seg button{padding-left:8px;padding-right:8px;font-size:11.5px}
 .pa-next-head .phead-tog{padding:0 7px 0 6px;gap:5px;font-size:11.5px}
 .pa-next-head .phead-fresh{font-size:10.5px;gap:5px}
 .pa-next-head .phead-help{margin-left:4px;padding:0 9px;font-size:11.5px}
 .pa-next-head .phead-strip>.phead-sp{min-width:0}
 .pa-next-head .phead-ttl{flex-basis:230px;min-width:170px}
 .pa-next-head .phead-cf{font-size:11.5px;padding-left:8px;padding-right:7px}
-.pa-next-head .phead-btn{padding:0 8px;font-size:11.5px}
+.pa-next-head .phead-btn,.pa-next-people .phead-btn{padding:0 8px;font-size:11.5px}
 @container pa-next-head (min-width:1240px){.pa-next-head .phead-strip,.pa-next-head .phead-bar{flex-wrap:nowrap}}
 @container pa-next-head (max-width:1239px){.pa-next-brand-header{margin-left:auto}}
 .pa-next-loading{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;width:min(100%,360px);max-width:100%;color:#454b55;font:13px/1.5 Arial,Helvetica,sans-serif;text-align:center}

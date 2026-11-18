@@ -229,7 +229,8 @@ def build(main,cat,one,channel,check=False):
     if not isinstance(channel,str) or not channel.strip(): raise ValueError('Channel must be nonempty')
     config=dict(main=main,cat=cat,one=one,channel=channel,echoColumns=HEAD+CAT+ONE)
     sources={'head':'pa-head.chart.js','cat':'pa-reports-body.chart.js','one':'pa-one.chart.js'}
-    brand=(OUT/'src/brand.js').read_text().replace('__BRAND_DATA__',json.dumps('data:image/webp;base64,'+base64.b64encode((OUT/'src/assets/cross-data-accent.webp').read_bytes()).decode('ascii')))
+    brand_url='data:image/webp;base64,'+base64.b64encode((OUT/'src/assets/cross-data-accent.webp').read_bytes()).decode('ascii')
+    brand=(OUT/'src/brand.js').read_text().replace('__BRAND_DATA__',json.dumps(brand_url))
     wrappers='{'+','.join(json.dumps(k)+':'+renderer(k,v) for k,v in sources.items())+'}'
     interaction=(OUT/'src/task-guide.js').read_text()+'\n'+(OUT/'src/scrollbars.js').read_text()+'\n'+(OUT/'src/interaction.js').read_text()
     viewport=(OUT/'src/viewport.js').read_text()
@@ -300,7 +301,14 @@ body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-heigh
 .dashboard-chart-id-{main} :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){{display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}}
 .dashboard-chart-id-{main} iframe{{display:block!important;flex:1 1 auto!important;width:100%!important;height:100%!important;min-height:0!important;border:0!important}}
 .dashboard-chart-id-{main} .dashboard-chart>div:not(.chart-container){{height:100%!important;width:100%!important}}
-/* При обновлении сохраняем интерактивный iframe. Начальную загрузку показывает Proteus. */
+/* Cold start lives in board CSS: visible before SQL and the chart JS arrive.
+   It is a background, never a covering layer: the opaque report paints over it. */
+{mainholder}:not(.dashboard--editing *) .dashboard-chart:not(:has([role="alert"],.alert,.error-container)){{background-color:#fff;background-image:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)),url("{brand_url}");background-position:center;background-size:auto,220px auto;background-repeat:no-repeat;position:relative}}
+{mainholder}:not(.dashboard--editing *):not(:has(iframe)) :is(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]){{opacity:0!important}}
+{mainholder}:not(.dashboard--editing *) .dashboard-chart:not(:has(iframe)):has(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]):not(:has([role="alert"],.alert,.error-container))::after{{content:"";position:absolute;pointer-events:none;left:50%;top:calc(50% + 44px);margin-left:-56px;width:112px;height:2px;border-radius:2px;background:linear-gradient(90deg,#e9edf4 0%,#e9edf4 30%,#245fd4 50%,#e9edf4 70%,#e9edf4 100%);animation:pa-next-boot-progress 2s ease-in-out infinite}}
+@keyframes pa-next-boot-progress{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}
+@media(prefers-reduced-motion:reduce){{{mainholder} .dashboard-chart::after{{animation:none!important}}}}
+/* При обновлении сохраняем интерактивный iframe и его собственную загрузку. */
 {mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe) :is(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]){{display:none!important}}
 {mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe):has(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]) *:not(iframe):not(:has(iframe)){{pointer-events:none!important}}
 {mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe) iframe{{pointer-events:auto!important}}

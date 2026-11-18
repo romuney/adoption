@@ -8,7 +8,7 @@ from sync import ROOT, LOCK, local_check
 
 local_check(json.loads(LOCK.read_text())['sources'])
 skills = sorted((ROOT / '.agents/skills').glob('*/SKILL.md'))
-assert len(skills) == 3
+assert {p.parent.name for p in skills} == {'clickhouse-best-practices','web-design-guidelines','proteus-playbook','frontend-design','performance','core-web-vitals'}
 for skill in skills:
     text = skill.read_text()
     front = text.split('---', 2)[1]

@@ -12,10 +12,12 @@
 | [Web Design Guidelines](../../.agents/skills/web-design-guidelines/SKILL.md) | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills/tree/1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62/skills/web-design-guidelines), v1.0.0, `1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62` | Вся папка навыка (один SKILL.md); отдельного LICENSE в этом upstream не обнаружено |
 | [Правила Web Interface](../vendor/web-interface-guidelines/command.md) | [vercel-labs/web-interface-guidelines](https://github.com/vercel-labs/web-interface-guidelines/tree/434b7f91364665f2f733b310ec54809bf8f37937), `434b7f91364665f2f733b310ec54809bf8f37937` | `command.md` и MIT LICENSE — локальный fallback для сетевого навыка |
 | [Proteus Playbook](../vendor/proteus-playbook/SKILL.md) | [romuney/TeamPulse](https://github.com/romuney/TeamPulse/tree/6f5121c0112398340802a231a484cd51785c0523/proteus-playbook), `6f5121c0112398340802a231a484cd51785c0523` | Все 48 файлов: 17 глав, kit вместе с sbx, шаблоны и чек-листы; отдельного LICENSE не обнаружено, это общая база владельца |
+| [Frontend Design](../../.agents/skills/frontend-design/SKILL.md) | [anthropics/skills](https://github.com/anthropics/skills/tree/e4bb5d960d87126ff3b3a8af1a104b7db67560ba/skills/frontend-design), `e4bb5d960d87126ff3b3a8af1a104b7db67560ba` | Официальный Anthropic SKILL и LICENSE.txt; добавлено18.11 по просьбе владельца |
+| [Performance](../../.agents/skills/performance/SKILL.md) и [Core Web Vitals](../../.agents/skills/core-web-vitals/SKILL.md) | [addyosmani/web-quality-skills](https://github.com/addyosmani/web-quality-skills/tree/afa8da942115f2961fdbfa80807ea0b232ff6c00), v2.0, `afa8da942115f2961fdbfa80807ea0b232ff6c00` | Оба навыка со всеми references и MIT LICENSE; добавлено18.11. Используем измерения, трассы и сравнение одинаковых сценариев |
 | [Локальный маршрутизатор](../../.agents/skills/proteus-playbook/SKILL.md) | Этот репозиторий | Короткий skill в `.agents/skills/`, открывает главы по задаче |
 | [proteus-echarts-builder](../../skills/proteus-echarts-builder/SKILL.md) | Adoption, v9.0; playbook указывает происхождение `e77d754` | Имеющиеся 73 файла (включая fixtures/engine/templates) оставлены на месте. Обновление — отдельной проверенной правкой Adoption, не копированием второй версии |
 
-До установки `.agents/skills/` отсутствовала; были только builder и [старый Proteus MCP skill](../../skills/proteus/SKILL.md). Эти `skills/` не являются автоматически обнаруживаемыми точками входа Codex. Новые три SKILL.md размещены в `.agents/skills/`, имеют name/description и разрешимые локальные пути. Это **статическая проверка обнаруживаемости**, а не доказательство выбора навыка моделью. Автоматическую активацию надо проверить в новом облачном чате после получения обновлённой `new`; в текущем чате каталоги не перечитываются гарантированно.
+До установки `.agents/skills/` отсутствовала; были только builder и [старый Proteus MCP skill](../../skills/proteus/SKILL.md). Эти `skills/` не являются автоматически обнаруживаемыми точками входа Codex. Первые три SKILL.md размещены в `.agents/skills/`, имеют name/description и разрешимые локальные пути. Теперь после дополнения18.11 доступно шесть точек входа. Это **статическая проверка обнаруживаемости**, а не доказательство выбора навыка моделью. Автоматическую активацию надо проверить в новом облачном чате после получения обновлённой `new`; в текущем чате каталоги не перечитываются гарантированно.
 
 ## Ответственность и противоречия
 
@@ -50,6 +52,21 @@
 
 Сеть: обновление — HTTPS Git `github.com` (включая приватный TeamPulse через доступ пользователя); живые web-правила — `raw.githubusercontent.com`; дополнительные ссылки ClickHouse — `clickhouse.com`; опциональные пакеты — PyPI/npm и CDN браузеров Playwright. Разрешённый домен не гарантирует права на частный репозиторий. Уже имеющийся Git proxy используется без извлечения токенов. Для обычного чтения всё включено в Git; новые секреты не нужны. Настройки облака и публикация среды этой работой не меняются.
 
+## Дополнение18.11: дизайн и первая загрузка
+
+Новые навыки установлены в `.agents/skills/`, их полный состав и SHA256 включены
+в общий lock и проверяются `check.py` / `sync.py --check`. Они не устанавливают
+пакеты в отчёт и не добавляют сетевых зависимостей.
+
+Frontend Design применяется к существующему интерфейсу через профиль §16
+`DESIGN_SYSTEM.md`: Arial, веса400/700, согласованные контролы и CROSS DATA.
+Это не разрешение переоформить борд в новую тему. Performance сначала измеряет,
+затем меняет узкое место; Core Web Vitals в top-окне недостаточны для opaque
+iframe — отдельно фиксируем момент появления контролов и готовности данных.
+Один локальный запуск не называется RUM или замером SQL на проде. Мобильные
+проверки и внешние аналитические сервисы здесь не применяются: владелец выбрал
+ноутбуки/мониторы и корпоративный Proteus.
+
 ## Воспроизводимое обновление
 
 Из корня checkout:
@@ -62,7 +79,7 @@ python3 tools/knowledge/test_sync.py
 python3 tools/knowledge/sync.py
 # Обновить один источник на полный, заранее рассмотренный SHA:
 python3 tools/knowledge/sync.py --update proteus <40-символьный-SHA-TeamPulse>
-# source IDs: clickhouse, web-design, web-rules, proteus
+# source IDs: clickhouse, web-design, web-rules, proteus, anthropic-frontend, web-performance
 python3 tools/knowledge/check.py
 git diff --stat
 ```

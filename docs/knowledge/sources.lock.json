@@ -149,6 +149,55 @@
         "docs/vendor/proteus-playbook/templates/dataset.template.sql": "479fc26120e1e06d389982b22728825b9286a3b0823a8b730eb73d9f70c05cc9",
         "docs/vendor/proteus-playbook/templates/instruction.template.md": "4b56a50b5fbf6dff7ac51c9283c450da388a6bc71e405a2dd618d5f33f7e25ce"
       }
+    },
+    {
+      "id": "anthropic-frontend",
+      "repository": "https://github.com/anthropics/skills.git",
+      "commit": "e4bb5d960d87126ff3b3a8af1a104b7db67560ba",
+      "mappings": [
+        {
+          "source": "skills/frontend-design",
+          "target": ".agents/skills/frontend-design"
+        }
+      ],
+      "files": {
+        ".agents/skills/frontend-design/LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+        ".agents/skills/frontend-design/SKILL.md": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3"
+      }
+    },
+    {
+      "id": "web-performance",
+      "repository": "https://github.com/addyosmani/web-quality-skills.git",
+      "commit": "afa8da942115f2961fdbfa80807ea0b232ff6c00",
+      "mappings": [
+        {
+          "source": "skills/performance",
+          "target": ".agents/skills/performance"
+        },
+        {
+          "source": "skills/core-web-vitals",
+          "target": ".agents/skills/core-web-vitals"
+        },
+        {
+          "source": "LICENSE",
+          "target": ".agents/skills/performance/LICENSE"
+        },
+        {
+          "source": "LICENSE",
+          "target": ".agents/skills/core-web-vitals/LICENSE"
+        }
+      ],
+      "files": {
+        ".agents/skills/core-web-vitals/LICENSE": "c122223ac43e86421958e18623979942c21b642951e2e3736dcb63eff13587c3",
+        ".agents/skills/core-web-vitals/SKILL.md": "731aa78c0347e8b3e191b75962175bee058ce73817278e610ac0fe546e685914",
+        ".agents/skills/core-web-vitals/references/CLS.md": "c4fa0cd6311720b413018471a6ac9240e87db52af3b6e306ffb6684491f15898",
+        ".agents/skills/core-web-vitals/references/INP.md": "7d40cf6053e9bb8a8a77e02da7c6b25aa8e6c1c092b48d8f9c8f30e9b25cf3a7",
+        ".agents/skills/core-web-vitals/references/LCP.md": "522054d44b7a55409cbde511e8d365f7fa52399dd1e72b8d6b44a92ecddca81f",
+        ".agents/skills/performance/LICENSE": "c122223ac43e86421958e18623979942c21b642951e2e3736dcb63eff13587c3",
+        ".agents/skills/performance/SKILL.md": "b0c220185d88c61f7770eb127d8facf86c86d2dd1fd82b86e15a4965a0137265",
+        ".agents/skills/performance/references/MEASUREMENT.md": "128f6f20c6c8fb55fcccd8b259cf680811022cf262dc55b03e9d623bcb555a99",
+        ".agents/skills/performance/references/RUM.md": "a2bdf660ecb23098afbadfb83254d39cef10c0da82938225f61271bad3f81b19"
+      }
     }
   ]
 }

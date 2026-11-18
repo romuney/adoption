@@ -2,6 +2,7 @@
 (function () {
   var C = __CONFIG__, V = 1, S = window.__paNextLoader || (window.__paNextLoader = { n: 0, instance: String(Date.now()) + '-' + String(Math.random()).slice(2) });
   var rows = typeof data !== 'undefined' && Array.isArray(data) ? data : [];
+  S.stats = S.stats || { asks: 0, rowsSent: 0, suppressed: 0 };
   S.n++;
   S.rows = rows;
   if (S.on) window.removeEventListener('message', S.on);
@@ -31,7 +32,11 @@
     var d = ev.data;
     if (!d || d.type !== 'PA_NEXT_V1' || d.v !== V || d.channel !== C.channel || d.chart !== C.main || d.to !== C.id || !ev.source) return;
     if (d.kind === 'ASK') {
-      S.main = ev.source; S.session = d.session;
+      S.main = ev.source; S.session = d.session; S.stats.asks++;
+      // Only an explicit receipt of this exact immutable run permits omission.
+      // Old main charts omit these fields and still receive the full payload.
+      if (d.knownInstance === S.instance && d.knownSerial === S.n) { S.stats.suppressed++; return; }
+      S.stats.rowsSent++;
       send(ev.source, 'ROWS', { session: d.session, rows: S.rows });
       return;
     }

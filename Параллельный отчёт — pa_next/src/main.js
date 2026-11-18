@@ -3,6 +3,17 @@
     session: String(Date.now()) + '-' + String(Math.random()).slice(2), peers: {}, masks: { head: [], cat: [], one: [] },
     pending: {}, seq: 0, accepted: {}, serial: {}, instances: {}, retired: { cat: {}, one: {} }, error: {}, mounted: {}, started: Date.now()
   });
+  // Session-local timings only: no SQL, identifiers, masks or metric values.
+  ST.performance = ST.performance || { epoch: performance.timeOrigin || Date.now() - performance.now(), events: [], duplicates: 0 };
+  function timing(name, part, duration, rows) {
+    var event = { name: name, part: part || 'main', at: Math.round(performance.now() * 10) / 10 };
+    if (typeof duration === 'number') event.duration = Math.round(duration * 10) / 10;
+    if (typeof rows === 'number') event.rows = rows;
+    ST.performance.events.push(event);
+    if (ST.performance.events.length > 160) ST.performance.events.shift();
+  }
+  timing('script-enter');
+  ST.lastRows = ST.lastRows || {};
   if (ST.on) window.removeEventListener('message', ST.on);
   if (ST.timer) clearInterval(ST.timer);
   __BRAND__
@@ -148,6 +159,11 @@
   }
   function send(part, kind, extra) {
     var peer = ST.peers[part]; if (!peer) return;
+    if (kind === 'ASK') {
+      var known = ST.lastRows[part];
+      if (known && known.generation === ST.generation) extra = { knownInstance: known.instance, knownSerial: known.serial };
+      timing('ask', part);
+    }
     var d = { type: 'PA_NEXT_V1', v: V, channel: C.channel, kind: kind, chart: C.main, to: C[part], session: ST.session };
     Object.keys(extra || {}).forEach(function (k) { d[k] = extra[k]; });
     try { peer.postMessage(d, '*'); } catch (ignore) { /* peer remounting */ }
@@ -283,7 +299,7 @@
         { column: 'pa_next_' + src + '_req', operator: 'IN', value: [ST.session + '-' + seq] }
       ]);
       ST.masks[src] = mask;
-      targets.forEach(function (p) { ST.flight[p] = register(p); });
+      targets.forEach(function (p) { ST.flight[p] = register(p); timing('request-issued', p); });
       if (src === 'head') {
         if (ST.apply) ST.apply(mask);
         else ST.error.cat = ST.error.one = 'Открой отчёт на дашборде: фильтры недоступны.';
@@ -372,6 +388,7 @@
       if (!ready) issues.push(partial ? 'Доступные показатели готовы; остальные детали догружаются.' : (part === 'cat' ? 'Каталог: ' : 'Показатели: ') + message);
     });
     var node = shell.querySelector('.pa-next-status');
+    if (!issues.length && !ST.performance.ready) { ST.performance.ready = true; timing('initial-ready'); }
     var summary = issues.length ? issues.join(' ') : 'Отчёт загружен';
     if (node.textContent !== summary) node.textContent = summary;
     node.classList.toggle('pa-next-ready', !issues.length);
@@ -414,10 +431,12 @@
   var renderers = __RENDERERS__;
   function render(part, rows) {
     if (part === 'one') ST.preview = null;
+    var renderStart = performance.now();
     renderers[part](rows, function (mask) { emit(part, mask); }, function (msg) { bus(part, msg); }, help, preview, function () {
       status(); deferStatus(); ST.interaction.refresh(); if (ST.motion) ST.motion.rendered();
     }, uiKey, brandImage, brandLoading);
     ST.mounted[part] = true;
+    timing('render', part, performance.now() - renderStart, rows.length);
     // Cards can arrive after the initial layout without changing host size.
     // Centre the grip after each mount, including a catalogue arriving last.
     ST.interaction.refresh();
@@ -435,6 +454,8 @@
       flush(); deferStatus(); return;
     }
     ST.received[part] = true;
+    ST.lastRows[part] = { instance: ST.instances[part], serial: serial, generation: g };
+    timing('rows-accepted', part, Date.now() - record.time, rows.length);
     var commandSource = part === 'cat' ? 'one' : 'cat';
     if (!ST.commandError[commandSource] || completed) delete ST.error[part];
     if (completed && ST.commandError[commandSource]) { delete ST.commandError[commandSource]; delete ST.pending[commandSource]; }
@@ -447,6 +468,12 @@
   }
   ST.on = function (ev) {
     var d = ev.data;
+    if (d && d.type === 'PA_NEXT_PERF_REQUEST_V1' && d.to === C.main && /^[a-z0-9-]{1,80}$/.test(d.token || '') && ev.source) {
+      ev.source.postMessage({ type: 'PA_NEXT_PERF_REPLY_V1', token: d.token, chart: C.main,
+        snapshot: { performance: ST.performance, mounted: { head: !!ST.mounted.head, cat: !!ST.mounted.cat, one: !!ST.mounted.one },
+          errorParts: Object.keys(ST.error) } }, '*');
+      return;
+    }
     if (!d || d.type !== 'PA_NEXT_V1' || d.v !== V || d.channel !== C.channel || d.to !== C.main || ['cat', 'one'].indexOf(d.part) < 0 || d.chart !== C[d.part] || !ev.source) return;
     if (!d.instance || ST.retired[d.part][d.instance]) return;
     if (d.kind === 'HELLO') {
@@ -461,6 +488,8 @@
       ST.instances[d.part] = d.instance;
       ST.peers[d.part] = ev.source;
       if (d.serial < (ST.serial[d.part] || 0)) return;
+      var seen = ST.lastRows[d.part];
+      if (seen && seen.instance === d.instance && seen.serial === d.serial && seen.generation === ST.generation) { ST.performance.duplicates++; return; }
       ST.serial[d.part] = d.serial; receive(d.part, d.rows || [], d.serial);
     } else if (d.kind === 'ACK' && d.session === ST.session && ev.source === ST.peers[d.part]) {
       if (ST.pending[d.part] && ST.pending[d.part].seq <= d.seq) delete ST.pending[d.part];
@@ -483,7 +512,7 @@
   var head = typeof data !== 'undefined' && Array.isArray(data) ? data : [], gen = version(head);
   if (ST.generation !== gen) {
     ST.cache = { cat: [], one: [] }; ST.accepted = {}; ST.issued = { cat: {}, one: {} };
-    ST.received = {}; ST.flight = {}; ST.preview = null;
+    ST.received = {}; ST.flight = {}; ST.preview = null; ST.lastRows = {};
   }
   ST.generation = gen;
   ['cat','one'].forEach(function (part) { if (!ST.issued[part][requestKey(part, ST.masks)]) register(part); });

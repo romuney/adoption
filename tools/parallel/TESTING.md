@@ -1,0 +1,310 @@
+# Локальная проверка параллельной поставки
+
+Рабочая папка — корень Adoption. Исходные файлы и старые поставки проверки не перезаписывают. Тестовые таблицы создаются только в явно выбранных локальных БД.
+
+Проверено: Python 3.12.14; chdb 2.1.1 / ClickHouse 24.8.4.1; PostgreSQL 17.12 (модель GP, не корпоративный Greenplum); библиотеки закреплены в `requirements.txt`. Встроенный стенд содержит настройку более нового CH `use_variant_as_common_type`; `verify_numbers.load_stand()` условно применяет только эту настройку по версии движка, не меняя выражения расчётов или исходный `.stand/stand.py`.
+
+## Зависимости и сервис
+
+```bash
+python3 -m venv /workspace/.venvs/pa-next-test
+/workspace/.venvs/pa-next-test/bin/python -m pip install -r tools/parallel/requirements.txt
+```
+
+Для браузерных тестов дополнительно установи Playwright в тот же venv:
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python -m pip install playwright==1.62.0
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_board_css.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_controls.py
+```
+
+Эти скрипты явно запускают **`/usr/bin/chromium`**. Установи системный Chromium штатным механизмом среды; `playwright install` сам по себе этот путь не создаёт. Проверено на Chromium 156.0.8078.79. Пересборка JS/ID требует также Node.js и закреплённых npm-пакетов: команды и поддерживаемые версии приведены в [UI.md](<../../Параллельный отчёт — pa_next/UI.md>). Системный `python3` в примерах ниже допустим только если в нём уже установлены нужные зависимости; иначе используй Python подготовленного venv.
+
+Нужны PostgreSQL server + `psql`, `createdb`, `initdb`, `pg_ctl` в PATH. В облачной проверке использованы официальные подписанные пакеты Debian `postgresql-17=17.12-0+deb13u1` и `postgresql-client-17=17.12-0+deb13u1`, извлечённые вне репозитория в `/workspace/.local/pa-next-pg`; системные файлы не менялись. При другом образе поставьте PostgreSQL штатным механизмом среды. PostgreSQL 17 не доказывает совместимость с конкретным корпоративным GP: для него остаётся запуск новой ноды владельцем.
+
+Пример изолированного сервиса (существующий кластер повторно не инициализировать):
+
+```bash
+export PATH=/workspace/.local/pa-next-pg/usr/lib/postgresql/17/bin:$PATH
+mkdir -p /workspace/.cache/pa-next-pgsocket
+initdb -D /workspace/.cache/pa-next-pgdata --auth=trust --no-locale --encoding=UTF8
+pg_ctl -D /workspace/.cache/pa-next-pgdata -l /workspace/.cache/pa-next-pg.log -o '-h 127.0.0.1 -p 55432 -k /workspace/.cache/pa-next-pgsocket' start
+export PGHOST=/workspace/.cache/pa-next-pgsocket PGPORT=55432 PA_PG=pa
+createdb pa
+psql -d pa -c 'CREATE SCHEMA IF NOT EXISTS usr_cross_data; ALTER DATABASE pa SET search_path TO usr_cross_data,public;'
+```
+
+## Разные уровни доказательства
+
+```bash
+# В shallow checkout сначала доставить только закреплённый эталон.
+# Это чтение GitHub; ветка и рабочие файлы не переключаются/не сбрасываются.
+git cat-file -e 167c2edcfae1bee7a4fcd830052a9d2dfea49edb^{commit} 2>/dev/null || \
+  git fetch --depth=1 origin 167c2edcfae1bee7a4fcd830052a9d2dfea49edb
+
+# Компаратор: ошибки, дубли, NaN, служебная версия.
+python3 tools/parallel/verify_numbers.py --selftest
+
+# Действительный исходный GP-SQL двух нод, искусственные исходные события.
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_events.py
+
+# Синтетический мир существующего стенда (~1,3 млн дневных строк).
+# Генерирует один мир для обеих версий; генератор использует случайность,
+# поэтому абсолютное число строк между независимыми пересозданиями меняется.
+export PA_DB=/workspace/.cache/pa-next-db
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/prepare_numeric_fixture.py --regenerate
+
+# Вторая версия GP-ускорения выполняется из нового YAML и сравнивается
+# с прежними GP-выражениями, затем выгружается в локальный CH.
+# Без --regenerate повторно использует уже построенный исходный мир.
+
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_numbers.py \
+  --baseline-revision 167c2edcfae1bee7a4fcd830052a9d2dfea49edb \
+  --baseline-yaml 'Proteus Adoption (4).yaml' \
+  --output /tmp/pa-next-numeric-results.json
+```
+
+`--quick` сокращает матрицу; `--modes` проверяет дополнительные режимы анализатора и Nullable. `--mode-smoke` — пять характерных наборов фильтров во всех профилях; `--identity-smoke --kinds cat` — прежний/текущий логин, регистр и пробелы. Полный прогон длиннее; отчёт записывается после каждого сценария, итоговый код 0 требует отсутствия всех ошибок. Не открывайте один chdb-каталог из двух процессов одновременно. Не воспринимайте частичный JSON текущего прогона как завершённый результат.
+
+Генератор `prepare_numeric_fixture.py` исполняет новые GP-параграфы ускорения на PostgreSQL, а базовые таблицы берёт из прежней синтетической модели. Это не запуск полного корпоративного ETL. Фильтрация фактических событий проверяется отдельно `verify_events.py` (в обеих тестовых копиях SQL `current_date` фиксируется на 2026-11-13; поставка не изменяется); доступ к настоящим источникам, транспорту `gp_to_click`, планировщику Helicopter, кэшу Proteus и боевой сборке ClickHouse не проверяется этими командами.
+
+Результаты по умолчанию — `/tmp/pa-next-events-results.json`, `/tmp/pa-next-gp-results.json`, `/tmp/pa-next-numeric-results.json`. Они содержат только искусственные данные/условия. В итог поставки включайте обезличенную сводку завершённого прогона и его ограничения. Перед публикацией сравнения проверьте, что SHA-256 исходного YAML и версия текущих сгенерированных файлов соответствуют последнему запуску.
+
+Для интеграционной браузерной проверки после освобождения chdb выполните `/workspace/.venvs/pa-next-test/bin/python tools/parallel/export_browser_fixtures.py` тем же Python/PA_DB, затем `/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_periods.py /tmp/pa-next-periods`. Экспорт запишет фактические ответы SQL для d/w/m/q в `/tmp/pa-next-periods`, без выдуманных KPI и без замены бизнес-строк. Браузерный тест может заменить только транспортные nonce `pa_next_request`.
+
+Сеть нужна для установки зависимостей из PyPI/npm/пакетного источника и (только если эталона нет в shallow checkout) для чтения закреплённого Git-коммита с GitHub. После подготовки SQL/PG/браузерные тесты работают локально; GitHub-токен в чат не требуется, используется штатная аутентификация среды.
+
+Оптимизация исходного события: удалены два скалярных MAX-подзапроса к исходному журналу; неиспользуемый `max_date` остаётся NULL. Фактическое число сканирований и выигрыш на GP не измерялись. `verify_events.py` проверяет отсутствие потребителей и исключает только эту колонку из побайтового сравнения значений. `verify_gp_pipeline.py` отдельно доказывает точное равенство 12 потребляемых базовых витрин.
+
+## Сохранение SQL и путь Superset в двух моделях лексера
+
+Основной venv из `requirements.txt` содержит `sqlparse==0.4.3`. Дополнительная версия ставится **в отдельный каталог**, не заменяя основную. Из корня Adoption, при наличии `uv`:
+
+```bash
+uv --cache-dir /workspace/.cache/uv pip install \
+  --python /workspace/.venvs/pa-next-test/bin/python \
+  --target /workspace/.cache/pa-next-sp044 sqlparse==0.4.4
+
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_sql_path.py \
+  --sp044 /workspace/.cache/pa-next-sp044 --output /tmp/pa-next-parser
+```
+
+Если `uv` не установлен, эквивалентная установка:
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python -m pip install \
+  --target /workspace/.cache/pa-next-sp044 sqlparse==0.4.4
+```
+
+Это проверяет три датасета на сохранение с AlwaysTrueObject, добавляемый LIMIT 1000, открытие, внешнюю обёртку `GROUP BY section,g,k,parent,n`, соответствие лексеров и враждебные значения фильтров. В обеих моделях применяется патч Superset из kit. Отдельно проверяется файл 11 в режиме SQL Lab. Новая корпоративная сессия, учётные данные и сеть после установки зависимостей **не нужны**. Гейт моделирует документированный форк; успешный результат не означает, что запрос уже сохранён в живом Proteus.
+
+`summary.json` содержит SHA-256 SQL, число вариантов, ошибки и предупреждения. Предупреждения о времени разбора сохраняются отдельно от синтаксических ошибок. Для измерения скорости запускайте без конкурирующих тестов; сравнение с секундным бюджетом при одновременном полном числовом регрессе не является изолированным замером.
+
+Другие самостоятельные проверки новой ноды:
+
+```bash
+# Без БД: изоляция таблиц, точность генерации, все точки отказа выгрузки.
+python3 tools/parallel/verify_data.py
+# Временная отдельная CH-база: generation/nonce, смешанные и пустые состояния.
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_publication.py
+# Отдельная локальная PG-база: 17 GP-параграфов, 12 базовых таблиц,
+# рабочая схема, источники без права записи, таблицы-приманки и второе соединение.
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_gp_pipeline.py
+# Три отдельные локальные PG-базы: Unicode и полные поля ФИО против CH 24.8.
+# Воспроизводит chr(894) и скрытую порчу ФИО в старом коде SQL_ASCII.
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_encoding.py
+# Отдельная CH-база, 13 млн строк: цена полной проверки штампов версий.
+# Запускать после окончания других замеров; не доказывает скорость всего отчёта.
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/benchmark_generation.py
+```
+
+## Воспроизвести сводку 380 сравнений
+
+После полной матрицы 320 и проверок GP выше, на том же `PA_DB`, последовательно:
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_numbers.py \
+  --baseline-revision 167c2edcfae1bee7a4fcd830052a9d2dfea49edb --baseline-yaml 'Proteus Adoption (4).yaml' \
+  --identity-smoke --kinds cat --output /tmp/pa-next-identity-results.json
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_numbers.py \
+  --baseline-revision 167c2edcfae1bee7a4fcd830052a9d2dfea49edb --baseline-yaml 'Proteus Adoption (4).yaml' \
+  --mode-smoke --kinds cat one --output /tmp/pa-next-profile-results.json
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_numbers.py \
+  --baseline-revision 167c2edcfae1bee7a4fcd830052a9d2dfea49edb --baseline-yaml 'Proteus Adoption (4).yaml' \
+  --modes --kinds head --output /tmp/pa-next-head-results.json
+```
+
+Выполни файл 11 на той же локальной фикстуре и сохрани его ответ. Это чтение локальной модели, не корпоративная проверка:
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python - <<'PY'
+import json, os
+from pathlib import Path
+from chdb.session import Session
+db = Session(os.environ['PA_DB'])
+sql = Path('Параллельный отчёт — pa_next/11. SQL Lab — готовность витрин.sql').read_text()
+rows = json.loads(db.query(sql, 'JSON').bytes())['data']
+assert len(rows) == 21 and all(row['ready'] == 1 for row in rows)
+Path('/tmp/pa-next-readiness-results.json').write_text(json.dumps({
+    'status': 'passed', 'rows': rows, 'scope': 'local synthetic fixture; read-only shipment SQL Lab probe'
+}, ensure_ascii=False, indent=2) + '\n')
+PY
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/summarize_numbers.py
+```
+
+Сводка откажет при незавершённых/ошибочных прогонах, другом числе случаев, изменённых SQL или YAML. Она читает перечисленные JSON из `/tmp` и обновляет `Проверки/Численная сверка.json`; старые протоколы не подставляются вместо нового исполнения.
+
+## Очередь, кэш и высота единого отчёта
+
+После экспорта `/tmp/pa-next-periods` и `/tmp/pa-next-preview`:
+
+```bash
+python3 tools/parallel/test_ui_queue.py --policy drop --output /tmp/pa-next-queue-drop.json
+python3 tools/parallel/test_ui_queue.py --policy replace --output /tmp/pa-next-queue-replace.json
+python3 tools/parallel/test_ui_cache.py
+python3 tools/parallel/test_ui_viewport.py
+```
+
+Queue-стенд фиксирует маски и nonce при **старте** каждого запроса. Занятый получатель либо отбрасывает новый запрос, либо сохраняет последний — две отдельные политики. Завершение подаётся явно; `--trace` печатает START/FINISH/DROP_BUSY/ACK. Значения KPI и рядов — фактические SQL-ответы локальных фикстур. Эти задержки измеряют локальный обмен, а не производительность корпоративного SQL. Не менять JS во время регрессии: итоговые отчёты проверяют хэш сборки.
+
+Кэш проверяется на точные строки/пустые атрибуты/дефолты, смену поколения, ограничение памяти и подтверждённую ошибку команды с явным повтором. Viewport-стенд использует непрозрачный sandbox, настоящий CSS борда, пиксельные размеры host с ResizeObserver и видимые системные полосы прокрутки. Проверяет колесо над графиком, обе SVG, 1366×768 / 1440×900 / 1920×1080, resize, каталог, календарь, 13 шагов гида и кнопку редактирования.
+
+
+## Смещение загрузки, высота и консольная диагностика
+
+На готовых SQL-фикстурах (экспорт выше, chdb повторно открывать не нужно):
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_loading_layout.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_viewport.py \
+  --periods /tmp/pa-next-periods/d --screenshots /tmp/pa-next-viewport-fixed-sql
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_viewport.py \
+  --screenshots /tmp/pa-next-viewport-fixed-synthetic
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_browser_diagnostics.py
+```
+
+`test_ui_loading_layout.py` измеряет каждый кадр ready → preview → full на вкладках деталей при двух высотах окна. `test_ui_viewport.py` использует локальную модель борда, pixel-sized host и обычные полосы прокрутки; проверяет низкие окна, высокую шапку, навигацию 64 px и iframe 1200 px, реальное колесо мыши и достижимость обеих SVG. Эквиваленты zoom моделируются размерами CSS viewport, это не тест нативного браузерного zoom.
+
+`test_browser_diagnostics.py` проверяет файл 13 в top и изолированном iframe: отсутствие изменений DOM/фильтров, сокрытие значений, снимки до и после прокрутки, остановку наблюдения и повторный запуск. Порядок запуска на живом Proteus — в [инструкции](<../../Параллельный отчёт — pa_next/Проверки/Как снять диагностику браузера.md>).
+
+Геометрия из диагностики владельца 14.11.2026 добавлена в `test_ui_viewport.py`: окно 1658×963, верх iframe 129 px, меню занимает 48 px без `#main-menu`, загрузчики идут после основного ряда. `test_board_css.py` отдельно проверяет отсутствие зависимости от ID меню и явное освобождение резерва только для режима без навигации.
+
+Текущая версия `test_ui_viewport.py` также сравнивает суммарные видимые поля сверху/снизу и нижние края каталога/аналитики на всех пяти вкладках при трёх размерах окна. В модели диагностики текущая высота iframe — 816 px, нижняя граница — 945 px. Это расчёт поставки, не повторный замер живого борда. При прокрутке до конца проверяется полное исчезновение шапки, включая более высокое ноутбучное окно 1440×1000.
+
+
+## Перезапуск JS, неизменный шрифт и место под скролл
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_rerun_layout.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_resize.py --periods /tmp/pa-next-periods/d
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_scrollbars.py
+```
+
+Первый тест повторно выполняет настоящий JS4 в готовом и загружающемся состоянии на всех пяти вкладках и двух позициях прокрутки; проверяет синхронную геометрию и каждый rAF. Второй измеряет реальные pointermove и масштаб SVG-глифов во время движения, размер HTML-шрифта, непрерывное скрытие устаревших чисел и отсутствие перерисовки от простого scroll. Третий теперь проверяет отсутствие добавленных полей под скролл, реальную ширину полос до 4 px, читаемость последнего столбца, совпадение краёв шапки/панелей и центр разделителя на пяти вкладках, при drag и скрытии каталога. Также сохраняется проверка выбранного длинного названия в три строки. Нулевая ширина gutter моделирует геометрию overlay-полос, а не внешний вид macOS.
+
+## Общая загрузка правой части
+
+`/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_common_loading.py` запускает настоящую поставку на SQL-фикстурах `/tmp/pa-next-periods`. Проверяет весь блок ожидания: один видимый индикатор, покрытие KPI/выводов/графика, доступность вкладок, отсутствие сдвигов и показа старых чисел. Включает календарный выбор двух месяцев, обычный месячный период, возврат из кэша, повторный JS, resize и получение месячного SQL-ответа. Для отрицательной проверки старой поставки есть `--main /path/to/old-main.js`. Снимки и JSON сохраняются в `/tmp/pa-next-common-loading*`.
+
+## Экраны 13–32″, широкий и портретный режимы
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_screen_matrix.py \
+  --periods /tmp/pa-next-periods/d --output /tmp/pa-next-screen-matrix
+```
+
+11 явно заданных моделей: 1366×768, 1280×800 DPR2, 1512×982 DPR2, 1536×960, 1920×1080, 2560×1440 DPR1 и DPR1.5, 3840×2160, 3440×1440, 1080×1920 и 1440×2560. Это CSS-размеры окна, а не измерение физической диагонали или читаемости с расстояния. Для DPR1.5/2 Chromium запускается с `--force-device-scale-factor`; тест проверяет настоящий `devicePixelRatio` и в родителе, и в непрозрачном iframe. Подмена JS-свойства DPR не используется.
+
+Во всех моделях проверяются Dynamics, Calendar и Who: края, центр ручки по двум осям, отсутствие внешнего переполнения, доступность элементов, масштаб SVG и целостность всех числовых групп в подписях KPI, включая текстовый знаменатель ЦА. Dynamics дополнительно проверяется на отсутствие внутренней вертикальной полосы и полное размещение каждого видимого прямого элемента тела, включая обе SVG и контролы. На узких, широком и портретных экранах дополнительно проходят выпадающие фильтры, гид, минимум каталога 420 px и скрытие/возврат. Начальный центр разделителя проверяется после обычной доставки данных, без принудительного вызова `interaction.refresh()` из теста. Результаты и снимки записываются в указанный каталог; итоговый `completed:true` появляется только после всей матрицы и повторной проверки SHA поставки.
+
+Экспертные выводы записаны отдельно: [UX](../../docs/parallel/UX_SCREEN_REVIEW.md), [JTBD](../../docs/parallel/JTBD_REVIEW.md). Они не заменяют проверку на живом Proteus или наблюдение за реальными пользователями.
+
+
+## Рабочий гид ЦА и обновление открытого борда
+
+Используется существующая локальная синтетическая БД и уже экспортированные `/tmp/pa-next-periods/d` (см. выше). Новый экспорт выполняет только SELECT и не пересоздаёт БД; каталог вывода должен быть новым. Не запускайте одновременно другой процесс chdb на той же БД.
+
+```bash
+PA_DB=/workspace/.cache/pa-next-db /workspace/.venvs/pa-next-test/bin/python tools/parallel/export_task_guide_fixtures.py --output /tmp/pa-next-audience-task
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_task_guide.py --fixtures /tmp/pa-next-audience-task
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_board_settle.py --output /tmp/pa-next-board-settle-final
+```
+
+Гид проверяется через настоящие действия с фильтрами на 1366×768 и 1920×1080: черновик/ожидание блокируют переход; применённая ЦА → один отчёт → динамика → путь → точные логины заходивших → число не заходивших. Переходы не добавляют запросов, поиск очищается только явной кнопкой, скрытие каталога сворачивает подсказку. Проверяются SHA SQL и файлов данных; транспорт адаптирует лишь echo/nonce, сохраняя бизнес-строки.
+
+`test_ui_board_settle.py` проверяет задержанное изменение размеров host, внешнюю полосу борда и CSS, а также настоящий переход с прежней поставки из Git в текущую без пересоздания iframe. Состояния: готово, ожидание, preview, скрытый каталог. Сравниваются принятые данные, выбор, очередь, вкладка, прокрутка и число запросов. Повтор той же версии обязан сохранить экземпляры контроллеров и DOM. Исторический commit берётся из скрипта; в shallow checkout при отсутствии объекта доставьте именно его. Внешние изменения ширины могут закономерно менять координаты панелей; ручка всё равно должна оставаться по центру зазора.
+
+Это локальная модель Proteus/Superset, а не запуск внутри корпоративного борда. Экраны и итоговые JSON текущего прогона привязаны к SHA готового файла 4.
+
+
+## Список ЦА, раскрытие выводов и анимации
+
+`verify_audience_people.py` проверяет новый GP mapping на локальном PostgreSQL и выполняет настоящие запросы ClickHouse 24.8. Перед запуском укажи существующие PA_DB/PGHOST/PGPORT. Он использует отдельные синтетические случаи сопоставления, затем сравнивает новые условия людей с независимым множеством через прежний AD-group predicate. Сравнение охватывает все бизнес-секции, включая `aa/all`, а не только карточки. Для отсутствующего списка сравнивается прежний SQL из `--baseline-ref` (зафиксировать коммит до изменения) с новым d/w/m/q. Входные ID и логины остаются строками. Проверка изменяет только локальный синтетический мир; корпоративных подключений нет. Не выполнять параллельно другие процессы chdb на PA_DB.
+
+```bash
+PGHOST=/workspace/.cache/pa-next-pgsocket PGPORT=55432 PA_DB=/workspace/.cache/pa-next-db /workspace/.venvs/pa-next-test/bin/python tools/parallel/verify_audience_people.py --baseline-ref 8acb2e2
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_audience_people.py --delivery
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_observations.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_motion.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_split_bounds.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_board_header.py
+```
+
+Флаги fixture/output уточняются через `--help` соответствующего скрипта. `test_ui_audience_people.py` без `--delivery` проверяет renderer-transform из исходника, с ним — готовый минифицированный файл и три iframe. Сценарии ввода: Excel, ручные разделители, JSON строки, повторные значения, невалидные токены, большие Master ID, отмена, reset, draft/apply, лимиты, видимая область и фокус. Тест анимаций использует управляемые часы для точной проверки промежуточного DOM/AX и настоящий таймер для записи длительностей графиков; времена кадров локального headless не обещают скорость прода.
+
+Ширины/выводы проверяются в локальной модели борда на фиксированных реальных SQL-ответах. Исторический fixture может использоваться для чистой UI-проверки только с явным указанием несовпадения SQL SHA; это не доказательство числовой сходимости текущего SQL. Свежие числовые проверки и новые экспорты выполняются отдельно. Header-test содержит отрицательный контроль −32px и проверку адресного CSS, включая редактор и меню без #main-menu.
+
+
+## Автоскрытие и безопасный доступ к внешней шапке
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_autohide.py
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_scrollbars.py --periods /tmp/pa-next-people-periods/d
+npm install --prefix /tmp/pa-next-markdown-render --no-audit --no-fund react@18.2.0 react-dom@18.2.0 react-markdown@8.0.3 rehype-sanitize@5.0.1 rehype-raw@6.1.1
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_header_reveal.py --delivered
+```
+
+`test_ui_autohide.py` использует текущие реальные ответы из `/tmp/pa-next-people-periods/d` и закреплённую предыдущую поставку `ccc074e` для проверки неизменной ширины данных при сдвиге thumb на6px. Сценарии: настоящий wheel и перетаскивание native thumb, ожидание под неподвижным курсором, край, выход из iframe, общая область и Who, forced colors, повторный JS без новых запросов. Classic native и zero-width geometry проверяются в локальном Chromium; это не запуск Safari/macOS.
+
+`test_ui_header_reveal.py` проверяет настоящий ReactMarkdown8.0.3 в трёх режимах HTML/sanitize, все варианты дают одну пару ordinary links без target. Затем внешний DOM Superset, CSS9 и JS4: отсутствующий/сломанный/blank control и отсутствующий target сохраняют шапку; отдельная строка0px; mixed row сохраняет соседний виджет; hoverнеоткрывает; click/secondclick/Enter/Tab, меню и Edit доступны. Открытие не меняет iframe/nav/scroll, обе диаграммы доступны через wheel; на большом экране с включённым контролом они помещаются вместе с фильтрами. В fallback режиме (контрол ещё не установлен) две строки названия могут требовать общей прокрутки.
+
+
+## Исправление header-контрола v2
+
+```bash
+/workspace/.venvs/pa-next-test/bin/python tools/parallel/test_ui_header_focus.py --output /tmp/pa-next-header-focus
+```
+
+Нужны уже описанные ReactMarkdown8.0.3 dependencies. Тест использует закреплённую старую поставку696213e как отрицательный контроль (объект должен присутствовать в Git) и текущий CSS9 как положительный. Передача --delivered старой точке test_ui_header_reveal.py поддержана; она запускает новый regression. Контрольный сценарий подтверждает именно нативную смену URL/target, а не только :focus, и проверяет30кадров после blur. Данные/iframe не пересоздаются при переключении. Существующие ссылки поддержаны для обновления только общего CSS; новая Markdown-поставка использует #app с title-маркером.
+
+## Диагностика штатной шапки в браузерной консоли
+
+`python3 tools/parallel/test_header_diagnostics.py` проверяет файл 15: сбор селекторов и CSS без изменения DOM/раскладки, реальные клики и отмену перехода обработчиком, скачивание JSON, остановку и повторный запуск, отсутствие тестовых приватных значений в выгрузке и предупреждение о контексте iframe. Инструкция для владельца — `Параллельный отчёт — pa_next/Проверки/Как снять диагностику шапки.md`. Это проверка коллектора на локальном Chromium; живой Proteus ею не проверяется.
+
+После первой продовой выгрузки убрано ограничение на первые 150 stylesheet. Тест помещает CSS переключателя после 175 посторонних таблиц, проверяет полную инвентаризацию 177/177 и наличие совпавших правил из последней таблицы. Версия коллектора — `pa-next-header-diag-2`; лимиты правил отражаются явно.
+
+## Переключатель внутри CSS scope
+
+Историческая проверка v3. Актуальные ожидания вертикальной геометрии изменены по запросу владельца и описаны ниже в разделе v4.
+
+`python3 tools/parallel/test_ui_header_scope.py` использует структуру Markdown из второй продовой выгрузки и полный текущий отчёт в iframe. Старый CSS берётся из Git `315d5f5`; при оборачивании в `@scope` он должен воспроизвести видимые ссылки и ряд высотой 400 px. Новый файл 9 проверяется без scope и в `@scope (#app)` / `@scope (.dashboard-container)`, со старыми и новыми ссылками, на 1366×768 и 1920×1080. Проверяются снятие резерва 65 px, открытие/закрытие без смещения iframe/nav/scroll, отсутствие активации от hover, устойчивость после blur, доступ к меню и Edit через Tab, неизменность принятого ответа и отсутствие дополнительных filter emissions. Метрики и снимки — `/tmp/pa-next-header-scope/`. Точные границы scope root не записаны в старую выгрузку: это варианты стенда, а не утверждение о корневом селекторе прода.
+
+## Раскрытие шапки в потоке, v4
+
+Текущий `test_ui_header_scope.py` пишет результат в `/tmp/pa-next-header-flow/`. Помимо прежнего отрицательного контроля CSS scope, он берёт v3 из `f77879c` и проверяет перекрытие внутреннего названия при открытии. Для новой версии ожидается вертикальный сдвиг iframe на 65 px с уменьшением его высоты на 65 px и неизменностью ширины/нижнего края. Заголовок внутри iframe должен оставаться ниже native header и сохранять кегль. Тест кликает видимое действие «Свернуть» по hit-test псевдоэлемента, проверяет отсутствие пересечения с Edit, затем повторное открытие, старую полосу закрытия, меню/Tab/Edit и отсутствие изменений данных и дополнительных filter emissions. Прежний `test_ui_header_focus.py` использует ту же обновлённую проверку геометрии. Текущий контрол — v4; результаты v3 в поставке остаются историческими.
+
+## Правый угол v5 и непрерывные тултипы
+
+`test_ui_header_scope.py` теперь пишет в `/tmp/pa-next-header-corner/`: проверяет белый фон outer native header поверх модели с белым inner header/прозрачным outer, ширину зоны112px и отсутствие реакции на клики слева, по центру и снаружи границ зоны. Старый CSS `f04b300` служит дополнительным отрицательным контролем широкой зоны и прозрачного резерва. Остальные проверки потока, обеих ссылок, CSS scope и Edit сохранены.
+
+`python3 tools/parallel/test_ui_tooltips.py` сравнивает HTML подсказок с `f04b300` в четырёх вкладках каталога, календаре, закрепляемости и таблице людей, записывает скрывающие style-writes при реальных переходах мыши, проверяет непрерывную видимость одного узла, границы iframe, dismiss, slow gap/nested scroll и multi-month calendar с reduced motion. Метрики — `/tmp/pa-next-tooltip-results/metrics.json`. `ui_tooltips.py` отдельно утверждает побайтовую неизменность части renderer до mount (модель, вычисления, форматирование).
+
+## Свои даты, scroll-only и замедление motion
+
+`python3 tools/parallel/test_ui_custom_dates.py`: отрицательный контроль заглушки из c72ee62, активный own-mode/инструкции/keyboard, отсутствие запросов при draft/cancel/Escape/outside, блокировка незавершённого Apply, идемпотентный повтор own. Шесть сценариев применения сравниваются с оригинальными cpSnap/cpPrev/cpParam: прямые/обратные дни, один день, недели, месяцы и возврат к пресету7. Метрики и снимки — `/tmp/pa-next-custom-dates/`.
+
+`test_ui_autohide.py` теперь проверяет, что край не раскрывает thumb. Изолированный clock-профиль воспроизводит старый hover из c72ee62, проверяет fade-in/out, независимые idle deadlines, отсутствие показа от программного restore/одного intent, reduced motion и destroy. Доставленный JS проверяется real wheel/drag в каталоге, shell и людской таблице, с классическими и zero-width scrollbar geometries и forced colors.
+
+`test_ui_motion.py` ожидает KPI400ms и графики420ms. Проверяет интерполяцию от предыдущего совместимого числа, неподвижность неизменных значений, exact final HTML/AX, отсутствие childList-мутаций на счёте, preview→full, resize/loading/reduced guards и отсутствие лишних перерисовок. Source date/math/widget/SQL не меняются; отрицательные и сравнительные проверки не являются проверкой установки на живом Proteus/macOS.

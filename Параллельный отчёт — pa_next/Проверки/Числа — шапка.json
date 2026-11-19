@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "clickhouse": "24.8.4.1",
+  "baseline_revision": "167c2edcfae1bee7a4fcd830052a9d2dfea49edb",
+  "baseline_yaml": "Proteus Adoption (4).yaml",
+  "baseline_yaml_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
+  "scope": "synthetic dataset equivalence; NOT corporate GP/Proteus acceptance",
+  "cases": [
+    {
+      "kind": "head",
+      "label": "шапка",
+      "filters": {},
+      "mode": "production-profile",
+      "baseline_seconds": 0.203976,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 0.25466,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "head",
+      "label": "шапка",
+      "filters": {},
+      "mode": "old-analyzer",
+      "candidate_seconds": 0.381318,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 0.25995,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "head",
+      "label": "шапка",
+      "filters": {},
+      "mode": "nullable-join",
+      "baseline_seconds": 0.24936,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 0.281753,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    },
+    {
+      "kind": "head",
+      "label": "шапка",
+      "filters": {},
+      "mode": "nullable-group",
+      "candidate_seconds": 0.35686,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "baseline_seconds": 0.292858,
+      "baseline_rows_read": 0,
+      "status": "passed"
+    },
+    {
+      "kind": "head",
+      "label": "шапка",
+      "filters": {},
+      "mode": "all-nullable",
+      "baseline_seconds": 0.281974,
+      "baseline_rows_read": 0,
+      "candidate_seconds": 0.390756,
+      "candidate_rows_read": 0,
+      "generation": "test-1",
+      "status": "passed"
+    }
+  ],
+  "passed": 5,
+  "failed": 0,
+  "completed": true,
+  "candidate_sha256": {
+    "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7"
+  },
+  "elapsed_seconds": 3.961,
+  "rows_read_note": "chdb may report 0 although tables were read; do not interpret 0 as no I/O"
+}

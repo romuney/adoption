@@ -1,0 +1,144 @@
+{
+  "completed": true,
+  "main_sha256": "bdba509c046cf0d7ccf031e8319d0c62dea41457990a1e682c8b31e9fdc6ca96",
+  "main_bytes": 417593,
+  "visual_review": {
+    "main_sha256": "bdba509c046cf0d7ccf031e8319d0c62dea41457990a1e682c8b31e9fdc6ca96",
+    "results": [
+      {
+        "width": 1366,
+        "height": 768,
+        "header": {
+          "left": 1169,
+          "right": 1289,
+          "width": 120,
+          "height": 32.75,
+          "parentRight": 1289,
+          "prevRight": 1153,
+          "opacity": "0.6",
+          "loaded": true,
+          "source": "data:image/webp;base64,"
+        },
+        "loading": {
+          "centerX": 902,
+          "panelCenterX": 902,
+          "messageColor": "rgb(69, 75, 85)",
+          "brandWidth": 110
+        },
+        "KPI_text_preserved_on_who_path_coh": true,
+        "reduced_motion": "none",
+        "errors": [],
+        "CSP_errors": []
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "header": {
+          "left": 1243,
+          "right": 1363,
+          "width": 120,
+          "height": 32.75,
+          "parentRight": 1363,
+          "prevRight": 1227,
+          "opacity": "0.6",
+          "loaded": true,
+          "source": "data:image/webp;base64,"
+        },
+        "loading": {
+          "centerX": 953,
+          "panelCenterX": 953,
+          "messageColor": "rgb(69, 75, 85)",
+          "brandWidth": 110
+        },
+        "KPI_text_preserved_on_who_path_coh": true,
+        "reduced_motion": "none",
+        "errors": [],
+        "CSP_errors": []
+      }
+    ]
+  },
+  "preview": {
+    "completed": true,
+    "status": "passed",
+    "section": "all",
+    "source_sql_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+      "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+    },
+    "source_js_sha256": {
+      "head": "bdba509c046cf0d7ccf031e8319d0c62dea41457990a1e682c8b31e9fdc6ca96",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "cases": [
+      {
+        "case": "exact-preview-d",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 30,
+        "calendar_days": 60
+      },
+      {
+        "case": "exact-preview-w",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 20,
+        "calendar_days": 134
+      },
+      {
+        "case": "exact-preview-m",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 12,
+        "calendar_days": 356
+      },
+      {
+        "case": "exact-preview-q",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 8,
+        "calendar_days": 395
+      },
+      {
+        "case": "malformed-preview-key-id-payload-grain-filter-name",
+        "status": "passed"
+      },
+      {
+        "case": "rapid-A-B-A-exact-cache-old-nonce-cannot-complete",
+        "status": "passed"
+      },
+      {
+        "case": "FULL-A-preview-B-return-A-before-debounce",
+        "status": "passed",
+        "elapsed_ms": 49.29999999701977
+      },
+      {
+        "case": "multiple-reports-no-preview-summing",
+        "status": "passed",
+        "sql_users": 397
+      },
+      {
+        "case": "initial-all-preview-A-clear-restores-exact-defaults",
+        "status": "passed"
+      },
+      {
+        "case": "period-change-rejects-old-catalogue-preview",
+        "status": "passed"
+      },
+      {
+        "case": "people-filter-invalidates-old-catalogue-preview",
+        "status": "passed"
+      },
+      {
+        "case": "foreign-cat-generation-invalidates-preview",
+        "status": "passed"
+      },
+      {
+        "case": "foreign-one-generation-invalidates-preview",
+        "status": "passed"
+      }
+    ],
+    "scope": "Sandbox Chromium with actual local CH24.8 SQL fixtures; no corporate browser/backend accessed"
+  }
+}

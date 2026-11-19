@@ -1,0 +1,97 @@
+{
+  "status": "passed",
+  "completed": true,
+  "candidate_yaml_sha256": "85c095f30b5240804a79b2b8c3d4d748fa217b5a72717106bbcf9cb049df585d",
+  "frozen_codepoints_sha256": "4cdce17d50c1b295773cb3e020a56a9941e4f0ab3af1bb9c4f18d47db1759060",
+  "frozen_codepoints": 847,
+  "codepoints_and_neighbors": 1205,
+  "unique_empty_inputs": 2916,
+  "clickhouse": "24.8.4.1",
+  "databases": [
+    {
+      "encoding": "UTF8",
+      "postgresql": "17.12 (Debian 17.12-0+deb13u1)",
+      "original_chr_894": null,
+      "empty_normalization": {
+        "samples": 2916,
+        "pu_ctes": 2,
+        "comparisons": 5832
+      },
+      "full_packed_fields": {
+        "samples": 284,
+        "fields": [
+          "pl_a",
+          "n_a"
+        ],
+        "comparisons": 568
+      },
+      "status": "passed"
+    },
+    {
+      "encoding": "SQL_ASCII",
+      "postgresql": "17.12 (Debian 17.12-0+deb13u1)",
+      "original_chr_894": {
+        "sqlstate": "54000",
+        "message": "requested character too large for encoding: 894"
+      },
+      "empty_normalization": {
+        "samples": 2916,
+        "pu_ctes": 2,
+        "comparisons": 5832
+      },
+      "full_packed_fields": {
+        "samples": 284,
+        "fields": [
+          "pl_a",
+          "n_a"
+        ],
+        "comparisons": 568
+      },
+      "status": "passed"
+    },
+    {
+      "encoding": "WIN1251",
+      "postgresql": "17.12 (Debian 17.12-0+deb13u1)",
+      "original_chr_894": {
+        "sqlstate": "54000",
+        "message": "requested character too large for encoding: 894"
+      },
+      "empty_normalization": {
+        "samples": 173,
+        "pu_ctes": 2,
+        "comparisons": 346
+      },
+      "full_packed_fields": {
+        "samples": 151,
+        "fields": [
+          "pl_a",
+          "n_a"
+        ],
+        "comparisons": 302
+      },
+      "status": "passed"
+    }
+  ],
+  "inherited_sql_ascii_fio_regression": {
+    "input": "Я",
+    "old": {
+      "pl_a": "6c6f67696e2078205e607e7c606125607c317c327c33",
+      "n_a": "6c6f67696e2078205e607e7c606125607c317c327c317c347c35"
+    },
+    "expected": {
+      "pl_a": "6c6f67696e2078205e607e7c6047607c317c327c33",
+      "n_a": "6c6f67696e2078205e607e7c6047607c317c327c317c347c35"
+    },
+    "reproduced": true
+  },
+  "sql_ascii_raw_non_utf8_diagnostic": {
+    "sqlstate": "22021",
+    "message": "invalid byte sequence for encoding \"UTF8\": 0x97"
+  },
+  "scope": "local PostgreSQL encoding model and ClickHouse 24.8 oracle; corporate GP not accessed",
+  "limitations": [
+    "SQL_ASCII fixtures carry UTF8 bytes; arbitrary legacy-encoded byte strings need an explicit input encoding.",
+    "WIN1251 corpus excludes Unicode characters that cannot be represented in WIN1251.",
+    "Packed fields are extracted from shipped pl_a/n_a projections; full corporate ETL and transport are not executed."
+  ]
+}

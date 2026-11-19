@@ -1,0 +1,190 @@
+{
+  "status": "passed",
+  "scope": "local synthetic models; no corporate deployment performed",
+  "baseline_sql_commit": "167c2edcfae1bee7a4fcd830052a9d2dfea49edb",
+  "production_yaml_sha256": "9bd58e4e6599b3d192977bfdf81e1595a44690c69cfca4ae2d84354cd00a9f6d",
+  "candidate_sql_sha256": {
+    "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+    "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+    "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+  },
+  "clickhouse": "24.8.4.1",
+  "postgresql": "17.12",
+  "fact_rows": 1267692,
+  "exact_query_comparisons": [
+    {
+      "name": "numeric",
+      "comparisons": 320,
+      "failed": 0,
+      "profiles": [
+        "production-profile"
+      ]
+    },
+    {
+      "name": "identity",
+      "comparisons": 5,
+      "failed": 0,
+      "profiles": [
+        "production-profile"
+      ]
+    },
+    {
+      "name": "profile",
+      "comparisons": 50,
+      "failed": 0,
+      "profiles": [
+        "all-nullable",
+        "nullable-group",
+        "nullable-join",
+        "old-analyzer",
+        "production-profile"
+      ]
+    },
+    {
+      "name": "head",
+      "comparisons": 5,
+      "failed": 0,
+      "profiles": [
+        "all-nullable",
+        "nullable-group",
+        "nullable-join",
+        "old-analyzer",
+        "production-profile"
+      ]
+    }
+  ],
+  "total_comparisons": 380,
+  "source_events": {
+    "input": 12,
+    "expected_views": 12,
+    "actual_views": 12,
+    "cases": [
+      "history cutoff before/exact",
+      "old/new event before/exact cutover",
+      "today midnight included; midday excluded",
+      "wrong event type ignored",
+      "duplicate source events preserved",
+      "duplicate dimension join multiplicity preserved"
+    ],
+    "as_of": "2026-11-13",
+    "excluded_unused_column": "max_date (NULL and no downstream consumers verified)"
+  },
+  "base_gp_tables": [
+    {
+      "table": "pa_login_map",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_evd_day",
+      "rows": 5,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_meta",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_emp_attrs",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_pair",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_bkt",
+      "rows": 8,
+      "equal": true
+    },
+    {
+      "table": "pa_staff",
+      "rows": 2,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_acl",
+      "rows": 2,
+      "equal": true
+    },
+    {
+      "table": "pa_adg_member",
+      "rows": 2,
+      "equal": true
+    },
+    {
+      "table": "pa_adg_size",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_dash_ca",
+      "rows": 1,
+      "equal": true
+    },
+    {
+      "table": "pa_pair_acc",
+      "rows": 1,
+      "equal": true
+    }
+  ],
+  "accelerated_gp_tables": [
+    {
+      "table": "pa_next_md",
+      "rows": 1,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_dict",
+      "rows": 42,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_viewer",
+      "rows": 6791,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_staffx",
+      "rows": 10240,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_dash_day",
+      "rows": 577699,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_all_day",
+      "rows": 1580,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_cat_rep",
+      "rows": 6000,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_cat_grp",
+      "rows": 10240,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_cat_aud",
+      "rows": 6112,
+      "status": "passed"
+    }
+  ],
+  "readiness_table_count": 21,
+  "normalization": "exact multiset; only packed line order normalized; duplicates and all numeric/string fields preserved; validated generation/request metadata excluded",
+  "limitations": [
+    "PostgreSQL models portable GP SQL; actual corporate Greenplum and gp_to_click not executed.",
+    "Numerical suite timings were observational under other checks; no universal speedup is claimed.",
+    "chdb reports rows_read=0 despite reads; not usable for I/O conclusions.",
+    "Current production dataset SQL must still be confirmed against the pinned repository oracle during paired acceptance.",
+    "Live Proteus permissions, cache, imports and non-atomic multi-table refresh require documented owner checks."
+  ]
+}

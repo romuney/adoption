@@ -1,0 +1,2461 @@
+{
+  "completed": true,
+  "status": "passed",
+  "policy": "drop",
+  "harness_sha256": "8b81d749a483214d640e3a9f96786a965939c833f0eb372266017b6b657891fe",
+  "script_sha256": {
+    "head": "b0edc3d786a274e65569b6e9d2a1386fe322fbcfbc1c6215e31c0f4eaea0aafa",
+    "cat": "ae726bfef5bd1777a0d23931234f9a2b5c58e531e64901778e9a4f59803ace05",
+    "one": "7e74dbcebaaae62aed397415bf45a55eba0a9249d0aa43e07dad3e8e713d705d"
+  },
+  "source_sql_sha256": {
+    "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+    "cat": "5fe33bbfe3bd5a647e79f7ba2a9b8885153eb903d513a1d473aa53a17f76ca54",
+    "one": "33576d558ea61159c6b1a83070d1e528e25af24985763db2194bb01172836bc0"
+  },
+  "scope": "Actual shipped scripts and actual SQL fixtures; platform single-flight simulation, no corporate service access; runtime constants unchanged",
+  "cases": [
+    {
+      "case": "stale-completion-must-release-latest",
+      "first_job": 1,
+      "latest_job": 3,
+      "completion_t_ms": 5962,
+      "next_start_t_ms": 6341,
+      "release_delay_ms": 379,
+      "observed_ms": 2500,
+      "ui_state": "loading",
+      "final_query_count": 4
+    },
+    {
+      "case": "A-B-clear-single-flight",
+      "status": "passed",
+      "release_delay_ms": 268,
+      "queries": 2
+    },
+    {
+      "case": "A-B-C-union-old-replay",
+      "status": "passed",
+      "release_delay_ms": 352,
+      "queries": 2
+    },
+    {
+      "case": "ready-cache-does-not-complete-outstanding-query",
+      "status": "passed",
+      "release_delay_ms": 186
+    },
+    {
+      "case": "initial-default-cache-reset-preserves-flight",
+      "status": "passed",
+      "release_delay_ms": 208
+    },
+    {
+      "case": "receiver-remount-retired-response",
+      "status": "passed",
+      "release_delay_ms": 220
+    }
+  ],
+  "events": [
+    [
+      {
+        "t": 2858,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2932,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 3117,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 4108,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022373012-47525045056822446",
+          "seq": 1,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-1"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 4109,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022373012-47525045056822446-1"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 4110,
+        "kind": "START",
+        "id": 1,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 4110,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022371701-1611448656076756",
+          "session": "1795022373012-47525045056822446",
+          "seq": 1
+        }
+      },
+      {
+        "t": 4134,
+        "kind": "CLICK",
+        "report": "3"
+      },
+      {
+        "t": 5079,
+        "kind": "PERIOD",
+        "grain": "w"
+      },
+      {
+        "t": 5962,
+        "kind": "FINISH",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 6341,
+        "kind": "EMIT",
+        "source": "head",
+        "mask": [
+          {
+            "column": "period_param",
+            "operator": "IN",
+            "value": [
+              "w"
+            ]
+          },
+          {
+            "column": "pa_next_head_req",
+            "operator": "IN",
+            "value": [
+              "1795022373012-47525045056822446-2"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 6341,
+        "kind": "START",
+        "id": 2,
+        "target": "cat",
+        "snapshot": {
+          "head": [
+            {
+              "column": "period_param",
+              "operator": "IN",
+              "value": [
+                "w"
+              ]
+            },
+            {
+              "column": "pa_next_head_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-2"
+              ]
+            }
+          ],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "head"
+      },
+      {
+        "t": 6341,
+        "kind": "START",
+        "id": 3,
+        "target": "one",
+        "snapshot": {
+          "head": [
+            {
+              "column": "period_param",
+              "operator": "IN",
+              "value": [
+                "w"
+              ]
+            },
+            {
+              "column": "pa_next_head_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-2"
+              ]
+            }
+          ],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "head"
+      },
+      {
+        "t": 6462,
+        "kind": "FINISH",
+        "id": 2,
+        "target": "cat"
+      },
+      {
+        "t": 6931,
+        "kind": "FINISH",
+        "id": 3,
+        "target": "one"
+      },
+      {
+        "t": 7225,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 7447,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022373012-47525045056822446",
+          "seq": 3,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-3"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 7447,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "3"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022373012-47525045056822446-3"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 7447,
+        "kind": "START",
+        "id": 4,
+        "target": "one",
+        "snapshot": {
+          "head": [
+            {
+              "column": "period_param",
+              "operator": "IN",
+              "value": [
+                "w"
+              ]
+            },
+            {
+              "column": "pa_next_head_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-2"
+              ]
+            }
+          ],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022373012-47525045056822446-3"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 7447,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 2,
+          "instance": "1795022371701-1611448656076756",
+          "session": "1795022373012-47525045056822446",
+          "seq": 3
+        }
+      },
+      {
+        "t": 7612,
+        "kind": "FINISH",
+        "id": 4,
+        "target": "one"
+      },
+      {
+        "t": 8016,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[\"3\"]]]",
+          "noflt": false
+        }
+      }
+    ],
+    [
+      {
+        "t": 2286,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2355,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2587,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 3428,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022381031-9076117623222323",
+          "seq": 1,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-1"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 3429,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022381031-9076117623222323-1"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 3429,
+        "kind": "START",
+        "id": 1,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 3430,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022380459-35033284055350344",
+          "session": "1795022381031-9076117623222323",
+          "seq": 1
+        }
+      },
+      {
+        "t": 3459,
+        "kind": "CLICK",
+        "report": "3"
+      },
+      {
+        "t": 4319,
+        "kind": "CLICK",
+        "report": "3"
+      },
+      {
+        "t": 5008,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 5390,
+        "kind": "FINISH",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 5658,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022381031-9076117623222323",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 5658,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022381031-9076117623222323-2"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 5658,
+        "kind": "START",
+        "id": 2,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-2"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 5663,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022380459-35033284055350344",
+          "session": "1795022381031-9076117623222323",
+          "seq": 2
+        }
+      },
+      {
+        "t": 5664,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022381031-9076117623222323",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 5664,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022380459-35033284055350344",
+          "session": "1795022381031-9076117623222323",
+          "seq": 2
+        }
+      },
+      {
+        "t": 5915,
+        "kind": "FINISH",
+        "id": 2,
+        "target": "one"
+      },
+      {
+        "t": 6748,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 7051,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022381031-9076117623222323",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 7051,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022381031-9076117623222323",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 7051,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022381031-9076117623222323",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022381031-9076117623222323-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 7052,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022380459-35033284055350344",
+          "session": "1795022381031-9076117623222323",
+          "seq": 2
+        }
+      },
+      {
+        "t": 7052,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022380459-35033284055350344",
+          "session": "1795022381031-9076117623222323",
+          "seq": 2
+        }
+      },
+      {
+        "t": 7052,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022380459-35033284055350344",
+          "session": "1795022381031-9076117623222323",
+          "seq": 2
+        }
+      }
+    ],
+    [
+      {
+        "t": 2149,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2169,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2312,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 3228,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022392282-3785103224965043",
+          "seq": 1,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022392282-3785103224965043-1"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 3228,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022392282-3785103224965043-1"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 3228,
+        "kind": "START",
+        "id": 1,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022392282-3785103224965043-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 3229,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022391654-4012250608958676",
+          "session": "1795022392282-3785103224965043",
+          "seq": 1
+        }
+      },
+      {
+        "t": 3259,
+        "kind": "CLICK",
+        "report": "3"
+      },
+      {
+        "t": 3957,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 4639,
+        "kind": "FINISH",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 4991,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022392282-3785103224965043",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2",
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022392282-3785103224965043-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 4991,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2",
+              "3"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022392282-3785103224965043-2"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 4991,
+        "kind": "START",
+        "id": 2,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2",
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022392282-3785103224965043-2"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 4991,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022391654-4012250608958676",
+          "session": "1795022392282-3785103224965043",
+          "seq": 2
+        }
+      },
+      {
+        "t": 5065,
+        "kind": "REPLAY",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 6041,
+        "kind": "FINISH",
+        "id": 2,
+        "target": "one"
+      },
+      {
+        "t": 6438,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[\"2\",\"3\"]]]",
+          "noflt": false
+        }
+      }
+    ],
+    [
+      {
+        "t": 1835,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 1904,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2082,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 2938,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022402147-9714226212094331",
+          "seq": 1,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022402147-9714226212094331-1"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 2938,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022402147-9714226212094331-1"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 2938,
+        "kind": "START",
+        "id": 1,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022402147-9714226212094331-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 2939,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022401698-4303937922748987",
+          "session": "1795022402147-9714226212094331",
+          "seq": 1
+        }
+      },
+      {
+        "t": 2969,
+        "kind": "FINISH",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 3252,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[\"2\"]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 3576,
+        "kind": "CLICK",
+        "report": "3"
+      },
+      {
+        "t": 4087,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022402147-9714226212094331",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022402147-9714226212094331-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 4087,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "3"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022402147-9714226212094331-2"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 4087,
+        "kind": "START",
+        "id": 2,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022402147-9714226212094331-2"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 4087,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022401698-4303937922748987",
+          "session": "1795022402147-9714226212094331",
+          "seq": 2
+        }
+      },
+      {
+        "t": 4131,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 4419,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[\"2\"]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 5532,
+        "kind": "CLICK",
+        "report": "3"
+      },
+      {
+        "t": 6330,
+        "kind": "FINISH",
+        "id": 2,
+        "target": "one"
+      },
+      {
+        "t": 6515,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022402147-9714226212094331",
+          "seq": 3,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2",
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022402147-9714226212094331-3"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 6516,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2",
+              "3"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022402147-9714226212094331-3"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 6516,
+        "kind": "START",
+        "id": 3,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2",
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022402147-9714226212094331-3"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 6517,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022401698-4303937922748987",
+          "session": "1795022402147-9714226212094331",
+          "seq": 3
+        }
+      },
+      {
+        "t": 6610,
+        "kind": "REPLAY",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 6946,
+        "kind": "FINISH",
+        "id": 3,
+        "target": "one"
+      },
+      {
+        "t": 7256,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[\"2\",\"3\"]]]",
+          "noflt": false
+        }
+      }
+    ],
+    [
+      {
+        "t": 2523,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2523,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2677,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 3776,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022413676-6196668166166724",
+          "seq": 1,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022413676-6196668166166724-1"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 3777,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022413676-6196668166166724-1"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 3777,
+        "kind": "START",
+        "id": 1,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022413676-6196668166166724-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 3778,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022412751-31553137400275433",
+          "session": "1795022413676-6196668166166724",
+          "seq": 1
+        }
+      },
+      {
+        "t": 3817,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 4265,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 4989,
+        "kind": "FINISH",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 5194,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022413676-6196668166166724",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022413676-6196668166166724-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 5197,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022413676-6196668166166724-2"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 5197,
+        "kind": "START",
+        "id": 2,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022413676-6196668166166724-2"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 5197,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022412751-31553137400275433",
+          "session": "1795022413676-6196668166166724",
+          "seq": 2
+        }
+      },
+      {
+        "t": 5329,
+        "kind": "FINISH",
+        "id": 2,
+        "target": "one"
+      },
+      {
+        "t": 5885,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      }
+    ],
+    [
+      {
+        "t": 1958,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 1958,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 2163,
+        "kind": "CLICK",
+        "report": "2"
+      },
+      {
+        "t": 2887,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022422599-46193352200086324",
+          "seq": 1,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022422599-46193352200086324-1"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 2887,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "2"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022422599-46193352200086324-1"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 2889,
+        "kind": "START",
+        "id": 1,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "2"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022422599-46193352200086324-1"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 2889,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022422092-19823878623143576",
+          "session": "1795022422599-46193352200086324",
+          "seq": 1
+        }
+      },
+      {
+        "t": 3440,
+        "kind": "CLICK",
+        "report": "3"
+      },
+      {
+        "t": 5089,
+        "kind": "FINISH",
+        "id": 1,
+        "target": "one"
+      },
+      {
+        "t": 5308,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022422599-46193352200086324",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022422599-46193352200086324-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 5309,
+        "kind": "EMIT",
+        "source": "cat",
+        "mask": [
+          {
+            "column": "mode_param",
+            "operator": "IN",
+            "value": [
+              "report"
+            ]
+          },
+          {
+            "column": "sel_f",
+            "operator": "IN",
+            "value": [
+              "3"
+            ]
+          },
+          {
+            "column": "pa_next_cat_req",
+            "operator": "IN",
+            "value": [
+              "1795022422599-46193352200086324-2"
+            ]
+          }
+        ]
+      },
+      {
+        "t": 5309,
+        "kind": "START",
+        "id": 2,
+        "target": "one",
+        "snapshot": {
+          "head": [],
+          "cat": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022422599-46193352200086324-2"
+              ]
+            }
+          ],
+          "one": []
+        },
+        "reason": "cat"
+      },
+      {
+        "t": 5309,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022422092-19823878623143576",
+          "session": "1795022422599-46193352200086324",
+          "seq": 2
+        }
+      },
+      {
+        "t": 5415,
+        "kind": "FINISH",
+        "id": 2,
+        "target": "one"
+      },
+      {
+        "t": 5659,
+        "kind": "AUD",
+        "part": "head",
+        "payload": {
+          "key": "[[\"mode_param\",[\"report\"]],[\"sel_f\",[\"3\"]]]",
+          "noflt": false
+        }
+      },
+      {
+        "t": 6097,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022422599-46193352200086324",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022422599-46193352200086324-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 6098,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022422599-46193352200086324",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022422599-46193352200086324-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 6098,
+        "kind": "COMMAND",
+        "part": "cat",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "v": 1,
+          "channel": "proteus-adoption-next-859562",
+          "kind": "COMMAND",
+          "chart": 859562,
+          "to": 859563,
+          "session": "1795022422599-46193352200086324",
+          "seq": 2,
+          "mask": [
+            {
+              "column": "mode_param",
+              "operator": "IN",
+              "value": [
+                "report"
+              ]
+            },
+            {
+              "column": "sel_f",
+              "operator": "IN",
+              "value": [
+                "3"
+              ]
+            },
+            {
+              "column": "pa_next_cat_req",
+              "operator": "IN",
+              "value": [
+                "1795022422599-46193352200086324-2"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "t": 6102,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022422092-19823878623143576",
+          "session": "1795022422599-46193352200086324",
+          "seq": 2
+        }
+      },
+      {
+        "t": 6102,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022422092-19823878623143576",
+          "session": "1795022422599-46193352200086324",
+          "seq": 2
+        }
+      },
+      {
+        "t": 6103,
+        "kind": "ACK",
+        "part": "head",
+        "payload": {
+          "type": "PA_NEXT_V1",
+          "channel": "proteus-adoption-next-859562",
+          "v": 1,
+          "kind": "ACK",
+          "part": "cat",
+          "chart": 859563,
+          "to": 859562,
+          "serial": 1,
+          "instance": "1795022422092-19823878623143576",
+          "session": "1795022422599-46193352200086324",
+          "seq": 2
+        }
+      }
+    ]
+  ]
+}

@@ -1,0 +1,43 @@
+[
+  {
+    "task": "Оптимизация ClickHouse",
+    "read": [
+      ".agents/skills/clickhouse-best-practices/SKILL.md",
+      "docs/vendor/proteus-playbook/04-clickhouse.md",
+      "docs/vendor/proteus-playbook/02-superset-path.md"
+    ]
+  },
+  {
+    "task": "UX-проверка",
+    "read": [
+      ".agents/skills/web-design-guidelines/SKILL.md",
+      "docs/vendor/web-interface-guidelines/command.md",
+      "docs/vendor/proteus-playbook/11-ui.md",
+      "DESIGN_SYSTEM.md"
+    ]
+  },
+  {
+    "task": "Кросс-фильтры Proteus",
+    "read": [
+      "docs/vendor/proteus-playbook/09-multi-chart.md",
+      "docs/vendor/proteus-playbook/08-sandbox.md",
+      "CLAUDE.md"
+    ]
+  },
+  {
+    "task": "Доступ и кэш",
+    "read": [
+      "docs/vendor/proteus-playbook/03-access-cache.md",
+      "docs/vendor/proteus-playbook/02-superset-path.md"
+    ]
+  },
+  {
+    "task": "Подготовка поставки",
+    "read": [
+      "docs/vendor/proteus-playbook/14-delivery.md",
+      "docs/vendor/proteus-playbook/13-stand.md",
+      "docs/vendor/proteus-playbook/checklists/before-delivery.md",
+      "docs/vendor/proteus-playbook/kit/README.md"
+    ]
+  }
+]

@@ -1,0 +1,291 @@
+{
+  "scope": "Local Chromium, actual delivery + captured SQL fixture rows, not live Proteus",
+  "completed": true,
+  "negative": [
+    {
+      "label": "catalog-report",
+      "hover": {
+        "hidden": 7,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 140,
+        "y": 439,
+        "right": 325.84375,
+        "bottom": 528.171875,
+        "transition": "opacity",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "catalog-collection",
+      "hover": {
+        "hidden": 7,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 515,
+        "y": 424,
+        "right": 716.578125,
+        "bottom": 504,
+        "transition": "opacity",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "catalog-owner",
+      "hover": {
+        "hidden": 7,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 515,
+        "y": 424,
+        "right": 717.515625,
+        "bottom": 504,
+        "transition": "opacity",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "catalog-audience",
+      "hover": {
+        "hidden": 7,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 140,
+        "y": 458,
+        "right": 400,
+        "bottom": 570.46875,
+        "transition": "opacity",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "calendar",
+      "hover": {
+        "hidden": 7,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 740,
+        "y": 433,
+        "right": 1000,
+        "bottom": 553.34375,
+        "transition": "opacity",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "retention",
+      "hover": {
+        "hidden": 7,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 666,
+        "y": 599,
+        "right": 926,
+        "bottom": 727.5625,
+        "transition": "opacity",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "people",
+      "hover": {
+        "hidden": 7,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 923,
+        "y": 391,
+        "right": 1183,
+        "bottom": 447.34375,
+        "transition": "opacity",
+        "duration": "0.08s"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "label": "catalog-report",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 140,
+        "y": 439,
+        "right": 325.84375,
+        "bottom": 528.171875,
+        "transition": "transform",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "catalog-collection",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 515,
+        "y": 424,
+        "right": 716.578125,
+        "bottom": 504,
+        "transition": "transform",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "catalog-owner",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 515,
+        "y": 424,
+        "right": 717.515625,
+        "bottom": 504,
+        "transition": "transform",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "catalog-audience",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 140,
+        "y": 458,
+        "right": 400,
+        "bottom": 570.46875,
+        "transition": "transform",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "calendar",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 740,
+        "y": 433,
+        "right": 1000,
+        "bottom": 553.34375,
+        "transition": "transform",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "retention",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 666,
+        "y": 599,
+        "right": 926,
+        "bottom": 727.5625,
+        "transition": "transform",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "people",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 923,
+        "y": 391,
+        "right": 1183,
+        "bottom": 447.34375,
+        "transition": "transform",
+        "duration": "0.08s"
+      }
+    },
+    {
+      "label": "calendar-month-grid-reduced",
+      "hover": {
+        "hidden": 0,
+        "sameNode": true,
+        "opacity": "1",
+        "display": "block",
+        "x": 681,
+        "y": 403,
+        "right": 941,
+        "bottom": 506.34375,
+        "transition": "none",
+        "duration": "0s"
+      }
+    }
+  ],
+  "edgeTransition": {
+    "samples": [
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      },
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      },
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      },
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      },
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      },
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      },
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      },
+      {
+        "left": 24,
+        "top": 28,
+        "right": 276,
+        "bottom": 204
+      }
+    ],
+    "width": 1552,
+    "height": 953
+  },
+  "sha256": {
+    "4. JS — весь отчёт.js": "3511f6fdd62ce637920ffe992cc917ce4b3e5d5abbce36fa6828f93850013c70",
+    "9. CSS — дашборд.css": "54854aa873dffd4ebae3e9c646a18076c192b000cd8cd9b25ead4d96ebfd6060"
+  }
+}

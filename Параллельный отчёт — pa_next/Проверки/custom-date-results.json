@@ -1,0 +1,116 @@
+{
+  "scope": "Local Chromium with actual delivery/fixture data; not live Proteus",
+  "completed": true,
+  "cases": [
+    {
+      "label": "days",
+      "viewportWidth": 1366,
+      "parameter": "c|2026-08-09|d|9",
+      "period": {
+        "a": 20666,
+        "b": 20674,
+        "t": 20674,
+        "g": "d",
+        "n": 9
+      },
+      "previous": {
+        "a": 20657,
+        "b": 20665
+      }
+    },
+    {
+      "label": "reverse-days",
+      "viewportWidth": 1366,
+      "parameter": "c|2026-08-09|d|9",
+      "period": {
+        "a": 20666,
+        "b": 20674,
+        "t": 20674,
+        "g": "d",
+        "n": 9
+      },
+      "previous": {
+        "a": 20657,
+        "b": 20665
+      }
+    },
+    {
+      "label": "single-day",
+      "viewportWidth": 1366,
+      "parameter": "c|2026-08-01|d|1",
+      "period": {
+        "a": 20666,
+        "b": 20666,
+        "t": 20666,
+        "g": "d",
+        "n": 1
+      },
+      "previous": {
+        "a": 20665,
+        "b": 20665
+      }
+    },
+    {
+      "label": "weeks",
+      "viewportWidth": 1920,
+      "parameter": "c|2026-08-09|w|2",
+      "period": {
+        "a": 20661,
+        "b": 20674,
+        "t": 20674,
+        "g": "w",
+        "n": 2
+      },
+      "previous": {
+        "a": 20647,
+        "b": 20660
+      }
+    },
+    {
+      "label": "months",
+      "viewportWidth": 1920,
+      "parameter": "c|2026-08-31|m|1",
+      "period": {
+        "a": 20666,
+        "b": 20696,
+        "t": 20696,
+        "g": "m",
+        "n": 1
+      },
+      "previous": {
+        "a": 20635,
+        "b": 20665
+      }
+    },
+    {
+      "label": "own-back-to-preset",
+      "viewportWidth": 1366,
+      "parameter": "c|2026-09-21|d|7",
+      "period": {
+        "a": 20711,
+        "b": 20717,
+        "t": 20717,
+        "g": "d",
+        "n": 7
+      },
+      "previous": {
+        "a": 20704,
+        "b": 20710
+      }
+    }
+  ],
+  "negative": {
+    "revision": "c72ee62",
+    "ownButtonHandler": false,
+    "tabindex": -1,
+    "draftUnchangedAfterClick": true
+  },
+  "draft": {
+    "keyboard": true,
+    "hintSteps": 3,
+    "disabledUntilTwoEndpoints": true,
+    "activeModeIdempotent": true,
+    "cancelEscapeOutsideNoQueries": true
+  },
+  "sha256": "3eba9493a9991ea843abf1e8a0d3759ae456cfa1632e5670bec5f9f7e6dc178b"
+}

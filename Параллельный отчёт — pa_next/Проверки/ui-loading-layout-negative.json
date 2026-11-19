@@ -1,0 +1,167 @@
+{
+  "baseline": "c75abeb",
+  "expected_failure": true,
+  "assertion": [
+    "1366x768-who preview",
+    ".pone-panel-h",
+    "y",
+    {
+      "t": 2865.5,
+      ".pa-next-shell": {
+        "x": 0,
+        "y": 0,
+        "w": 1318,
+        "h": 613,
+        "client": 613,
+        "scroll": 742,
+        "top": 129
+      },
+      ".pa-next-content": {
+        "x": 0,
+        "y": -0.40625,
+        "w": 1303,
+        "h": 613,
+        "client": 613,
+        "scroll": 613,
+        "top": 0
+      },
+      ".pa-next-one": {
+        "x": 509,
+        "y": -0.40625,
+        "w": 786,
+        "h": 613,
+        "client": 613,
+        "scroll": 613,
+        "top": 0
+      },
+      ".pone-overlay": {
+        "x": 509,
+        "y": -0.40625,
+        "w": 786,
+        "h": 613,
+        "client": 613,
+        "scroll": 613,
+        "top": 0
+      },
+      ".pone-topbar": {
+        "x": 509,
+        "y": -0.40625,
+        "w": 786,
+        "h": 34,
+        "client": 34,
+        "scroll": 34,
+        "top": 0
+      },
+      ".pone-panel": {
+        "x": 509,
+        "y": 41.59375,
+        "w": 786,
+        "h": 571,
+        "client": 571,
+        "scroll": 571,
+        "top": 0
+      },
+      ".pone-panel-h": {
+        "x": 509,
+        "y": 41.59375,
+        "w": 786,
+        "h": 58,
+        "client": 58,
+        "scroll": 58,
+        "top": 0
+      },
+      ".pone-panel-b": {
+        "x": 509,
+        "y": 99.59375,
+        "w": 786,
+        "h": 513,
+        "client": 513,
+        "scroll": 513,
+        "top": 0
+      },
+      "kpiRows": 0,
+      "gridRows": "613px",
+      "state": "ready",
+      "pending": 0
+    },
+    {
+      "t": 3823,
+      ".pa-next-shell": {
+        "x": 0,
+        "y": 0,
+        "w": 1318,
+        "h": 613,
+        "client": 613,
+        "scroll": 742,
+        "top": 129
+      },
+      ".pa-next-content": {
+        "x": 0,
+        "y": -0.40625,
+        "w": 1303,
+        "h": 613,
+        "client": 613,
+        "scroll": 613,
+        "top": 0
+      },
+      ".pa-next-one": {
+        "x": 509,
+        "y": -0.40625,
+        "w": 786,
+        "h": 613,
+        "client": 613,
+        "scroll": 613,
+        "top": 0
+      },
+      ".pone-overlay": {
+        "x": 509,
+        "y": -0.40625,
+        "w": 786,
+        "h": 613,
+        "client": 613,
+        "scroll": 613,
+        "top": 0
+      },
+      ".pone-topbar": {
+        "x": 509,
+        "y": -0.40625,
+        "w": 786,
+        "h": 34,
+        "client": 34,
+        "scroll": 34,
+        "top": 0
+      },
+      ".pone-panel": {
+        "x": 509,
+        "y": 179.1875,
+        "w": 786,
+        "h": 433.40625,
+        "client": 433,
+        "scroll": 433,
+        "top": 0
+      },
+      ".pone-panel-h": {
+        "x": 509,
+        "y": 179.1875,
+        "w": 786,
+        "h": 58,
+        "client": 58,
+        "scroll": 58,
+        "top": 0
+      },
+      ".pone-panel-b": {
+        "x": 509,
+        "y": 237.1875,
+        "w": 786,
+        "h": 375.40625,
+        "client": 375,
+        "scroll": 375,
+        "top": 0
+      },
+      "kpiRows": 1,
+      "gridRows": "613px",
+      "state": "preview",
+      "pending": 1
+    }
+  ]
+}

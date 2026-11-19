@@ -1,0 +1,3290 @@
+{
+  "completed": true,
+  "scope": "Local Chromium, synthetic PostgreSQL and actual local ClickHouse24.8 SQL; no live Proteus or Helicopter execution",
+  "delivery_sha256": {
+    "1. Helicopter — pa_next.yaml": "7a7f97e50f9fd427c19511ea2e3d9a2663f5aed266c239b64a26acbb1f19603c",
+    "4. JS — весь отчёт.js": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+    "5. SQL — каталог.sql": "5fe33bbfe3bd5a647e79f7ba2a9b8885153eb903d513a1d473aa53a17f76ca54",
+    "7. SQL — панель.sql": "33576d558ea61159c6b1a83070d1e528e25af24985763db2194bb01172836bc0",
+    "9. CSS — дашборд.css": "05c58db70d4985133ea5b101b088cbe4da3229e14914473edcaf8744a974c118",
+    "11. SQL Lab — готовность витрин.sql": "bf3a3c224480717709404372cc2fb6cc1a0681e70db8824262481661c00ea15d"
+  },
+  "people_ui": {
+    "schema_version": 1,
+    "completed": true,
+    "mode": "delivery",
+    "main_sha256": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+    "module_sha256": "8cc3e3e16e603f0a1307c68cc72ab4bbea367a6c957512e452b18a2268ec7eab",
+    "finished_utc": "2026-11-15T15:01:43.157534+00:00",
+    "scope": "Parser, UI state, filter transport and transformed preview contract on synthetic mocks; no production or SQL metric equivalence claim.",
+    "viewport": {
+      "width": 1366,
+      "height": 768,
+      "iframe_height": 1600
+    },
+    "javascript_errors": [],
+    "checks": [
+      "Excel CRLF/tab/NBSP, manual delimiters, lowercase and duplicate removal",
+      "JSON string arrays, numeric JSON rejected",
+      "5000 unique and 32000 normalized characters accepted at boundary; overflow rejected without truncation",
+      "Master ID leading zeros and 32 digits preserved as strings; exponent/fraction/negative rejected",
+      "Preview flt and sj.ca retain login/master and conditional CA mode",
+      "Editor Save changes draft only; global Apply emits exact selected-mode filter",
+      "Invalid and oversized input cannot partially change draft",
+      "Cancel and Escape preserve draft; empty list removes filter",
+      "Unique ID count does not claim matched employee count; facets explicitly exclude person list",
+      "Focus trap/return, visible footer, rerender cleanup and zero JavaScript errors",
+      "Parent scroll keeps dialog within visible iframe band"
+    ],
+    "short_5000_login_mask_json_bytes": 45051,
+    "screenshot": "/tmp/pa-next-people-delivery.png"
+  },
+  "guide": {
+    "completed": true,
+    "main_sha256": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+    "scope": "Local Chromium, actual SQL fixtures, user-driven CA/report choice; no corporate service access",
+    "cases": [
+      {
+        "viewport": [
+          1366,
+          768
+        ],
+        "steps": 7,
+        "reached": 18,
+        "never": 494,
+        "queries": 3,
+        "local_navigation_queries": 0,
+        "errors": []
+      },
+      {
+        "viewport": [
+          1920,
+          1080
+        ],
+        "steps": 7,
+        "reached": 18,
+        "never": 494,
+        "queries": 3,
+        "local_navigation_queries": 0,
+        "errors": []
+      }
+    ]
+  },
+  "motion": {
+    "completed": true,
+    "main_sha256": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+    "isolated": {
+      "formatting": "exact",
+      "accessible_final": true,
+      "large_values": "not coerced",
+      "resize_loading_reduced_unchanged": "no animation"
+    },
+    "motion": {
+      "writes": [
+        2545.699999999255,
+        2565.300000000745,
+        3941.800000000745
+      ],
+      "animations": [
+        {
+          "t": 2570.199999999255,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.5999999996275,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.5999999996275,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.5999999996275,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.699999999255,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2570.9000000003725,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.0999999996275,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.199999999255,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.199999999255,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.300000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.300000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.4000000003725,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.4000000003725,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.5,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.5,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.5,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.5999999996275,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.5999999996275,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.5999999996275,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.699999999255,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.699999999255,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.699999999255,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.800000000745,
+          "cls": "bar",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2571.9000000003725,
+          "cls": "ln",
+          "duration": 220,
+          "delay": 0
+        },
+        {
+          "t": 2572.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.5,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.5,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.5999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.5999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.5999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.800000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.800000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.800000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.800000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.800000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2572.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.5999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.699999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.800000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2573.9000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.0999999996275,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.199999999255,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.300000000745,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        },
+        {
+          "t": 2574.4000000003725,
+          "cls": "fade",
+          "duration": 180,
+          "delay": 0
+        }
+      ],
+      "frames": [
+        2083.3,
+        2083.3,
+        2083.3,
+        2116.6,
+        2133.3,
+        2149.9,
+        2166.7,
+        2183.2,
+        2200,
+        2216.6,
+        2233.2,
+        2249.9,
+        2266.6,
+        2283.3,
+        2300,
+        2316.6,
+        2333.3,
+        2349.9,
+        2366.6,
+        2383.3,
+        2399.9,
+        2416.6,
+        2433.2,
+        2449.9,
+        2466.6,
+        2683.3,
+        2733.3,
+        2799.9,
+        2833.2,
+        2850,
+        2866.6,
+        2883.3,
+        2899.9,
+        2916.6,
+        2933.2,
+        2949.9,
+        2966.6,
+        2983.2,
+        2999.9,
+        3033.2,
+        3066.5,
+        3083.3,
+        3099.9,
+        3116.6,
+        3133.2,
+        3149.9,
+        3166.6,
+        3183.3,
+        3199.9,
+        3216.5,
+        3233.3,
+        3266.5,
+        3283.2,
+        3299.9,
+        3316.6,
+        3333.2,
+        3349.9,
+        3366.5,
+        3383.2,
+        3399.9,
+        3433.3,
+        3449.9,
+        3466.6,
+        3483.2,
+        3499.9,
+        3533.2,
+        3549.9,
+        3566.6,
+        3599.9,
+        3616.6,
+        3633.2,
+        3649.9,
+        3666.5,
+        3683.2,
+        3699.9,
+        3716.6,
+        3749.9,
+        3766.6,
+        3883.2,
+        3999.9,
+        4033.2,
+        4049.8,
+        4066.6,
+        4083.2,
+        4099.9,
+        4116.6,
+        4133.2,
+        4149.9,
+        4166.5,
+        4183.2,
+        4199.8,
+        4216.5,
+        4233.1,
+        4249.8,
+        4266.5,
+        4283.2,
+        4299.8,
+        4316.5,
+        4333.2,
+        4349.9,
+        4366.6,
+        4383.2
+      ],
+      "kpi": [
+        {
+          "t": 2466.6,
+          "text": "0"
+        },
+        {
+          "t": 2683.3,
+          "text": "0"
+        },
+        {
+          "t": 2733.3,
+          "text": "196"
+        },
+        {
+          "t": 2799.9,
+          "text": "229"
+        },
+        {
+          "t": 3883.2,
+          "text": "0,0%"
+        },
+        {
+          "t": 3999.9,
+          "text": "0,0%"
+        },
+        {
+          "t": 4033.2,
+          "text": "4,0%"
+        },
+        {
+          "t": 4049.8,
+          "text": "6,1%"
+        },
+        {
+          "t": 4066.6,
+          "text": "6,9%"
+        },
+        {
+          "t": 4083.2,
+          "text": "7,4%"
+        },
+        {
+          "t": 4099.9,
+          "text": "7,8%"
+        },
+        {
+          "t": 4116.6,
+          "text": "8,1%"
+        },
+        {
+          "t": 4133.2,
+          "text": "8,2%"
+        },
+        {
+          "t": 4149.9,
+          "text": "8,3%"
+        },
+        {
+          "t": 4166.5,
+          "text": "8,3%"
+        }
+      ],
+      "final_values": [
+        "235",
+        "2,8K",
+        "18",
+        "23,4%",
+        "373",
+        "8,3%"
+      ],
+      "errors": [],
+      "max_duration_delay_ms": 220,
+      "max_frame_gap_ms": 216.70000000000027,
+      "frame_gaps_over32ms": 15
+    },
+    "reduced": {
+      "writes": [
+        2852.7000000011176,
+        2880.2000000011176,
+        3928.300000000745
+      ],
+      "animations": [],
+      "frames": [
+        2128.622,
+        2145.3,
+        2161.9,
+        2178.6,
+        2195.3,
+        2211.9,
+        2228.6,
+        2245.2,
+        2261.9,
+        2411.9,
+        2428.6,
+        2445.2,
+        2461.9,
+        2478.6,
+        2495.3,
+        2512,
+        2528.6,
+        2545.2,
+        2561.9,
+        2578.6,
+        2595.2,
+        2612,
+        2628.6,
+        2645.3,
+        2661.9,
+        2678.5,
+        2695.2,
+        2711.9,
+        2728.5,
+        2745.2,
+        2761.9,
+        2778.6,
+        2795.3,
+        2962,
+        2978.5,
+        3011.9,
+        3028.6,
+        3045.2,
+        3061.9,
+        3078.5,
+        3095.2,
+        3111.9,
+        3128.5,
+        3145.2,
+        3161.9,
+        3178.6,
+        3195.3,
+        3211.9,
+        3228.5,
+        3245.3,
+        3261.9,
+        3278.6,
+        3295.2,
+        3311.9,
+        3328.5,
+        3345.3,
+        3361.9,
+        3378.5,
+        3395.2,
+        3411.9,
+        3428.5,
+        3445.3,
+        3461.9,
+        3478.6,
+        3495.2,
+        3511.9,
+        3528.6,
+        3545.2,
+        3561.9,
+        3578.5,
+        3595.2,
+        3611.9,
+        3628.5,
+        3645.2,
+        3661.8,
+        3678.5,
+        3695.2,
+        3711.9,
+        3728.6,
+        3745.2,
+        3761.9,
+        3778.5,
+        3795.2,
+        3811.9,
+        3861.9,
+        3878.5,
+        3961.9,
+        3978.5,
+        3995.2,
+        4011.9,
+        4028.5,
+        4045.2,
+        4061.8,
+        4078.6,
+        4095.1,
+        4111.9,
+        4128.5,
+        4145.2,
+        4161.8,
+        4178.5,
+        4195.2,
+        4211.9,
+        4228.5,
+        4245.2,
+        4261.9,
+        4278.5,
+        4295.2,
+        4311.8,
+        4328.5,
+        4345.2
+      ],
+      "kpi": [],
+      "final_values": [
+        "235",
+        "2,8K",
+        "18",
+        "23,4%",
+        "373",
+        "8,3%"
+      ],
+      "errors": [],
+      "max_duration_delay_ms": 0,
+      "max_frame_gap_ms": 166.69999999999982,
+      "frame_gaps_over32ms": 5
+    }
+  },
+  "observations": {
+    "completed": true,
+    "main_sha256": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+    "cases": [
+      {
+        "viewport": [
+          1366,
+          768
+        ],
+        "default_open": false,
+        "body_click": true,
+        "keyboard": [
+          "Enter",
+          "Space"
+        ],
+        "focus_retained": true,
+        "manual_resize_report_rerun": true,
+        "report_queries": 1,
+        "initial_geometry": {
+          "shell": {
+            "top": 0,
+            "bottom": 621,
+            "left": 0,
+            "right": 1318,
+            "width": 1318,
+            "height": 621,
+            "client": 621,
+            "scroll": 750,
+            "scrollTop": 129,
+            "clientWidth": 1314,
+            "offsetWidth": 1318
+          },
+          "head": {
+            "top": -129,
+            "bottom": -12.40625,
+            "left": 0,
+            "right": 1314,
+            "width": 1314,
+            "height": 116.59375,
+            "client": 117,
+            "scroll": 117,
+            "scrollTop": 0,
+            "clientWidth": 1314,
+            "offsetWidth": 1314
+          },
+          "content": {
+            "top": -0.40625,
+            "bottom": 620.59375,
+            "left": 0,
+            "right": 1314,
+            "width": 1314,
+            "height": 621,
+            "client": 621,
+            "scroll": 621,
+            "scrollTop": 0,
+            "clientWidth": 1314,
+            "offsetWidth": 1314
+          },
+          "body": {
+            "top": 290.1875,
+            "bottom": 620.59375,
+            "left": 511,
+            "right": 1314,
+            "width": 803,
+            "height": 330.40625,
+            "client": 330,
+            "scroll": 330,
+            "scrollTop": 0,
+            "clientWidth": 803,
+            "offsetWidth": 803
+          },
+          "svgs": [
+            {
+              "top": 304.1875,
+              "bottom": 438.1875,
+              "width": 771,
+              "height": 134,
+              "viewWidth": 771
+            },
+            {
+              "top": 516.1875,
+              "bottom": 605.1875,
+              "width": 771,
+              "height": 89,
+              "viewWidth": 771
+            }
+          ],
+          "iframe": {
+            "height": 621,
+            "width": 1318,
+            "scrollY": 0,
+            "documentHeight": 621,
+            "documentWidth": 1318
+          },
+          "host": {
+            "height": "621px",
+            "width": "1318px"
+          },
+          "band": {
+            "top": 0,
+            "bottom": 621
+          }
+        },
+        "final_geometry": {
+          "shell": {
+            "top": 0,
+            "bottom": 621,
+            "left": 0,
+            "right": 1318,
+            "width": 1318,
+            "height": 621,
+            "client": 621,
+            "scroll": 750,
+            "scrollTop": 129,
+            "clientWidth": 1314,
+            "offsetWidth": 1318
+          },
+          "head": {
+            "top": -129,
+            "bottom": -12.40625,
+            "left": 0,
+            "right": 1314,
+            "width": 1314,
+            "height": 116.59375,
+            "client": 117,
+            "scroll": 117,
+            "scrollTop": 0,
+            "clientWidth": 1314,
+            "offsetWidth": 1314
+          },
+          "content": {
+            "top": -0.40625,
+            "bottom": 620.59375,
+            "left": 0,
+            "right": 1314,
+            "width": 1314,
+            "height": 621,
+            "client": 621,
+            "scroll": 621,
+            "scrollTop": 0,
+            "clientWidth": 1314,
+            "offsetWidth": 1314
+          },
+          "body": {
+            "top": 289.1875,
+            "bottom": 620.59375,
+            "left": 511,
+            "right": 1314,
+            "width": 803,
+            "height": 331.40625,
+            "client": 331,
+            "scroll": 331,
+            "scrollTop": 0,
+            "clientWidth": 803,
+            "offsetWidth": 803
+          },
+          "svgs": [
+            {
+              "top": 303.1875,
+              "bottom": 437.1875,
+              "width": 771,
+              "height": 134,
+              "viewWidth": 771
+            },
+            {
+              "top": 515.1875,
+              "bottom": 605.1875,
+              "width": 771,
+              "height": 90,
+              "viewWidth": 771
+            }
+          ],
+          "iframe": {
+            "height": 621,
+            "width": 1318,
+            "scrollY": 0,
+            "documentHeight": 621,
+            "documentWidth": 1318
+          },
+          "host": {
+            "height": "621px",
+            "width": "1318px"
+          },
+          "band": {
+            "top": 0,
+            "bottom": 621
+          }
+        },
+        "errors": []
+      },
+      {
+        "viewport": [
+          1920,
+          1080
+        ],
+        "default_open": true,
+        "body_click": true,
+        "keyboard": [
+          "Enter",
+          "Space"
+        ],
+        "focus_retained": true,
+        "manual_resize_report_rerun": true,
+        "report_queries": 1,
+        "initial_geometry": {
+          "shell": {
+            "top": 0,
+            "bottom": 933,
+            "left": 0,
+            "right": 1872,
+            "width": 1872,
+            "height": 933,
+            "client": 933,
+            "scroll": 933,
+            "scrollTop": 0,
+            "clientWidth": 1872,
+            "offsetWidth": 1872
+          },
+          "head": {
+            "top": 0,
+            "bottom": 116.59375,
+            "left": 0,
+            "right": 1872,
+            "width": 1872,
+            "height": 116.59375,
+            "client": 117,
+            "scroll": 117,
+            "scrollTop": 0,
+            "clientWidth": 1872,
+            "offsetWidth": 1872
+          },
+          "content": {
+            "top": 128.59375,
+            "bottom": 932.59375,
+            "left": 0,
+            "right": 1872,
+            "width": 1872,
+            "height": 804,
+            "client": 804,
+            "scroll": 804,
+            "scrollTop": 0,
+            "clientWidth": 1872,
+            "offsetWidth": 1872
+          },
+          "body": {
+            "top": 470.4375,
+            "bottom": 932.59375,
+            "left": 723,
+            "right": 1872,
+            "width": 1149,
+            "height": 462.15625,
+            "client": 462,
+            "scroll": 462,
+            "scrollTop": 0,
+            "clientWidth": 1149,
+            "offsetWidth": 1149
+          },
+          "svgs": [
+            {
+              "top": 484.4375,
+              "bottom": 697.4375,
+              "width": 1117,
+              "height": 213,
+              "viewWidth": 1117
+            },
+            {
+              "top": 775.4375,
+              "bottom": 917.4375,
+              "width": 1117,
+              "height": 142,
+              "viewWidth": 1117
+            }
+          ],
+          "iframe": {
+            "height": 933,
+            "width": 1872,
+            "scrollY": 0,
+            "documentHeight": 933,
+            "documentWidth": 1872
+          },
+          "host": {
+            "height": "933px",
+            "width": "1872px"
+          },
+          "band": {
+            "top": 0,
+            "bottom": 933
+          }
+        },
+        "final_geometry": {
+          "shell": {
+            "top": 0,
+            "bottom": 933,
+            "left": 0,
+            "right": 1872,
+            "width": 1872,
+            "height": 933,
+            "client": 933,
+            "scroll": 933,
+            "scrollTop": 0,
+            "clientWidth": 1872,
+            "offsetWidth": 1872
+          },
+          "head": {
+            "top": 0,
+            "bottom": 116.59375,
+            "left": 0,
+            "right": 1872,
+            "width": 1872,
+            "height": 116.59375,
+            "client": 117,
+            "scroll": 117,
+            "scrollTop": 0,
+            "clientWidth": 1872,
+            "offsetWidth": 1872
+          },
+          "content": {
+            "top": 128.59375,
+            "bottom": 932.59375,
+            "left": 0,
+            "right": 1872,
+            "width": 1872,
+            "height": 804,
+            "client": 804,
+            "scroll": 804,
+            "scrollTop": 0,
+            "clientWidth": 1872,
+            "offsetWidth": 1872
+          },
+          "body": {
+            "top": 496.5625,
+            "bottom": 932.59375,
+            "left": 432,
+            "right": 1872,
+            "width": 1440,
+            "height": 436.03125,
+            "client": 436,
+            "scroll": 436,
+            "scrollTop": 0,
+            "clientWidth": 1440,
+            "offsetWidth": 1440
+          },
+          "svgs": [
+            {
+              "top": 510.5625,
+              "bottom": 707.5625,
+              "width": 1408,
+              "height": 197,
+              "viewWidth": 1408
+            },
+            {
+              "top": 785.5625,
+              "bottom": 917.5625,
+              "width": 1408,
+              "height": 132,
+              "viewWidth": 1408
+            }
+          ],
+          "iframe": {
+            "height": 933,
+            "width": 1872,
+            "scrollY": 0,
+            "documentHeight": 933,
+            "documentWidth": 1872
+          },
+          "host": {
+            "height": "933px",
+            "width": "1872px"
+          },
+          "band": {
+            "top": 0,
+            "bottom": 933
+          }
+        },
+        "errors": []
+      }
+    ],
+    "fixture_sql_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+      "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+    },
+    "current_sql_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "5fe33bbfe3bd5a647e79f7ba2a9b8885153eb903d513a1d473aa53a17f76ca54",
+      "one": "33576d558ea61159c6b1a83070d1e528e25af24985763db2194bb01172836bc0"
+    },
+    "fixture_matches_current_sql": false,
+    "scope": "Local Chromium, recorded SQL responses, opaque styled sandbox; no live Proteus or current-SQL equivalence claim"
+  },
+  "split": {
+    "sha256": {
+      "main": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+      "css": "05c58db70d4985133ea5b101b088cbe4da3229e14914473edcaf8744a974c118"
+    },
+    "source_sha256": {
+      "interaction.js": "6b228984be2262aeddecdd5321866772862bde69acaf1f852d9a218c45d34d8b",
+      "viewport.js": "fc0da7ef01ad7830b541477b9cf1a5d70344367bf62918daa8e2b82b4b8d6655"
+    },
+    "cases": [
+      {
+        "viewport": [
+          1280,
+          800
+        ],
+        "minimum": 740,
+        "maximumCatalogue": 476,
+        "tableWidth": 440,
+        "tabs": [
+          {
+            "tab": "dyn",
+            "panel": 740
+          }
+        ]
+      },
+      {
+        "viewport": [
+          1366,
+          768
+        ],
+        "minimum": 740,
+        "maximumCatalogue": 562,
+        "tableWidth": 526,
+        "tabs": [
+          {
+            "tab": "dyn",
+            "panel": 740
+          }
+        ]
+      },
+      {
+        "viewport": [
+          1920,
+          1080
+        ],
+        "minimum": 740,
+        "maximumCatalogue": 1120,
+        "tableWidth": 1084,
+        "tabs": [
+          {
+            "tab": "dyn",
+            "panel": 740
+          },
+          {
+            "tab": "cal",
+            "panel": 740
+          },
+          {
+            "tab": "path",
+            "panel": 740
+          },
+          {
+            "tab": "who",
+            "panel": 740
+          },
+          {
+            "tab": "coh",
+            "panel": 740
+          }
+        ]
+      },
+      {
+        "viewport": [
+          2560,
+          1440
+        ],
+        "minimum": 740,
+        "maximumCatalogue": 1760,
+        "tableWidth": 1728,
+        "tabs": [
+          {
+            "tab": "dyn",
+            "panel": 740
+          }
+        ]
+      },
+      {
+        "viewport": [
+          3440,
+          1440
+        ],
+        "minimum": 740,
+        "maximumCatalogue": 2640,
+        "tableWidth": 2608,
+        "tabs": [
+          {
+            "tab": "dyn",
+            "panel": 740
+          }
+        ]
+      },
+      {
+        "syntheticLargeCounters": true,
+        "minimum": 1118,
+        "panel": 1118
+      }
+    ],
+    "coverage": [
+      {
+        "key": "End",
+        "panelWidth": 740,
+        "geometry": {
+          "body": {
+            "x": 574,
+            "right": 1314,
+            "y": 289.1875,
+            "bottom": 676.59375
+          },
+          "children": [
+            {
+              "name": {},
+              "x": 590,
+              "right": 1298,
+              "y": 303.1875,
+              "bottom": 434.1875
+            },
+            {
+              "name": "pone-dynhead",
+              "x": 590,
+              "right": 1298,
+              "y": 460.1875,
+              "bottom": 486.1875
+            },
+            {
+              "name": "pone-cov-help",
+              "x": 590,
+              "right": 1298,
+              "y": 512.1875,
+              "bottom": 547.0625
+            },
+            {
+              "name": {},
+              "x": 590,
+              "right": 1298,
+              "y": 577.0625,
+              "bottom": 665.0625
+            }
+          ],
+          "styles": [
+            "solid",
+            "dashed"
+          ]
+        }
+      },
+      {
+        "key": "Home",
+        "panelWidth": 882,
+        "geometry": {
+          "body": {
+            "x": 432,
+            "right": 1314,
+            "y": 289.1875,
+            "bottom": 676.59375
+          },
+          "children": [
+            {
+              "name": {},
+              "x": 448,
+              "right": 1298,
+              "y": 303.1875,
+              "bottom": 434.1875
+            },
+            {
+              "name": "pone-dynhead",
+              "x": 448,
+              "right": 1298,
+              "y": 460.1875,
+              "bottom": 486.1875
+            },
+            {
+              "name": "pone-cov-help",
+              "x": 448,
+              "right": 1298,
+              "y": 512.1875,
+              "bottom": 547.0625
+            },
+            {
+              "name": {},
+              "x": 448,
+              "right": 1298,
+              "y": 577.0625,
+              "bottom": 665.0625
+            }
+          ],
+          "styles": [
+            "solid",
+            "dashed"
+          ]
+        }
+      }
+    ],
+    "completed": true
+  },
+  "upgrade": {
+    "sha256": {
+      "main": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+      "css": "05c58db70d4985133ea5b101b088cbe4da3229e14914473edcaf8744a974c118"
+    },
+    "cases": {
+      "upgrade-ready": {
+        "passed": true,
+        "queriesAdded": 0,
+        "beforeGrip": {
+          "x": 501,
+          "gapCenter": 491,
+          "error": 10
+        },
+        "afterGrip": {
+          "x": 505,
+          "gapCenter": 505,
+          "error": 0
+        }
+      },
+      "upgrade-pending": {
+        "passed": true,
+        "queriesAdded": 0,
+        "beforeGrip": {
+          "x": 501,
+          "gapCenter": 491,
+          "error": 10
+        },
+        "afterGrip": {
+          "x": 505,
+          "gapCenter": 505,
+          "error": 0
+        }
+      },
+      "upgrade-preview": {
+        "passed": true,
+        "queriesAdded": 0,
+        "beforeGrip": {
+          "x": 501,
+          "gapCenter": 491,
+          "error": 10
+        },
+        "afterGrip": {
+          "x": 505,
+          "gapCenter": 505,
+          "error": 0
+        }
+      },
+      "upgrade-hidden": {
+        "passed": true,
+        "queriesAdded": 0,
+        "beforeGrip": {
+          "x": 6,
+          "gapCenter": 27,
+          "error": -21
+        },
+        "afterGrip": {
+          "x": 51,
+          "gapCenter": 23,
+          "error": 28
+        }
+      }
+    },
+    "scope": "Local board model with explicit platform disturbances; not live production proof."
+  },
+  "cache": {
+    "completed": true,
+    "status": "pass",
+    "source_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "5fe33bbfe3bd5a647e79f7ba2a9b8885153eb903d513a1d473aa53a17f76ca54",
+      "one": "33576d558ea61159c6b1a83070d1e528e25af24985763db2194bb01172836bc0"
+    },
+    "main_source_sha256": "3852a5ded10f67903681168bd447dbac467c9e55c5931f2e9e9e7642a3464f5d",
+    "script_sha256": {
+      "head": "ce1c2a0b49e50512e7c01ce7d0994542bb7d1edc51abc558360f6f0b51cc7d59",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "cases": [
+      {
+        "name": "clear-report-mode-equals-unselected-baseline",
+        "status": "pass"
+      },
+      {
+        "name": "missing-mode-with-nonempty-selection-is-distinct",
+        "status": "pass"
+      },
+      {
+        "name": "scalar-valid-defaults-only",
+        "status": "pass"
+      },
+      {
+        "name": "blank-audience-label-is-not-no-filter",
+        "status": "pass"
+      },
+      {
+        "name": "separators-and-lossy-echo-characters-do-not-collide",
+        "status": "pass"
+      },
+      {
+        "name": "array-order-and-duplicates-are-preserved",
+        "status": "pass"
+      },
+      {
+        "name": "empty-intersection-is-not-all-reports",
+        "status": "pass"
+      },
+      {
+        "name": "transport-nonces-do-not-change-business-key",
+        "status": "pass"
+      },
+      {
+        "name": "crossfilter-directions-are-preserved",
+        "status": "pass"
+      },
+      {
+        "name": "session-generation-and-part-partition-cache",
+        "status": "pass"
+      },
+      {
+        "name": "memory-pressure-retains-latest-valid-answer",
+        "status": "pass"
+      },
+      {
+        "name": "initial-loading-to-ready",
+        "status": "pass"
+      },
+      {
+        "name": "ready-loading-ready-same-iframe",
+        "status": "pass"
+      },
+      {
+        "name": "command-error-explicit-retry-is-clickable-and-scoped",
+        "status": "pass"
+      },
+      {
+        "name": "blank-and-special-attribute-values-survive-loader",
+        "status": "pass"
+      }
+    ]
+  },
+  "header": {
+    "css_sha256": "05c58db70d4985133ea5b101b088cbe4da3229e14914473edcaf8744a974c118",
+    "scope": "Actual delivered CSS; modeled Superset 2.1 collapsed-native-filter inline margin; not live Proteus",
+    "cases": [
+      {
+        "viewport": [
+          1658,
+          963
+        ],
+        "dpr": 1,
+        "before": {
+          "window": 1658,
+          "header": {
+            "x": -32,
+            "right": 1658,
+            "width": 1690,
+            "scroll": 1690,
+            "client": 1690
+          },
+          "title": {
+            "x": -8,
+            "right": 1420.5625,
+            "width": 1428.5625,
+            "scroll": 1837,
+            "client": 1429
+          },
+          "nav": {
+            "x": 0,
+            "right": 1658,
+            "width": 1658,
+            "scroll": 1658,
+            "client": 1658
+          },
+          "edit": {
+            "x": 1525.921875,
+            "right": 1634,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": -32,
+            "right": 1658,
+            "width": 1690,
+            "scroll": 1690,
+            "client": 1690
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 1658,
+            "width": 1658,
+            "scroll": 1658,
+            "client": 1658
+          }
+        },
+        "after": {
+          "window": 1658,
+          "header": {
+            "x": 0,
+            "right": 1658,
+            "width": 1658,
+            "scroll": 1658,
+            "client": 1658
+          },
+          "title": {
+            "x": 24,
+            "right": 1420.5625,
+            "width": 1396.5625,
+            "scroll": 1837,
+            "client": 1397
+          },
+          "nav": {
+            "x": 0,
+            "right": 1658,
+            "width": 1658,
+            "scroll": 1658,
+            "client": 1658
+          },
+          "edit": {
+            "x": 1525.921875,
+            "right": 1634,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": 0,
+            "right": 1658,
+            "width": 1658,
+            "scroll": 1658,
+            "client": 1658
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 1658,
+            "width": 1658,
+            "scroll": 1658,
+            "client": 1658
+          }
+        },
+        "editingNativeMargin": -32
+      },
+      {
+        "viewport": [
+          1366,
+          768
+        ],
+        "dpr": 1,
+        "before": {
+          "window": 1366,
+          "header": {
+            "x": -32,
+            "right": 1366,
+            "width": 1398,
+            "scroll": 1398,
+            "client": 1398
+          },
+          "title": {
+            "x": -8,
+            "right": 1128.5625,
+            "width": 1136.5625,
+            "scroll": 1837,
+            "client": 1137
+          },
+          "nav": {
+            "x": 0,
+            "right": 1366,
+            "width": 1366,
+            "scroll": 1366,
+            "client": 1366
+          },
+          "edit": {
+            "x": 1233.921875,
+            "right": 1342,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": -32,
+            "right": 1366,
+            "width": 1398,
+            "scroll": 1398,
+            "client": 1398
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 1366,
+            "width": 1366,
+            "scroll": 1366,
+            "client": 1366
+          }
+        },
+        "after": {
+          "window": 1366,
+          "header": {
+            "x": 0,
+            "right": 1366,
+            "width": 1366,
+            "scroll": 1366,
+            "client": 1366
+          },
+          "title": {
+            "x": 24,
+            "right": 1128.5625,
+            "width": 1104.5625,
+            "scroll": 1837,
+            "client": 1105
+          },
+          "nav": {
+            "x": 0,
+            "right": 1366,
+            "width": 1366,
+            "scroll": 1366,
+            "client": 1366
+          },
+          "edit": {
+            "x": 1233.921875,
+            "right": 1342,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": 0,
+            "right": 1366,
+            "width": 1366,
+            "scroll": 1366,
+            "client": 1366
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 1366,
+            "width": 1366,
+            "scroll": 1366,
+            "client": 1366
+          }
+        },
+        "editingNativeMargin": -32
+      },
+      {
+        "viewport": [
+          1138,
+          640
+        ],
+        "dpr": 1.2,
+        "before": {
+          "window": 1138,
+          "header": {
+            "x": -32,
+            "right": 1138,
+            "width": 1170,
+            "scroll": 1170,
+            "client": 1170
+          },
+          "title": {
+            "x": -8,
+            "right": 900.5625,
+            "width": 908.5625,
+            "scroll": 1837,
+            "client": 909
+          },
+          "nav": {
+            "x": 0,
+            "right": 1138,
+            "width": 1138,
+            "scroll": 1138,
+            "client": 1138
+          },
+          "edit": {
+            "x": 1005.921875,
+            "right": 1114,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": -32,
+            "right": 1138,
+            "width": 1170,
+            "scroll": 1170,
+            "client": 1170
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 1138,
+            "width": 1138,
+            "scroll": 1138,
+            "client": 1138
+          }
+        },
+        "after": {
+          "window": 1138,
+          "header": {
+            "x": 0,
+            "right": 1138,
+            "width": 1138,
+            "scroll": 1138,
+            "client": 1138
+          },
+          "title": {
+            "x": 24,
+            "right": 900.5625,
+            "width": 876.5625,
+            "scroll": 1837,
+            "client": 877
+          },
+          "nav": {
+            "x": 0,
+            "right": 1138,
+            "width": 1138,
+            "scroll": 1138,
+            "client": 1138
+          },
+          "edit": {
+            "x": 1005.921875,
+            "right": 1114,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": 0,
+            "right": 1138,
+            "width": 1138,
+            "scroll": 1138,
+            "client": 1138
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 1138,
+            "width": 1138,
+            "scroll": 1138,
+            "client": 1138
+          }
+        },
+        "editingNativeMargin": -32
+      },
+      {
+        "viewport": [
+          2560,
+          1440
+        ],
+        "dpr": 1,
+        "before": {
+          "window": 2560,
+          "header": {
+            "x": -32,
+            "right": 2560,
+            "width": 2592,
+            "scroll": 2592,
+            "client": 2592
+          },
+          "title": {
+            "x": -8,
+            "right": 2322.5625,
+            "width": 2330.5625,
+            "scroll": 2331,
+            "client": 2331
+          },
+          "nav": {
+            "x": 0,
+            "right": 2560,
+            "width": 2560,
+            "scroll": 2560,
+            "client": 2560
+          },
+          "edit": {
+            "x": 2427.921875,
+            "right": 2536,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": -32,
+            "right": 2560,
+            "width": 2592,
+            "scroll": 2592,
+            "client": 2592
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 2560,
+            "width": 2560,
+            "scroll": 2560,
+            "client": 2560
+          }
+        },
+        "after": {
+          "window": 2560,
+          "header": {
+            "x": 0,
+            "right": 2560,
+            "width": 2560,
+            "scroll": 2560,
+            "client": 2560
+          },
+          "title": {
+            "x": 24,
+            "right": 2322.5625,
+            "width": 2298.5625,
+            "scroll": 2299,
+            "client": 2299
+          },
+          "nav": {
+            "x": 0,
+            "right": 2560,
+            "width": 2560,
+            "scroll": 2560,
+            "client": 2560
+          },
+          "edit": {
+            "x": 2427.921875,
+            "right": 2536,
+            "width": 108.078125,
+            "scroll": 104,
+            "client": 104
+          },
+          "wrapper": {
+            "x": 0,
+            "right": 2560,
+            "width": 2560,
+            "scroll": 2560,
+            "client": 2560
+          },
+          "scrollX": 0,
+          "html": {
+            "x": 0,
+            "right": 2560,
+            "width": 2560,
+            "scroll": 2560,
+            "client": 2560
+          }
+        },
+        "editingNativeMargin": -32
+      }
+    ]
+  },
+  "sql_limits": {
+    "completed": true,
+    "sqlparse": "0.4.3",
+    "checks": [
+      {
+        "part": "cat",
+        "case": "5000-logins",
+        "bytes": 121917,
+        "limit": 262144,
+        "status": "passed"
+      },
+      {
+        "part": "cat",
+        "case": "5000-master-ids",
+        "bytes": 121806,
+        "limit": 262144,
+        "status": "passed"
+      },
+      {
+        "part": "cat",
+        "case": "32000-chars",
+        "bytes": 92667,
+        "limit": 262144,
+        "status": "passed"
+      },
+      {
+        "part": "cat",
+        "case": "both-lists",
+        "bytes": 122510,
+        "limit": 262144,
+        "status": "passed"
+      },
+      {
+        "part": "one",
+        "case": "5000-logins",
+        "bytes": 178732,
+        "limit": 262144,
+        "status": "passed"
+      },
+      {
+        "part": "one",
+        "case": "5000-master-ids",
+        "bytes": 178620,
+        "limit": 262144,
+        "status": "passed"
+      },
+      {
+        "part": "one",
+        "case": "32000-chars",
+        "bytes": 132482,
+        "limit": 262144,
+        "status": "passed"
+      },
+      {
+        "part": "one",
+        "case": "both-lists",
+        "bytes": 179190,
+        "limit": 262144,
+        "status": "passed"
+      }
+    ],
+    "source_sha256": {
+      "cat": "5fe33bbfe3bd5a647e79f7ba2a9b8885153eb903d513a1d473aa53a17f76ca54",
+      "one": "33576d558ea61159c6b1a83070d1e528e25af24985763db2194bb01172836bc0"
+    },
+    "status": "passed"
+  },
+  "gp": {
+    "status": "passed",
+    "gp_paragraphs": 18,
+    "base_table_comparisons": [
+      {
+        "table": "pa_login_map",
+        "rows": 1,
+        "equal": true
+      },
+      {
+        "table": "pa_evd_day",
+        "rows": 5,
+        "equal": true
+      },
+      {
+        "table": "pa_dash_meta",
+        "rows": 1,
+        "equal": true
+      },
+      {
+        "table": "pa_emp_attrs",
+        "rows": 1,
+        "equal": true
+      },
+      {
+        "table": "pa_pair",
+        "rows": 1,
+        "equal": true
+      },
+      {
+        "table": "pa_dash_bkt",
+        "rows": 8,
+        "equal": true
+      },
+      {
+        "table": "pa_staff",
+        "rows": 2,
+        "equal": true
+      },
+      {
+        "table": "pa_dash_acl",
+        "rows": 2,
+        "equal": true
+      },
+      {
+        "table": "pa_adg_member",
+        "rows": 2,
+        "equal": true
+      },
+      {
+        "table": "pa_adg_size",
+        "rows": 1,
+        "equal": true
+      },
+      {
+        "table": "pa_dash_ca",
+        "rows": 1,
+        "equal": true
+      },
+      {
+        "table": "pa_pair_acc",
+        "rows": 1,
+        "equal": true
+      }
+    ],
+    "candidate_yaml_sha256": "7a7f97e50f9fd427c19511ea2e3d9a2663f5aed266c239b64a26acbb1f19603c",
+    "workspace_schema": "pa_next_workspace",
+    "namespace_checks": {
+      "read_only_source_role": "pa_next_fixture_reader",
+      "shared_tables_unchanged": 47,
+      "shared_decoys_unchanged": 27,
+      "unsafe_search_paths_rejected": [
+        "usr_cross_data, public",
+        ""
+      ],
+      "unsafe_workspace_details": [
+        {
+          "search_path": "usr_cross_data, public",
+          "current_schema": "usr_cross_data",
+          "sqlstate": "3F000"
+        },
+        {
+          "search_path": "",
+          "current_schema": null,
+          "sqlstate": "3F000"
+        }
+      ],
+      "second_connection_exports": [
+        {
+          "table": "pa_next_evd_day",
+          "rows": 5,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_dash_meta",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_emp_attrs",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_pair",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_dash_bkt",
+          "rows": 8,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_login_map",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_staff",
+          "rows": 2,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_dash_acl",
+          "rows": 2,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_adg_member",
+          "rows": 2,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_dash_ca",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_adg_size",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_pair_acc",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_md",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_dict",
+          "rows": 14,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_viewer",
+          "rows": 1,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_staffx",
+          "rows": 2,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_dash_day",
+          "rows": 5,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_all_day",
+          "rows": 20,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_cat_rep",
+          "rows": 2,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_cat_grp",
+          "rows": 24,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_cat_aud",
+          "rows": 80,
+          "permanent": true
+        },
+        {
+          "table": "pa_next_person_id_map",
+          "rows": 2,
+          "permanent": true
+        }
+      ],
+      "paragraph_helper_is_temp": true
+    },
+    "source_views": 12,
+    "checks": [
+      "canonical login merge",
+      "nested AD membership",
+      "current Master ID mapping",
+      "all export run stamps"
+    ],
+    "limitation": "PostgreSQL local model; DISTRIBUTED clauses removed; no corporate services invoked"
+  },
+  "mapping": {
+    "completed": true,
+    "scope": "Local synthetic PostgreSQL + ClickHouse24.8; no corporate access",
+    "extension_sha256": "60799d534d4d7df5515514517b23777b2bde2d8e358154d01d5ec4464488c3dc",
+    "yaml_sha256": "7a7f97e50f9fd427c19511ea2e3d9a2663f5aed266c239b64a26acbb1f19603c",
+    "mapping": {
+      "cases": 18,
+      "status": "passed",
+      "fallback_pruning_exact": true,
+      "null_mdm_id_does_not_block_fallback": true,
+      "rows": {
+        "1": [
+          "new",
+          "ready",
+          "people-test"
+        ],
+        "10": [
+          "",
+          "inactive",
+          "people-test"
+        ],
+        "11": [
+          "viewer.current",
+          "ready",
+          "people-test"
+        ],
+        "12": [
+          "",
+          "ambiguous",
+          "people-test"
+        ],
+        "13": [
+          "",
+          "ambiguous",
+          "people-test"
+        ],
+        "14": [
+          "",
+          "inactive",
+          "people-test"
+        ],
+        "15": [
+          "",
+          "unknown",
+          "people-test"
+        ],
+        "16": [
+          "viewer.dup",
+          "ready",
+          "people-test"
+        ],
+        "17": [
+          "aa",
+          "ready",
+          "people-test"
+        ],
+        "2": [
+          "old",
+          "ready",
+          "people-test"
+        ],
+        "3": [
+          "",
+          "inactive",
+          "people-test"
+        ],
+        "4": [
+          "reused",
+          "ready",
+          "people-test"
+        ],
+        "5": [
+          "shared",
+          "ready",
+          "people-test"
+        ],
+        "6": [
+          "shared",
+          "ready",
+          "people-test"
+        ],
+        "7": [
+          "",
+          "ambiguous",
+          "people-test"
+        ],
+        "8": [
+          "",
+          "unknown",
+          "people-test"
+        ],
+        "9": [
+          "historical",
+          "ready",
+          "people-test"
+        ],
+        "9007199254740993": [
+          "longid",
+          "ready",
+          "people-test"
+        ]
+      }
+    },
+    "status": "passed"
+  },
+  "numbers": {
+    "completed": true,
+    "scope": "Local synthetic PostgreSQL + ClickHouse24.8; no corporate access",
+    "extension_sha256": "60799d534d4d7df5515514517b23777b2bde2d8e358154d01d5ec4464488c3dc",
+    "yaml_sha256": "7a7f97e50f9fd427c19511ea2e3d9a2663f5aed266c239b64a26acbb1f19603c",
+    "mapping": {
+      "cases": 18,
+      "status": "passed",
+      "fallback_pruning_exact": true,
+      "null_mdm_id_does_not_block_fallback": true,
+      "rows": {
+        "1": [
+          "new",
+          "ready",
+          "people-test"
+        ],
+        "10": [
+          "",
+          "inactive",
+          "people-test"
+        ],
+        "11": [
+          "viewer.current",
+          "ready",
+          "people-test"
+        ],
+        "12": [
+          "",
+          "ambiguous",
+          "people-test"
+        ],
+        "13": [
+          "",
+          "ambiguous",
+          "people-test"
+        ],
+        "14": [
+          "",
+          "inactive",
+          "people-test"
+        ],
+        "15": [
+          "",
+          "unknown",
+          "people-test"
+        ],
+        "16": [
+          "viewer.dup",
+          "ready",
+          "people-test"
+        ],
+        "17": [
+          "aa",
+          "ready",
+          "people-test"
+        ],
+        "2": [
+          "old",
+          "ready",
+          "people-test"
+        ],
+        "3": [
+          "",
+          "inactive",
+          "people-test"
+        ],
+        "4": [
+          "reused",
+          "ready",
+          "people-test"
+        ],
+        "5": [
+          "shared",
+          "ready",
+          "people-test"
+        ],
+        "6": [
+          "shared",
+          "ready",
+          "people-test"
+        ],
+        "7": [
+          "",
+          "ambiguous",
+          "people-test"
+        ],
+        "8": [
+          "",
+          "unknown",
+          "people-test"
+        ],
+        "9": [
+          "historical",
+          "ready",
+          "people-test"
+        ],
+        "9007199254740993": [
+          "longid",
+          "ready",
+          "people-test"
+        ]
+      }
+    },
+    "sql": {
+      "clickhouse": "24.8.4.1",
+      "baseline_ref": "8acb2e26f3728e76d61b28713e61728b8706d24d",
+      "oracle_group_prefix": "__pa_next_people_oracle_9f9369cf50d840ec8cce2d7ccef27f8e_",
+      "source_sha256": {
+        "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+        "cat": "5fe33bbfe3bd5a647e79f7ba2a9b8885153eb903d513a1d473aa53a17f76ca54",
+        "one": "33576d558ea61159c6b1a83070d1e528e25af24985763db2194bb01172836bc0"
+      },
+      "checks": [
+        {
+          "case": "no-list-d",
+          "part": "head",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-d",
+          "part": "cat",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-d",
+          "part": "one",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-w",
+          "part": "head",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-w",
+          "part": "cat",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-w",
+          "part": "one",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-m",
+          "part": "head",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-m",
+          "part": "cat",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-m",
+          "part": "one",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-q",
+          "part": "head",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-q",
+          "part": "cat",
+          "status": "passed"
+        },
+        {
+          "case": "no-list-q",
+          "part": "one",
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "m"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "m"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "q"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "current-logins",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "q"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "old-case-dedup",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "old-case-dedup",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "old-case-dedup",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "old-case-dedup",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "master-and-dedup",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "master-and-dedup",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "master-and-dedup",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "master-and-dedup",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "unknown-login",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "unknown-login",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "unknown-login",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "unknown-login",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "known-plus-unknown",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "known-plus-unknown",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "inactive-master",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "inactive-master",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "inactive-master",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "inactive-master",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "both-intersection",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "both-intersection",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "both-intersection",
+          "part": "cat",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "both-intersection",
+          "part": "one",
+          "variant": {
+            "mode_param": [
+              "report"
+            ],
+            "sel_f": [
+              "2"
+            ],
+            "period_param": [
+              "w"
+            ]
+          },
+          "status": "passed"
+        },
+        {
+          "case": "org-intersection",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "org-intersection",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "spec-intersection",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "spec-intersection",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "catalogue-group-intersection",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "catalogue-group-intersection",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "people-bus-direction",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "people-bus-direction",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "invalid-login",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "invalid-login",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "invalid-master",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "invalid-master",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "over-limit",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "over-limit",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "never-visited",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "never-visited",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "without-access-selected-report",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "without-access-selected-report",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "ad-group-intersection",
+          "part": "cat",
+          "variant": {},
+          "status": "passed"
+        },
+        {
+          "case": "ad-group-intersection",
+          "part": "one",
+          "variant": {},
+          "status": "passed"
+        }
+      ],
+      "generation_cases": 4
+    },
+    "status": "passed"
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "scope": "Local synthetic rows, sandbox Chromium, no network/CPU throttling. Not production SQL latency.",
+  "runs": {
+    "before": {
+      "samples": [
+        {
+          "initialReadyLabMs": 2361.6,
+          "discoveryMessages": {
+            "cat": 2,
+            "one": 3
+          },
+          "after25RetryMessages": {
+            "cat": 27,
+            "one": 28
+          },
+          "javascriptErrors": []
+        },
+        {
+          "initialReadyLabMs": 1821.0,
+          "discoveryMessages": {
+            "cat": 2,
+            "one": 3
+          },
+          "after25RetryMessages": {
+            "cat": 27,
+            "one": 28
+          },
+          "javascriptErrors": []
+        },
+        {
+          "initialReadyLabMs": 1849.9,
+          "discoveryMessages": {
+            "cat": 3,
+            "one": 3
+          },
+          "after25RetryMessages": {
+            "cat": 28,
+            "one": 28
+          },
+          "javascriptErrors": []
+        }
+      ],
+      "medianInitialReadyLabMs": 1849.9,
+      "rangeInitialReadyLabMs": [
+        1821.0,
+        2361.6
+      ]
+    },
+    "after": {
+      "samples": [
+        {
+          "initialReadyLabMs": 1785.0,
+          "discoveryMessages": {
+            "cat": 1,
+            "one": 1
+          },
+          "after25RetryMessages": {
+            "cat": 1,
+            "one": 1
+          },
+          "javascriptErrors": []
+        },
+        {
+          "initialReadyLabMs": 1755.6,
+          "discoveryMessages": {
+            "cat": 1,
+            "one": 1
+          },
+          "after25RetryMessages": {
+            "cat": 1,
+            "one": 1
+          },
+          "javascriptErrors": []
+        },
+        {
+          "initialReadyLabMs": 1630.7,
+          "discoveryMessages": {
+            "cat": 1,
+            "one": 1
+          },
+          "after25RetryMessages": {
+            "cat": 1,
+            "one": 1
+          },
+          "javascriptErrors": []
+        }
+      ],
+      "medianInitialReadyLabMs": 1755.6,
+      "rangeInitialReadyLabMs": [
+        1630.7,
+        1785.0
+      ]
+    }
+  },
+  "new-main-old-loaders": {
+    "initialReadyLabMs": 1061.6,
+    "discoveryMessages": {
+      "cat": 3,
+      "one": 3
+    },
+    "after25RetryMessages": {
+      "cat": 28,
+      "one": 28
+    },
+    "javascriptErrors": []
+  },
+  "old-main-new-loaders": {
+    "initialReadyLabMs": 1233.4,
+    "discoveryMessages": {
+      "cat": 3,
+      "one": 3
+    },
+    "after25RetryMessages": {
+      "cat": 28,
+      "one": 28
+    },
+    "javascriptErrors": []
+  }
+}

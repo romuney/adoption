@@ -1,0 +1,188 @@
+{
+  "completed": true,
+  "main_sha256": "acbcd7f8a9252b11064a1ef31e7ed86cf91ae7084408ff939624a51bf2a5a22e",
+  "preview": {
+    "completed": true,
+    "status": "passed",
+    "section": "all",
+    "source_sql_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+      "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+    },
+    "source_js_sha256": {
+      "head": "acbcd7f8a9252b11064a1ef31e7ed86cf91ae7084408ff939624a51bf2a5a22e",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "cases": [
+      {
+        "case": "exact-preview-d",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 30,
+        "calendar_days": 60
+      },
+      {
+        "case": "exact-preview-w",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 20,
+        "calendar_days": 134
+      },
+      {
+        "case": "exact-preview-m",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 12,
+        "calendar_days": 356
+      },
+      {
+        "case": "exact-preview-q",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 8,
+        "calendar_days": 395
+      },
+      {
+        "case": "malformed-preview-key-id-payload-grain-filter-name",
+        "status": "passed"
+      },
+      {
+        "case": "rapid-A-B-A-exact-cache-old-nonce-cannot-complete",
+        "status": "passed"
+      },
+      {
+        "case": "FULL-A-preview-B-return-A-before-debounce",
+        "status": "passed",
+        "elapsed_ms": 56.19999998807907
+      },
+      {
+        "case": "multiple-reports-no-preview-summing",
+        "status": "passed",
+        "sql_users": 397
+      },
+      {
+        "case": "initial-all-preview-A-clear-restores-exact-defaults",
+        "status": "passed"
+      },
+      {
+        "case": "period-change-rejects-old-catalogue-preview",
+        "status": "passed"
+      },
+      {
+        "case": "people-filter-invalidates-old-catalogue-preview",
+        "status": "passed"
+      },
+      {
+        "case": "foreign-cat-generation-invalidates-preview",
+        "status": "passed"
+      },
+      {
+        "case": "foreign-one-generation-invalidates-preview",
+        "status": "passed"
+      }
+    ],
+    "scope": "Sandbox Chromium with actual local CH24.8 SQL fixtures; no corporate browser/backend accessed"
+  },
+  "resize": {
+    "script_sha256": {
+      "head": "acbcd7f8a9252b11064a1ef31e7ed86cf91ae7084408ff939624a51bf2a5a22e",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "cases": [
+      {
+        "tab": "dyn",
+        "pointer_samples": 23,
+        "painted_frames": 104,
+        "min_width": 380,
+        "max_width": 1404,
+        "svg_text_samples": 15494,
+        "max_svg_scale_error": 0
+      },
+      {
+        "tab": "cal",
+        "pointer_samples": 23,
+        "painted_frames": 76,
+        "min_width": 380,
+        "max_width": 1404,
+        "svg_text_samples": 0,
+        "max_svg_scale_error": 0
+      },
+      {
+        "tab": "path",
+        "pointer_samples": 23,
+        "painted_frames": 77,
+        "min_width": 380,
+        "max_width": 1404,
+        "svg_text_samples": 1100,
+        "max_svg_scale_error": 0
+      },
+      {
+        "tab": "who",
+        "pointer_samples": 23,
+        "painted_frames": 77,
+        "min_width": 380,
+        "max_width": 1404,
+        "svg_text_samples": 0,
+        "max_svg_scale_error": 0
+      },
+      {
+        "tab": "coh",
+        "pointer_samples": 23,
+        "painted_frames": 80,
+        "min_width": 380,
+        "max_width": 1404,
+        "svg_text_samples": 0,
+        "max_svg_scale_error": 0
+      }
+    ],
+    "pending": {
+      "scroll_events": 8,
+      "scroll_redraws": 0,
+      "drag_samples": 7,
+      "visible_stale_metrics": 0
+    },
+    "completed": true,
+    "errors": []
+  },
+  "rerun": {
+    "completed": true,
+    "cases": 10,
+    "reexecutions": 40
+  },
+  "detail_loading": {
+    "completed": true,
+    "cases": 6
+  },
+  "cold_real_pointer_selections": 8,
+  "other_checks": {
+    "base": [
+      "PASS: real helper iframe remount resets serial without accepting retired instance",
+      "PASS: new main iframe rejects retained nondefault helper filters with explicit recovery instructions",
+      "PASS: zero JavaScript errors; screenshot /tmp/pa-next-ui-default.png",
+      "PASS: Enter on catalogue row emits exactly once through catalogue helper; only panel waits",
+      "PASS: people frequency emits once through panel helper; only catalogue waits"
+    ],
+    "check": [
+      "  ок   имена верхнего уровня: 0 из 0 на месте",
+      "  ок   кода из строки нет (eval, Function, строка в setTimeout)",
+      "ESLint source: 0 errors, 0 warnings",
+      "ESLint delivery: 0 errors, 0 warnings",
+      "PASS: UI delivery exactly matches source/configuration"
+    ],
+    "shipment": [
+      "PASS isolation: 26 GP tables, 22 CH tables; complete export/dependency closure",
+      "PASS source provenance, loading/data/ready order, YAML Python parsing, SQL namespace, JS syntax",
+      "Static gate is not a guarantee of Greenplum/Helicopter compatibility or concurrent-run safety."
+    ]
+  },
+  "preview_first_attempt": "One parallel run timed out waiting for a catalogue preview; the complete sequential rerun and eight additional cold pointer-selection checks passed without a code change. The initial timeout cause was not established.",
+  "baseline_negative": {
+    "main_sha256": "edcede4c123d6e0290e4414c7086dba06f891d7c4f7f7763515e221e43e90ea0",
+    "commit": "4afb9e3",
+    "failed_assertion": "analytics have no single shared loading surface"
+  },
+  "scope": "Local Chromium sandbox and synthetic-world SQL responses; no live Proteus deployment."
+}

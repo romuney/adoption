@@ -1,0 +1,283 @@
+{
+  "preview": {
+    "completed": true,
+    "status": "passed",
+    "section": "all",
+    "source_sql_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+      "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+    },
+    "source_js_sha256": {
+      "head": "8913c04d595f0574a937a3644209c75fe006c2380791080edd89e472a61b5490",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "cases": [
+      {
+        "case": "exact-preview-d",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 30,
+        "calendar_days": 60
+      },
+      {
+        "case": "exact-preview-w",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 20,
+        "calendar_days": 134
+      },
+      {
+        "case": "exact-preview-m",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 12,
+        "calendar_days": 356
+      },
+      {
+        "case": "exact-preview-q",
+        "status": "passed",
+        "report": "2",
+        "sql_series_buckets": 8,
+        "calendar_days": 395
+      },
+      {
+        "case": "malformed-preview-key-id-payload-grain-filter-name",
+        "status": "passed"
+      },
+      {
+        "case": "rapid-A-B-A-exact-cache-old-nonce-cannot-complete",
+        "status": "passed"
+      },
+      {
+        "case": "FULL-A-preview-B-return-A-before-debounce",
+        "status": "passed",
+        "elapsed_ms": 50.80000000447035
+      },
+      {
+        "case": "multiple-reports-no-preview-summing",
+        "status": "passed",
+        "sql_users": 397
+      },
+      {
+        "case": "initial-all-preview-A-clear-restores-exact-defaults",
+        "status": "passed"
+      },
+      {
+        "case": "period-change-rejects-old-catalogue-preview",
+        "status": "passed"
+      },
+      {
+        "case": "people-filter-invalidates-old-catalogue-preview",
+        "status": "passed"
+      },
+      {
+        "case": "foreign-cat-generation-invalidates-preview",
+        "status": "passed"
+      },
+      {
+        "case": "foreign-one-generation-invalidates-preview",
+        "status": "passed"
+      }
+    ],
+    "scope": "Sandbox Chromium with actual local CH24.8 SQL fixtures; no corporate browser/backend accessed"
+  },
+  "queue_drop": {
+    "completed": true,
+    "status": "passed",
+    "policy": "drop",
+    "harness_sha256": "8b81d749a483214d640e3a9f96786a965939c833f0eb372266017b6b657891fe",
+    "script_sha256": {
+      "head": "8913c04d595f0574a937a3644209c75fe006c2380791080edd89e472a61b5490",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "source_sql_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+      "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+    },
+    "scope": "Actual shipped scripts and actual SQL fixtures; platform single-flight simulation, no corporate service access; runtime constants unchanged",
+    "cases": [
+      {
+        "case": "stale-completion-must-release-latest",
+        "first_job": 1,
+        "latest_job": 3,
+        "completion_t_ms": 8169,
+        "next_start_t_ms": 8877,
+        "release_delay_ms": 708,
+        "observed_ms": 2500,
+        "ui_state": "loading",
+        "final_query_count": 4
+      },
+      {
+        "case": "A-B-clear-single-flight",
+        "status": "passed",
+        "release_delay_ms": 447,
+        "queries": 2
+      },
+      {
+        "case": "A-B-C-union-old-replay",
+        "status": "passed",
+        "release_delay_ms": 245,
+        "queries": 2
+      },
+      {
+        "case": "ready-cache-does-not-complete-outstanding-query",
+        "status": "passed",
+        "release_delay_ms": 362
+      },
+      {
+        "case": "initial-default-cache-reset-preserves-flight",
+        "status": "passed",
+        "release_delay_ms": 314
+      },
+      {
+        "case": "receiver-remount-retired-response",
+        "status": "passed",
+        "release_delay_ms": 270
+      }
+    ]
+  },
+  "queue_replace": {
+    "completed": true,
+    "status": "passed",
+    "policy": "replace",
+    "harness_sha256": "8b81d749a483214d640e3a9f96786a965939c833f0eb372266017b6b657891fe",
+    "script_sha256": {
+      "head": "8913c04d595f0574a937a3644209c75fe006c2380791080edd89e472a61b5490",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "source_sql_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+      "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+    },
+    "scope": "Actual shipped scripts and actual SQL fixtures; platform single-flight simulation, no corporate service access; runtime constants unchanged",
+    "cases": [
+      {
+        "case": "stale-completion-must-release-latest",
+        "first_job": 1,
+        "latest_job": 3,
+        "completion_t_ms": 3602,
+        "next_start_t_ms": 3953,
+        "release_delay_ms": 351,
+        "observed_ms": 2500,
+        "ui_state": "loading",
+        "final_query_count": 4
+      },
+      {
+        "case": "A-B-clear-single-flight",
+        "status": "passed",
+        "release_delay_ms": 126,
+        "queries": 2
+      },
+      {
+        "case": "A-B-C-union-old-replay",
+        "status": "passed",
+        "release_delay_ms": 129,
+        "queries": 2
+      },
+      {
+        "case": "ready-cache-does-not-complete-outstanding-query",
+        "status": "passed",
+        "release_delay_ms": 104
+      },
+      {
+        "case": "initial-default-cache-reset-preserves-flight",
+        "status": "passed",
+        "release_delay_ms": 111
+      },
+      {
+        "case": "receiver-remount-retired-response",
+        "status": "passed",
+        "release_delay_ms": 254
+      }
+    ]
+  },
+  "cache": {
+    "completed": true,
+    "status": "pass",
+    "source_sha256": {
+      "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+      "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+      "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+    },
+    "main_source_sha256": "1caca12cd7898a6d04d2a402a2874c3ec8dfc697772eda7fed75da952b4bd471",
+    "script_sha256": {
+      "head": "8913c04d595f0574a937a3644209c75fe006c2380791080edd89e472a61b5490",
+      "cat": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5",
+      "one": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d"
+    },
+    "cases": [
+      {
+        "name": "clear-report-mode-equals-unselected-baseline",
+        "status": "pass"
+      },
+      {
+        "name": "missing-mode-with-nonempty-selection-is-distinct",
+        "status": "pass"
+      },
+      {
+        "name": "scalar-valid-defaults-only",
+        "status": "pass"
+      },
+      {
+        "name": "blank-audience-label-is-not-no-filter",
+        "status": "pass"
+      },
+      {
+        "name": "separators-and-lossy-echo-characters-do-not-collide",
+        "status": "pass"
+      },
+      {
+        "name": "array-order-and-duplicates-are-preserved",
+        "status": "pass"
+      },
+      {
+        "name": "empty-intersection-is-not-all-reports",
+        "status": "pass"
+      },
+      {
+        "name": "transport-nonces-do-not-change-business-key",
+        "status": "pass"
+      },
+      {
+        "name": "crossfilter-directions-are-preserved",
+        "status": "pass"
+      },
+      {
+        "name": "session-generation-and-part-partition-cache",
+        "status": "pass"
+      },
+      {
+        "name": "memory-pressure-retains-latest-valid-answer",
+        "status": "pass"
+      },
+      {
+        "name": "initial-loading-to-ready",
+        "status": "pass"
+      },
+      {
+        "name": "ready-loading-ready-same-iframe",
+        "status": "pass"
+      },
+      {
+        "name": "command-error-explicit-retry-is-clickable-and-scoped",
+        "status": "pass"
+      },
+      {
+        "name": "blank-and-special-attribute-values-survive-loader",
+        "status": "pass"
+      }
+    ]
+  },
+  "generated_js_sha256": {
+    "4. JS — весь отчёт.js": "8913c04d595f0574a937a3644209c75fe006c2380791080edd89e472a61b5490",
+    "8. JS — загрузчик панели.js": "a716d86593ddc63b1349eb59613b1fab071f4bf4a22c8ab1bd4378e2f673851d",
+    "6. JS — загрузчик каталога.js": "773cd2dc003a1cdcaf4b4b06ac2f97f9609c14f844deb2ad8866f0bbea3000b5"
+  },
+  "scope": "Local Chromium sandbox with actual CH24.8 responses on synthetic data. No corporate backend, SQL or ETL changed."
+}

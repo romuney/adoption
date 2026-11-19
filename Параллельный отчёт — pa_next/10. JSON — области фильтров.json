@@ -1,0 +1,71 @@
+{
+  "cross_filters_enabled": true,
+  "chart_configuration": {
+    "859562": {
+      "id": 859562,
+      "crossFilters": {
+        "scope": {
+          "rootPath": [
+            "ROOT_ID"
+          ],
+          "excluded": [
+            859562
+          ]
+        },
+        "chartsInScope": [
+          859563,
+          859564
+        ]
+      }
+    },
+    "859563": {
+      "id": 859563,
+      "crossFilters": {
+        "scope": {
+          "rootPath": [
+            "ROOT_ID"
+          ],
+          "excluded": [
+            859562,
+            859563
+          ]
+        },
+        "chartsInScope": [
+          859564
+        ]
+      }
+    },
+    "859564": {
+      "id": 859564,
+      "crossFilters": {
+        "scope": {
+          "rootPath": [
+            "ROOT_ID"
+          ],
+          "excluded": [
+            859562,
+            859564
+          ]
+        },
+        "chartsInScope": [
+          859563
+        ]
+      }
+    }
+  },
+  "global_chart_configuration": {
+    "scope": {
+      "rootPath": [
+        "ROOT_ID"
+      ],
+      "excluded": []
+    },
+    "chartsInScope": [
+      859562,
+      859563,
+      859564
+    ]
+  },
+  "show_native_filters": false,
+  "native_filter_configuration": []
+}

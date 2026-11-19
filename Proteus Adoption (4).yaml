@@ -1,0 +1,1344 @@
+title: Proteus Adoption
+paragraphs:
+  - title: Description
+    shebang: md
+    code: |
+      Добавь описание источника данных, который строит ноутбук
+
+      #### Sources
+
+      #### Target
+
+      #### Jira Links
+    isEnabled: true
+  - sid: 019da0df-b237-75aa-a349-06fed5882de2
+    title: Actuality
+    shebang: python_condition
+    code: |
+      tf.tables_wait([
+          'prod_sse.proteus_users',
+          'prod_sse.proteus_dashboards',
+          'prod_sse.proteus_logs',
+          'prod_sse.proteus_collection_dashboard',
+          'prod_v_sse_crossdata.mdm_employee_d',
+          'prod_v_sse_crossdata.event_physical_report'
+          ], gp_service='cross'
+      )
+    isEnabled: false
+    color: "#B074CC"
+  - sid: 019fc3ea-ee77-7360-890b-bdb564ec8b70
+    title: Untitled 3
+    shebang: python_condition
+    code: |-
+      import tactuality
+
+      tactuality.tables_wait([
+          'prod_v_sse_crossdata.event_physical_report'
+          ], gp_service='cross'
+      )
+    isEnabled: true
+  - sid: 019f3905-8e64-708e-b6c2-facbfcf525d1
+    title: Собираем логи
+    shebang: gp
+    code: "drop table if exists superset_proteus_logs;\ncreate table superset_proteus_logs as\n\nselect\n    l.log_dttm,\n    l.action,\n    l.json,\n    l.user_id,\n    u.username,\n    u.created_on as user_registration_date,\n    l.dashboard_id,\n    d.dashboard_title,\n    d.published,\n    l.system as system_nm,\n    count(l.log_id) as action_count\nfrom prod_v_sse.proteus_logs as l\nleft join prod_v_sse.proteus_users as u \n    on u.user_id = l.user_id \nleft join prod_v_sse.proteus_dashboards as d \n    on d.dashboard_id = l.dashboard_id \nwhere 1=1\n    and l.action = 'DashboardRestApi.get'\n    and l.log_dttm between current_date - interval '13 month' \n        and current_date\ngroup by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10;"
+    isEnabled: true
+  - sid: 019aa659-f8c6-7b2c-993c-6c0612c39bec
+    title: Массив коллекций
+    shebang: gp
+    code: |-
+      drop table if exists collection_array;
+      create table collection_array as
+
+      SELECT
+          dashboard_id,
+          array_agg(DISTINCT collection_name) AS collection_names
+      FROM (
+          -- Дочерняя коллекция (всегда)
+          SELECT
+              cd.dashboard_id,
+              cd.collection_name
+          FROM
+              prod_v_sse.proteus_collection_dashboard cd
+          WHERE
+              cd.date = CURRENT_DATE - INTERVAL '1 day'
+
+          UNION ALL
+
+          -- Родительская коллекция (если есть)
+          SELECT
+              cd.dashboard_id,
+              ce.parent_collection_name AS collection_name
+          FROM
+              prod_v_sse.proteus_collection_dashboard cd
+              INNER JOIN prod_v_sse.proteus_collection_enclosure ce
+                  ON cd.collection_id = ce.child_collection_id
+          WHERE
+              cd.date = CURRENT_DATE - INTERVAL '1 day'
+              AND ce.parent_collection_name IS NOT NULL
+      ) AS all_collection_names
+      GROUP BY
+          dashboard_id;
+    isEnabled: true
+  - sid: 019aa663-8e05-7a42-b7e6-bd1a66e6f306
+    title: Фильтр коллекицй
+    shebang: gp
+    code: |-
+      drop table if exists collections_filter;
+      create table collections_filter as
+
+      select distinct
+          unnest(collection_names) as collection_nm
+      from collection_array;
+    isEnabled: true
+  - sid: 019e8db5-9392-7917-adc9-66a551380a79
+    title: Пользователи
+    shebang: gp
+    code: "drop table if exists superset_proteus_users;\ncreate table superset_proteus_users as\n\nselect \n    user_id\n    ,system\n    , first_name\n    , last_name\n    , username\n    , active\n    , email\n    , created_on\nfrom prod_v_sse.proteus_users"
+    isEnabled: true
+  - sid: 019e8db5-9392-794a-895d-d44cbd8fd743
+    title: Владельцы
+    shebang: gp
+    code: "drop table if exists proteus_dashboards_owners;\ncreate table proteus_dashboards_owners as\nselect \n    o.dashboard_id\n   , string_agg(u.username, ',') as owners_string\nfrom prod_v_sse.proteus_dashboard_owner o\nleft join superset_proteus_users u \n    on o.user_id=u.user_id\nwhere\nactual_flg = 1\ngroup by\no.dashboard_id"
+    isEnabled: true
+  - sid: 019d96f5-1280-70b4-bc05-72c853bd32c1
+    title: Дашборды
+    shebang: gp
+    code: "drop table if exists proteus_dashboards;\ncreate table proteus_dashboards as\nwith dashboard_access_groups as (\n    select \n        dashboard_id,\n        array_agg(user_or_group_name order by user_or_group_name) as ad_groups\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'group'\n    group by dashboard_id\n),\ndashboard_access_users as (\n    select \n        dashboard_id,\n        array_agg(user_or_group_name order by user_or_group_name) as allowed_logins\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'user'\n    group by dashboard_id\n)\nselect \n    d.dashboard_id\n    ,d.system as system_nm\n    ,d.created_on\n    ,d.dashboard_title as dashboard_nm\n    ,d.created_by_fk as owner_id\n    ,d.published\n    ,coalesce(d.actual_flg,0) as actual_flg\n    ,d.slug\n    ,d.certified_by\n    ,u.username as owner_login\n    , pd.owners_string\n    ,dag.ad_groups as ad_groups_dash\n    ,dau.allowed_logins\n    ,case when (dense_rank() over(partition by /*system_nm,*/ d.actual_flg, d.published, d.created_by_fk order by d.created_on))=1 then 1 else 0 end as first_flg -- первое создание овнером отчёта\nfrom prod_v_sse.proteus_dashboards d\nleft join prod_v_sse.proteus_users u /*PROTEUS-781*/\n    on d.created_by_fk=u.user_id\n    and u.system=d.system\nleft join proteus_dashboards_owners pd\non pd.dashboard_id = d.dashboard_id\nleft join dashboard_access_groups dag\non dag.dashboard_id = d.dashboard_id\nleft join dashboard_access_users dau\non dau.dashboard_id = d.dashboard_id"
+    isEnabled: true
+  - sid: 019e8db5-9392-7959-abaf-1ccdad5ff7e4
+    title: Просмотры
+    shebang: gp
+    code: "drop table if exists superset_proteus_views_restapi;\ncreate table superset_proteus_views_restapi as\n\n/*в логах dashboard_id заполняется не всегда, поэтому парсим json и достаем оттуда id или короткое название (slug)*/\nwith pre as\n\n(\nselect \n    l.log_dttm\n    ,l.action\n    ,l.json\n    ,l.user_id \n    ,l.username\n    ,l.user_registration_date\n    ,l.dashboard_id \n    ,l.dashboard_title\n    ,l.published\n    ,l.system_nm \n    ,l.action_count\n    ,case when l.dashboard_id is null then l.json ::json->>'id_or_slug' end as event\n    from superset_proteus_logs l\nwhere 1=1\n    and action = 'DashboardRestApi.get'\n),\ndash_api as\n(\nselect pre.log_dttm\n    ,pre.action\n    ,pre.json\n    ,pre.user_id \n    ,pre.username\n    ,pre.user_registration_date\n    ,pre.dashboard_id \n    ,pre.dashboard_title\n    ,pre.published\n    ,pre.system_nm \n    ,pre.action_count\n    ,pre.event\n    ,case when pre.event ~ '^[0-9]*.?[0-9]*$' then pre.event ::int end AS id_dash /*если в поле id or slug в json цифры, это dashboard_id, иначе slug (название для короткого url)*/\nfrom pre\n),\ndash_slug as\n(\nselect \n    a.log_dttm\n    ,a.action\n    ,a.json\n    ,a.user_id \n    ,a.username\n    ,a.user_registration_date\n    ,a.dashboard_id \n    ,a.dashboard_title\n    ,a.published\n    ,a.system_nm \n    ,a.action_count\n    ,a.event\n    ,a.id_dash\n    ,coalesce(a.dashboard_id  ::int, d.dashboard_id ::int) as dashboard_id_new\n    ,d.dashboard_nm  \n    ,case when a.id_dash is null then a.event end as slug_dash\nfrom dash_api a\nleft join proteus_dashboards d\n    on a.id_dash=d.dashboard_id ::int\n    and a.system_nm=d.system_nm\n--left join superset_proteus_users u\n--    on a.user_id=u.user_id\n\n)\nselect distinct\n    s.log_dttm\n    ,s.action\n    ,s.json\n    ,s.user_id\n    ,s.username as login\n    ,coalesce(s.dashboard_id_new  ::int, d.dashboard_id  ::int) as dashboard_id\n    ,coalesce(s.dashboard_title, s.dashboard_nm, d.dashboard_nm) as dashboard_nm\n --   ,d.created_by_fk as owner_id\n--    ,u.username as owner_login\n--    ,d.created_on as created_dt\n    ,s.system_nm\n    ,s.action_count\n\nfrom dash_slug s\nleft join proteus_dashboards d\n--prod_v_sse.proteus_dashboards d\n    on s.slug_dash=d.slug\n    and d.system_nm=s.system_nm\n--    and d.system='superset'\n"
+    isEnabled: true
+  - sid: 019d96e1-0cf1-7823-9048-39ba819221c4
+    title: Витрина ad_login и ad_group
+    shebang: gp
+    code: "drop table if exists ad_login_groups;\ncreate table ad_login_groups as\n\nwith allowed_groups as (\n    select distinct user_or_group_name as ad_group\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'group'\n),\nad_items as (\n    select \n        guid,\n        account_name,\n        item_type\n    from prod_v_chrono_idm_tadam.ad_items_records_public\n    where is_deleted = false\n      and item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity', 'Person')\n),\nad_relations as (\n    select \n        child.account_name  as ad_login,\n        parent.account_name as ad_group\n    from prod_v_chrono_idm_tadam.ad_item_parent_relations_public aipr\n    inner join ad_items parent on aipr.parent = parent.guid\n    inner join ad_items child  on aipr.item   = child.guid\n    inner join allowed_groups ag on ag.ad_group = parent.account_name\n    where child.item_type = 'Person'\n      and parent.item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity')\n)\nselect \n    ad_login,\n    array_agg(distinct ad_group order by ad_group) as ad_groups\nfrom ad_relations\ngroup by ad_login;\n"
+    isEnabled: true
+  - sid: 019d96e6-dd17-779b-8ddd-3b613d8d57f6
+    title: HR атрибуты
+    shebang: gp
+    code: "drop table if exists mdm_employee_last_state;\ncreate table mdm_employee_last_state as\n\nselect \n     m.mdm_employee_rk\n   , m.ad_login\n   , m.emp_specialization_it_code\n   , m.emp_specialization_oper_code\n   , m.emp_specialization_desc\n   , m.emp_stream_desc\n   , m.company_fire_flg\n   , m.management_head_flg\n   , m.lvl3_mapped_management_unit_nm as lvl3_management_unit_nm\n   , m.lvl4_mapped_management_unit_nm as lvl4_management_unit_nm\n   , m.lvl5_mapped_management_unit_nm as lvl5_management_unit_nm\n   , m.lvl6_mapped_management_unit_nm as lvl6_management_unit_nm\n   , m.lvl7_mapped_management_unit_nm as lvl7_management_unit_nm\n   , su.user_id\n   , tm.current_head_lvl_segment\nfrom prod_v_emart.mdm_employee_structure_d m\ninner join superset_proteus_users su\non m.ad_login = su.username\nleft join usr_cross_data.bl_talent_management tm\non tm.mdm_employee_rk = m.mdm_employee_rk\nwhere m.last_state_flg = 1"
+    isEnabled: true
+  - sid: 019b2c3c-b20c-745e-9791-01fb861f67c8
+    title: Дашборды Х Просмотры
+    shebang: gp
+    code: "drop table if exists usr_cross_data.proteus_views;\ncreate table usr_cross_data.proteus_views as\n\n\nSELECT\n     s.log_dttm\n    ,s.action\n    ,s.json\n    ,s.user_id\n    ,s.login\n    ,s.dashboard_id\n    ,s.dashboard_nm\n    ,d.slug\n    ,d.certified_by\n    ,d.owner_id\n    ,d.owner_login\n    ,d.owners_string\n    ,d.created_on as created_dt\n    ,d.ad_groups_dash \n    ,d.allowed_logins\n    ,s.system_nm\n    ,d.published\n    ,coalesce(d.actual_flg,0) as actual_flg\n    , case when s.system_nm='proteus' then 'https://proteus.tcsbank.ru/superset/dashboard/' || s.dashboard_id ::text \n    else 'https://superset.tcsbank.ru/superset/dashboard/' || s.dashboard_id ::text  \n    end as dashboard_url\n    ,s.action_count\n    ,(select max(log_dttm) as max_date from superset_proteus_views_restapi) as max_date\n    ,md.mdm_employee_rk\n    ,md.emp_specialization_it_code\n    ,md.emp_specialization_oper_code\n    ,md.emp_specialization_desc\n    ,md.emp_stream_desc\n    ,md.company_fire_flg\n    ,md.management_head_flg\n    ,md.lvl3_management_unit_nm\n    ,md.lvl4_management_unit_nm\n    ,md.lvl5_management_unit_nm\n    ,md.lvl6_management_unit_nm\n    ,md.lvl7_management_unit_nm\n    , md.current_head_lvl_segment\n    ,ca.collection_names\n    , ag.ad_groups\nfrom superset_proteus_views_restapi s\nleft join proteus_dashboards d\n   on s.dashboard_id=d.dashboard_id\n   and s.system_nm=d.system_nm\nleft join mdm_employee_last_state md\n   on s.user_id = md.user_id\nleft join collection_array ca\n   on s.dashboard_id = ca.dashboard_id\nleft join  ad_login_groups ag\n   on s.login = ag.ad_login\n\nwhere s.system_nm = 'proteus';\n\nselect public.ulabs_actualize('usr_cross_data.proteus_views');\n\n\n\n\n"
+    isEnabled: true
+  - sid: 019daef1-9894-778a-8f76-bbbcadb24753
+    title: CrossData logins
+    shebang: gp
+    code: "drop table if exists ad_items_records;\ncreate table ad_items_records as\nselect guid \n      ,account_name \n      ,item_type\nfrom prod_v_chrono_idm_tadam.ad_items_records_public air \nwhere is_deleted = false \nand item_type in ('GroupUniversal', 'GroupMail', 'GroupSecurity','Person');\n\ndrop table if exists cross_data_logins;\ncreate table cross_data_logins as\nselect  \n    child.account_name as ad_logn\nfrom prod_v_chrono_idm_tadam.ad_item_parent_relations_public  aipr \ninner join ad_items_records parent on aipr.parent = parent.guid\ninner join ad_items_records child on aipr.item = child.guid \nwhere parent.account_name = 'helicopter_access_team_pd_cross'\n"
+    isEnabled: true
+  - sid: 019cfb31-e77c-7ccc-beb6-9fa566dc1ed8
+    title: Овнеры для Click
+    shebang: gp
+    code: "drop table if exists proteus_dashboards_owners_dist;\ncreate table proteus_dashboards_owners_dist as\nselect \n    distinct\n    u.username as owner_login_column\nfrom prod_v_sse.proteus_dashboard_owner o\nleft join superset_proteus_users u \n    on o.user_id=u.user_id;\n\ndrop table if exists proteus_dashboards_owners_filter;\ncreate table proteus_dashboards_owners_filter as\nselect \n1 as sort_column,\n'Да' as owner_column\n\nunion all\n\nselect \n2 as sort_column,\n'Нет' as owner_column"
+    isEnabled: true
+    color: "#FDC454"
+  - sid: 019db0a3-e1c1-7e6c-8f37-fd86db3ef012
+    title: Переключатель периодов
+    shebang: gp
+    code: "drop table if exists period_agg;\ncreate table period_agg as\n\nselect \n1 as sort_column,\n'30 дней' as period_column\n\nunion all\n\nselect \n2 as sort_column,\n'20 недель'\n\nunion all\n\nselect \n3 as sort_column,\n'12 месяцев'\n\nunion all\n\nselect \n4 as sort_column,\n'8 кварталов'\n\n"
+    isEnabled: true
+    color: "#FDC454"
+  - sid: 019db0a3-e1c1-7f31-a9e0-b363e597bfcc
+    title: Разрезы
+    shebang: gp
+    code: "drop table if exists proteus_group;\ncreate table proteus_group as\n\nselect \n1 as sort_column,\n'Стрим' as group_column\n\nunion all\n\nselect \n2 as group_column,\n'Специализация'\n\nunion all\n\nselect \n3 as group_column,\n'HQ|nonHQ'\n\nunion all\n\nselect \n4 as group_column,\n'IT|nonIT'\n\nunion all\n\nselect \n5 as group_column,\n'УС-3'\n\nunion all\n\nselect \n6 as group_column,\n'УС-4'\n\nunion all\n\nselect \n7 as group_column,\n'УС-5'\n\nunion all\n\nselect \n8 as group_column,\n'УС-6'\n\nunion all\n\nselect \n9 as group_column,\n'УС-7'\n\nunion all\n\nselect \n10 as group_column,\n'Сегментация (only Cross Data)'\n\n"
+    isEnabled: true
+    color: "#FDC454"
+  - sid: 019d96e3-2d2c-7442-838d-767a442891cd
+    title: Подневная
+    shebang: gp
+    code: "drop table if exists mdm_employee_daily;\ncreate table mdm_employee_daily as\n\nselect \n     m.business_dt\n    ,m.mdm_employee_rk\n   , m.ad_login\n   , m1.emp_specialization_it_code\n   , m1.emp_specialization_oper_code\n   , m1.emp_specialization_desc\n   , m1.emp_stream_desc\n   , m1.company_fire_flg\n   , m1.management_head_flg\n   , m1.lvl3_mapped_management_unit_nm as lvl3_management_unit_nm\n   , m1.lvl4_mapped_management_unit_nm as lvl4_management_unit_nm\n   , m1.lvl5_mapped_management_unit_nm as lvl5_management_unit_nm\n   , m1.lvl6_mapped_management_unit_nm as lvl6_management_unit_nm\n   , m1.lvl7_mapped_management_unit_nm as lvl7_management_unit_nm\n   , m1.active_type_nm\n   , m1.experience_group_nm\n   , tm.current_head_lvl_segment\n   , alg.ad_groups\n   , max(m.business_dt) over () as max_business_dt\nfrom  prod_v_emart.mdm_employee_structure_d m\nleft join prod_v_emart.mdm_employee_structure_d m1\n on m.mdm_employee_rk = m1.mdm_employee_rk\n and m1.last_state_flg= 1 \nleft join usr_cross_data.bl_talent_management tm\non tm.mdm_employee_rk = m.mdm_employee_rk\nleft join ad_login_groups alg\non m.ad_login = alg.ad_login\nwhere m.business_dt >= current_date - interval '180 days'"
+    isEnabled: true
+  - sid: 019dafcb-be4a-777e-ad7d-9b46830e4b46
+    title: Уникальные AD-группы
+    shebang: gp
+    code: "drop table if exists uniq_ad_group;\ncreate table uniq_ad_group as\n\nselect \n        distinct user_or_group_name as ad_group\n    from prod_v_sse.proteus_dashboard_access\n    where access_type = 'group'"
+    isEnabled: true
+  - sid: 019f6136-2f4f-75fb-b807-a1a275749307
+    title: Финальная таблица из event_physical_report
+    shebang: gp
+    code: "drop table if exists usr_cross_data.proteus_views_1;\ncreate table usr_cross_data.proteus_views_1 as\n\n/* ГИБРИДНАЯ ИСТОРИЯ ПРОСМОТРОВ:\n   - до 6 октября 2026 (включительно 5 окт): событие dashboard.rendered (полная история с 2025-07-27)\n   - с 6 октября 2026: событие proteus.dashboard.timeToFirstChartQuery (эталон, зарелижен 5 окт,\n     но полноценно работает только с 6 окт — в день релиза 5 окт событие неполное, поэтому\n     день перехода выбран 6 окт, чтобы ничего не потерять)\n   День перехода 6 октября выбран, т.к. 5 октября timeToFirstChartQuery работал неполноценно\n   (только с ~17:00, 11931 событие против 81334 у dashboard.rendered). */\n\nSELECT\n     date_trunc('day',e.event_dttm) as log_dttm\n    ,e.event_nm as action\n    ,cast(null as varchar) as json\n    ,e.proteus_user_id as user_id\n    ,e.user_ad_login as login\n    ,e.physical_report_id as dashboard_id\n    ,e.physical_report_nm as dashboard_nm\n    ,e.physical_report_slug as slug\n    ,e.certifier_nm as certified_by\n    ,e.creator_id as owner_id\n    ,e.creator_ad_login as owner_login\n    ,e.owner_ad_login_list as owners_string\n    ,e.create_dttm as created_dt\n    ,e.proteus_ad_group_nm_list as ad_groups_dash \n    ,e.viewer_ad_login_list as allowed_logins\n    ,cast(null as varchar) as system_nm\n    ,e.publish_flg as published\n    ,coalesce(e.actual_flg, 0) as actual_flg\n    ,e.physical_report_link as dashboard_url\n    ,count(event_nm) as action_count\n    ,(select max(event_dttm) from prod_v_sse_crossdata.event_physical_report) as max_date\n    ,e.user_mdm_employee_rk as mdm_employee_rk\n    ,e.user_specialization_it_code as emp_specialization_it_code\n    ,e.user_specialization_oper_code as emp_specialization_oper_code\n    ,e.user_specialization_desc as emp_specialization_desc\n    ,e.user_stream_desc as emp_stream_desc\n    ,e.user_company_fire_flg as company_fire_flg\n    ,e.user_management_head_flg as management_head_flg\n    ,e.user_lvl3_mapped_management_unit_nm as lvl3_management_unit_nm\n    ,e.user_lvl4_mapped_management_unit_nm as lvl4_management_unit_nm\n    ,e.user_lvl5_mapped_management_unit_nm as lvl5_management_unit_nm\n    ,e.user_lvl6_mapped_management_unit_nm as lvl6_management_unit_nm\n    ,e.user_lvl7_mapped_management_unit_nm as lvl7_management_unit_nm\n    ,tm.current_head_lvl_segment as current_head_lvl_segment\n    ,e.proteus_collection_nm_list as collection_names\n    ,e.user_ad_group_nm_list as ad_groups\nfrom prod_v_sse_crossdata.event_physical_report e\nleft join usr_cross_data.bl_talent_management tm\non tm.mdm_employee_rk = e.user_mdm_employee_rk\nwhere 1=1\n    and event_nm = 'dashboard.rendered'\n    and e.event_dttm >= current_date - interval '15 months'\n    and e.event_dttm < date '2026-10-06'\ngroup by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,  19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36\n\nUNION ALL\n\nSELECT\n     date_trunc('day',e.event_dttm) as log_dttm\n    ,e.event_nm as action\n    ,cast(null as varchar) as json\n    ,e.proteus_user_id as user_id\n    ,e.user_ad_login as login\n    ,e.physical_report_id as dashboard_id\n    ,e.physical_report_nm as dashboard_nm\n    ,e.physical_report_slug as slug\n    ,e.certifier_nm as certified_by\n    ,e.creator_id as owner_id\n    ,e.creator_ad_login as owner_login\n    ,e.owner_ad_login_list as owners_string\n    ,e.create_dttm as created_dt\n    ,e.proteus_ad_group_nm_list as ad_groups_dash \n    ,e.viewer_ad_login_list as allowed_logins\n    ,cast(null as varchar) as system_nm\n    ,e.publish_flg as published\n    ,coalesce(e.actual_flg, 0) as actual_flg\n    ,e.physical_report_link as dashboard_url\n    ,count(event_nm) as action_count\n    ,(select max(event_dttm) from prod_v_sse_crossdata.event_physical_report) as max_date\n    ,e.user_mdm_employee_rk as mdm_employee_rk\n    ,e.user_specialization_it_code as emp_specialization_it_code\n    ,e.user_specialization_oper_code as emp_specialization_oper_code\n    ,e.user_specialization_desc as emp_specialization_desc\n    ,e.user_stream_desc as emp_stream_desc\n    ,e.user_company_fire_flg as company_fire_flg\n    ,e.user_management_head_flg as management_head_flg\n    ,e.user_lvl3_mapped_management_unit_nm as lvl3_management_unit_nm\n    ,e.user_lvl4_mapped_management_unit_nm as lvl4_management_unit_nm\n    ,e.user_lvl5_mapped_management_unit_nm as lvl5_management_unit_nm\n    ,e.user_lvl6_mapped_management_unit_nm as lvl6_management_unit_nm\n    ,e.user_lvl7_mapped_management_unit_nm as lvl7_management_unit_nm\n    ,tm.current_head_lvl_segment as current_head_lvl_segment\n    ,e.proteus_collection_nm_list as collection_names\n    ,e.user_ad_group_nm_list as ad_groups\nfrom prod_v_sse_crossdata.event_physical_report e\nleft join usr_cross_data.bl_talent_management tm\non tm.mdm_employee_rk = e.user_mdm_employee_rk\nwhere 1=1\n    and event_nm = 'proteus.dashboard.timeToFirstChartQuery'\n    and e.event_dttm >= date '2026-10-06'\n    and e.event_dttm <= current_date\ngroup by 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,  19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36"
+    isEnabled: true
+  - sid: 01a12154-bfb7-7c82-b01d-7ecd31d403f5
+    title: Untitled 9
+    shebang: gp
+    code: |-
+      select *
+      from prod_v_sse.proteus_logs
+      where user_id = 26514
+      and dashboard_id = 50102
+      and action = 'DashboardRestApi.get'
+      ;
+    isEnabled: true
+  - sid: 01a0b86c-8f1f-7a3b-9908-489d8a4d26f3
+    title: Untitled 4
+    shebang: gp
+    code: |-
+      -- ============================================================================
+      -- Helicopter-нода 844437 · параграфы предагрегатов Proteus Adoption (GP)
+      -- Порядок: после параграфа «Финальная таблица из event_physical_report»
+      -- (usr_cross_data.proteus_views_1). Каждый блок ниже — отдельный параграф gp.
+      -- ============================================================================
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · факт отчёт×логин×день» → usr_cross_data.pa_evd_day
+      -- Вселенная куба: без самого борда (13040) и сервисного логина.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_evd_day;
+      create table usr_cross_data.pa_evd_day as
+      select
+          v.dashboard_id::int                  as dashboard_id,
+          v.login::text                        as login,
+          date_trunc('day', v.log_dttm)        as log_dttm,
+          sum(v.action_count)::bigint          as views
+      from usr_cross_data.proteus_views_1 v
+      where v.dashboard_id is not null
+        and v.login is not null
+        and v.dashboard_id <> 13040
+        and v.login <> 'svc_mon_otpp'
+      group by 1, 2, 3
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · мета отчётов» → usr_cross_data.pa_dash_meta (1 строка на отчёт,
+      -- последнее известное состояние по log_dttm).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_meta;
+      create table usr_cross_data.pa_dash_meta as
+      select dashboard_id, dashboard_nm, owner_login, owners_string, collection_names,
+             published, actual_flg, certified_by, created_dt
+      from (
+          select
+              v.dashboard_id::int                                   as dashboard_id,
+              coalesce(v.dashboard_nm, '')::text                    as dashboard_nm,
+              coalesce(v.owner_login, '')::text                     as owner_login,
+              coalesce(v.owners_string, array[]::text[])            as owners_string,
+              coalesce(v.collection_names, array[]::text[])         as collection_names,
+              coalesce(v.published::int, 0)                         as published,
+              coalesce(v.actual_flg::int, 0)                        as actual_flg,
+              v.certified_by::text                                  as certified_by,
+              v.created_dt                                          as created_dt,
+              row_number() over (partition by v.dashboard_id order by v.log_dttm desc) as rn
+          from usr_cross_data.proteus_views_1 v
+          where v.dashboard_id is not null and v.dashboard_id <> 13040
+      ) t
+      where rn = 1
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · атрибуты зрителей» → usr_cross_data.pa_emp_attrs
+      -- (1 строка на логин: последнее состояние по log_dttm + ФИО и стаж).
+      -- НОВОЕ 2026-09-22: fio (Фамилия Имя из proteus_users), exp_nm (группа стажа
+      -- из mdm_employee_d, last_state_flg = 1) — закрывают хвост «ФИО/стаж — заглушки».
+      -- НОВОЕ 2026-09-23: lvl5…lvl7_management_unit_nm — полная оргструктура УС-3…УС-7
+      -- для группировки «Оргструктура» в «Кто смотрит» (колонки есть в proteus_views_1).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_emp_attrs;
+      create table usr_cross_data.pa_emp_attrs as
+      select
+          t.login,
+          t.lvl3_management_unit_nm,
+          t.lvl4_management_unit_nm,
+          t.lvl5_management_unit_nm,
+          t.lvl6_management_unit_nm,
+          t.lvl7_management_unit_nm,
+          t.emp_specialization_desc,
+          t.emp_stream_desc,
+          t.management_head_flg,
+          t.ad_groups,
+          coalesce(nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
+          coalesce(m.experience_group_nm, '')::text as exp_nm
+      from (
+          select
+              v.login::text                                           as login,
+              coalesce(v.lvl3_management_unit_nm, '')::text           as lvl3_management_unit_nm,
+              coalesce(v.lvl4_management_unit_nm, '')::text           as lvl4_management_unit_nm,
+              coalesce(v.lvl5_management_unit_nm, '')::text           as lvl5_management_unit_nm,
+              coalesce(v.lvl6_management_unit_nm, '')::text           as lvl6_management_unit_nm,
+              coalesce(v.lvl7_management_unit_nm, '')::text           as lvl7_management_unit_nm,
+              coalesce(v.emp_specialization_desc, '')::text           as emp_specialization_desc,
+              coalesce(v.emp_stream_desc, '')::text                   as emp_stream_desc,
+              coalesce(v.management_head_flg::int, 0)                 as management_head_flg,
+              coalesce(v.ad_groups, array[]::text[])                  as ad_groups,
+              v.mdm_employee_rk                                       as mdm_employee_rk,
+              row_number() over (partition by v.login order by v.log_dttm desc) as rn
+          from usr_cross_data.proteus_views_1 v
+          where v.login is not null and v.login <> 'svc_mon_otpp'
+      ) t
+      left join (
+          select username, max(first_name) as first_name, max(last_name) as last_name
+          from prod_v_sse.proteus_users
+          group by username
+      ) u on u.username = t.login
+      left join (
+          select mdm_employee_rk, max(experience_group_nm) as experience_group_nm
+          from prod_v_emart.mdm_employee_structure_d
+          where last_state_flg = 1
+          group by mdm_employee_rk
+      ) m on m.mdm_employee_rk = t.mdm_employee_rk
+      where t.rn = 1
+      distributed by (login);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · пары отчёт×логин» → usr_cross_data.pa_pair   (НОВЫЙ 2026-09-22)
+      -- Главный предагрегат куба тела: одна строка на пару, всё, что куб раньше
+      -- считал на лету из дневного факта, для всех 4 грануляций сразу.
+      --   k = возраст бакета от даты свежести md (0 = текущий бакет);
+      --   msk_<g> — битовая маска активных бакетов k < 2n (bit k), n = 30/20/12/8;
+      --   v_<g> / vp_<g> — просмотры текущего / предыдущего окна n;
+      --   kmax_<g> — возраст самого старого бакета (первый визит пары);
+      --   msk_mon — маска месяцев активности (bit = возраст месяца, до 62);
+      --   own_flg — зритель входит во владельцев отчёта (свиток «без владельцев»);
+      --   md — дата свежести, с которой считались возрасты (контроль синхронности).
+      -- Грануляции как у ClickHouse: день; неделя с понедельника (date_trunc('week'));
+      -- месяц; квартал.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_pair;
+      create table usr_cross_data.pa_pair as
+      with mx as (
+          select max(log_dttm) as md from usr_cross_data.pa_evd_day
+      ),
+      ev as (
+          select
+              e.dashboard_id, e.login, e.log_dttm, e.views,
+              (x.md::date - e.log_dttm::date)                                                    as kd,
+              ((date_trunc('week', x.md)::date - date_trunc('week', e.log_dttm)::date) / 7)      as kw,
+              ((extract(year from x.md) * 12 + extract(month from x.md))
+                - (extract(year from e.log_dttm) * 12 + extract(month from e.log_dttm)))::int    as km,
+              ((extract(year from x.md) * 4 + extract(quarter from x.md))
+                - (extract(year from e.log_dttm) * 4 + extract(quarter from e.log_dttm)))::int   as kq,
+              x.md
+          from usr_cross_data.pa_evd_day e
+          cross join mx x
+      )
+      select
+          ev.dashboard_id,
+          ev.login,
+          bit_or(case when kd < 60 then (1::bigint << kd) else 0::bigint end)              as msk_d,
+          sum(case when kd < 30 then views else 0 end)::bigint                             as v_d,
+          sum(case when kd >= 30 and kd < 60 then views else 0 end)::bigint                as vp_d,
+          max(kd)::bigint                                                                   as kmax_d,
+          bit_or(case when kw < 40 then (1::bigint << kw) else 0::bigint end)              as msk_w,
+          sum(case when kw < 20 then views else 0 end)::bigint                             as v_w,
+          sum(case when kw >= 20 and kw < 40 then views else 0 end)::bigint               as vp_w,
+          max(kw)::bigint                                                                   as kmax_w,
+          bit_or(case when km < 24 then (1::bigint << km) else 0::bigint end)              as msk_m,
+          sum(case when km < 12 then views else 0 end)::bigint                             as v_m,
+          sum(case when km >= 12 and km < 24 then views else 0 end)::bigint                as vp_m,
+          max(km)::bigint                                                                   as kmax_m,
+          bit_or(case when kq < 16 then (1::bigint << kq) else 0::bigint end)              as msk_q,
+          sum(case when kq < 8 then views else 0 end)::bigint                              as v_q,
+          sum(case when kq >= 8 and kq < 16 then views else 0 end)::bigint                 as vp_q,
+          max(kq)::bigint                                                                   as kmax_q,
+          sum(views)::bigint                                                                as v_life,
+          max(ev.log_dttm)                                                                  as dmax,
+          min(ev.log_dttm)                                                                  as dmin,
+          bit_or(1::bigint << least(km, 62))                                                as msk_mon,
+          max(case when ev.login = any(m.owners_string) then 1 else 0 end)::smallint        as own_flg,
+          max(ev.md)                                                                        as md
+      from ev
+      left join usr_cross_data.pa_dash_meta m on m.dashboard_id = ev.dashboard_id
+      group by ev.dashboard_id, ev.login
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · просмотры по периодам» → usr_cross_data.pa_dash_bkt  (НОВЫЙ 2026-09-23)
+      -- Отчёт × грануляция × возраст бакета k (< n текущего окна): просмотры всех и без
+      -- владельцев отчёта. Нужен датасету pa_people (правая панель) для линии «Просмотры»
+      -- динамики: остальное он теперь считает по pa_pair и дневной факт не читает — так
+      -- правая панель стала такой же быстрой, как каталог. Возраст k — как в «PA · пары».
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_bkt;
+      create table usr_cross_data.pa_dash_bkt as
+      with mx as (
+          select max(log_dttm) as md from usr_cross_data.pa_evd_day
+      ),
+      ev as (
+          select
+              e.dashboard_id, e.views,
+              case when e.login = any(m.owners_string) then 1 else 0 end                         as own,
+              (x.md::date - e.log_dttm::date)                                                    as kd,
+              ((date_trunc('week', x.md)::date - date_trunc('week', e.log_dttm)::date) / 7)      as kw,
+              ((extract(year from x.md) * 12 + extract(month from x.md))
+                - (extract(year from e.log_dttm) * 12 + extract(month from e.log_dttm)))::int    as km,
+              ((extract(year from x.md) * 4 + extract(quarter from x.md))
+                - (extract(year from e.log_dttm) * 4 + extract(quarter from e.log_dttm)))::int   as kq
+          from usr_cross_data.pa_evd_day e
+          cross join mx x
+          left join usr_cross_data.pa_dash_meta m on m.dashboard_id = e.dashboard_id
+      )
+      select dashboard_id, 'd'::text as grain, kd::bigint as k, sum(views)::bigint as views,
+             sum(case when own = 0 then views else 0 end)::bigint as views_nown
+      from ev where kd < 30 group by dashboard_id, kd
+      union all
+      select dashboard_id, 'w', kw::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+      from ev where kw < 20 group by dashboard_id, kw
+      union all
+      select dashboard_id, 'm', km::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+      from ev where km < 12 group by dashboard_id, km
+      union all
+      select dashboard_id, 'q', kq::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+      from ev where kq < 8 group by dashboard_id, kq
+      distributed by (dashboard_id);
+    isEnabled: true
+  - sid: 01a0d8d9-50ab-7c5f-bdf7-734e27e2c684
+    title: Untitled 6
+    shebang: gp
+    code: |-
+      -- ============================================================================
+      -- Helicopter-нода 844437 · параграфы вкладки «Аудитория» (GP)
+      -- Порядок: после параграфов «PA · …» поставки 2026-09-22 (нужна pa_dash_meta).
+      -- Каждый блок ниже — отдельный параграф gp. Выгрузка в ClickHouse — файл 2.
+      --
+      -- Целевая аудитория (ЦА) отчёта по правам = поимённые права ∪ члены AD-групп прав,
+      -- только действующий штат. Состав групп — с вложенными группами (до 6 уровней), имена групп
+      -- сравниваются без учёта регистра (2026-09-26: раньше считалось только прямое членство и точный
+      -- регистр — у групп из подгрупп ЦА выходила в разы меньше).
+      -- ============================================================================
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · штат» → usr_cross_data.pa_staff   (2026-09-25: все, у кого есть ad_login)
+      -- База ЦА — все, у кого есть ad_login и кто работает сейчас:
+      --  (1) MDM: логин берётся из ЛЮБОЙ строки записи за 13 мес. (в строке последнего состояния
+      --      ad_login бывает пуст — такие люди раньше выпадали), атрибуты — из последнего состояния
+      --      записи (как параграф mdm_employee_daily); логин с несколькими записями (повторный наём,
+      --      перевод) — действующая запись, затем самая свежая; уволенные не входят;
+      --  (2) зрители Proteus за 13 мес., которых нет в (1) (подрядчики, записи без MDM): атрибуты —
+      --      из их последнего события, уволенные по событию не входят.
+      -- Логины — lower(trim()), как в событиях. src: mdm | viewer — откуда человек в базе.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_staff;
+      create table usr_cross_data.pa_staff as
+      with lg as (
+          select lower(trim(m.ad_login)) as login, m.mdm_employee_rk, max(m.business_dt) as dt
+          from prod_v_emart.mdm_employee_structure_d m
+          where nullif(trim(m.ad_login), '') is not null
+            and m.business_dt >= current_date - interval '13 months'
+          group by 1, 2
+      ),
+      mdm as (
+          select lg.login as lg, l.*,
+              row_number() over (partition by lg.login
+                                 order by coalesce(l.company_fire_flg::int, 0), lg.dt desc, lg.mdm_employee_rk desc) as rn
+          from lg
+          inner join prod_v_emart.mdm_employee_structure_d l
+              on l.mdm_employee_rk = lg.mdm_employee_rk and l.last_state_flg = 1
+      ),
+      vw as (
+          select lower(trim(v.login)) as lg, v.*,
+              row_number() over (partition by lower(trim(v.login)) order by v.log_dttm desc) as rn
+          from usr_cross_data.proteus_views_1 v
+          where nullif(trim(v.login), '') is not null and v.login <> 'svc_mon_otpp'
+      ),
+      base as (
+          select m.lg as login, 'mdm'::text as src,
+              m.lvl3_mapped_management_unit_nm as l3, m.lvl4_mapped_management_unit_nm as l4, m.lvl5_mapped_management_unit_nm as l5,
+              m.lvl6_mapped_management_unit_nm as l6, m.lvl7_mapped_management_unit_nm as l7,
+              m.emp_specialization_desc as spec, m.emp_stream_desc as stream, m.management_head_flg::int as head,
+              m.experience_group_nm as exp_nm, m.emp_specialization_oper_code as hq, m.emp_specialization_it_code as it
+          from mdm m
+          where m.rn = 1 and coalesce(m.company_fire_flg::int, 0) = 0
+          union all
+          select v.lg, 'viewer'::text,
+              v.lvl3_management_unit_nm, v.lvl4_management_unit_nm, v.lvl5_management_unit_nm,
+              v.lvl6_management_unit_nm, v.lvl7_management_unit_nm,
+              v.emp_specialization_desc, v.emp_stream_desc, v.management_head_flg::int,
+              null::text, v.emp_specialization_oper_code, v.emp_specialization_it_code
+          from vw v
+          where v.rn = 1 and coalesce(v.company_fire_flg::int, 0) = 0
+            and not exists (select 1 from mdm m where m.rn = 1 and m.lg = v.lg)
+      )
+      select
+          b.login::text                                            as login,
+          coalesce(b.l3, '')::text                                 as lvl3_management_unit_nm,
+          coalesce(b.l4, '')::text                                 as lvl4_management_unit_nm,
+          coalesce(b.l5, '')::text                                 as lvl5_management_unit_nm,
+          coalesce(b.l6, '')::text                                 as lvl6_management_unit_nm,
+          coalesce(b.l7, '')::text                                 as lvl7_management_unit_nm,
+          coalesce(b.spec, '')::text                               as emp_specialization_desc,
+          coalesce(b.stream, '')::text                             as emp_stream_desc,
+          coalesce(b.head, 0)                                      as management_head_flg,
+          coalesce(nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
+          coalesce(b.exp_nm, '')::text                             as exp_nm,
+          coalesce(b.hq, '')::text                                 as hq_code,   -- HQ | nonHQ | … (как фильтр «HQ|nonHQ» старого борда)
+          coalesce(b.it, '')::text                                 as it_code,   -- IT | nonIT
+          b.src                                                    as src
+      from base b
+      left join (
+          select lower(trim(username)) as username, max(first_name) as first_name, max(last_name) as last_name
+          from prod_v_sse.proteus_users
+          group by 1
+      ) u on u.username = b.login
+      distributed by (login);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · права отчётов» → usr_cross_data.pa_dash_acl
+      -- Отчёт × принципал: kind = 'user' (поимённое право, principal = логин) |
+      -- 'group' (AD-группа, principal = имя группы). Только отчёты вселенной (pa_dash_meta).
+      -- Принципал — lower(trim()): и логин, и имя группы (с ним же сверяется состав групп).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_acl;
+      create table usr_cross_data.pa_dash_acl as
+      select distinct
+          a.dashboard_id::int                                                     as dashboard_id,
+          lower(trim(a.user_or_group_name))::text                                 as principal,
+          case when a.access_type = 'user' then 'user' else 'group' end::text     as kind
+      from prod_v_sse.proteus_dashboard_access a
+      where a.access_type in ('user', 'group')
+        and a.user_or_group_name is not null and a.user_or_group_name <> ''
+        and a.dashboard_id in (select dashboard_id from usr_cross_data.pa_dash_meta)
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · состав групп прав» → usr_cross_data.pa_adg_member   (2026-09-26: вложенные группы)
+      -- AD-группа × логин — только группы, которые встречаются в правах отчётов. Человек входит в группу,
+      -- если он в ней напрямую ИЛИ в любой её подгруппе (подгруппы подгрупп — до 6 уровней вниз; циклы
+      -- не страшны: уровень ограничен, повторы убирает distinct). ad_group — lower(trim()) имени, как в pa_dash_acl.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_adg_member;
+      create table usr_cross_data.pa_adg_member as
+      with used as (
+          select distinct principal as ad_group from usr_cross_data.pa_dash_acl where kind = 'group'
+      ),
+      items as (
+          select guid, lower(trim(account_name))::text as nm, (item_type = 'Person') as is_person
+          from prod_v_chrono_idm_tadam.ad_items_records_public
+          where is_deleted = false
+            and (item_type = 'Person' or item_type like 'Group%')
+      ),
+      rel as (    -- ребро «родитель-группа → участник» (участник — человек или подгруппа)
+          select r.parent, r.item, c.is_person
+          from prod_v_chrono_idm_tadam.ad_item_parent_relations_public r
+          inner join items p on p.guid = r.parent and not p.is_person
+          inner join items c on c.guid = r.item
+      ),
+      g0 as (select u.ad_group, i.guid from used u inner join items i on i.nm = u.ad_group and not i.is_person),
+      g1 as (select distinct g.ad_group, r.item as guid from g0 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g2 as (select distinct g.ad_group, r.item as guid from g1 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g3 as (select distinct g.ad_group, r.item as guid from g2 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g4 as (select distinct g.ad_group, r.item as guid from g3 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g5 as (select distinct g.ad_group, r.item as guid from g4 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g6 as (select distinct g.ad_group, r.item as guid from g5 g inner join rel r on r.parent = g.guid and not r.is_person),
+      gall as (
+          select ad_group, guid from g0 union select ad_group, guid from g1 union select ad_group, guid from g2
+          union select ad_group, guid from g3 union select ad_group, guid from g4 union select ad_group, guid from g5
+          union select ad_group, guid from g6
+      )
+      select distinct g.ad_group::text as ad_group, c.nm::text as login
+      from gall g
+      inner join rel r on r.parent = g.guid and r.is_person
+      inner join items c on c.guid = r.item
+      distributed by (ad_group);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · размер групп» → usr_cross_data.pa_adg_size   (НОВЫЙ 2026-09-25)
+      -- Сколько людей действующего штата в каждой AD-группе прав — список «AD-группы»
+      -- в настройке ЦА (считается раз в сутки, а не на каждый клик).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_adg_size;
+      create table usr_cross_data.pa_adg_size as
+      select m.ad_group::text as ad_group, count(distinct m.login)::bigint as n
+      from usr_cross_data.pa_adg_member m
+      inner join usr_cross_data.pa_staff s on s.login = m.login
+      group by m.ad_group
+      distributed by (ad_group);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · ЦА отчёта» → usr_cross_data.pa_dash_ca
+      -- Размер ЦА по правам на отчёт (для колонки «Охват ЦА» каталога) и флаг «широкий
+      -- доступ»: ЦА ≥ 30 % штата — проценты охвата по такому знаменателю не показываем.
+      -- Владельцы отчёта в ЦА не входят (как в панели при «Без владельцев» — умолчание).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_ca;
+      create table usr_cross_data.pa_dash_ca as
+      with ca as (
+          select a.dashboard_id, a.principal as login
+          from usr_cross_data.pa_dash_acl a
+          where a.kind = 'user'
+          union
+          select a.dashboard_id, m.login
+          from usr_cross_data.pa_dash_acl a
+          inner join usr_cross_data.pa_adg_member m on m.ad_group = a.principal
+          where a.kind = 'group'
+      ),
+      hc as (select count(*) as n from usr_cross_data.pa_staff)
+      select c.dashboard_id::int as dashboard_id,
+             count(*)::bigint as ca_n,
+             (count(*) >= 0.3 * max(hc.n))::int as ca_wide
+      from ca c
+      inner join usr_cross_data.pa_staff s on s.login = c.login
+      left join (
+          select dashboard_id, lower(unnest(owners_string)) as login from usr_cross_data.pa_dash_meta
+      ) ow on ow.dashboard_id = c.dashboard_id and ow.login = c.login
+      cross join hc
+      where ow.login is null
+      group by c.dashboard_id
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · доступ зрителей» → usr_cross_data.pa_pair_acc   (НОВЫЙ 2026-09-25, после «PA · ЦА отчёта»)
+      -- Пары «отчёт × зритель» из pa_pair, где зритель — действующий сотрудник с AD-логином (pa_staff) с правом
+      -- на отчёт: поимённо или через AD-группу. Числитель «Охвата ЦА» каталога вкладки: зрители из ЦА, а не все.
+      -- Считается от пар к группам зрителя (не от групп ко всем их членам) — без взрыва на широких группах.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_pair_acc;
+      create table usr_cross_data.pa_pair_acc as
+      with pr as (
+          select distinct p.dashboard_id::int as dashboard_id, lower(p.login)::text as login
+          from usr_cross_data.pa_pair p
+          where p.login is not null and p.login <> ''
+      ),
+      acc as (
+          select pr.dashboard_id, pr.login
+          from pr
+          inner join usr_cross_data.pa_dash_acl a
+              on a.kind = 'user' and a.dashboard_id = pr.dashboard_id and a.principal = pr.login
+          union
+          select pr.dashboard_id, pr.login
+          from pr
+          inner join usr_cross_data.pa_adg_member m on m.login = pr.login
+          inner join usr_cross_data.pa_dash_acl a
+              on a.kind = 'group' and a.dashboard_id = pr.dashboard_id and a.principal = m.ad_group
+      )
+      select acc.dashboard_id, acc.login
+      from acc
+      inner join usr_cross_data.pa_staff s on s.login = acc.login
+      distributed by (dashboard_id);
+    isEnabled: true
+  - sid: 01a115f7-90ae-7c60-893e-97c1ee6ac6cb
+    title: Untitled 8
+    shebang: gp
+    code: |-
+      with g as (
+        select guid, lower(trim(account_name)) as nm
+        from prod_v_chrono_idm_tadam.ad_items_records_public
+        where lower(trim(account_name)) in ('tableau-all', 'cross_analytics_dwh') and not is_deleted
+      )
+      select g.nm, 'parent = группа' as dir, c.item_type, count(*) as n
+      from g
+      join prod_v_chrono_idm_tadam.ad_item_parent_relations_public r on r.parent = g.guid
+      join prod_v_chrono_idm_tadam.ad_items_records_public c on c.guid = r.item
+      group by 1, 2, 3
+      union all
+      select g.nm, 'item = группа' as dir, c.item_type, count(*) as n
+      from g
+      join prod_v_chrono_idm_tadam.ad_item_parent_relations_public r on r.item = g.guid
+      join prod_v_chrono_idm_tadam.ad_items_records_public c on c.guid = r.parent
+      group by 1, 2, 3
+      order by 1, 2, 4 desc;
+    isEnabled: true
+  - sid: 01a0e727-c7cf-7da8-93d4-ef857071ee4c
+    title: Для единой вкладки
+    shebang: gp
+    code: |-
+      -- ============================================================================================================
+      -- ЕДИНЫЙ ЛИСТ — все витрины (GP-параграфы Helicopter) одним файлом, в порядке запуска.
+      -- Это ТЕ ЖЕ параграфы, что уже работают в двух нодах боевого отчёта (первый лист + нода 844437 второго).
+      -- Единый лист читает те же таблицы — если обе ноды у вас запускаются, в GP НИЧЕГО менять не нужно.
+      -- Файл — чтобы всё для листа было в одном месте (или собрать одну ноду с нуля: блоки по порядку, каждый — свой
+      -- параграф; затем выгрузка — файл 2).
+      -- Порядок важен: часть 2 читает pa_pair и pa_dash_meta из части 1.
+      -- ============================================================================================================
+
+      -- ############################################################################################################
+      -- ЧАСТЬ 1. Витрины первого листа: факт, мета отчётов, атрибуты зрителей, пары отчёт×логин, просмотры по периодам
+      -- ############################################################################################################
+      -- ============================================================================
+      -- Helicopter-нода 844437 · параграфы предагрегатов Proteus Adoption (GP)
+      -- Порядок: после параграфа «Финальная таблица из event_physical_report»
+      -- (usr_cross_data.proteus_views_1). Каждый блок ниже — отдельный параграф gp.
+      -- ============================================================================
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · склейка логинов» → usr_cross_data.pa_login_map   (НОВЫЙ 2026-09-30, ПЕРВЫМ в ноде)
+      -- Человек сменил AD-логин (например, после свадьбы: a.pezikova → anas.e.petrova) — в MDM это одна запись
+      -- (mdm_employee_rk) с двумя логинами, а у нас выходило два человека. Словарь «старый логин → текущий»:
+      -- текущий — логин из самой свежей строки MDM записи, где он заполнен; старые — все прочие логины записи
+      -- из MDM за 13 мес. и из событий Proteus. Логин, который ведёт к двум разным текущим, не склеиваем.
+      -- Дальше факт, атрибуты зрителей и штат берут логин через этот словарь: визиты под старым логином
+      -- считаются визитами того же человека.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_login_map;
+      create table usr_cross_data.pa_login_map as
+      with lr as (
+          select lower(trim(m.ad_login)) as login, m.mdm_employee_rk as rk, max(m.business_dt) as dt
+          from prod_v_emart.mdm_employee_structure_d m
+          where nullif(trim(m.ad_login), '') is not null
+            and m.business_dt >= current_date - interval '13 months'
+          group by 1, 2
+      ),
+      cur as (
+          select rk, login as canon
+          from (select rk, login, row_number() over (partition by rk order by dt desc, login) as rn from lr) x
+          where rn = 1
+      ),
+      al as (
+          select login, rk from lr
+          union
+          select distinct lower(trim(v.login)), v.mdm_employee_rk
+          from usr_cross_data.proteus_views_1 v
+          where v.mdm_employee_rk is not null and nullif(trim(v.login), '') is not null
+      )
+      select a.login::text as login, min(c.canon)::text as canon
+      from al a
+      inner join cur c on c.rk = a.rk
+      group by a.login
+      having count(distinct c.canon) = 1 and min(c.canon) <> a.login
+      distributed by (login);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · факт отчёт×логин×день» → usr_cross_data.pa_evd_day
+      -- Вселенная куба: без самого борда (13040) и сервисного логина.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_evd_day;
+      create table usr_cross_data.pa_evd_day as
+      select
+          v.dashboard_id::int                  as dashboard_id,
+          coalesce(mp.canon, v.login)::text    as login,   -- старый логин → текущий (pa_login_map)
+          date_trunc('day', v.log_dttm)        as log_dttm,
+          sum(v.action_count)::bigint          as views
+      from usr_cross_data.proteus_views_1 v
+      left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(v.login))
+      where v.dashboard_id is not null
+        and v.login is not null
+        and v.dashboard_id <> 13040
+        and v.login <> 'svc_mon_otpp'
+      group by 1, 2, 3
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · мета отчётов» → usr_cross_data.pa_dash_meta (1 строка на отчёт,
+      -- последнее известное состояние по log_dttm).
+      -- 2026-10-07: автор и владельцы — АКТУАЛЬНЫМИ логинами (pa_login_map, как зрители): у сменившего логин
+      -- старый аккаунт Proteus остаётся автором/владельцем его прежних отчётов — без склейки его отчёты «размазаны».
+      -- Логины владельцев — lower(trim()), без кавычек и повторов. Тот же канон берёт own_flg в «PA · пары».
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_meta;
+      create table usr_cross_data.pa_dash_meta as
+      with t as (
+          select
+              v.dashboard_id::int                                   as dashboard_id,
+              coalesce(v.dashboard_nm, '')::text                    as dashboard_nm,
+              coalesce(v.owner_login, '')::text                     as owner_login,
+              coalesce(v.owners_string, array[]::text[])            as owners_string,
+              coalesce(v.collection_names, array[]::text[])         as collection_names,
+              coalesce(v.published::int, 0)                         as published,
+              coalesce(v.actual_flg::int, 0)                        as actual_flg,
+              v.certified_by::text                                  as certified_by,
+              v.created_dt                                          as created_dt,
+              row_number() over (partition by v.dashboard_id order by v.log_dttm desc) as rn
+          from usr_cross_data.proteus_views_1 v
+          where v.dashboard_id is not null and v.dashboard_id <> 13040
+      ),
+      m as (select * from t where rn = 1),
+      ow as (    -- владельцы → актуальные логины
+          select u.dashboard_id, array_agg(distinct coalesce(mp.canon, u.o)) as owners
+          from (
+              select z.dashboard_id, btrim(lower(trim(z.x)), '"') as o
+              from (select dashboard_id, unnest(owners_string) as x from m) z
+          ) u
+          left join usr_cross_data.pa_login_map mp on mp.login = u.o
+          where u.o <> ''
+          group by u.dashboard_id
+      )
+      select m.dashboard_id, m.dashboard_nm,
+             coalesce(ma.canon, btrim(lower(trim(m.owner_login)), '"'))::text  as owner_login,
+             coalesce(ow.owners, array[]::text[])                                as owners_string,
+             m.collection_names, m.published, m.actual_flg, m.certified_by, m.created_dt
+      from m
+      left join ow on ow.dashboard_id = m.dashboard_id
+      left join usr_cross_data.pa_login_map ma on ma.login = btrim(lower(trim(m.owner_login)), '"')
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · атрибуты зрителей» → usr_cross_data.pa_emp_attrs
+      -- (1 строка на логин: последнее состояние по log_dttm + ФИО и стаж).
+      -- НОВОЕ 2026-09-22: fio (Фамилия Имя из proteus_users), exp_nm (группа стажа
+      -- из prod_v_emart.mdm_employee_structure_d, last_state_flg = 1) — закрывают хвост «ФИО/стаж — заглушки».
+      -- НОВОЕ 2026-09-23: lvl5…lvl7_management_unit_nm — полная оргструктура УС-3…УС-7
+      -- для группировки «Оргструктура» в «Кто смотрит» (колонки есть в proteus_views_1).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_emp_attrs;
+      create table usr_cross_data.pa_emp_attrs as
+      select
+          t.login,
+          t.lvl3_management_unit_nm,
+          t.lvl4_management_unit_nm,
+          t.lvl5_management_unit_nm,
+          t.lvl6_management_unit_nm,
+          t.lvl7_management_unit_nm,
+          t.emp_specialization_desc,
+          t.emp_stream_desc,
+          t.management_head_flg,
+          t.ad_groups,
+          -- ФИО: из MDM (по-русски, единообразно; 2026-09-30), нет в MDM — из профиля Proteus
+          coalesce(nullif(trim(coalesce(m.last_nm, '') || ' ' || coalesce(m.first_nm, '')), ''),
+                   nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
+          coalesce(m.experience_group_nm, '')::text as exp_nm
+      from (
+          select
+              coalesce(mp.canon, v.login)::text                       as login,   -- старый логин → текущий
+              coalesce(v.lvl3_management_unit_nm, '')::text           as lvl3_management_unit_nm,
+              coalesce(v.lvl4_management_unit_nm, '')::text           as lvl4_management_unit_nm,
+              coalesce(v.lvl5_management_unit_nm, '')::text           as lvl5_management_unit_nm,
+              coalesce(v.lvl6_management_unit_nm, '')::text           as lvl6_management_unit_nm,
+              coalesce(v.lvl7_management_unit_nm, '')::text           as lvl7_management_unit_nm,
+              coalesce(v.emp_specialization_desc, '')::text           as emp_specialization_desc,
+              coalesce(v.emp_stream_desc, '')::text                   as emp_stream_desc,
+              coalesce(v.management_head_flg::int, 0)                 as management_head_flg,
+              coalesce(v.ad_groups, array[]::text[])                  as ad_groups,
+              v.mdm_employee_rk                                       as mdm_employee_rk,
+              row_number() over (partition by coalesce(mp.canon, v.login) order by v.log_dttm desc) as rn
+          from usr_cross_data.proteus_views_1 v
+          left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(v.login))
+          where v.login is not null and v.login <> 'svc_mon_otpp'
+      ) t
+      left join (
+          select username, max(first_name) as first_name, max(last_name) as last_name
+          from prod_v_sse.proteus_users
+          group by username
+      ) u on u.username = t.login
+      left join (
+          select mdm_employee_rk, max(experience_group_nm) as experience_group_nm, max(last_nm) as last_nm, max(first_nm) as first_nm
+          from prod_v_emart.mdm_employee_structure_d
+          where last_state_flg = 1
+          group by mdm_employee_rk
+      ) m on m.mdm_employee_rk = t.mdm_employee_rk
+      where t.rn = 1
+      distributed by (login);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · пары отчёт×логин» → usr_cross_data.pa_pair   (НОВЫЙ 2026-09-22)
+      -- Главный предагрегат куба тела: одна строка на пару, всё, что куб раньше
+      -- считал на лету из дневного факта, для всех 4 грануляций сразу.
+      --   k = возраст бакета от даты свежести md (0 = текущий бакет);
+      --   msk_<g> — битовая маска активных бакетов k < 2n (bit k), n = 30/20/12/8;
+      --   v_<g> / vp_<g> — просмотры текущего / предыдущего окна n;
+      --   kmax_<g> — возраст самого старого бакета (первый визит пары);
+      --   msk_mon — маска месяцев активности (bit = возраст месяца, до 62);
+      --   own_flg — зритель входит во владельцев отчёта (свиток «без владельцев»);
+      --   md — дата свежести, с которой считались возрасты (контроль синхронности).
+      -- Грануляции как у ClickHouse: день; неделя с понедельника (date_trunc('week'));
+      -- месяц; квартал.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_pair;
+      create table usr_cross_data.pa_pair as
+      with mx as (
+          select max(log_dttm) as md from usr_cross_data.pa_evd_day
+      ),
+      ev as (
+          select
+              e.dashboard_id, e.login, e.log_dttm, e.views,
+              (x.md::date - e.log_dttm::date)                                                    as kd,
+              ((date_trunc('week', x.md)::date - date_trunc('week', e.log_dttm)::date) / 7)      as kw,
+              ((extract(year from x.md) * 12 + extract(month from x.md))
+                - (extract(year from e.log_dttm) * 12 + extract(month from e.log_dttm)))::int    as km,
+              ((extract(year from x.md) * 4 + extract(quarter from x.md))
+                - (extract(year from e.log_dttm) * 4 + extract(quarter from e.log_dttm)))::int   as kq,
+              x.md
+          from usr_cross_data.pa_evd_day e
+          cross join mx x
+      )
+      select
+          ev.dashboard_id,
+          ev.login,
+          bit_or(case when kd < 60 then (1::bigint << kd) else 0::bigint end)              as msk_d,
+          sum(case when kd < 30 then views else 0 end)::bigint                             as v_d,
+          sum(case when kd >= 30 and kd < 60 then views else 0 end)::bigint                as vp_d,
+          max(kd)::bigint                                                                   as kmax_d,
+          bit_or(case when kw < 40 then (1::bigint << kw) else 0::bigint end)              as msk_w,
+          sum(case when kw < 20 then views else 0 end)::bigint                             as v_w,
+          sum(case when kw >= 20 and kw < 40 then views else 0 end)::bigint               as vp_w,
+          max(kw)::bigint                                                                   as kmax_w,
+          bit_or(case when km < 24 then (1::bigint << km) else 0::bigint end)              as msk_m,
+          sum(case when km < 12 then views else 0 end)::bigint                             as v_m,
+          sum(case when km >= 12 and km < 24 then views else 0 end)::bigint                as vp_m,
+          max(km)::bigint                                                                   as kmax_m,
+          bit_or(case when kq < 16 then (1::bigint << kq) else 0::bigint end)              as msk_q,
+          sum(case when kq < 8 then views else 0 end)::bigint                              as v_q,
+          sum(case when kq >= 8 and kq < 16 then views else 0 end)::bigint                 as vp_q,
+          max(kq)::bigint                                                                   as kmax_q,
+          sum(views)::bigint                                                                as v_life,
+          max(ev.log_dttm)                                                                  as dmax,
+          min(ev.log_dttm)                                                                  as dmin,
+          bit_or(1::bigint << least(km, 62))                                                as msk_mon,
+          max(case when ev.login = any(m.owners_string) then 1 else 0 end)::smallint        as own_flg,
+          max(ev.md)                                                                        as md
+      from ev
+      left join usr_cross_data.pa_dash_meta m on m.dashboard_id = ev.dashboard_id
+      group by ev.dashboard_id, ev.login
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · просмотры по периодам» → usr_cross_data.pa_dash_bkt  (НОВЫЙ 2026-09-23)
+      -- Отчёт × грануляция × возраст бакета k (< n текущего окна): просмотры всех и без
+      -- владельцев отчёта. Нужен датасету pa_people (правая панель) для линии «Просмотры»
+      -- динамики: остальное он теперь считает по pa_pair и дневной факт не читает — так
+      -- правая панель стала такой же быстрой, как каталог. Возраст k — как в «PA · пары».
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_bkt;
+      create table usr_cross_data.pa_dash_bkt as
+      with mx as (
+          select max(log_dttm) as md from usr_cross_data.pa_evd_day
+      ),
+      ev as (
+          select
+              e.dashboard_id, e.views,
+              case when e.login = any(m.owners_string) then 1 else 0 end                         as own,
+              (x.md::date - e.log_dttm::date)                                                    as kd,
+              ((date_trunc('week', x.md)::date - date_trunc('week', e.log_dttm)::date) / 7)      as kw,
+              ((extract(year from x.md) * 12 + extract(month from x.md))
+                - (extract(year from e.log_dttm) * 12 + extract(month from e.log_dttm)))::int    as km,
+              ((extract(year from x.md) * 4 + extract(quarter from x.md))
+                - (extract(year from e.log_dttm) * 4 + extract(quarter from e.log_dttm)))::int   as kq
+          from usr_cross_data.pa_evd_day e
+          cross join mx x
+          left join usr_cross_data.pa_dash_meta m on m.dashboard_id = e.dashboard_id
+      )
+      select dashboard_id, 'd'::text as grain, kd::bigint as k, sum(views)::bigint as views,
+             sum(case when own = 0 then views else 0 end)::bigint as views_nown
+      from ev where kd < 30 group by dashboard_id, kd
+      union all
+      select dashboard_id, 'w', kw::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+      from ev where kw < 20 group by dashboard_id, kw
+      union all
+      select dashboard_id, 'm', km::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+      from ev where km < 12 group by dashboard_id, km
+      union all
+      select dashboard_id, 'q', kq::bigint, sum(views)::bigint, sum(case when own = 0 then views else 0 end)::bigint
+      from ev where kq < 8 group by dashboard_id, kq
+      distributed by (dashboard_id);
+
+
+      -- ############################################################################################################
+      -- ЧАСТЬ 2. Витрины целевой аудитории (нода 844437): штат, права, состав групп, размер групп, ЦА отчёта, доступ пар
+      -- ############################################################################################################
+      -- ============================================================================
+      -- Helicopter-нода 844437 · параграфы вкладки «Аудитория» (GP)
+      -- Порядок: после параграфов «PA · …» поставки 2026-09-22 (нужна pa_dash_meta).
+      -- Каждый блок ниже — отдельный параграф gp. Выгрузка в ClickHouse — файл 2.
+      --
+      -- Целевая аудитория (ЦА) отчёта по правам = поимённые права ∪ члены AD-групп прав,
+      -- только действующий штат. Состав групп — с вложенными группами (до 6 уровней), имена групп
+      -- сравниваются без учёта регистра (2026-09-26: раньше считалось только прямое членство и точный
+      -- регистр — у групп из подгрупп ЦА выходила в разы меньше).
+      -- ============================================================================
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · штат» → usr_cross_data.pa_staff   (2026-09-25: все, у кого есть ad_login)
+      -- База ЦА — все, у кого есть ad_login и кто работает сейчас:
+      --  (1) MDM: логин берётся из ЛЮБОЙ строки записи за 13 мес. (в строке последнего состояния
+      --      ad_login бывает пуст — такие люди раньше выпадали), атрибуты — из последнего состояния
+      --      записи (как параграф mdm_employee_daily); логин с несколькими записями (повторный наём,
+      --      перевод) — действующая запись, затем самая свежая; уволенные не входят;
+      --  (2) зрители Proteus за 13 мес., которых нет в (1) (подрядчики, записи без MDM): атрибуты —
+      --      из их последнего события, уволенные по событию не входят.
+      -- Логины — lower(trim()), как в событиях. src: mdm | viewer — откуда человек в базе.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_staff;
+      create table usr_cross_data.pa_staff as
+      with lg as (
+          -- логин записи — текущий (pa_login_map): старый и новый логины одного человека — одна строка
+          select coalesce(mp.canon, lower(trim(m.ad_login))) as login, m.mdm_employee_rk, max(m.business_dt) as dt
+          from prod_v_emart.mdm_employee_structure_d m
+          left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(m.ad_login))
+          where nullif(trim(m.ad_login), '') is not null
+            and m.business_dt >= current_date - interval '13 months'
+          group by 1, 2
+      ),
+      mdm as (
+          select lg.login as lg, l.*,
+              row_number() over (partition by lg.login
+                                 order by coalesce(l.company_fire_flg::int, 0), lg.dt desc, lg.mdm_employee_rk desc) as rn
+          from lg
+          inner join prod_v_emart.mdm_employee_structure_d l
+              on l.mdm_employee_rk = lg.mdm_employee_rk and l.last_state_flg = 1
+      ),
+      vw as (
+          select coalesce(mp.canon, lower(trim(v.login))) as lg, v.*,
+              row_number() over (partition by coalesce(mp.canon, lower(trim(v.login))) order by v.log_dttm desc) as rn
+          from usr_cross_data.proteus_views_1 v
+          left join usr_cross_data.pa_login_map mp on mp.login = lower(trim(v.login))
+          where nullif(trim(v.login), '') is not null and v.login <> 'svc_mon_otpp'
+      ),
+      base as (
+          select m.lg as login, 'mdm'::text as src,
+              m.lvl3_mapped_management_unit_nm as l3, m.lvl4_mapped_management_unit_nm as l4, m.lvl5_mapped_management_unit_nm as l5,
+              m.lvl6_mapped_management_unit_nm as l6, m.lvl7_mapped_management_unit_nm as l7,
+              m.emp_specialization_desc as spec, m.emp_stream_desc as stream, m.management_head_flg::int as head,
+              m.experience_group_nm as exp_nm, m.emp_specialization_oper_code as hq, m.emp_specialization_it_code as it,
+              m.last_nm as ln, m.first_nm as fn
+          from mdm m
+          where m.rn = 1 and coalesce(m.company_fire_flg::int, 0) = 0
+          union all
+          select v.lg, 'viewer'::text,
+              v.lvl3_management_unit_nm, v.lvl4_management_unit_nm, v.lvl5_management_unit_nm,
+              v.lvl6_management_unit_nm, v.lvl7_management_unit_nm,
+              v.emp_specialization_desc, v.emp_stream_desc, v.management_head_flg::int,
+              null::text, v.emp_specialization_oper_code, v.emp_specialization_it_code,
+              null::text, null::text
+          from vw v
+          where v.rn = 1 and coalesce(v.company_fire_flg::int, 0) = 0
+            and not exists (select 1 from mdm m where m.rn = 1 and m.lg = v.lg)
+      )
+      select
+          b.login::text                                            as login,
+          coalesce(b.l3, '')::text                                 as lvl3_management_unit_nm,
+          coalesce(b.l4, '')::text                                 as lvl4_management_unit_nm,
+          coalesce(b.l5, '')::text                                 as lvl5_management_unit_nm,
+          coalesce(b.l6, '')::text                                 as lvl6_management_unit_nm,
+          coalesce(b.l7, '')::text                                 as lvl7_management_unit_nm,
+          coalesce(b.spec, '')::text                               as emp_specialization_desc,
+          coalesce(b.stream, '')::text                             as emp_stream_desc,
+          coalesce(b.head, 0)                                      as management_head_flg,
+          -- ФИО: из MDM (по-русски), нет в MDM (подрядчики) — из профиля Proteus
+          coalesce(nullif(trim(coalesce(b.ln, '') || ' ' || coalesce(b.fn, '')), ''),
+                   nullif(trim(coalesce(u.last_name, '') || ' ' || coalesce(u.first_name, '')), ''), '')::text as fio,
+          coalesce(b.exp_nm, '')::text                             as exp_nm,
+          coalesce(b.hq, '')::text                                 as hq_code,   -- HQ | nonHQ | … (как фильтр «HQ|nonHQ» старого борда)
+          coalesce(b.it, '')::text                                 as it_code,   -- IT | nonIT
+          b.src                                                    as src
+      from base b
+      left join (
+          select lower(trim(username)) as username, max(first_name) as first_name, max(last_name) as last_name
+          from prod_v_sse.proteus_users
+          group by 1
+      ) u on u.username = b.login
+      distributed by (login);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · права отчётов» → usr_cross_data.pa_dash_acl
+      -- Отчёт × принципал: kind = 'user' (поимённое право, principal = логин) |
+      -- 'group' (AD-группа, principal = имя группы). Только отчёты вселенной (pa_dash_meta).
+      -- Принципал — lower(trim()): и логин, и имя группы (с ним же сверяется состав групп).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_acl;
+      create table usr_cross_data.pa_dash_acl as
+      select distinct
+          a.dashboard_id::int                                                     as dashboard_id,
+          lower(trim(a.user_or_group_name))::text                                 as principal,
+          case when a.access_type = 'user' then 'user' else 'group' end::text     as kind
+      from prod_v_sse.proteus_dashboard_access a
+      where a.access_type in ('user', 'group')
+        and a.user_or_group_name is not null and a.user_or_group_name <> ''
+        and a.dashboard_id in (select dashboard_id from usr_cross_data.pa_dash_meta)
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · состав групп прав» → usr_cross_data.pa_adg_member   (2026-09-26: вложенные группы)
+      -- AD-группа × логин — только группы, которые встречаются в правах отчётов. Человек входит в группу,
+      -- если он в ней напрямую ИЛИ в любой её подгруппе (подгруппы подгрупп — до 6 уровней вниз; циклы
+      -- не страшны: уровень ограничен, повторы убирает distinct). ad_group — lower(trim()) имени, как в pa_dash_acl.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_adg_member;
+      create table usr_cross_data.pa_adg_member as
+      with used as (
+          select distinct principal as ad_group from usr_cross_data.pa_dash_acl where kind = 'group'
+      ),
+      items as (
+          select guid, lower(trim(account_name))::text as nm, (item_type = 'Person') as is_person
+          from prod_v_chrono_idm_tadam.ad_items_records_public
+          where is_deleted = false
+            and (item_type = 'Person' or item_type like 'Group%')
+      ),
+      rel as (    -- ребро «родитель-группа → участник» (участник — человек или подгруппа)
+          select r.parent, r.item, c.is_person
+          from prod_v_chrono_idm_tadam.ad_item_parent_relations_public r
+          inner join items p on p.guid = r.parent and not p.is_person
+          inner join items c on c.guid = r.item
+      ),
+      g0 as (select u.ad_group, i.guid from used u inner join items i on i.nm = u.ad_group and not i.is_person),
+      g1 as (select distinct g.ad_group, r.item as guid from g0 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g2 as (select distinct g.ad_group, r.item as guid from g1 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g3 as (select distinct g.ad_group, r.item as guid from g2 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g4 as (select distinct g.ad_group, r.item as guid from g3 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g5 as (select distinct g.ad_group, r.item as guid from g4 g inner join rel r on r.parent = g.guid and not r.is_person),
+      g6 as (select distinct g.ad_group, r.item as guid from g5 g inner join rel r on r.parent = g.guid and not r.is_person),
+      gall as (
+          select ad_group, guid from g0 union select ad_group, guid from g1 union select ad_group, guid from g2
+          union select ad_group, guid from g3 union select ad_group, guid from g4 union select ad_group, guid from g5
+          union select ad_group, guid from g6
+      )
+      select distinct g.ad_group::text as ad_group, c.nm::text as login
+      from gall g
+      inner join rel r on r.parent = g.guid and r.is_person
+      inner join items c on c.guid = r.item
+      distributed by (ad_group);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · размер групп» → usr_cross_data.pa_adg_size   (НОВЫЙ 2026-09-25)
+      -- Сколько людей действующего штата в каждой AD-группе прав — список «AD-группы»
+      -- в настройке ЦА (считается раз в сутки, а не на каждый клик).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_adg_size;
+      create table usr_cross_data.pa_adg_size as
+      select m.ad_group::text as ad_group, count(distinct m.login)::bigint as n
+      from usr_cross_data.pa_adg_member m
+      inner join usr_cross_data.pa_staff s on s.login = m.login
+      group by m.ad_group
+      distributed by (ad_group);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · ЦА отчёта» → usr_cross_data.pa_dash_ca
+      -- Размер ЦА по правам на отчёт (для колонки «Охват ЦА» каталога) и флаг «широкий
+      -- доступ»: ЦА ≥ 30 % штата — проценты охвата по такому знаменателю не показываем.
+      -- Владельцы отчёта в ЦА не входят (как в панели при «Без владельцев» — умолчание).
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_dash_ca;
+      create table usr_cross_data.pa_dash_ca as
+      with ca as (
+          select a.dashboard_id, a.principal as login
+          from usr_cross_data.pa_dash_acl a
+          where a.kind = 'user'
+          union
+          select a.dashboard_id, m.login
+          from usr_cross_data.pa_dash_acl a
+          inner join usr_cross_data.pa_adg_member m on m.ad_group = a.principal
+          where a.kind = 'group'
+      ),
+      hc as (select count(*) as n from usr_cross_data.pa_staff)
+      select c.dashboard_id::int as dashboard_id,
+             count(*)::bigint as ca_n,
+             (count(*) >= 0.3 * max(hc.n))::int as ca_wide
+      from ca c
+      inner join usr_cross_data.pa_staff s on s.login = c.login
+      left join (
+          select dashboard_id, lower(unnest(owners_string)) as login from usr_cross_data.pa_dash_meta
+      ) ow on ow.dashboard_id = c.dashboard_id and ow.login = c.login
+      cross join hc
+      where ow.login is null
+      group by c.dashboard_id
+      distributed by (dashboard_id);
+
+      -- ---------------------------------------------------------------------------
+      -- Параграф «PA · доступ зрителей» → usr_cross_data.pa_pair_acc   (НОВЫЙ 2026-09-25, после «PA · ЦА отчёта»)
+      -- Пары «отчёт × зритель» из pa_pair, где зритель — действующий сотрудник с AD-логином (pa_staff) с правом
+      -- на отчёт: поимённо или через AD-группу. Числитель «Охвата ЦА» каталога вкладки: зрители из ЦА, а не все.
+      -- Считается от пар к группам зрителя (не от групп ко всем их членам) — без взрыва на широких группах.
+      -- ---------------------------------------------------------------------------
+      drop table if exists usr_cross_data.pa_pair_acc;
+      create table usr_cross_data.pa_pair_acc as
+      with pr as (
+          select distinct p.dashboard_id::int as dashboard_id, lower(p.login)::text as login
+          from usr_cross_data.pa_pair p
+          where p.login is not null and p.login <> ''
+      ),
+      acc as (
+          select pr.dashboard_id, pr.login
+          from pr
+          inner join usr_cross_data.pa_dash_acl a
+              on a.kind = 'user' and a.dashboard_id = pr.dashboard_id and a.principal = pr.login
+          union
+          select pr.dashboard_id, pr.login
+          from pr
+          inner join usr_cross_data.pa_adg_member m on m.login = pr.login
+          inner join usr_cross_data.pa_dash_acl a
+              on a.kind = 'group' and a.dashboard_id = pr.dashboard_id and a.principal = m.ad_group
+      )
+      select acc.dashboard_id, acc.login
+      from acc
+      inner join usr_cross_data.pa_staff s on s.login = acc.login
+      distributed by (dashboard_id);
+    isEnabled: true
+  - sid: 01a0f1d3-7517-7784-a4cd-7f581a10bb92
+    title: Для единой вкладки
+    shebang: python_condition
+    code: |-
+      # ЕДИНЫЙ ЛИСТ — выгрузка всех 12 витрин в ClickHouse (prod_proteus.pa_*). Те же вызовы, что уже стоят в двух нодах
+      # боевого отчёта; если они работают — ничего не менять. Часть 2 — после части 1 (зависит от pa_pair).
+
+      # ---------------- ЧАСТЬ 1: витрины первого листа ----------------
+      # Helicopter-нода 844437 · python_condition-параграф после GP-параграфов «PA · …».
+      # Выгрузка предагрегатов в ClickHouse (prod_proteus.*). ORDER BY подобран под
+      # фильтры датасетов: пары и факт режутся по dashboard_id (область, pub/act через
+      # IN dash_ok) и login (людская шина) — первичный ключ отбрасывает гранулы.
+      # Если pa_evd_day / pa_dash_meta / pa_emp_attrs у вас уже выгружаются своим
+      # параграфом — оставьте его; обязательно НОВОЕ здесь: pa_pair и пересборка
+      # pa_emp_attrs (колонки fio, exp_nm, lvl5…lvl7) и pa_dash_bkt (2026-09-23).
+      try:
+          import proteus_py.database.clickhouse as ppy
+          ppy.gp_to_click('usr_cross_data.pa_evd_day', 'prod_proteus.pa_evd_day',
+                          partition_by_columns='toYYYYMM(log_dttm)',
+                          order_by_columns='(dashboard_id, login, log_dttm)')
+          ppy.gp_to_click('usr_cross_data.pa_dash_meta', 'prod_proteus.pa_dash_meta',
+                          order_by_columns='(dashboard_id)', array_type_cast=True)
+          ppy.gp_to_click('usr_cross_data.pa_emp_attrs', 'prod_proteus.pa_emp_attrs',
+                          order_by_columns='(login)', array_type_cast=True)
+          ppy.gp_to_click('usr_cross_data.pa_pair', 'prod_proteus.pa_pair',
+                          order_by_columns='(dashboard_id, login)')
+          # НОВОЕ 2026-09-23: просмотры отчёта по бакетам — линия «Просмотры» правой панели.
+          ppy.gp_to_click('usr_cross_data.pa_dash_bkt', 'prod_proteus.pa_dash_bkt',
+                          order_by_columns='(grain, dashboard_id, k)')
+          # НОВОЕ 2026-10-07: словарь «старый логин → текущий» — кнопка «Мои отчёты» каталога узнаёт текущего
+          # пользователя по логину Proteus (может быть старым) и переводит его в актуальный, как у владельцев.
+          ppy.gp_to_click('usr_cross_data.pa_login_map', 'prod_proteus.pa_login_map',
+                          order_by_columns='(login)')
+      except Exception:
+          sys.exit(100);
+
+
+      # ---------------- ЧАСТЬ 2: витрины целевой аудитории (нода 844437) ----------------
+      # Helicopter-нода 844437 · добавить в python_condition-параграф выгрузки «PA · …»
+      # (после строк поставки 2026-09-22). ORDER BY — под фильтры датасета «Аудитории»:
+      # права режутся по dashboard_id (область), состав групп — по ad_group, штат — по login.
+      try:
+          import proteus_py.database.clickhouse as ppy
+          ppy.gp_to_click('usr_cross_data.pa_staff', 'prod_proteus.pa_staff',
+                          order_by_columns='(login)')
+          ppy.gp_to_click('usr_cross_data.pa_dash_acl', 'prod_proteus.pa_dash_acl',
+                          order_by_columns='(dashboard_id, kind, principal)')
+          ppy.gp_to_click('usr_cross_data.pa_adg_member', 'prod_proteus.pa_adg_member',
+                          order_by_columns='(ad_group, login)')
+          ppy.gp_to_click('usr_cross_data.pa_dash_ca', 'prod_proteus.pa_dash_ca',
+                          order_by_columns='(dashboard_id)')
+          # НОВОЕ 2026-09-25: размер AD-групп прав — список «AD-группы» в настройке ЦА.
+          ppy.gp_to_click('usr_cross_data.pa_adg_size', 'prod_proteus.pa_adg_size',
+                          order_by_columns='(ad_group)')
+          # НОВОЕ 2026-09-25 (вечер): доступ зрителей — числитель «Охвата ЦА» каталога вкладки.
+          ppy.gp_to_click('usr_cross_data.pa_pair_acc', 'prod_proteus.pa_pair_acc',
+                          order_by_columns='(dashboard_id, login)')
+      except Exception:
+          sys.exit(100);
+    isEnabled: true
+  - sid: 019d96eb-f0ca-710e-9e69-d3956f12fbb2
+    title: Click add tables
+    shebang: python_condition
+    code: "try:\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click(\n        'usr_cross_data.proteus_views_1'\n        ,'prod_proteus.proteus_adoption'\n        ,partition_by_columns='toYYYYMM(log_dttm)'\n        ,order_by_columns='(dashboard_id,log_dttm)'\n        ,array_type_cast=True)\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('period_agg', 'prod_proteus.proteus_period')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('proteus_dashboards_owners_dist', 'prod_proteus.proteus_dashboards_owners_dist')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('proteus_dashboards_owners_filter', 'prod_proteus.proteus_dashboards_owners_filter')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('proteus_group', 'prod_proteus.proteus_group')\n\nexcept Exception:\n    sys.exit(100);\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('cross_data_logins', 'prod_proteus.cross_data_logins')\n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('collections_filter', 'prod_proteus.collections_filter')\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('mdm_employee_daily', 'prod_proteus.mdm_employee_daily_proteus',array_type_cast=True)\n    \n\nexcept Exception:\n    sys.exit(100);\n\ntry:\n    # код был добавлен автоматически: https://time.tbank.ru/tinkoff/pl/g9jfbuwk8bb8mrp84eck398seh\n    import proteus_py.database.clickhouse as ppy\n    ppy.gp_to_click('uniq_ad_group', 'prod_proteus.uniq_ad_group')\n    \n\nexcept Exception:\n    sys.exit(100);"
+    isEnabled: true
+    color: "#1BA6CE"
+  - sid: 01a0b86e-5ddb-7634-b63b-2024511d0079
+    title: Untitled 5
+    shebang: python_condition
+    code: |
+      # Helicopter-нода 844437 · python_condition-параграф после GP-параграфов «PA · …».
+      # Выгрузка предагрегатов в ClickHouse (prod_proteus.*). ORDER BY подобран под
+      # фильтры датасетов: пары и факт режутся по dashboard_id (область, pub/act через
+      # IN dash_ok) и login (людская шина) — первичный ключ отбрасывает гранулы.
+      # Если pa_evd_day / pa_dash_meta / pa_emp_attrs у вас уже выгружаются своим
+      # параграфом — оставьте его; обязательно НОВОЕ здесь: pa_pair и пересборка
+      # pa_emp_attrs (колонки fio, exp_nm, lvl5…lvl7) и pa_dash_bkt (2026-09-23).
+      try:
+          import proteus_py.database.clickhouse as ppy
+          ppy.gp_to_click('usr_cross_data.pa_evd_day', 'prod_proteus.pa_evd_day',
+                          partition_by_columns='toYYYYMM(log_dttm)',
+                          order_by_columns='(dashboard_id, login, log_dttm)')
+          ppy.gp_to_click('usr_cross_data.pa_dash_meta', 'prod_proteus.pa_dash_meta',
+                          order_by_columns='(dashboard_id)', array_type_cast=True)
+          ppy.gp_to_click('usr_cross_data.pa_emp_attrs', 'prod_proteus.pa_emp_attrs',
+                          order_by_columns='(login)', array_type_cast=True)
+          ppy.gp_to_click('usr_cross_data.pa_pair', 'prod_proteus.pa_pair',
+                          order_by_columns='(dashboard_id, login)')
+          # НОВОЕ 2026-09-23: просмотры отчёта по бакетам — линия «Просмотры» правой панели.
+          ppy.gp_to_click('usr_cross_data.pa_dash_bkt', 'prod_proteus.pa_dash_bkt',
+                          order_by_columns='(grain, dashboard_id, k)')
+      except Exception:
+          sys.exit(100);
+    isEnabled: true
+  - sid: 01a0d93a-be9d-786c-93e7-8330e2cd3982
+    title: Untitled 7
+    shebang: python
+    code: |-
+      # Helicopter-нода 844437 · добавить в python_condition-параграф выгрузки «PA · …»
+      # (после строк поставки 2026-09-22). ORDER BY — под фильтры датасета «Аудитории»:
+      # права режутся по dashboard_id (область), состав групп — по ad_group, штат — по login.
+      try:
+          import proteus_py.database.clickhouse as ppy
+          ppy.gp_to_click('usr_cross_data.pa_staff', 'prod_proteus.pa_staff',
+                          order_by_columns='(login)')
+          ppy.gp_to_click('usr_cross_data.pa_dash_acl', 'prod_proteus.pa_dash_acl',
+                          order_by_columns='(dashboard_id, kind, principal)')
+          ppy.gp_to_click('usr_cross_data.pa_adg_member', 'prod_proteus.pa_adg_member',
+                          order_by_columns='(ad_group, login)')
+          ppy.gp_to_click('usr_cross_data.pa_dash_ca', 'prod_proteus.pa_dash_ca',
+                          order_by_columns='(dashboard_id)')
+          # НОВОЕ 2026-09-25: размер AD-групп прав — список «AD-группы» в настройке ЦА.
+          ppy.gp_to_click('usr_cross_data.pa_adg_size', 'prod_proteus.pa_adg_size',
+                          order_by_columns='(ad_group)')
+          # НОВОЕ 2026-09-25 (вечер): доступ зрителей — числитель «Охвата ЦА» каталога вкладки.
+          ppy.gp_to_click('usr_cross_data.pa_pair_acc', 'prod_proteus.pa_pair_acc',
+                          order_by_columns='(dashboard_id, login)')
+      except Exception:
+          sys.exit(100);
+    isEnabled: true
+  - sid: 019c235f-cc71-76d6-a1a6-6262a820d61f
+    title: Обновить кеш борда
+    shebang: python_condition
+    code: |-
+      from proteus_py.dashboard.refresh import refresh_dashboard
+
+      refresh_dashboard(
+          user_login=Z_ENV_CREDENTIAL_LOGIN_R_KAZANTSEV,
+          user_password=Z_ENV_CREDENTIAL_PASS_R_KAZANTSEV,
+          dashboard_slug='proteus-adoption',
+          retries=2,
+      );
+
+      refresh_dashboard(
+          user_login=Z_ENV_CREDENTIAL_LOGIN_R_KAZANTSEV,
+          user_password=Z_ENV_CREDENTIAL_PASS_R_KAZANTSEV,
+          dashboard_permalink='https://proteus.tcsbank.ru/superset/dashboard/p/qo5vMPnO8Oa/',
+          retries=2,
+      )
+    isEnabled: true
+  - sid: 01a16031-28cc-75d3-9e72-49405ce58522
+    title: Избранные дашборды по пользователям
+    shebang: dlh_trino
+    code: |-
+      SELECT
+          user_id,
+          obj_id AS dashboard_id,
+          dttm
+      FROM prod_chrono_proteus_web.favstar_proteus_prod
+      WHERE class_name = 'Dashboard'
+      ORDER BY user_id, dttm
+    isEnabled: false
+  - sid: 01a16034-7e4b-71e3-95a7-a1c24c3b7b1f
+    title: Перенос избранных дашбордов в GP (временная таблица)
+    shebang: python
+    code: |-
+      from dal_client import query as dal
+
+      # 1. Читаем избранные дашборды из DLH
+      df = dal.get_df(
+          datasource='dlh',
+          query="""
+              SELECT user_id, obj_id AS dashboard_id, dttm
+              FROM prod_chrono_proteus_web.favstar_proteus_prod
+              WHERE class_name = 'Dashboard'
+          """,
+      )
+
+      print(f'rows={len(df)}, columns={len(df.columns)}')
+
+      # 2. Записываем во временную таблицу GP
+      dal.put_df(
+          df=df,
+          table='favstar_dashboards',
+          datasource='gp',
+          if_exists='replace',
+      )
+
+      print('Записано во временную таблицу GP: favstar_dashboards')
+    isEnabled: false
+  - sid: 01a16035-682d-703f-8df5-b886a1f5c0d0
+    title: Установка dal-client
+    shebang: python_magic
+    code: |-
+      %pip install dal-client
+    isEnabled: true
+  - sid: 01a16035-97e1-71fb-b118-a6afb4a6b6b4
+    title: Установка dal_client
+    shebang: python_magic
+    code: |-
+      %pip install dal_client
+    isEnabled: true
+  - sid: 01a1b08b-f96a-7679-b517-3591becbcd74
+    title: Untitled 10
+    shebang: gp
+    code: |-
+      select * from prod_v_sse_crossdata.event_physical_report where user_ad_login = 'd.a.antonova' and event_dttm::date = '2026-11-05' limit 100
+    isEnabled: true

@@ -1,0 +1,9 @@
+[2026-11-14 00:15:36.241] [INFO]  Worker - Query executed successfully. Affected rows: 0.
+[2026-11-14 00:15:36.241] [INFO]  Worker - Query 10 execution time: 00:00:00:005
+[2026-11-14 00:15:36.241] [INFO]  Worker - Query 11 running...
+[2026-11-14 00:15:40.831] [ERROR] Worker - Query 11 execution error
+distributed by (login)
+=====================^
+Error on line 124, position 22
+[2026-11-14 00:15:40.831] [ERROR] Worker - SQLException: SQL state '54000', error code '0', message [ERROR: requested character too large for encoding: 894  (seg104 slice5 10.181.208.253:10000 pid=6609)]
+[2026-11-14 00:15:40.832] [ERROR] Interpreter - Job 1884946931 execution failed: Unexpected exception occurred: Query 11 execution error: org.postgresql.util.PSQLException: ERROR: requested character too large for encoding: 894  (seg104 slice5 10.181.208.253:10000 pid=6609): ERROR: requested character too large for encoding: 894  (seg104 slice5 10.181.208.253:10000 pid=6609)

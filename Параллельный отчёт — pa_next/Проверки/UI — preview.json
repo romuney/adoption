@@ -1,0 +1,84 @@
+{
+  "completed": true,
+  "status": "passed",
+  "section": "all",
+  "source_sql_sha256": {
+    "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+    "cat": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+    "one": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d"
+  },
+  "source_js_sha256": {
+    "head": "ef70f5abb02f09354c070102bd65ab8688b7ec1fa585e7f0f4c8887e1da730d6",
+    "cat": "a98b5ece7fcaeeef4951ab25e2e7b6ee54768851082116267fd11ce48229ab3d",
+    "one": "b11a067858c2716586407e5ee12fd7dba9c0167f14ea6a008ba3328df97cc8ec"
+  },
+  "cases": [
+    {
+      "case": "exact-preview-d",
+      "status": "passed",
+      "report": "2",
+      "sql_series_buckets": 30,
+      "calendar_days": 60
+    },
+    {
+      "case": "exact-preview-w",
+      "status": "passed",
+      "report": "2",
+      "sql_series_buckets": 20,
+      "calendar_days": 134
+    },
+    {
+      "case": "exact-preview-m",
+      "status": "passed",
+      "report": "2",
+      "sql_series_buckets": 12,
+      "calendar_days": 356
+    },
+    {
+      "case": "exact-preview-q",
+      "status": "passed",
+      "report": "2",
+      "sql_series_buckets": 8,
+      "calendar_days": 395
+    },
+    {
+      "case": "malformed-preview-key-id-payload-grain-filter-name",
+      "status": "passed"
+    },
+    {
+      "case": "rapid-A-B-A-old-nonce-rejected",
+      "status": "passed"
+    },
+    {
+      "case": "FULL-A-preview-B-return-A-before-debounce",
+      "status": "passed",
+      "elapsed_ms": 174.5
+    },
+    {
+      "case": "multiple-reports-no-preview-summing",
+      "status": "passed",
+      "sql_users": 397
+    },
+    {
+      "case": "initial-all-preview-A-clear-does-not-expose-stale-A",
+      "status": "passed"
+    },
+    {
+      "case": "period-change-rejects-old-catalogue-preview",
+      "status": "passed"
+    },
+    {
+      "case": "people-filter-invalidates-old-catalogue-preview",
+      "status": "passed"
+    },
+    {
+      "case": "foreign-cat-generation-invalidates-preview",
+      "status": "passed"
+    },
+    {
+      "case": "foreign-one-generation-invalidates-preview",
+      "status": "passed"
+    }
+  ],
+  "scope": "Sandbox Chromium with actual local CH24.8 SQL fixtures; no corporate browser/backend accessed"
+}

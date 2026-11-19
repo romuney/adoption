@@ -1,0 +1,62 @@
+{
+  "status": "passed",
+  "checks": [
+    {
+      "table": "pa_next_md",
+      "rows": 1,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_dict",
+      "rows": 42,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_viewer",
+      "rows": 6791,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_staffx",
+      "rows": 10240,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_dash_day",
+      "rows": 577699,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_all_day",
+      "rows": 1580,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_cat_rep",
+      "rows": 6000,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_cat_grp",
+      "rows": 10240,
+      "status": "passed"
+    },
+    {
+      "table": "pa_next_cat_aud",
+      "rows": 6112,
+      "status": "passed"
+    }
+  ],
+  "scope": "All nine rebuilt accelerated outputs exactly equal previous expressions on the same synthetic data after encoding fix; ClickHouse datasets and UI unchanged",
+  "candidate_yaml_sha256": "ec8f09068cc58db5a6dc7129add899ea8169cb799a165ce7dc9a6107f53405de",
+  "unchanged_delivery_sha256": {
+    "7. SQL — панель.sql": "d366a65b58627284245c29b1b0ac4b9a8e9b4f10aa4ccbcc8a5770a4428fef7d",
+    "11. SQL Lab — готовность витрин.sql": "bb45c36c6635db56a79e4407389d4efd5c1a25a97eda15d63eca43c501fe4705",
+    "4. JS — весь отчёт.js": "f541c5345d8af339168f9ab2a4d0a121671979448411812100e00f9ed0d2995e",
+    "5. SQL — каталог.sql": "6a321dac6549628812dbfb77dc4e3c293c96a7da46978f07fa5656f5deb92e79",
+    "3. SQL — шапка.sql": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+    "8. JS — загрузчик панели.js": "5abfdad2b92e24cd30920f094fc7cd352ea009686983ebbf2a842e99b89c19f9",
+    "9. CSS — дашборд.css": "16c1c5a8a51a923fc181c0069d7ee923289ce77084193d0ded48f149a67eb6ad",
+    "6. JS — загрузчик каталога.js": "54382bc09190879e05f2da0f1e10d1dbce26565bc51d5a795b1c22f640c38b01"
+  }
+}

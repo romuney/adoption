@@ -1,0 +1,38 @@
+{
+  "completed": true,
+  "main_sha256": "3eba9493a9991ea843abf1e8a0d3759ae456cfa1632e5670bec5f9f7e6dc178b",
+  "scope": "Local Chromium, native classic scrolling and zero-width geometry simulation; not a macOS/Safari run",
+  "cases": [
+    {
+      "overlay_geometry": false,
+      "geometry_stable": true,
+      "scroll_idle_edge_report_people": true,
+      "same_controller_no_queries": true,
+      "spacing": {
+        "gap": 10,
+        "padding": 6
+      },
+      "errors": []
+    },
+    {
+      "overlay_geometry": true,
+      "geometry_stable": true,
+      "scroll_idle_edge_report_people": true,
+      "same_controller_no_queries": true,
+      "spacing": {
+        "gap": 10,
+        "padding": 6
+      },
+      "errors": []
+    }
+  ],
+  "fade_profile": {
+    "old_hover_reveals_without_scroll": true,
+    "fade_in_100ms_alpha": 0.234,
+    "fade_out_mid_alpha": 0.883,
+    "independent_idle_timers": true,
+    "intent_alone_hidden": true,
+    "programmatic_hidden": true,
+    "reduced_and_destroy": true
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "completed": true,
+  "status": "pass",
+  "source_sha256": {
+    "head": "cba76f7b8638c57056a4a682192cf21a13877555633a9eaf1ed49075dc710da7",
+    "cat": "5fe33bbfe3bd5a647e79f7ba2a9b8885153eb903d513a1d473aa53a17f76ca54",
+    "one": "33576d558ea61159c6b1a83070d1e528e25af24985763db2194bb01172836bc0"
+  },
+  "main_source_sha256": "350e41f18d7af8853c8038a6375040d1b6778647c28b0dc0f88ecc484e646743",
+  "script_sha256": {
+    "head": "b0edc3d786a274e65569b6e9d2a1386fe322fbcfbc1c6215e31c0f4eaea0aafa",
+    "cat": "ae726bfef5bd1777a0d23931234f9a2b5c58e531e64901778e9a4f59803ace05",
+    "one": "7e74dbcebaaae62aed397415bf45a55eba0a9249d0aa43e07dad3e8e713d705d"
+  },
+  "cases": [
+    {
+      "name": "clear-report-mode-equals-unselected-baseline",
+      "status": "pass"
+    },
+    {
+      "name": "missing-mode-with-nonempty-selection-is-distinct",
+      "status": "pass"
+    },
+    {
+      "name": "scalar-valid-defaults-only",
+      "status": "pass"
+    },
+    {
+      "name": "blank-audience-label-is-not-no-filter",
+      "status": "pass"
+    },
+    {
+      "name": "separators-and-lossy-echo-characters-do-not-collide",
+      "status": "pass"
+    },
+    {
+      "name": "array-order-and-duplicates-are-preserved",
+      "status": "pass"
+    },
+    {
+      "name": "empty-intersection-is-not-all-reports",
+      "status": "pass"
+    },
+    {
+      "name": "transport-nonces-do-not-change-business-key",
+      "status": "pass"
+    },
+    {
+      "name": "crossfilter-directions-are-preserved",
+      "status": "pass"
+    },
+    {
+      "name": "session-generation-and-part-partition-cache",
+      "status": "pass"
+    },
+    {
+      "name": "memory-pressure-retains-latest-valid-answer",
+      "status": "pass"
+    },
+    {
+      "name": "initial-loading-to-ready",
+      "status": "pass"
+    },
+    {
+      "name": "ready-loading-ready-same-iframe",
+      "status": "pass"
+    },
+    {
+      "name": "command-error-explicit-retry-is-clickable-and-scoped",
+      "status": "pass"
+    },
+    {
+      "name": "blank-and-special-attribute-values-survive-loader",
+      "status": "pass"
+    }
+  ]
+}

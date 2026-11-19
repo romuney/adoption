@@ -1,0 +1,1109 @@
+/* ============================================================================
+   Proteus Adoption — макет. Дизайн-система TeamPulse.
+
+   ТИПОГРАФИКА — отступление от CSS дизайн-системы, сделано осознанно.
+   В ДС сказано «восьмисотого веса в системе нет» и «жирным набрано не всё»,
+   но её же компонентный CSS ставит 800 в шести местах и 700 — на подписи,
+   чипы, шапки колонок и контролы. Здесь следуем ПРИНЦИПУ, а не листингу:
+
+     400  данные: числа в ячейках, тело текста, сноски, пояснения
+     500  второй план: легенда, вторичные подписи, дочерние строки
+     600  по чему ведут взглядом: имена строк, шапки колонок, контролы,
+          чипы, кнопки, подписи KPI, надзаголовки
+     700  на что нужно смотреть: заголовки панелей и блоков, главное число
+          карточки, строка ИТОГО
+
+   Потолок — 700. Выше нет ничего. Иерархию ниже 600 несут цвет, кегль,
+   капитель и межбуквенное, а не насыщенность.
+   ========================================================================== */
+:root{
+  /* ---------- Поверхности и текст ---------- */
+  --bg:#f4f5f7;
+  --card:#ffffff;
+  --line:#e7e9ee;
+  --line2:#eef0f3;
+  --ink:#1f1f1f;
+  --ink2:#3a3f4a;
+  --muted:#8a909c;
+  --muted2:#aab0bb;
+
+  /* ---------- Светофор: ровно два сигнала ---------- */
+  --green:#12b048; --green-bg:#bff2cd; --green-tx:#0a8f3c;
+  --red:#f51f1f;   --red-bg:#ffcccc;   --red-tx:#d11414;
+  --warn:#f59300;  --warn-bg:#ffe6a0;  --warn-tx:#9a6500;
+
+  /* ---------- Акцент: голубой ----------
+     Тона взяты из присланных палитр (#218DAE / #2BBBD7 / #62CDFF и
+     #C9EEFF / #97DEFF / #AA77FF). Часть ступеней притемлена: на белой
+     панели #62CDFF даёт контраст 1,8:1, а марка ниже 2:1 растворяется
+     в фоне — читатель видит пустое место там, где стоит столбик.
+     Притемнение минимальное, тон палитры сохранён. */
+  --act:#0073A0;        /* активный: кнопки, выбор строки, фокус, полосы */
+  --act-ink:#015A7D;    /* тот же тон темнее — текст на светлом */
+  --blue:var(--act);
+  --blue-bg:#E8F4F9;    /* мягкая заливка активного тона */
+  --act-line:#C4E2ED;   /* граница на заливке */
+  --bench:#9aa0ac;
+  --accent-new:#AA77FF; /* фиолетовый из палитры — только для метки «новый» */
+  --accent-new-bg:#F1E9FF;
+  --accent-new-tx:#6C36C9;
+
+  /* ---------- Расстояния ---------- */
+  --s1:2px;  --s2:4px;  --s3:6px;  --s4:8px;  --s5:10px;
+  --s6:12px; --s7:14px; --s8:16px; --s9:20px; --s10:24px;
+
+  /* ---------- Типографика ---------- */
+  --fs-micro:9.5px;
+  --fs-cap:10.5px;
+  --fs-note:11.5px;
+  --fs-body:12.5px;
+  --fs-lead:13.5px;
+  --fs-head:16px;
+  --fs-hero:24px;
+
+  /* ---------- Веса: потолок 700 ---------- */
+  --fw-body:400; --fw-med:500; --fw-lead:600; --fw-bold:700;
+
+  /* ---------- Радиусы ---------- */
+  --r1:3px; --r2:6px; --r3:9px; --r4:12px; --r5:16px; --r-pill:999px;
+  --radius:var(--r4);
+  --pad-cell:var(--s5);
+
+  /* ---------- Тени ---------- */
+  --shadow:0 1px 3px rgba(20,28,45,.06),0 4px 16px rgba(20,28,45,.04);
+  --shadow-lg:0 8px 28px rgba(20,28,45,.16);
+
+  /* ---------- Геометрия ---------- */
+  --head-h:51px;
+  --chart-gap:26px;
+  --nav-w:262px;
+
+  /* ---------- Серии графиков (зеркало CHART_COLORS в charts.js) ----------
+     Стек — ОДИН тон разными ступенями светлоты, а не разные хуи. Части
+     стека — доли одного целого, поэтому голубой тон разной светлоты.
+     Исключение — ВЕРНУВШИЕСЯ: это не «чуть больше тех же», а отдельная
+     история (человек уходил и пришёл снова), и по цвету она отделена.
+     Порядок снизу вверх: новые → вернувшиеся → продолжающие.
+     Проверено scripts/validate_palette.js: 5/5 PASS, adjacent. */
+  --se-new:#0073A0;     /* новые — насыщенный голубой, стоит в основании */
+  --se-react:#AA77FF;   /* вернувшиеся — фиолетовый: отдельная категория */
+  --se-ret:#5CC0EE;     /* продолжающие — светлый, их больше всего */
+  --se-views:#5b6478;   /* просмотры — не серия, вторая панель: графит */
+  --se-bench:#c7c8cc;
+
+  /* Порядковая шкала вовлечённости: темнее = глубже вовлечён. */
+  --seg-3:#0073A0;      /* постоянные */
+  --seg-2:#218DAE;      /* эпизодические */
+  --seg-1:#5CC0EE;      /* разовые */
+  --seg-0:#d9dce1;      /* не заходили — вне шкалы, серый */
+
+  /* Дивергентная шкала когорт: жёлтый ← белый → голубой. Полюса взяты из
+     палитр как есть: это заливка ячейки под тёмным текстом, там нужен не
+     контраст с фоном, а различимость полюсов между собой. */
+  --div-lo:#FFD758;
+  --div-hi:#62CDFF;
+}
+
+*{box-sizing:border-box}
+/* Макет светлый, и системные контролы обязаны это знать: без color-scheme
+   браузер при тёмной теме ОС рисует выпадающий список <select> чёрным,
+   а подсветку строки — жёлтой. Своей вёрсткой это не лечится: список
+   рисует не страница, а система. */
+:root{color-scheme:light}
+body{font-family:Inter,Helvetica,Arial,sans-serif;font-size:14px;
+     background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;margin:0}
+button{font-family:inherit}
+
+/* ============================ Шапка приложения ============================ */
+.apphead{background:var(--card);border-bottom:1px solid var(--line);
+  position:sticky;top:0;z-index:50;height:var(--head-h)}
+.apphead-top{display:flex;align-items:center;gap:var(--s6);height:100%;padding:0 var(--s9)}
+.logo{display:flex;align-items:center;gap:var(--s4);font-weight:var(--fw-bold);
+  font-size:15px;letter-spacing:-.2px}
+.logo .mark{width:22px;height:22px;border-radius:var(--r2);background:var(--act);
+  display:inline-flex;align-items:center;justify-content:center;color:#fff;
+  font-size:var(--fs-note);font-weight:var(--fw-lead)}
+.apphead .spacer{flex:1}
+.freshness{font-size:var(--fs-note);color:var(--muted);font-weight:var(--fw-med);
+  display:flex;align-items:center;gap:var(--s3)}
+.freshness b{color:var(--ink2);font-weight:var(--fw-lead)}
+.freshness .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:0 0 auto}
+.nav-toggle{display:none;border:1px solid var(--line);background:var(--card);
+  border-radius:var(--r2);width:32px;height:32px;cursor:pointer;font-size:15px;color:var(--ink2)}
+
+/* ================================ Каркас ================================= */
+.layout{display:flex;min-height:calc(100vh - var(--head-h));align-items:stretch}
+.nav{width:var(--nav-w);flex:0 0 var(--nav-w);background:var(--card);
+  border-right:1px solid var(--line);padding:var(--s7) var(--s6);
+  position:sticky;top:var(--head-h);height:calc(100vh - var(--head-h));
+  display:flex;flex-direction:column;overflow-y:auto;gap:var(--s2)}
+.main-col{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+.content{flex:1;padding:var(--s8) var(--s10) var(--s10);min-width:0}
+
+/* =============================== Фильтры ================================= */
+.flt-head{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:var(--s5);gap:var(--s4)}
+.flt-head .t{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:var(--fw-lead)}
+.fgroup{border-top:1px solid var(--line2);padding:var(--s5) 0 var(--s3)}
+.fgroup:first-of-type{border-top:0;padding-top:0}
+.fgroup>.gh{display:flex;align-items:center;gap:var(--s3);width:100%;border:0;
+  background:transparent;padding:0 0 var(--s4);cursor:pointer;
+  font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:var(--fw-lead)}
+.fgroup>.gh:hover{color:var(--ink2)}
+.fgroup>.gh .cc{color:var(--muted2);font-size:9px;transition:transform .16s}
+.fgroup>.gh[aria-expanded="false"] .cc{transform:rotate(-90deg)}
+.fgroup>.gh .cnt{margin-left:auto;background:var(--blue-bg);color:var(--act-ink);
+  border-radius:var(--r-pill);padding:1px var(--s3);font-size:var(--fs-micro);
+  font-weight:var(--fw-lead);letter-spacing:0}
+.fgroup .gb{display:flex;flex-direction:column;gap:var(--s5);padding-bottom:var(--s4)}
+.fgroup .gb[hidden]{display:none}
+
+.ctl{display:flex;flex-direction:column;gap:5px}
+.ctl>label{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:var(--fw-lead)}
+/* Строки внутри мультивыбора — обычный текст, а не подпись контрола:
+   заголовочный стиль .ctl>label капслочил весь список. */
+.ctl .pickrow{text-transform:none;letter-spacing:0}
+.ctl select,select.aud-pick{appearance:none;border:1px solid var(--line);background:var(--card);
+  box-shadow:var(--shadow);
+  border-radius:var(--r3);padding:var(--s4) 30px var(--s4) var(--s6);font-size:13px;
+  color:var(--ink);font-weight:var(--fw-lead);cursor:pointer;width:100%;
+  text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a909c' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right var(--s5) center}
+.ctl select:hover,select.aud-pick:hover{border-color:#d8dce4}
+
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:3px;background:#eef0f3;
+  border-radius:var(--r3);padding:3px}
+.seg button{border:0;background:transparent;padding:7px var(--s3);border-radius:var(--r2);
+  font-weight:var(--fw-lead);font-size:var(--fs-note);color:var(--muted);cursor:pointer;
+  transition:background .15s,color .15s}
+.seg button:hover{color:var(--ink2)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+
+.swt{display:flex;align-items:center;gap:var(--s4);cursor:pointer;
+  font-size:var(--fs-note);color:var(--ink2);font-weight:var(--fw-med);line-height:1.35}
+.swt input{appearance:none;width:32px;height:18px;border-radius:var(--r-pill);
+  background:#dfe3ea;position:relative;cursor:pointer;flex:0 0 auto;
+  transition:background .16s;margin:0}
+.swt input:after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;
+  border-radius:50%;background:var(--card);transition:transform .16s;
+  box-shadow:0 1px 2px rgba(20,28,45,.25)}
+.swt input:checked{background:var(--act)}
+.swt input:checked:after{transform:translateX(14px)}
+
+/* ================================ Вкладки ================================ */
+.tabbar{background:var(--bg);padding:var(--s7) var(--s10) 0;display:flex;
+  align-items:center;gap:var(--s4);flex-wrap:wrap}
+.tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:var(--r4);padding:3px}
+.tab{border:0;background:transparent;padding:var(--s4) var(--s7);border-radius:var(--r3);
+  font-weight:var(--fw-lead);font-size:var(--fs-body);color:var(--muted);cursor:pointer;
+  display:inline-flex;align-items:center;gap:var(--s3);
+  transition:background .15s,color .15s;white-space:nowrap}
+.tab:hover{color:var(--ink2)}
+.tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+
+/* ============================= Заголовок блока =========================== */
+.page-h{margin:0 0 var(--s7)}
+.page-h .ph-row{display:flex;align-items:baseline;gap:var(--s5);flex-wrap:wrap}
+.page-h h2{margin:0;font-size:19px;font-weight:var(--fw-bold);letter-spacing:-.3px}
+.page-h p{margin:var(--s3) 0 0;font-size:var(--fs-body);color:var(--muted);
+  line-height:1.5;font-weight:var(--fw-body);max-width:920px}
+.page-h p b{color:var(--ink2);font-weight:var(--fw-lead)}
+.chips{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap}
+.page-h .chips{margin-top:var(--s5)}
+.chip{display:inline-flex;align-items:center;gap:7px;border-radius:var(--r-pill);
+  padding:5px var(--s6);font-size:12px;font-weight:var(--fw-lead);
+  background:var(--blue-bg);color:var(--act-ink);border:1px solid var(--act-line)}
+.chip .x{width:14px;height:14px;border-radius:50%;border:0;padding:0;cursor:pointer;
+  background:rgba(23,103,127,.16);color:var(--act-ink);font-size:11px;line-height:1;
+  display:inline-flex;align-items:center;justify-content:center}
+.chip .x:hover{background:rgba(23,103,127,.3)}
+.chip.bench{background:#f4f5f7;color:var(--ink2);border-color:var(--line);
+  font-weight:var(--fw-med)}
+.chip.bench b{color:var(--ink);font-weight:var(--fw-lead)}
+
+/* ============================== KPI-карточки ============================= */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(176px,1fr));
+  gap:var(--s7);margin-bottom:18px}
+.kpis.n3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.kpis.n4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.kpis.n5{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kpis.n6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.kpis.compact{gap:var(--s6);margin-bottom:var(--s8)}
+.kpis.compact .kpi{padding:13px 15px}
+.kpis.compact .k-val{font-size:var(--fs-hero)}
+.kpi{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:15px 17px}
+.kpi .k-label{font-size:var(--fs-note);color:var(--muted);font-weight:var(--fw-lead);
+  margin-bottom:7px;display:flex;align-items:center;gap:var(--s3)}
+.kpi .k-val{font-size:27px;font-weight:var(--fw-bold);letter-spacing:-.5px;line-height:1.1;
+  font-variant-numeric:tabular-nums}
+.kpi .k-row{display:flex;align-items:center;gap:9px;margin-top:var(--s4);flex-wrap:wrap}
+.kpi .k-row:empty{margin:0}
+.kpi .k-sub{font-size:var(--fs-note);color:var(--muted);font-weight:var(--fw-med)}
+.kpi .k-sub b{color:var(--ink2);font-weight:var(--fw-lead)}
+@supports (grid-template-rows:subgrid){
+  .kpi{display:grid;grid-template-rows:subgrid;grid-row:span 4;row-gap:0}
+}
+
+/* ============================ Пилюля изменения =========================== */
+.delta{display:inline-flex;align-items:center;gap:5px;font-size:var(--fs-note);
+  font-weight:var(--fw-lead);padding:3px 7px;border-radius:var(--r2);
+  white-space:nowrap;cursor:help;font-variant-numeric:tabular-nums}
+.delta .d-vs{font-weight:var(--fw-med);font-size:var(--fs-cap);opacity:.75}
+.delta.up{background:var(--green-bg);color:var(--green-tx)}
+.delta.down{background:var(--red-bg);color:var(--red-tx)}
+.delta.flat,.delta.neu{background:#f0f1f3}
+.delta.flat{color:var(--muted)}
+.delta.neu{color:var(--ink2)}
+.nocmp{display:inline-block;font-size:11px;font-weight:var(--fw-med);color:var(--muted);
+  border:1px dashed var(--line);border-radius:var(--r2);padding:2px var(--s4);
+  white-space:nowrap;cursor:help}
+
+/* =========================== Сигнальные чипы ============================= */
+/* Модификатор называется note, а не info: класс .info в этой же системе —
+   круглая иконка-подсказка 17×17 с display:inline-flex. Чип «sig-chip info»
+   ловил её правила, схлопывался до 18px и текст вылезал поверх соседей.
+   Это и был «текст налезает друг на друга» на вкладке аудитории. */
+.sig-chip{display:inline-block;font-size:11px;font-weight:var(--fw-lead);
+  padding:3px var(--s4);border-radius:var(--r2);white-space:nowrap}
+.sig-chip.good{background:var(--green-bg);color:var(--green-tx)}
+.sig-chip.bad{background:var(--red-bg);color:var(--red-tx)}
+.sig-chip.warn,.sig-chip.neutral{background:#f3f4f6;color:var(--muted)}
+.sig-chip.note{background:var(--blue-bg);color:var(--act-ink)}
+.kpi-tag{display:inline-block;font-size:9px;font-weight:var(--fw-lead);
+  text-transform:uppercase;letter-spacing:.4px;padding:2px var(--s3);
+  border-radius:var(--r2);background:var(--blue-bg);color:var(--act-ink)}
+
+/* ================================ Панели ================================= */
+.panel{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.panel-h{padding:var(--s7) var(--s8);font-weight:var(--fw-bold);font-size:14.5px;
+  border-bottom:1px solid var(--line2);display:flex;align-items:center;
+  justify-content:space-between;gap:var(--s6)}
+.panel-h .sub{font-size:var(--fs-note);color:var(--muted);font-weight:var(--fw-body);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel-h .h-txt{display:flex;flex-direction:column;gap:2px;min-width:0;overflow:hidden}
+.panel-h.with-tabs .h-txt{flex:1 1 auto}
+.panel-h.with-tabs{flex-wrap:wrap;row-gap:var(--s5)}
+.panel-h .sub-tabs{margin:0 0 0 auto;flex:0 0 auto}
+/* Шапка правой панели — одна строка, как у каталога: подзаголовок обрезается
+   многоточием, а поиск и вкладки справа не двигаются ничем. */
+.panel-h .psearch{margin-left:0}
+.panel-b{padding:var(--s7) var(--s8)}
+.sub-tabs{display:inline-flex;gap:3px;background:#eef0f3;border-radius:var(--r4);padding:3px;margin:0}
+.sub-tab{border:0;background:transparent;padding:var(--s3) var(--s6);border-radius:var(--r3);
+  font-weight:var(--fw-lead);font-size:12px;color:var(--muted);cursor:pointer;
+  display:inline-flex;align-items:center;gap:7px;transition:background .15s,color .15s}
+.sub-tab:hover{color:var(--ink2)}
+.sub-tab.active{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+/* Цифра набранных условий на вкладке разреза */
+.sub-tab.has{color:var(--act-ink)}
+.sub-cnt{display:inline-flex;align-items:center;justify-content:center;min-width:15px;height:15px;
+  padding:0 4px;border-radius:8px;background:var(--act);color:#fff;
+  font-size:10px;font-weight:var(--fw-lead);line-height:1;margin-left:-2px}
+
+.rows{display:flex;flex-direction:column;gap:var(--s8)}
+/* Зоны рендера (см. paint() в app.js). Внутри сетки обёртка зоны
+   прозрачна для раскладки: ячейками грида остаются сами панели, иначе
+   пришлось бы дублировать на обёртке всю их геометрию. */
+.zone:empty{display:none}
+.split>.zone,.grid2>.zone{display:contents}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s8);align-items:stretch}
+.grid2 .panel{display:flex;flex-direction:column;min-height:0}
+.grid2 .panel>.panel-b{flex:1;min-height:0}
+
+.split{display:grid;grid-template-columns:minmax(500px,.95fr) minmax(440px,1.05fr);
+  gap:var(--s8);align-items:stretch}
+/* Панели ряда одной высоты. Воронка имеет собственную высоту и не тянется,
+   поэтому она центрируется в оставшемся месте, а примечание прижимается к
+   низу панели: иначе под фигурой зияла полоса, про которую непонятно, что
+   она означает — пустое место читается как «здесь что-то не загрузилось». */
+.split.wide-r{grid-template-columns:minmax(420px,.78fr) minmax(520px,1.22fr);
+  align-items:stretch}
+.panel-b.flexcol .chart.fn-box{flex:1 1 auto;display:flex;align-items:center;
+  justify-content:center;min-height:0}
+.panel-b.flexcol>.tbl-note{margin-top:auto;padding-top:var(--s5)}
+/* Главный экран: слева каталог ЦЕЛИКОМ, справа динамика.
+   Каталог ничего не делит: это список, и ценность его — в числе видимых
+   строк. Всё, что раньше стояло под ним, уехало вниз. Правой колонке
+   отдано больше ширины — подпись стоит у каждого столбика. */
+.split.main{grid-template-columns:minmax(400px,.82fr) minmax(520px,1.18fr);
+  align-items:stretch}
+.split.main .panel{height:712px;max-height:712px}
+.split.main .chart.fill{min-height:430px}
+
+/* Закрепляемость и частота визитов. Когортной таблице нужна ширина,
+   частоте хватает узкой колонки: там пять строк и расшифровка. */
+ /* Частота не тянется до высоты когортной таблицы: у неё пять строк, и
+    растянутая панель открывала под ними пустую треть экрана. */
+.split.ret{grid-template-columns:minmax(520px,1.58fr) minmax(300px,.62fr);
+  margin-top:var(--s8);align-items:start}
+.split.ret .panel{min-height:0;height:auto}
+/* Полноширинная зона закрепляемости: тот же ритм, что между KPI и сплитом
+   (замер 2026-09-21: без этого панель приклеена к сплиту вплотную). */
+#z-ret{margin-top:var(--s8)}
+/* Компактная врезка-расшифровка над таблицей частоты */
+.note-inline.tight{margin-bottom:var(--s6);padding:8px var(--s6);font-size:var(--fs-note);
+  line-height:1.45;background:#fbfcfd;border-style:solid;border-color:var(--line2)}
+.split .panel{min-height:0;height:100%;display:flex;flex-direction:column}
+.split .panel-h{flex:0 0 auto;min-height:54px}
+.split .panel-b{flex:1;min-height:0}
+/* Таблицы каталога и пофамильного списка живут в скролл-контейнере.
+   Боковые паддинги не обнуляем: таблице нужен воздух слева и справа,
+   вплотную к краю панели она не прижимается. */
+.split-l .tbl-wrap{overflow:auto}
+/* Вертикальных отступов у скролл-контейнера быть не должно — см. sticky выше */
+.panel-b.tbl-wrap{padding-top:0;padding-bottom:0}
+.panel-b.tbl-wrap>.ptable{margin-bottom:var(--s7)}
+.panel-b.tbl-wrap>.tbl-note{padding-bottom:var(--s7)}
+.split-r .panel-b{overflow:auto;display:flex;flex-direction:column;gap:var(--chart-gap)}
+/* левая колонка из двух панелей: таблицы заполняют высоту без мёртвой зоны */
+.split-col{display:flex;flex-direction:column;gap:var(--s8);min-height:0}
+.split-col>.panel{min-height:0;flex:0 0 auto;display:flex;flex-direction:column}
+
+/* ================================ Таблицы ================================ */
+.ptable{width:100%;border-collapse:collapse;font-size:var(--fs-body)}
+.ptable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;
+  color:var(--muted);font-weight:var(--fw-lead);text-align:right;
+  padding:var(--s5) var(--s4);border-bottom:1px solid var(--line2);white-space:nowrap}
+.ptable th.txt{text-align:left;padding-left:var(--pad-cell)}
+.ptable td{text-align:right;padding:var(--s4);font-weight:var(--fw-body);
+  border-bottom:1px solid var(--line2);white-space:nowrap;color:var(--ink2);
+  font-variant-numeric:tabular-nums}
+/* Текстовые колонки переносятся: имя отчёта или подразделения не должно
+   распирать таблицу за пределы панели. Числа остаются в одну строку. */
+.ptable td.txt{text-align:left;font-weight:var(--fw-lead);padding-left:var(--pad-cell);
+  color:var(--ink);white-space:normal;line-height:1.3}
+.ptable td.lead{font-weight:var(--fw-lead);color:var(--ink)}
+/* Текстовая колонка второго плана: подразделение, стаж — не имя строки,
+   поэтому набирается как данные, а не как то, по чему ведут взглядом. */
+.ptable td.txt.sec{font-weight:var(--fw-body);color:var(--ink2)}
+.ptable td .mut{color:var(--muted)}
+.ptable tr.urow{cursor:pointer}
+.ptable tr.urow:hover{background:#fafbfc}
+.ptable tr.urow.sel{background:var(--blue-bg);box-shadow:inset 3px 0 0 var(--act)}
+.ptable tr.total td{border-top:0;border-bottom:2px solid var(--line);
+  font-weight:var(--fw-bold);background:#fafbfc;color:var(--ink)}
+.ptable.dense th{padding:var(--s4) var(--s3);font-size:var(--fs-cap)}
+.ptable.dense td{padding:7px var(--s3)}
+.ptable.sortable th[data-sort]{cursor:pointer;user-select:none}
+.ptable.sortable th[data-sort]:hover{color:var(--ink2)}
+.ptable.sortable th .sa{opacity:0;font-size:9px;margin-left:3px}
+.ptable.sortable th[data-sort].on{color:var(--ink2)}
+.ptable.sortable th[data-sort].on .sa{opacity:1;color:var(--act)}
+/* Закреплённая шапка таблицы. Верхний отступ у скролл-контейнера обнулён
+   и перенесён в сами ячейки шапки: пока он жил на контейнере, sticky липло
+   к КРАЮ КОНТЕНТА, а не к краю окна прокрутки — и в получившуюся щель в
+   14px пролезали уезжающие строки, из-за чего таблица «прокручивалась над
+   шапкой». Тень появляется только когда под шапкой действительно что-то
+   уехало, иначе она висит поверх неподвижной таблицы. */
+.ptable thead th{position:sticky;top:0;z-index:3;background:var(--card)}
+.tbl-wrap>.ptable thead th,.tbl-scroll>.ptable thead th{padding-top:var(--s7)}
+.tbl-wrap>.ptable.dense thead th,.tbl-scroll>.ptable.dense thead th{padding-top:var(--s6)}
+.ptable thead:after{content:'';position:absolute;left:0;right:0;height:0}
+.scrolled .ptable thead th{box-shadow:0 6px 10px -8px rgba(20,28,45,.4)}
+.ptable tr.total.top td{position:sticky;top:30px;z-index:2}
+.unit-sub{display:block;font-size:var(--fs-cap);color:var(--muted);
+  font-weight:var(--fw-body);margin-top:1px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Признаки строки каталога: значок вместо слова — см. reportTable */
+.rflag{display:inline-block;margin-right:5px;font-size:9px;font-weight:var(--fw-lead);
+  font-style:normal;line-height:1;padding:2px 4px;border-radius:var(--r1);
+  vertical-align:1px;cursor:help}
+.rflag.cert{background:var(--green-bg);color:var(--green-tx)}
+.rflag.new{background:var(--accent-new-bg);color:var(--accent-new-tx);
+  text-transform:uppercase;letter-spacing:.3px}
+.rflag.head{background:#f3ecff;color:#6b3fd4}
+.tbl-wrap{overflow:auto}
+
+.btable td.barcell,.btable th.bar-th{text-align:left;padding-left:var(--pad-cell)}
+.cellbar{display:block;width:100%;height:13px;background:#f1f3f6;
+  border-radius:2px;overflow:hidden;cursor:help}
+.cellbar i{display:block;height:100%;border-radius:2px;background:var(--se-ret);min-width:2px}
+.cellbar.c-cov i{background:var(--se-ret)}
+.cellbar.c-rep i{background:var(--se-ret)}
+.btable tr.total td{border-bottom:2px solid var(--line)}
+
+.cell{display:inline-block;min-width:54px;border-radius:var(--r3);padding:5px var(--s4);
+  font-weight:var(--fw-lead);font-size:var(--fs-body);line-height:1.15}
+.cell.good{background:var(--green-bg);color:var(--green-tx)}
+.cell.bad{background:var(--red-bg);color:var(--red-tx)}
+.cell.warn,.cell.neutral{background:#f3f4f6;color:var(--ink2)}
+
+.caret-btn{display:inline-flex;align-items:center;justify-content:center;
+  width:23px;height:23px;margin-right:7px;border:0;background:transparent;
+  border-radius:var(--r2);color:var(--ink2);font-size:12px;cursor:pointer;
+  transition:background .15s,color .15s;flex:0 0 auto}
+.caret-btn:hover{background:var(--blue-bg);color:var(--act)}
+.caret-btn[data-open="1"]{color:var(--act)}
+.caret-spacer{display:inline-block;width:23px;margin-right:7px;flex:0 0 auto}
+.ptable td.txt .row-label{display:flex;align-items:flex-start}
+.ptable td.txt .row-body{min-width:0}
+.ptable tr.lvl2 td.txt{font-weight:var(--fw-med);color:var(--ink2)}
+.ptable tr.lvl2 td{background:#fcfcfd}
+
+/* ================================ Матрица ================================ */
+.mx-wrap{overflow-x:auto}
+.mxtable{border-collapse:separate;border-spacing:2px;width:100%}
+.mxtable th,.mxtable td{border:0;white-space:nowrap}
+.mxtable td.txt,.mxtable th.mx-corner{width:100%;position:sticky;left:0;background:var(--card);
+  font-size:var(--fs-body);font-weight:var(--fw-lead);color:var(--ink);padding-left:var(--s2)}
+.mxtable th.mx-h{width:88px;font-size:var(--fs-cap);text-transform:uppercase;
+  letter-spacing:.3px;color:var(--muted);font-weight:var(--fw-lead);text-align:center;padding:var(--s3) 0}
+.mxtable td.mx-cell{width:88px;text-align:center;font-weight:var(--fw-lead);font-size:var(--fs-body);
+  background:#f7f8fa;border-radius:var(--r2);padding:7px 9px;cursor:help;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+.mxtable td.mx-cell.zero{background:#fafbfc;color:var(--muted2);font-weight:var(--fw-body)}
+
+/* =============================== Когорты =================================
+   Строка — месяц первого визита, слева размер когорты полосой (как в
+   действующем борде), дальше возраст в месяцах. Заливка — дивергентная
+   от медианы столбца, как в «Закрепляемости 2.0» боевого борда. */
+/* Легенда — орган управления, а не картинка. Ступени шкалы кликабельны:
+   наведение гасит всё, кроме ячеек этой ступени; рядом — чем меряем
+   («от медианы столбца / таблицы / по абсолютной доле») и размах шкалы. */
+.ct-legend{display:flex;align-items:center;gap:var(--s7);flex-wrap:wrap;row-gap:var(--s4);
+  margin-bottom:var(--s6);font-size:var(--fs-note);color:var(--muted);
+  font-weight:var(--fw-med);line-height:1.3}
+.ct-scale-wrap{display:flex;align-items:center;gap:var(--s4);flex:0 0 auto}
+.ct-end{font-size:var(--fs-cap);color:var(--muted2);font-weight:var(--fw-med)}
+.ct-scale{display:inline-flex;gap:2px;flex:0 0 auto}
+.ct-st{width:26px;height:14px;border:0;padding:0;cursor:pointer;border-radius:2px;
+  box-shadow:inset 0 0 0 1px rgba(58,63,74,.12);transition:transform .12s,box-shadow .12s}
+.ct-st:first-child{border-radius:var(--r1) 2px 2px var(--r1)}
+.ct-st:last-child{border-radius:2px var(--r1) var(--r1) 2px}
+.ct-st:hover,.ct-st:focus-visible{transform:scaleY(1.45);
+  box-shadow:inset 0 0 0 1px rgba(58,63,74,.4)}
+.ct-cfg{display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap;row-gap:3px}
+.ct-cfg-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.4px;
+  color:var(--muted2);font-weight:var(--fw-lead)}
+.ct-cfg-n{font-size:var(--fs-cap);color:var(--muted2);font-weight:var(--fw-med);cursor:help}
+.sub-tabs.tiny{border-radius:var(--r3);padding:2px}
+.sub-tabs.tiny .sub-tab{padding:2px var(--s4);font-size:var(--fs-note);border-radius:var(--r2)}
+/* Подсветка ступени: гаснут все ячейки, кроме попавших в неё */
+.ct-wrap.band-on td.ct-cell{opacity:.2;transition:opacity .1s}
+.ct-wrap.band-on td.ct-cell.band-hit{opacity:1;box-shadow:inset 0 0 0 1px rgba(31,31,31,.35)}
+.ct-legend .mut{color:var(--muted2)}
+.ct-wrap{overflow-x:auto}
+.cttable{border-collapse:separate;border-spacing:2px;width:100%;font-size:var(--fs-body)}
+.cttable th,.cttable td{border:0;white-space:nowrap}
+.cttable th{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.3px;
+  color:var(--muted);font-weight:var(--fw-lead);padding:var(--s3) var(--s2);text-align:center}
+.cttable th.txt{text-align:left;padding-left:var(--s2)}
+.cttable th.ct-size-h{text-align:left;padding-left:var(--s2)}
+/* Медиана закрытых ячеек столбца — маленькой строкой под возрастом */
+.cttable th.ct-h .ct-med{display:block;font-size:var(--fs-micro);font-weight:var(--fw-med);
+  color:var(--muted2);text-transform:none;letter-spacing:0;margin-top:1px}
+.cttable col.ct-c1{width:64px}
+.cttable col.ct-c2{width:112px}
+.cttable col.ct-c3{width:auto}
+.cttable td.txt{font-weight:var(--fw-lead);color:var(--ink);padding-left:var(--s2)}
+.cttable td.ct-size{cursor:help;padding:0 var(--s2)}
+.cttable .ct-sz{display:flex;align-items:center;gap:var(--s4)}
+.cttable .ct-bar{flex:1;height:12px;background:#f1f3f6;border-radius:2px;
+  overflow:hidden;min-width:34px}
+.cttable .ct-bar i{display:block;height:100%;border-radius:2px;
+  background:var(--se-ret);min-width:2px}
+.cttable .ct-sz b{font-weight:var(--fw-lead);color:var(--ink2);
+  font-variant-numeric:tabular-nums;font-size:var(--fs-note);min-width:38px;text-align:right}
+.cttable td.ct-cell{text-align:center;padding:7px 3px;border-radius:var(--r2);
+  font-weight:var(--fw-lead);color:var(--ink);font-variant-numeric:tabular-nums;cursor:help}
+.cttable td.ct-cell.none{background:transparent!important;cursor:default}
+/* Незакрытый месяц: серый курсив — как в боевом графике; значение дорастёт */
+.cttable td.ct-cell.part{background:#f1f3f6!important;font-style:italic;color:var(--muted)}
+
+/* ====================== Подшапка «в разрезе чего» ======================== */
+/* Подпись стоит НАД разрезами, а не слева: в узкой колонке она отъедала
+   70px, и пятый разрез уезжал на вторую строку рваным хвостом. Сверху она
+   ничего не стоит, а пять кнопок встают в одну ровную строку. */
+.cutbar{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);
+  padding:var(--s5) var(--s8) var(--s6);border-bottom:1px solid var(--line2);background:#fbfcfd}
+.cutbar .cb-l{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:var(--fw-lead)}
+/* Подшапка прижата к левому краю по содержимому: раньше кнопки
+   растягивались на всю ширину панели (space-between) и выглядели
+   отдельной «полосой на весь экран» (правка владельца 2026-09-21). */
+.cutbar .sub-tabs{background:#eef0f3;flex-wrap:wrap;row-gap:3px;min-width:0;max-width:100%}
+.cutbar .sub-tab{padding:var(--s3) 7px;font-size:var(--fs-note)}
+
+/* ============================ Наблюдения (правила) ======================= */
+.obs{border-radius:var(--radius);margin:0 0 var(--s8);overflow:visible;
+  box-shadow:0 1px 2px rgba(20,28,45,.05);
+  background:linear-gradient(103deg,#f2f4fa 0%,#f8f9fd 46%,#fcfcfe 100%)}
+.obs.sev-high{background:linear-gradient(103deg,#ffeef0 0%,#fdf3f6 38%,#faf7ff 78%,#fcfcfe 100%)}
+.obs.sev-mid{background:linear-gradient(103deg,#fff5e3 0%,#fdf6ef 38%,#faf7ff 78%,#fcfcfe 100%)}
+.obs.sev-good{background:linear-gradient(103deg,#e9f9ef 0%,#f4f9f6 38%,#faf8ff 78%,#fcfcfe 100%)}
+.obs-h{display:flex;align-items:center;gap:var(--s5);padding:var(--s6) 15px;cursor:pointer;user-select:none}
+.obs-ico{width:22px;height:22px;border-radius:var(--r2);background:rgba(255,255,255,.75);
+  color:var(--ink2);font-size:12px;font-weight:var(--fw-lead);
+  box-shadow:inset 0 0 0 1px rgba(58,63,74,.12);
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+.obs-t{font-size:13px;font-weight:var(--fw-lead);color:var(--ink2);flex:0 0 auto}
+.obs-lead{font-size:var(--fs-body);color:var(--ink2);font-weight:var(--fw-body);flex:1;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.obs-lead b{font-weight:var(--fw-lead);color:var(--ink)}
+.obs-tag{font-size:11px;font-weight:var(--fw-lead);padding:3px 9px;border-radius:var(--r2);
+  color:var(--ink2);background:rgba(255,255,255,.72);
+  box-shadow:inset 0 0 0 1px rgba(58,63,74,.14);flex:0 0 auto;transition:background .15s}
+.obs-h:hover .obs-tag{background:var(--card)}
+.obs-caret{color:var(--muted);font-size:11px}
+/* «В норме» — та же коробка пиксель в пиксель, что и с фактами: меняются
+   цвет фона и текст, но не размеры — клики не прыгают вёрсткой. */
+.obs.sev-none{background:linear-gradient(103deg,#f2f4fa 0%,#f8f9fd 46%,#fcfcfe 100%)}
+.obs.is-empty .obs-h{cursor:default}
+.obs.is-empty .obs-caret{visibility:hidden}
+.obs.is-empty .obs-ico{color:#1e7c40}
+.obs.is-empty .obs-tag{color:#1e7c40}
+.obs-fresh{font-size:10px;font-weight:var(--fw-body);color:var(--muted);
+  letter-spacing:.3px;white-space:nowrap}
+.obs-b{padding:0 15px var(--s7);font-size:13px;color:var(--ink2);line-height:1.55;
+  font-weight:var(--fw-body)}
+.obs-b ul{margin:var(--s4) 0 0;padding-left:var(--s9)}
+.obs-b li{margin-bottom:5px}
+.obs-b b{color:var(--ink);font-weight:var(--fw-lead)}
+.obs-b .rule{display:block;font-size:var(--fs-note);color:var(--muted);
+  font-weight:var(--fw-body);margin-top:var(--s5);padding-top:var(--s5);
+  border-top:1px solid var(--line2)}
+.no-insight{display:none}
+
+/* ============================== Прочие блоки ============================= */
+.note-inline{font-size:12px;color:var(--muted);background:var(--card);
+  border:1px dashed var(--line);border-radius:var(--r3);padding:11px var(--s7);
+  margin-bottom:var(--s7);line-height:1.5;font-weight:var(--fw-body)}
+.note-inline b{color:var(--ink2);font-weight:var(--fw-lead)}
+.tbl-note{margin-top:var(--s4);font-size:var(--fs-note);color:var(--muted);
+  font-weight:var(--fw-body);line-height:1.45}
+.legend{display:flex;gap:var(--s8);flex-wrap:wrap;align-items:center;margin:0 0 var(--s6);
+  font-size:12px;color:var(--ink2)}
+.legend .sw{display:inline-flex;align-items:center;gap:var(--s3);font-weight:var(--fw-med)}
+.legend .dot{width:11px;height:11px;border-radius:var(--r1);display:inline-block}
+.empty{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:38px var(--s10);text-align:center;color:var(--muted);font-weight:var(--fw-body)}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:var(--s3);
+  font-weight:var(--fw-bold)}
+.empty .btn{margin-top:var(--s7)}
+
+.info{display:inline-flex;align-items:center;justify-content:center;
+  width:17px;height:17px;border-radius:50%;border:1px solid var(--line);
+  background:var(--card);color:var(--muted);font-family:inherit;font-size:11px;
+  font-weight:var(--fw-lead);line-height:1;letter-spacing:.2px;cursor:help;flex:0 0 auto;
+  user-select:none;transition:border-color .12s,color .12s,background .12s}
+.info:hover{border-color:var(--act);background:var(--blue-bg);color:var(--act)}
+
+.btn{border:1px solid var(--line);background:var(--card);border-radius:var(--r3);
+  padding:var(--s4) var(--s7);font-weight:var(--fw-lead);color:var(--ink2);cursor:pointer;
+  font-size:13px;display:inline-flex;align-items:center;gap:7px;
+  transition:background .15s,border-color .15s}
+.btn:hover{background:#fafbfc;border-color:#d8dce4}
+.btn.primary{background:var(--act);border-color:var(--act);color:#fff}
+.btn.primary:hover{background:var(--act-ink)}
+.btn.ghost{border-color:transparent;color:var(--blue)}
+.btn.ghost:hover{background:var(--blue-bg)}
+.btn.xs{padding:3px var(--s3);min-width:24px;font-size:11px}
+
+/* ================================ Воронка ================================
+   Рисуется своим SVG (см. UI.funnelSvg), а не библиотекой: бар растёт от
+   центра, поэтому и анимация — от центра. */
+.chart.fn-box{display:flex;justify-content:center}
+.fnsvg{max-width:100%}
+.fn-g{cursor:help}
+.fn-bar{transform-box:fill-box;transform-origin:50% 50%;
+  animation:fn-grow .42s cubic-bezier(.22,.61,.36,1) both}
+@keyframes fn-grow{from{transform:scaleX(.02)}to{transform:none}}
+
+@media (prefers-reduced-motion:reduce){.fn-bar{animation:none}}
+
+/* ============================== Графики ECharts ========================== */
+.chart{width:100%}
+.chart.h-tall{height:330px}
+.chart.h-xtall{height:480px}
+.chart.h-mid{height:250px}
+.chart.h-low{height:190px}
+.chart.fill{flex:1;min-height:260px}
+
+.psearch{position:relative;flex:0 0 auto;color:var(--muted)}
+.psearch input{border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
+  border-radius:var(--r3);
+  padding:7px var(--s5) 7px 28px;font-size:12px;font-weight:var(--fw-med);color:var(--ink);
+  width:190px;font-family:inherit}
+.psearch input::placeholder{color:var(--muted2);font-weight:var(--fw-body)}
+.psearch input:focus{outline:none;border-color:var(--act)}
+.psearch svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none}
+
+/* =============== Область и целевая аудитория (вкладка «Аудитория») =========
+   Две подписанные колонки, а не один поток. Раньше заголовок источника и
+   чип с числом лежали в одной строке без права на перенос — на узкой
+   колонке чип наезжал прямо на текст заголовка. Здесь у каждой колонки
+   свой поток и свой перенос, наехать нечему. */
+.scopebar{display:grid;grid-template-columns:minmax(260px,.62fr) minmax(360px,1fr);
+  gap:var(--s9);background:var(--card);border:1px solid var(--line);
+  border-radius:var(--radius);padding:var(--s7) var(--s8);margin-bottom:var(--s8);
+  box-shadow:var(--shadow)}
+.scopebar.wide{border-color:#f0dcb4;background:linear-gradient(100deg,#fffaf1 0,#fff 42%)}
+.sb-col{min-width:0;display:flex;flex-direction:column;gap:var(--s4)}
+.sb-col .sub-tabs{align-self:flex-start;max-width:100%}
+.sb-pick{min-width:0}
+.sb-aud{border-left:1px solid var(--line2);padding-left:var(--s9)}
+.as-cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:var(--fw-lead)}
+.as-cap2{font-size:var(--fs-micro);color:var(--muted2);font-weight:var(--fw-body);margin-top:var(--s2)}
+/* Заголовок и чип: перенос разрешён, чип не «плывёт» поверх текста */
+.as-t{font-size:var(--fs-body);font-weight:var(--fw-lead);color:var(--ink);
+  display:flex;align-items:center;gap:var(--s4);flex-wrap:wrap;min-width:0;line-height:1.35}
+/* Чип во флекс-строке — это флекс-элемент, и по умолчанию он сжимается.
+   Именно поэтому «617 человек» схлопывалось в 18px и наезжало на заголовок. */
+.as-t .sig-chip{flex:0 0 auto}
+.as-x{font-size:var(--fs-note);color:var(--muted);font-weight:var(--fw-body);line-height:1.5}
+.as-x b{color:var(--ink2);font-weight:var(--fw-lead)}
+.as-x .mut{color:var(--muted2)}
+.sb-act{display:flex;gap:var(--s4);flex-wrap:wrap;margin-top:var(--s2)}
+.aud-pick{max-width:100%;width:100%}
+/* ========================= Выпадающий список =============================
+   Свой, а не нативный <select>. Список у нативного рисует ОПЕРАЦИОННАЯ
+   СИСТЕМА: при тёмной теме он выпадает чёрным с жёлтой подсветкой строки —
+   посреди светлого дашборда это чужой элемент, и CSS его не лечит.
+   Здесь список — обычная разметка, поэтому он всегда в стиле панелей. */
+.dd{position:relative;min-width:0}
+.dd-trg{display:flex;align-items:center;gap:var(--s4);width:100%;
+  border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
+  border-radius:var(--r3);padding:var(--s4) var(--s6);cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:var(--fw-lead);color:var(--ink);
+  text-align:left}
+.dd-trg:hover{border-color:#d8dce4}
+.dd.open .dd-trg{border-color:var(--act)}
+.dd-txt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dd-c{flex:0 0 auto;color:var(--muted2);font-size:10px;transition:transform .16s}
+.dd.open .dd-c{transform:rotate(180deg)}
+/* Список всплывает НАД содержимым: в шапке панели он иначе растянул бы её
+   и сдвинул таблицу, ради которой его открыли. */
+.dd-body{position:absolute;z-index:40;top:calc(100% + 4px);left:0;min-width:100%;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r3);
+  box-shadow:var(--shadow-lg);padding:var(--s3);max-height:280px;overflow:auto;
+  display:flex;flex-direction:column;gap:1px}
+.dd.sm .dd-trg{padding:6px var(--s5);font-size:12px}
+.dd.sm .dd-body{right:0;left:auto}
+.dd-opt{border:0;background:transparent;border-radius:var(--r2);
+  padding:6px var(--s5);cursor:pointer;font-family:inherit;font-size:12.5px;
+  font-weight:var(--fw-med);color:var(--ink2);text-align:left;white-space:nowrap}
+.dd-opt:hover{background:#f4f6f9;color:var(--ink)}
+.dd-opt.on{background:var(--blue-bg);color:var(--act-ink);font-weight:var(--fw-lead)}
+
+/* ================= Область: один иерархический выбор ====================
+   Триггер показывает, что выбрано, и раскрывает список ВНИЗ, в потоке
+   страницы: всплывающий слой накрывал бы и поиск, и всё вокруг, и было бы
+   непонятно, что вообще выбираешь. */
+.scopepick{position:relative;min-width:0}
+.scope-trg{display:flex;align-items:center;gap:var(--s5);width:100%;
+  border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
+  border-radius:var(--r3);padding:var(--s4) var(--s6);cursor:pointer;
+  font-family:inherit;font-size:13px;font-weight:var(--fw-lead);color:var(--ink);
+  text-align:left}
+.scope-trg:hover{border-color:#d8dce4}
+.scopepick.open .scope-trg{border-color:var(--act)}
+.st-txt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.st-n{flex:0 0 auto;font-size:var(--fs-cap);font-weight:var(--fw-med);color:var(--muted);
+  background:#f2f4f7;border-radius:var(--r-pill);padding:2px var(--s5)}
+.st-c{flex:0 0 auto;color:var(--muted2);font-size:10px;transition:transform .16s}
+.scopepick.open .st-c{transform:rotate(180deg)}
+/* Список ВСПЛЫВАЕТ над содержимым, а не раздвигает его. Раскрытие в потоке
+   растягивало всю верхнюю плашку, и экран прыгал на полсотни пикселей от
+   одного клика — а раскрыли-то список, чтобы посмотреть, что в нём. */
+.scope-body{position:absolute;z-index:40;top:calc(100% + 4px);left:0;right:0;
+  border:1px solid var(--line);border-radius:var(--r3);
+  background:var(--card);padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4);
+  box-shadow:var(--shadow-lg)}
+.scope-body .psearch input{width:100%;box-shadow:none}
+.scope-act{display:flex;gap:var(--s5)}
+
+/* Список отчётов внутри: коллекции с отчётами. */
+.pickwrap{display:flex;flex-direction:column;gap:var(--s4)}
+.pickwrap .psearch input{width:100%}
+.pickbox{max-height:168px;overflow:auto;border:1px solid var(--line);
+  border-radius:var(--r3);padding:var(--s3) var(--s4);background:var(--card);
+  box-shadow:var(--shadow)}
+.pickgrp+.pickgrp{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line2)}
+.pickrow{display:flex;align-items:center;gap:var(--s4);padding:3px 2px;
+  font-size:var(--fs-note);color:var(--ink2);cursor:pointer;line-height:1.3}
+.pickrow:hover{color:var(--ink)}
+.pickrow.head{font-weight:var(--fw-lead);color:var(--ink);font-size:var(--fs-body)}
+.pickrow:not(.head){padding-left:var(--s9)}
+.pickrow input{accent-color:var(--act);margin:0;flex:0 0 auto}
+.pickrow span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pickempty{font-size:var(--fs-note);color:var(--muted);padding:var(--s5) 2px}
+.pcount{font-style:normal;margin-left:auto;font-size:var(--fs-micro);font-weight:var(--fw-lead);
+  color:var(--muted2);background:#f2f4f7;border-radius:var(--r-pill);padding:1px 6px;flex:0 0 auto}
+.pcount.on{background:var(--blue-bg);color:var(--act-ink)}
+
+/* Мультивыбор в панели фильтров — тот же список, только компактнее и во
+   всю ширину узкой колонки. */
+.scopepick.mini .scope-trg{padding:6px var(--s5);font-size:12px;font-weight:var(--fw-med)}
+.scopepick.mini .st-n{padding:1px var(--s4);background:var(--blue-bg);color:var(--act-ink)}
+.scopepick.mini .scope-body{z-index:60;padding:var(--s4);min-width:210px}
+.scopepick.mini .pickbox{max-height:196px;box-shadow:none}
+.scopepick.mini .pickrow:not(.head){padding-left:var(--s7)}
+
+/* Текстовые фильтры (название отчёта, логин сотрудника) */
+.ftext{width:100%;border:1px solid var(--line);background:var(--card);box-shadow:var(--shadow);
+  border-radius:var(--r3);padding:6px var(--s5);font-family:inherit;font-size:12px;
+  color:var(--ink);appearance:none;min-width:0}
+.ftext::placeholder{color:var(--muted2)}
+.ftext:hover{border-color:#d8dce4}
+.ftext:focus{outline:none;border-color:var(--act)}
+
+/* ================== Конструктор целевой аудитории =======================
+   Разрезы списком слева, значения выбранного — справа. Восемь разрезов
+   простынёй чипов сразу — это три сотни кнопок на экране: по ним нельзя
+   ни скользнуть взглядом, ни попасть. Что означает разрез — в подсказке. */
+.modal.wide{max-width:860px}
+.cfg-b{padding-bottom:var(--s6)}
+.cfg-sel{display:flex;flex-wrap:wrap;gap:var(--s5);align-items:center;
+  min-height:30px;margin-bottom:var(--s6);padding-bottom:var(--s5);
+  border-bottom:1px solid var(--line2)}
+.cfg-cond{display:inline-flex;align-items:center;gap:var(--s3);flex-wrap:wrap;
+  font-size:var(--fs-note);color:var(--muted)}
+.cfg-cond b{color:var(--ink2);font-weight:var(--fw-lead)}
+.cfg-grid{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--s8);
+  align-items:start}
+.cfg-dims{display:flex;flex-direction:column;gap:2px}
+.cfg-dim{display:flex;align-items:center;gap:var(--s4);border:0;background:transparent;
+  border-radius:var(--r3);padding:7px var(--s5);cursor:pointer;font-family:inherit;
+  font-size:var(--fs-body);font-weight:var(--fw-med);color:var(--ink2);text-align:left;
+  line-height:1.25}
+.cfg-dim:hover{background:#f4f6f9;color:var(--ink)}
+.cfg-dim.on{background:var(--blue-bg);color:var(--act-ink);font-weight:var(--fw-lead)}
+.cfg-vals{min-width:0;min-height:190px;display:flex;flex-direction:column;gap:var(--s4)}
+.cfg-vals .psearch input{width:100%}
+/* Значения разреза — список с прокруткой: в бою их бывает полсотни и
+   больше, простынёй чипов это нечитаемо. */
+.dimbox{max-height:196px;overflow:auto;border:1px solid var(--line);
+  border-radius:var(--r3);padding:var(--s3) var(--s4);background:var(--card)}
+.pickchips.sel{padding-bottom:var(--s2)}
+.cfg-vh{font-size:var(--fs-body);font-weight:var(--fw-lead);color:var(--ink);
+  margin-bottom:var(--s5)}
+.cfg-vhx{display:block;font-size:var(--fs-note);color:var(--muted);
+  font-weight:var(--fw-body);line-height:1.45;margin-top:2px}
+
+/* Значения разреза — чипы-переключатели */
+.pickchips{display:flex;flex-wrap:wrap;gap:var(--s3)}
+.pchip{border:1px solid var(--line);background:var(--card);border-radius:var(--r-pill);
+  padding:4px var(--s5);font-size:var(--fs-note);font-weight:var(--fw-med);
+  color:var(--ink2);cursor:pointer;font-family:inherit;line-height:1.25}
+.pchip:hover{border-color:#c9ced8;background:#fafbfc}
+.pchip.on{background:var(--act);border-color:var(--act);color:#fff;font-weight:var(--fw-lead)}
+.pchip.sm{padding:2px var(--s4);font-size:var(--fs-cap)}
+.modal-f .as-x{flex:0 1 auto;min-width:0}
+
+/* ===================== Полоса сегментов над списком людей =================
+   Одно целое (вся ЦА), разложенное по поведению, и оно же фильтр списка
+   под ним. Отдельным барчартом в чужой панели это читалось как «ещё один
+   график», из которого непонятно, что делать. */
+.segstrip{display:flex;gap:var(--s3);margin-bottom:var(--s5);min-width:0}
+.seg-part{flex:1 1 0;min-width:88px;border:0;background:transparent;padding:0;
+  cursor:pointer;font-family:inherit;text-align:left;display:flex;
+  flex-direction:column;gap:var(--s2);transition:opacity .15s}
+.seg-part .sp-bar{display:block;height:10px;border-radius:2px}
+.seg-part .sp-v{font-size:var(--fs-body);font-weight:var(--fw-bold);color:var(--ink);
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.seg-part .sp-l{font-size:var(--fs-cap);color:var(--muted);font-weight:var(--fw-med);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.seg-part:hover .sp-l{color:var(--ink2)}
+.seg-part.off{opacity:.42}
+.seg-part.on .sp-l{color:var(--ink);font-weight:var(--fw-lead)}
+.seg-part.on .sp-bar{box-shadow:0 0 0 2px var(--card),0 0 0 3px var(--ink2)}
+
+/* Сплит вкладки «Аудитория»: слева каталог, справа СТОЛБЕЦ из панелей
+   (ЦА + воронка). Столбец — единственная зона сплита, которой НЕЛЬЗЯ
+   display:contents: иначе обе панели упадут в grid-ячейки рядом с
+   каталогом. Высоту ряда задаёт столбец, каталог тянется и крутится. */
+.split.audcat{grid-template-columns:minmax(533px,.78fr) minmax(460px,1.22fr);align-items:stretch}
+.split.audcat>.zone#z-aside{display:flex;flex-direction:column;gap:var(--s8);min-height:0}
+.split.audcat .scopebar{margin-bottom:0}
+.split.audcat #z-aside .panel{height:auto}
+.split.audcat .aud-fn .fn-box{margin:0 auto}
+/* Панель с одним растущим графиком: телу нужен свой флекс, иначе
+   .chart.fill не на чем растягиваться и график остаётся 250px в 560px. */
+.panel-b.flexcol{display:flex;flex-direction:column;gap:var(--s5)}
+.panel-b.flexcol .chart.fill{flex:1 1 auto;min-height:230px}
+.tbl-scroll{flex:1 1 auto;min-height:0;overflow:auto}
+/* «Кто смотрит»: дерево групп. Узел — каретка раскрывает (слева), клик
+   по имени сужает каталог (людская шина); люди — правее, с отступом,
+   чтобы иерархия читалась без рамок. */
+.ptable tr.grp-h td{padding:6px 10px;font-weight:var(--fw-lead);color:var(--ink);
+  background:#f4f6f9;text-align:left}   /* база .ptable td жмёт вправо — группы СЛЕВА */
+.ptable tr.grp-h:hover td{background:#eef2f7}
+/* Уровни дерева: БЛОК — у самого левого края, департамент — с отступом,
+   люди — ещё правее. Иерархия читается без подсказок. */
+.ptable tr.grp-h.blk td, .ptable tr.grp-h.flat td{padding-left:6px}
+.ptable tr.grp-h.blk td{font-weight:var(--fw-bold)}
+.ptable tr.grp-h.dep td{padding-left:30px}
+tr.grp-child>td:first-child{padding-left:30px}
+tr.grp-child.deep>td:first-child{padding-left:54px}
+.gh-caret{border:0;background:transparent;color:var(--muted);cursor:pointer;
+  font-size:10px;width:18px;padding:0;font-family:inherit;line-height:1}
+.gh-caret:hover{color:var(--ink)}
+/* Строка группы — сам кликабельный «ряд» (как строки каталога), а не
+   подчёркнутая ссылка: каретка сворачивает, остальное — людская шина. */
+.gh-name{font:inherit;font-weight:var(--fw-lead);color:var(--ink)}
+.gh-cnt{margin-left:8px;color:var(--muted);font-weight:var(--fw-body);font-size:var(--fs-note)}
+.ptable tr.grp-h{cursor:pointer}
+.ptable tr.grp-h.sel td{background:var(--blue-bg)}
+.ptable tr.grp-h.sel .gh-name{color:var(--act-ink)}
+/* Группа без людей текущей выборки: гаснет, но остаётся — по ней можно
+   переключить условие (контекст селектора, как корзины сигаретки) */
+.ptable tr.grp-h.grp-dim .gh-name{color:var(--muted);font-weight:var(--fw-body)}
+.ptable tr.grp-h.grp-dim .gh-cnt{opacity:.75}
+/* Строка человека — тоже клик: людская шина по логину */
+.ptable tr.pk{cursor:pointer}
+.ptable tr.pk:hover{background:#fafbfc}
+.ptable tr.pk.sel{background:var(--blue-bg);box-shadow:inset 3px 0 0 var(--act)}
+.who-cnt .who-sel{color:var(--act-ink);font-weight:var(--fw-lead)}
+/* Тулбар «Кто смотрит»: группировка слева, счётчик рядом */
+.who-bar{display:flex;align-items:center;gap:var(--s5);flex:0 0 auto;flex-wrap:wrap;
+  position:relative;z-index:6}
+.who-cnt{font-size:var(--fs-note);color:var(--muted);font-weight:var(--fw-body);margin-left:auto}
+/* Список группировки раскрывается ВЛЕВО от триггера и никогда не выходит
+   за левый край панели/чарта; лежит поверх таблицы (z-index у .who-bar). */
+.who-bar .dd .dd-body{left:0;right:auto}
+/* Сигаретке нужен воздух сверху: обводка выбранной корзины — 3px кольцо
+   над баром, у самого края панели оно обрезалось. */
+.panel-b.tbl-wrap .segstrip{margin-top:var(--s6)}
+.seg-part .sp-p{font-style:normal;font-weight:var(--fw-body);color:var(--muted);
+  font-size:var(--fs-cap);margin-left:3px}
+/* Настройки списка «Кто смотрит»: руководители + исключённые логины */
+.who-opts .dd-trg{width:auto}
+.who-opts-pop{min-width:256px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.who-opts-pop .psearch input{width:100%}
+.wo-h{font-size:11px;font-weight:var(--fw-lead);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+.wo-ex{max-height:224px;overflow:auto}
+.wo-login{font-style:normal;color:var(--muted);font-size:11px}
+.wo-dot{width:7px;height:7px;border-radius:50%;background:var(--act);
+  display:inline-block;flex:0 0 auto}
+/* Легенда динамики — пилюльки (перенос из проде-виджета): клик гасит
+   ступень стека, определения — в подсказках пилюлек. */
+.dynhead{display:flex;align-items:center;gap:12px;min-height:24px;flex-wrap:wrap;row-gap:4px;flex:0 0 auto}
+.dynhead .cap{font-size:var(--fs-cap);text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:var(--fw-lead)}
+.legend.pills{display:inline-flex;gap:4px;margin:0 0 0 auto;flex-wrap:wrap}
+.leg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line2);
+  background:var(--card);border-radius:999px;padding:3px 10px 3px 8px;
+  font-size:var(--fs-note);color:var(--ink2);cursor:pointer;font-family:inherit;font-weight:var(--fw-med)}
+.leg i{width:10px;height:9px;border-radius:3px;display:inline-block}
+.leg:hover{border-color:#d8dce4;background:#fafbfc}
+.leg.off{opacity:.42}
+.leg.off i{background:repeating-linear-gradient(45deg,#c7c8cc,#c7c8cc 2px,#eef0f3 2px,#eef0f3 4px) !important}
+/* Скоупбар «Аудитории» без колонки области: осталась одна ЦА-колонка */
+.scopebar.aud{grid-template-columns:1fr}
+.scopebar.aud .sb-aud{border-left:none;padding-left:0}
+/* Селектор разреза живёт в шапке своей панели, а не в общем меню слева */
+.ctl.inline{flex:0 0 auto;min-width:0}
+.ctl.inline select{padding:6px 28px 6px var(--s5);font-size:12px;
+  border:1px solid var(--line);background:var(--card);border-radius:var(--r3);
+  box-shadow:var(--shadow);
+  font-weight:var(--fw-lead);color:var(--ink);cursor:pointer;appearance:none;
+  font-family:inherit;max-width:200px;text-overflow:ellipsis;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a909c' stroke-width='2.5'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right var(--s4) center}
+
+/* ============================== Подсказка ================================ */
+/* Подсказка — реплика, а не абзац. Всё, что не помещается в четыре строки,
+   живёт в подписи под блоком или в «Как это устроено»: большой тултип
+   перекрывал каталог целиком и мешал читать то, ради чего его позвали. */
+.tip{position:fixed;z-index:400;pointer-events:none;opacity:0;transform:translateY(3px);
+  transition:opacity .11s ease-out,transform .11s ease-out;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r3);
+  box-shadow:0 8px 22px rgba(24,33,50,.16),0 2px 5px rgba(24,33,50,.07);
+  padding:7px var(--s5);font-size:11.5px;line-height:1.4;color:var(--ink2);
+  font-weight:var(--fw-med);min-width:118px;max-width:238px;white-space:normal}
+.tip.on{opacity:1;transform:none}
+.tip .t-h{display:block;font-size:10px;font-weight:var(--fw-lead);letter-spacing:.3px;
+  color:var(--muted);margin-bottom:var(--s2);text-transform:uppercase;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tip .t-x{display:block;font-size:11.5px;font-weight:var(--fw-body);color:var(--ink2);line-height:1.4}
+.tip .t-r{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s1)}
+.tip .t-r:first-child{margin-top:0}
+.tip .t-m{display:inline-block;flex:0 0 auto;width:10px;height:9px;border-radius:var(--r1)}
+.tip .t-m.dash{height:0;width:14px;border-radius:0;border-top:2px dashed;background:none}
+.tip .t-l{font-size:11px;font-weight:var(--fw-med);color:var(--muted);min-width:0}
+.tip .t-v{display:inline;margin:0 0 0 auto;font-size:12.5px;font-weight:var(--fw-lead);
+  color:var(--ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.tip .t-r.bench .t-v{color:var(--muted);font-weight:var(--fw-med)}
+.tip .t-n{display:block;font-size:10.5px;line-height:1.35;font-weight:var(--fw-body);
+  color:var(--muted);margin-top:4px}
+.tip .t-r+.t-n{margin-top:var(--s3);padding-top:5px;border-top:1px solid var(--line2)}
+.tip .t-n+.t-n{margin-top:2px;padding-top:0;border-top:0}
+.nocmp,.info,.cellbar,.delta,.mx-cell{cursor:help}
+
+/* ================================ Модалка ================================ */
+.ovl{position:fixed;inset:0;background:rgba(20,28,45,.42);z-index:60;
+  display:flex;align-items:flex-start;justify-content:center;padding:var(--s10) 18px;overflow:auto}
+.ovl[hidden]{display:none}
+.modal{background:var(--card);border-radius:var(--r5);box-shadow:var(--shadow-lg);
+  width:100%;max-width:700px;overflow:hidden}
+.modal-h{padding:18px var(--s10) var(--s7)}
+.modal-h h3{margin:0 0 5px;font-size:18px;font-weight:var(--fw-bold);letter-spacing:-.3px}
+.modal-h p{margin:0;font-size:var(--fs-body);color:var(--muted);line-height:1.45;
+  font-weight:var(--fw-body)}
+.modal-b{padding:0 var(--s10) var(--s4);max-height:calc(100vh - 230px);overflow:auto}
+.modal-f{padding:var(--s7) var(--s10) 18px;border-top:1px solid var(--line2);
+  display:flex;align-items:center;gap:var(--s5);background:#fafbfc}
+.modal-f .sp{flex:1}
+.hgrp{margin-bottom:18px}
+.hgrp h4{margin:0 0 var(--s4);font-size:var(--fs-body);font-weight:var(--fw-lead);color:var(--ink)}
+.hgrp p{margin:0;font-size:var(--fs-body);color:var(--ink2);line-height:1.55;font-weight:var(--fw-body)}
+.hgrp code{background:#f3f4f6;border-radius:var(--r1);padding:1px 5px;
+  font-size:var(--fs-note);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.dslist{margin:0;font-size:var(--fs-body);color:var(--ink2);line-height:1.6}
+.dslist dt{font-weight:var(--fw-lead);color:var(--ink);margin-top:var(--s5)}
+.dslist dd{margin:2px 0 0;font-weight:var(--fw-body)}
+
+/* ============================== Доступность ============================== */
+:focus-visible{outline:3px solid rgba(23,103,127,.34);outline-offset:2px}
+button:focus-visible,a:focus-visible,select:focus-visible{outline-color:var(--act)}
+.skip-link{position:fixed;left:12px;top:-60px;z-index:9999;background:var(--ink);
+  color:#fff;padding:var(--s5) var(--s7);border-radius:var(--r3);font-weight:var(--fw-lead);
+  text-decoration:none;transition:top .15s}
+.skip-link:focus{top:12px}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;
+  padding:0!important;margin:-1px!important;overflow:hidden!important;
+  clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.urow:focus{outline:3px solid rgba(23,103,127,.26);outline-offset:-3px;background:var(--blue-bg)}
+@media (prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;
+    animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+.nav-scrim{position:fixed;z-index:110;inset:0;background:rgba(20,28,45,.38);display:none}
+.nav-scrim.open{display:block}
+
+/* =============================== Адаптив ================================= */
+/* Когортной таблице нужно 12 колонок возраста. Как только рядом с ней
+   перестаёт помещаться частота — ставим блоки друг под друга, а не
+   загоняем когорты в горизонтальную прокрутку. */
+/* Когортной таблице нужно 11 колонок возраста. Как только рядом с ней
+   перестаёт помещаться частота — ставим блоки друг под друга, а не
+   загоняем когорты в горизонтальную прокрутку. */
+@media(max-width:1366px){
+  .split.ret{grid-template-columns:1fr}
+}
+@media(max-width:1240px){
+  .split,.split.wide-r,.split.main{grid-template-columns:minmax(410px,.9fr) minmax(400px,1.1fr)}
+}
+@media(max-width:1120px){
+  .split,.split.wide-r,.split.main,.split.ret,.split.audcat{grid-template-columns:1fr;height:auto}
+  .split .panel{height:auto}
+  .split.main .panel{height:auto;max-height:none}
+  .split.audcat .panel{height:auto;max-height:none}
+  .split.main .split-l .tbl-wrap{max-height:430px}
+  .split-l .tbl-wrap{max-height:430px}
+  .grid2{grid-template-columns:1fr}
+  .kpis.n5,.kpis.n6{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:1100px){
+  .kpis,.kpis.n4,.kpis.n5,.kpis.n6{grid-template-columns:repeat(3,minmax(160px,1fr))}
+  .content{padding:var(--s9)}
+  .tabbar{padding:var(--s6) var(--s9) 0}
+}
+@media(max-width:780px){
+  .layout{display:block}
+  .nav{position:fixed;z-index:120;left:0;top:0;bottom:0;width:min(82vw,300px);
+    height:auto;transform:translateX(-105%);transition:transform .22s ease;
+    box-shadow:8px 0 28px rgba(20,28,45,.18)}
+  .nav.open{transform:translateX(0)}
+  .nav-toggle{display:inline-flex;align-items:center;justify-content:center}
+  .apphead{position:static}
+  .content{padding:var(--s8)}
+  .tabbar{padding:var(--s6) var(--s8) 0}
+  .kpis,.kpis.n3,.kpis.n4,.kpis.n5,.kpis.n6{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5)}
+  .panel{overflow-x:auto}
+  .ptable{min-width:700px}
+  .modal{width:calc(100vw - 20px)}
+}
+@media(max-width:480px){
+  .kpis,.kpis.n3,.kpis.n4,.kpis.n5,.kpis.n6{grid-template-columns:1fr}
+  .tabs{display:flex;overflow-x:auto;width:100%}
+  .panel-h{padding:var(--s6)}.panel-b{padding:var(--s5)}
+}
+@media print{
+  body{background:#fff}
+  .apphead,.nav,.tabbar,.sub-tabs,.btn,.nav-scrim,.tip,.psearch{display:none!important}
+  .layout,.main-col{display:block}
+  .content{padding:0;max-width:none}
+  .panel,.kpi,.obs{box-shadow:none;break-inside:avoid}
+  .split.aud .panel{height:auto;max-height:none}
+  .split.main .panel{height:auto;max-height:none}
+  .tbl-scroll,.tbl-wrap,.ct-wrap{overflow:visible}
+  .chips .x{display:none}
+}
+
+/* ========================= Макет 2.0: один экран ========================= */
+/* Верхних вкладок и сайдбара нет: layout вырождается в одну колонку,
+   а период/опции/чипы обеих шин кросс-фильтров живут в полоске. */
+.layout.solo{display:block}
+.layout.solo .main-col{margin:0;max-width:none}
+
+.strip{display:flex;align-items:center;flex-wrap:wrap;gap:var(--s4);
+  padding:var(--s4) var(--s6);margin-bottom:var(--s6);
+  background:var(--panel,#fff);border-radius:8px;
+  box-shadow:0 1px 3px rgba(20,28,45,.07),0 4px 14px rgba(20,28,45,.04)}
+.strip-seg{display:inline-flex;align-items:center;gap:2px;
+  background:var(--bg-alt,#eef1f5);border-radius:7px;padding:2px}
+.strip-seg button{border:0;background:transparent;border-radius:5px;
+  padding:5px 12px;font:inherit;font-size:12px;font-weight:600;color:var(--mut,#5a6b7e);
+  cursor:pointer;white-space:nowrap}
+.strip-seg button.on{background:#fff;color:var(--fg,#1b2733);
+  box-shadow:0 1px 2px rgba(20,28,45,.12)}
+.strip-hint{font-size:12px;color:var(--mut,#5a6b7e)}
+.strip .chips{margin:0}
+.strip .chip{font-size:12px}
+
+/* Строка активных условий У КОНТЕНТА: под «Что видно в данных», над
+   каталогом и динамикой. Рендерится всегда — пустое состояние держит те же
+   пиксели по высоте, чтобы появление чипов не сдвигало экран. */
+.ctx-row{display:flex;align-items:center;gap:var(--s5);flex-wrap:wrap;
+  min-height:36px;margin:0 0 var(--s6);padding:0 2px}
+.ctx-l{font-size:10.5px;font-weight:var(--fw-lead);color:var(--muted);
+  text-transform:uppercase;letter-spacing:.4px;flex:0 0 auto}
+.ctx-hint{font-size:12px;color:var(--muted);font-weight:var(--fw-body)}
+.ctx-row .chips{margin:0}
+.ctx-row .chip{font-size:12px}
+.ctx-row .btn{margin-left:auto}
+
+/* Поповер опций полоски */
+.opts{position:relative;display:inline-flex}
+.opts-trg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--br,#d7dde5);
+  background:#fff;border-radius:7px;padding:6px 12px;font:inherit;font-size:12px;
+  font-weight:600;color:var(--fg,#1b2733);cursor:pointer;white-space:nowrap}
+.opts-trg:hover{border-color:var(--act,#0073A0);color:var(--act,#0073A0)}
+.opts.open .opts-trg{border-color:var(--act,#0073A0);color:var(--act,#0073A0)}
+.opts-pop{position:absolute;z-index:60;top:calc(100% + 6px);left:0;min-width:290px;
+  background:#fff;border-radius:8px;padding:var(--s5);
+  box-shadow:0 4px 10px rgba(20,28,45,.1),0 14px 34px rgba(20,28,45,.14);
+  display:flex;flex-direction:column;gap:2px}
+.opts-pop .swt{padding:4px 2px}
+.st-c{font-size:10px;color:inherit}
+
+/* Частота — детализация внутри панели «Кто смотрит» (2.1): отделена от
+   основной таблицы, живёт с теми, кого описывает */
+.who-freq{margin-top:var(--s7);padding-top:var(--s7);border-top:1px solid var(--br,#e3e7ed)}
+.who-freq .as-cap{margin-bottom:var(--s4)}
+.who-freq .note-inline{margin-bottom:var(--s5)}
+
+/* Заглушки этапов 2–3: пунктирная рамка вместо тени — «план, а не блок» */
+.panel.stub{box-shadow:none;border:1px dashed var(--br,#c6cdd7);background:transparent}
+.panel.stub .panel-b{display:flex;align-items:center;justify-content:center;min-height:132px}
+.stub-b{max-width:520px;font-size:12.5px;line-height:1.55;color:var(--mut,#5a6b7e);text-align:center}
+.stub-b b{display:block;color:var(--fg,#1b2733);font-size:14px;margin:6px 0 4px}
+.stub-tag{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--mut,#5a6b7e);
+  border:1px solid var(--br,#c6cdd7);border-radius:4px;padding:2px 8px;background:#fff}
+
+@media(max-width:1120px){
+  .split.main{grid-template-columns:1fr;height:auto}
+  .split.main .panel{height:auto;max-height:none}
+}
+@media print{
+  .strip{box-shadow:none}
+  .panel.stub{break-inside:avoid}
+}

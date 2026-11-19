@@ -1,0 +1,184 @@
+-- Код параграфа «Подготовить атрибуты людей, права и словари (ускорение 1a)».
+-- Только для версии ноды, где ВСЕ pa_next_* находятся в рабочей схеме.
+-- Для перехода со старой версии usr_cross_data импортировать полный YAML.
+-- Затем выполнить всю PA NEXT ноду сверху вниз и проверку готовности из файла 11.
+-- Исправляет chr(894) и обработку ФИО в SQL_ASCII; правило расчёта сохраняется.
+-- Keep all new GP tables in this notebook's current working schema.
+-- Pin search_path so DROP cannot fall back to an older usr_cross_data table.
+-- Empty search_path stops CREATE if a physical/source/session schema was selected.
+SELECT set_config('search_path', CASE
+    WHEN current_schema() IS NOT NULL
+     AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+     AND current_schema() NOT LIKE 'pg_temp_%'
+    THEN quote_ident(current_schema()) ELSE '' END, false);
+
+-- ---- витрина «PA · дата свежести» → pa_next_md
+-- Одна строка: md — дата свежести (как max(md) пар), ds — начало истории событий (первый визит).
+-- Раньше каждый запрос трёх датасетов сканировал ради этих двух чисел всю pa_next_pair.
+drop table if exists pa_next_md;
+create table pa_next_md as
+SELECT payload.*, generation.run_id AS _pa_next_run
+FROM (
+select max(coalesce(md, dmax)) as md, min(dmin) as ds
+from pa_next_pair
+) payload
+CROSS JOIN pa_next_run generation
+distributed randomly;
+analyze pa_next_md;
+
+-- ---- витрина «PA · словарь кодов» → pa_next_dict
+-- Коды значений специализации / стрима / стажа / HQ / IT (штат ∪ атрибуты зрителей): код = номер значения
+-- по порядку байтов (как сортирует ClickHouse), с 1. В ответе панели вместо названий — коды (3 цифры вместо
+-- «Специализации» в \uXXXX), раньше словарь собирался на каждый клик.
+drop table if exists pa_next_dict;
+create table pa_next_dict as
+SELECT payload.*, generation.run_id AS _pa_next_run
+FROM (
+with v as (
+    select 'spec'::text as g, coalesce(emp_specialization_desc, '')::text as v from pa_next_staff
+    union select 'stream', coalesce(emp_stream_desc, '') from pa_next_staff
+    union select 'exp', coalesce(exp_nm, '') from pa_next_staff
+    union select 'hq', coalesce(hq_code, '') from pa_next_staff
+    union select 'it', coalesce(it_code, '') from pa_next_staff
+    union select 'spec', coalesce(emp_specialization_desc, '') from pa_next_emp_attrs
+    union select 'stream', coalesce(emp_stream_desc, '') from pa_next_emp_attrs
+    union select 'exp', coalesce(exp_nm, '') from pa_next_emp_attrs
+    union select z.g, '' from (select 'spec'::text as g union all select 'stream' union all select 'exp'
+                               union all select 'hq' union all select 'it') z
+)
+select g, v, (row_number() over (partition by g order by convert_to(v, 'UTF8')))::int as code
+from v
+) payload
+CROSS JOIN pa_next_run generation
+distributed by (g);
+analyze pa_next_dict;
+
+-- ---- витрина «PA · доступ к любому отчёту» → pa_next_acc_any (temp)
+-- Логин × флаги «есть право хотя бы на один отчёт» (поимённо или через AD-группу) — для области «весь Proteus»
+-- при каждом сочетании переключателей шапки: бит 1 — любой отчёт, 2 — опубликованный, 4 — актуальный,
+-- 8 — опубликованный и актуальный. Служебная: её читают два параграфа ниже.
+drop table if exists pa_next_acc_any;
+create temp table pa_next_acc_any as
+with pf as (    -- принципал × флаги его отчётов (до разворота групп: группа × отчёты не размножается)
+    select a.principal, a.kind,
+        bit_or(1 | (case when m.published = 1 then 2 else 0 end) | (case when m.actual_flg = 1 then 4 else 0 end)
+                 | (case when m.published = 1 and m.actual_flg = 1 then 8 else 0 end)) as b
+    from pa_next_dash_acl a
+    inner join pa_next_dash_meta m on m.dashboard_id = a.dashboard_id
+    group by a.principal, a.kind
+),
+lb as (
+    select principal as lg, b from pf where kind = 'user'
+    union all
+    select g.login, pf.b from pf inner join pa_next_adg_member g on g.ad_group = pf.principal where pf.kind = 'group'
+)
+select lg::text as lg, bit_or(b)::int as a4
+from lb
+group by lg
+distributed by (lg);
+analyze pa_next_acc_any;
+
+-- ---- витрина «PA · зрители — готовые атрибуты» → pa_next_viewer
+-- Строка на логин зрителя (все логины pa_next_pair): его атрибуты так, как их показывает панель, — путь оргструктуры
+-- «УС-3 › …» (уровень из одних знаков «-», «—», «…» и пробелов = пусто, путь на нём обрывается), специализация,
+-- стрим, руководитель, сотрудник ли (pa_next_staff), флаги доступа (a4, как pa_next_acc_any) и готовые куски поимённой строки
+-- «Кто смотрит» (логин|ФИО|коды спец., стрима, стажа и коды HQ|IT). ФИО — в компактной записи кириллицы ответа.
+-- Раньше панель на каждый клик соединяла зрителей со штатом и атрибутами и собирала эти строки заново.
+drop table if exists pa_next_viewer;
+create table pa_next_viewer as
+SELECT payload.*, generation.run_id AS _pa_next_run
+FROM (
+with pu as (
+    -- Exact CH 24.8 whitespace/punctuation rule, matched on UTF-8 hex.
+    -- ASCII-only pattern works in UTF8, WIN1251 and SQL_ASCII databases.
+    -- Generated by tools/parallel/unicode_empty.py; no GP chr(codepoint).
+    select '^(?:(?:0[9acd]|2[012356789acdef]|3[abf]|40|5[bcdf]|7[bd]|c(?:2(?:a[17b]|b[67bf])|dbe|e87)|d(?:59[abcdef]|6(?:8[9a]|be)|7(?:8[036]|b[34])|8(?:8[9acd]|9[bdef])|9a[abcd]|b94|c8[0123456789abcd]|fb[789])|e(?:0(?:a(?:0b[0123456789abcde]|19e|5(?:a[45]|b0)|7bd|9b6|bb0)|b(?:1b7|284|7b4|9(?:8f|9[ab])|c(?:8[456789abcdef]|9[0124]|b[abcd])|e85|f9[012349a]))|1(?:8(?:18[abcdef]|3bb|da[012345678])|9(?:080|9ae|a9[bc]|ba[bcd]|cb[56]|f9[45689a])|a(?:08[0123456789a]|58[45]|89[ef]|aa[012345689abcd]|d(?:9[abcdef]|a0|b[de])|fb[cdef])|b(?:0b[bcdef]|1b[ef]|3(?:8[01234567]|93)))|2(?:8(?:0(?:[9b][0123456789abcdef]|a[01234567])|1(?:8[012356789abcdef]|9[013456789abcde]|b[de])|28[de]|c(?:8[89ab]|a[9a]))|9(?:d(?:a[89abcdef]|b[012345])|f(?:8[56]|a[6789abcdef]))|a(?:6(?:8[3456789abcdef]|9[012345678])|7(?:9[89ab]|b[cd]))|b(?:3b[9abcef]|5b0|8(?:[89b][0123456789abcdef]|a[0123456789abcde])|9(?:8[0123456789abcdef]|9[23456789abcd])))|38(?:0(?:8[12389abcdef]|9[01456789abcdef]|b[0d])|2a0|3bb)|a(?:9(?:3b[ef]|88[def]|9b[3e]|bb[234567])|a(?:1b[4567]|3(?:8[ef]|b[89ac])|4a[ef]|59f|7(?:8[123456789abcd]|9[ef])|99[cdef]|b(?:9[ef]|b[01])|fab))|fb(?:4b[ef]|8(?:9[0123456789]|b[0123456789abcdef])|9(?:8[0123456789abcdef]|9[012456789abcdef]|a[0138ab])|c(?:8[12356789acdef]|9[abf]|a0|b[bcdf])|d(?:9[bdf]|a[012345])))|f09(?:0(?:8(?:48[012]|e9f|f90)|95af|a(?:197|4[9b]f|9(?:9[012345678]|bf)|bb[0123456]|cb[9abcdef]|e9[9abc])|b(?:aad|d9[56789]|e8[6789]))|1(?:8(?:18[789abcd]|2b[bcef]|38[01]|5(?:8[0123]|b[45])|7(?:8[5678d]|9[bdef])|8b[89abcd]|aa9)|9(?:1(?:8[bcdef]|9[abd])|386|7(?:8[123456789abcdef]|9[01234567])|9(?:8[123]|a[0123456789abc])|ab9|cb[cde])|a(?:0bb|58[456]|7a2|8bf|98[0123456]|a(?:9[abcef]|a[012])|c8[0123456789])|b(?:1(?:8[12345]|b[01])|bb[78]|d8[3456789abcdef]|fbf))|2(?:91b[01234]|bfb[12])|6(?:a(?:9a[ef]|bb5|cb[789ab]|d84)|b(?:a9[789a]|fa2))|bb29f|daa8[789ab]|ea59[ef])))*$'::text as re
+),
+l as (select distinct login from pa_next_pair where login is not null),
+x as (
+    select l.login::text as login, translate(l.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')::text as lg,
+        case when s.login is null then 0 else 1 end as stf,
+        coalesce(s.hq_code, '')::text as hq, coalesce(s.it_code, '')::text as it,
+        coalesce(a.lvl3_management_unit_nm, '')::text as a3, coalesce(a.lvl4_management_unit_nm, '')::text as a4_,
+        coalesce(a.lvl5_management_unit_nm, '')::text as a5, coalesce(a.lvl6_management_unit_nm, '')::text as a6,
+        coalesce(a.lvl7_management_unit_nm, '')::text as a7,
+        coalesce(a.emp_specialization_desc, '')::text as spec, coalesce(a.emp_stream_desc, '')::text as stream,
+        case when coalesce(a.management_head_flg, 0) = 1 then 1 else 0 end as is_head,
+        coalesce(a.fio, '')::text as fio, coalesce(a.exp_nm, '')::text as exp_nm
+    from l
+    left join pa_next_staff s on s.login = translate(l.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')
+    left join pa_next_emp_attrs a on a.login = l.login
+),
+n as (
+    select x.*, case when encode(convert_to(a3, 'UTF8'), 'hex') ~ pu.re then ''::text else a3 end as n3, case when encode(convert_to(a4_, 'UTF8'), 'hex') ~ pu.re then ''::text else a4_ end as n4, case when encode(convert_to(a5, 'UTF8'), 'hex') ~ pu.re then ''::text else a5 end as n5,
+        case when encode(convert_to(a6, 'UTF8'), 'hex') ~ pu.re then ''::text else a6 end as n6, case when encode(convert_to(a7, 'UTF8'), 'hex') ~ pu.re then ''::text else a7 end as n7
+    from x cross join pu
+),
+o as (select n.*, case when n3 = '' then 0 when n4 = '' then 1 when n5 = '' then 2 when n6 = '' then 3 when n7 = '' then 4 else 5 end as ol from n)
+select o.login, o.lg, o.stf, coalesce(c.a4, 0) as a4,
+    array[o.n3, o.n4, o.n5, o.n6, o.n7] as lv, o.ol,
+    array_to_string((array[o.n3, o.n4, o.n5, o.n6, o.n7])[1:o.ol], ' › ') as opath,
+    o.spec, o.stream, o.is_head,
+    translate(o.login, E'|\t\n\r', '    ') || '|' || convert_from(decode(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(regexp_replace(regexp_replace(encode(convert_to(replace(replace(replace(replace(translate(o.fio, E'\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), 'UTF8'), 'hex'), '(..)', E'\\1:', 'g'), '((?:d0:(?:81|[9ab][0123456789abcdef]):|d1:(?:8[0123456789abcdef]|91):)(?:(?:d0:(?:81|[9ab][0123456789abcdef]):|d1:(?:8[0123456789abcdef]|91):)|20:)*)', E'60:\\160:', 'g'), 'd0:90:', '61:'), 'd0:91:', '62:'), 'd0:92:', '63:'), 'd0:93:', '64:'), 'd0:94:', '65:'), 'd0:95:', '66:'), 'd0:81:', '67:'), 'd0:96:', '68:'), 'd0:97:', '69:'), 'd0:98:', '6a:'), 'd0:99:', '6b:'), 'd0:9a:', '6c:'), 'd0:9b:', '6d:'), 'd0:9c:', '6e:'), 'd0:9d:', '6f:'), 'd0:9e:', '70:'), 'd0:9f:', '71:'), 'd0:a0:', '72:'), 'd0:a1:', '73:'), 'd0:a2:', '74:'), 'd0:a3:', '75:'), 'd0:a4:', '76:'), 'd0:a5:', '77:'), 'd0:a6:', '78:'), 'd0:a7:', '79:'), 'd0:a8:', '7a:'), 'd0:a9:', '41:'), 'd0:aa:', '42:'), 'd0:ab:', '43:'), 'd0:ac:', '44:'), 'd0:ad:', '45:'), 'd0:ae:', '46:'), 'd0:af:', '47:'), 'd0:b0:', '48:'), 'd0:b1:', '49:'), 'd0:b2:', '4a:'), 'd0:b3:', '4b:'), 'd0:b4:', '4c:'), 'd0:b5:', '4d:'), 'd1:91:', '4e:'), 'd0:b6:', '4f:'), 'd0:b7:', '50:'), 'd0:b8:', '51:'), 'd0:b9:', '52:'), 'd0:ba:', '53:'), 'd0:bb:', '54:'), 'd0:bc:', '55:'), 'd0:bd:', '56:'), 'd0:be:', '57:'), 'd0:bf:', '58:'), 'd1:80:', '59:'), 'd1:81:', '5a:'), 'd1:82:', '30:'), 'd1:83:', '31:'), 'd1:84:', '32:'), 'd1:85:', '33:'), 'd1:86:', '34:'), 'd1:87:', '35:'), 'd1:88:', '36:'), 'd1:89:', '37:'), 'd1:8a:', '38:'), 'd1:8b:', '39:'), 'd1:8c:', '21:'), 'd1:8d:', '23:'), 'd1:8e:', '24:'), 'd1:8f:', '25:'), ':', ''), 'hex'), 'UTF8') || '|' || ds.code || '|' || dt.code || '|' || de.code as pl_a,
+    dq.code || '|' || di.code as pl_b
+from o
+left join pa_next_acc_any c on c.lg = o.lg
+inner join pa_next_dict ds on ds.g = 'spec' and ds.v = o.spec
+inner join pa_next_dict dt on dt.g = 'stream' and dt.v = o.stream
+inner join pa_next_dict de on de.g = 'exp' and de.v = o.exp_nm
+inner join pa_next_dict dq on dq.g = 'hq' and dq.v = o.hq
+inner join pa_next_dict di on di.g = 'it' and di.v = o.it
+) payload
+CROSS JOIN pa_next_run generation
+distributed by (login);
+analyze pa_next_viewer;
+
+-- ---- витрина «PA · штат — готовые атрибуты» → pa_next_staffx
+-- Строка на сотрудника pa_next_staff: атрибуты для условий ЦА и разрезов «Аудитории» (путь оргструктуры — по тому же
+-- правилу, что у зрителей), флаги доступа a4 и готовые куски строк «не заходили из ЦА» (поимённо и свёрткой).
+-- Раньше каталог, панель и шапка нормализовали оргструктуру всего штата регуляркой на каждый запрос.
+drop table if exists pa_next_staffx;
+create table pa_next_staffx as
+SELECT payload.*, generation.run_id AS _pa_next_run
+FROM (
+with pu as (
+    -- Exact CH 24.8 whitespace/punctuation rule, matched on UTF-8 hex.
+    -- ASCII-only pattern works in UTF8, WIN1251 and SQL_ASCII databases.
+    -- Generated by tools/parallel/unicode_empty.py; no GP chr(codepoint).
+    select '^(?:(?:0[9acd]|2[012356789acdef]|3[abf]|40|5[bcdf]|7[bd]|c(?:2(?:a[17b]|b[67bf])|dbe|e87)|d(?:59[abcdef]|6(?:8[9a]|be)|7(?:8[036]|b[34])|8(?:8[9acd]|9[bdef])|9a[abcd]|b94|c8[0123456789abcd]|fb[789])|e(?:0(?:a(?:0b[0123456789abcde]|19e|5(?:a[45]|b0)|7bd|9b6|bb0)|b(?:1b7|284|7b4|9(?:8f|9[ab])|c(?:8[456789abcdef]|9[0124]|b[abcd])|e85|f9[012349a]))|1(?:8(?:18[abcdef]|3bb|da[012345678])|9(?:080|9ae|a9[bc]|ba[bcd]|cb[56]|f9[45689a])|a(?:08[0123456789a]|58[45]|89[ef]|aa[012345689abcd]|d(?:9[abcdef]|a0|b[de])|fb[cdef])|b(?:0b[bcdef]|1b[ef]|3(?:8[01234567]|93)))|2(?:8(?:0(?:[9b][0123456789abcdef]|a[01234567])|1(?:8[012356789abcdef]|9[013456789abcde]|b[de])|28[de]|c(?:8[89ab]|a[9a]))|9(?:d(?:a[89abcdef]|b[012345])|f(?:8[56]|a[6789abcdef]))|a(?:6(?:8[3456789abcdef]|9[012345678])|7(?:9[89ab]|b[cd]))|b(?:3b[9abcef]|5b0|8(?:[89b][0123456789abcdef]|a[0123456789abcde])|9(?:8[0123456789abcdef]|9[23456789abcd])))|38(?:0(?:8[12389abcdef]|9[01456789abcdef]|b[0d])|2a0|3bb)|a(?:9(?:3b[ef]|88[def]|9b[3e]|bb[234567])|a(?:1b[4567]|3(?:8[ef]|b[89ac])|4a[ef]|59f|7(?:8[123456789abcd]|9[ef])|99[cdef]|b(?:9[ef]|b[01])|fab))|fb(?:4b[ef]|8(?:9[0123456789]|b[0123456789abcdef])|9(?:8[0123456789abcdef]|9[012456789abcdef]|a[0138ab])|c(?:8[12356789acdef]|9[abf]|a0|b[bcdf])|d(?:9[bdf]|a[012345])))|f09(?:0(?:8(?:48[012]|e9f|f90)|95af|a(?:197|4[9b]f|9(?:9[012345678]|bf)|bb[0123456]|cb[9abcdef]|e9[9abc])|b(?:aad|d9[56789]|e8[6789]))|1(?:8(?:18[789abcd]|2b[bcef]|38[01]|5(?:8[0123]|b[45])|7(?:8[5678d]|9[bdef])|8b[89abcd]|aa9)|9(?:1(?:8[bcdef]|9[abd])|386|7(?:8[123456789abcdef]|9[01234567])|9(?:8[123]|a[0123456789abc])|ab9|cb[cde])|a(?:0bb|58[456]|7a2|8bf|98[0123456]|a(?:9[abcef]|a[012])|c8[0123456789])|b(?:1(?:8[12345]|b[01])|bb[78]|d8[3456789abcdef]|fbf))|2(?:91b[01234]|bfb[12])|6(?:a(?:9a[ef]|bb5|cb[789ab]|d84)|b(?:a9[789a]|fa2))|bb29f|daa8[789ab]|ea59[ef])))*$'::text as re
+),
+x as (
+    select translate(s.login, 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz')::text as login,
+        coalesce(s.lvl3_management_unit_nm, '')::text as a3, coalesce(s.lvl4_management_unit_nm, '')::text as a4_,
+        coalesce(s.lvl5_management_unit_nm, '')::text as a5, coalesce(s.lvl6_management_unit_nm, '')::text as a6,
+        coalesce(s.lvl7_management_unit_nm, '')::text as a7,
+        coalesce(s.emp_specialization_desc, '')::text as sp, coalesce(s.emp_stream_desc, '')::text as st,
+        coalesce(s.hq_code, '')::text as hqc, coalesce(s.it_code, '')::text as itc,
+        case when coalesce(s.management_head_flg, 0) = 1 then 1 else 0 end as hdf,
+        coalesce(s.fio, '')::text as fio, coalesce(s.exp_nm, '')::text as sexp
+    from pa_next_staff s
+),
+n as (
+    select x.*, case when encode(convert_to(a3, 'UTF8'), 'hex') ~ pu.re then ''::text else a3 end as n3, case when encode(convert_to(a4_, 'UTF8'), 'hex') ~ pu.re then ''::text else a4_ end as n4, case when encode(convert_to(a5, 'UTF8'), 'hex') ~ pu.re then ''::text else a5 end as n5,
+        case when encode(convert_to(a6, 'UTF8'), 'hex') ~ pu.re then ''::text else a6 end as n6, case when encode(convert_to(a7, 'UTF8'), 'hex') ~ pu.re then ''::text else a7 end as n7
+    from x cross join pu
+),
+o as (select n.*, case when n3 = '' then 0 when n4 = '' then 1 when n5 = '' then 2 when n6 = '' then 3 when n7 = '' then 4 else 5 end as ol from n)
+select o.login, coalesce(c.a4, 0) as a4,
+    array[o.n3, o.n4, o.n5, o.n6, o.n7] as slv, o.ol as sol,
+    array_to_string((array[o.n3, o.n4, o.n5, o.n6, o.n7])[1:o.ol], ' › ') as op,
+    o.sp, o.st, o.hqc, o.itc, o.hdf,
+    translate(o.login, E'|\t\n\r', '    ') || '|' || convert_from(decode(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(regexp_replace(regexp_replace(encode(convert_to(replace(replace(replace(replace(translate(o.fio, E'\t\n\r', '   '), '~', '~~'), '|', '~p'), '^', '~c'), '`', '~b'), 'UTF8'), 'hex'), '(..)', E'\\1:', 'g'), '((?:d0:(?:81|[9ab][0123456789abcdef]):|d1:(?:8[0123456789abcdef]|91):)(?:(?:d0:(?:81|[9ab][0123456789abcdef]):|d1:(?:8[0123456789abcdef]|91):)|20:)*)', E'60:\\160:', 'g'), 'd0:90:', '61:'), 'd0:91:', '62:'), 'd0:92:', '63:'), 'd0:93:', '64:'), 'd0:94:', '65:'), 'd0:95:', '66:'), 'd0:81:', '67:'), 'd0:96:', '68:'), 'd0:97:', '69:'), 'd0:98:', '6a:'), 'd0:99:', '6b:'), 'd0:9a:', '6c:'), 'd0:9b:', '6d:'), 'd0:9c:', '6e:'), 'd0:9d:', '6f:'), 'd0:9e:', '70:'), 'd0:9f:', '71:'), 'd0:a0:', '72:'), 'd0:a1:', '73:'), 'd0:a2:', '74:'), 'd0:a3:', '75:'), 'd0:a4:', '76:'), 'd0:a5:', '77:'), 'd0:a6:', '78:'), 'd0:a7:', '79:'), 'd0:a8:', '7a:'), 'd0:a9:', '41:'), 'd0:aa:', '42:'), 'd0:ab:', '43:'), 'd0:ac:', '44:'), 'd0:ad:', '45:'), 'd0:ae:', '46:'), 'd0:af:', '47:'), 'd0:b0:', '48:'), 'd0:b1:', '49:'), 'd0:b2:', '4a:'), 'd0:b3:', '4b:'), 'd0:b4:', '4c:'), 'd0:b5:', '4d:'), 'd1:91:', '4e:'), 'd0:b6:', '4f:'), 'd0:b7:', '50:'), 'd0:b8:', '51:'), 'd0:b9:', '52:'), 'd0:ba:', '53:'), 'd0:bb:', '54:'), 'd0:bc:', '55:'), 'd0:bd:', '56:'), 'd0:be:', '57:'), 'd0:bf:', '58:'), 'd1:80:', '59:'), 'd1:81:', '5a:'), 'd1:82:', '30:'), 'd1:83:', '31:'), 'd1:84:', '32:'), 'd1:85:', '33:'), 'd1:86:', '34:'), 'd1:87:', '35:'), 'd1:88:', '36:'), 'd1:89:', '37:'), 'd1:8a:', '38:'), 'd1:8b:', '39:'), 'd1:8c:', '21:'), 'd1:8d:', '23:'), 'd1:8e:', '24:'), 'd1:8f:', '25:'), ':', ''), 'hex'), 'UTF8') || '|' || ds.code || '|' || dt.code || '|' || o.hdf || '|' || dq.code || '|' || di.code as n_a,
+    de.code as c_exp,
+    ds.code || '|' || dt.code || '|' || o.hdf || '|' || dq.code || '|' || di.code as hk
+from o
+left join pa_next_acc_any c on c.lg = o.login
+inner join pa_next_dict ds on ds.g = 'spec' and ds.v = o.sp
+inner join pa_next_dict dt on dt.g = 'stream' and dt.v = o.st
+inner join pa_next_dict de on de.g = 'exp' and de.v = o.sexp
+inner join pa_next_dict dq on dq.g = 'hq' and dq.v = o.hqc
+inner join pa_next_dict di on di.g = 'it' and di.v = o.itc
+) payload
+CROSS JOIN pa_next_run generation
+distributed by (login);
+analyze pa_next_staffx;

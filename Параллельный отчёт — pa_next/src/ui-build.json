@@ -1,0 +1,87 @@
+{
+  "configuration": {
+    "main": 859562,
+    "cat": 859563,
+    "one": 859564,
+    "channel": "proteus-adoption-next-859562",
+    "echoColumns": [
+      "period_param",
+      "pub_f",
+      "act_f",
+      "exc_f",
+      "ca_org_f",
+      "ca_spec_f",
+      "ca_stream_f",
+      "ca_hq_f",
+      "ca_it_f",
+      "ca_head_f",
+      "ca_adg_f",
+      "ca_login_f",
+      "ca_master_f",
+      "mode_param",
+      "sel_f",
+      "aud_org_f",
+      "aud_spec_f",
+      "aud_stream_f",
+      "aud_hq_f",
+      "aud_it_f",
+      "aud_head_f",
+      "org_f",
+      "spec_f",
+      "stream_f",
+      "adg_f",
+      "heads_f",
+      "login_f",
+      "exl_f",
+      "freq_f"
+    ]
+  },
+  "source_sha256": {
+    "pa-head.chart.js": "3f19c0bc3387cc423a3e02bab6af8d9c725c13bb11b457b8ac548dd8ac09bc9f",
+    "pa-reports-body.chart.js": "18cbed59c641671ca5ea4e9e2486431986582eef42e97a90f1b1567b0db6b811",
+    "pa-one.chart.js": "c46252b5da5bfa57e8f9a3d9042e3dd60538282f876273b682d0fd3f3d981143"
+  },
+  "transforms": [
+    "scope host selectors",
+    "replace global broadcast with local bus",
+    "namespace internal PA messages",
+    "suppress screenshot expansion (single iframe)",
+    "replace distributed tour with local interactive guide",
+    "use container queries for embedded region width",
+    "validate catalogue preview before render",
+    "keep tabs active while metric blocks load",
+    "resizable catalogue with inline collapse caret and left rail",
+    "viewport board height; visible dashboard header; hidden chart headers",
+    "scroll report filters away on laptop; preserve useful analytics height",
+    "single-flight query queue with exact request completion",
+    "bounded session cache keyed by exact business masks and generation",
+    "atomic selection and preview; one local delayed loader",
+    "preserve empty filter values; explicit retry for command errors",
+    "calendar width follows embedded panel",
+    "approved CROSS DATA soft accent and local animated loading signature",
+    "stable detail-tab layout during loading; shared scroll for short viewports",
+    "preserve geometry and scroll across same-sandbox reruns",
+    "fixed SVG type during splitter drag; 420px catalogue minimum; selected names limited to three lines",
+    "styled native scrollbars",
+    "activity-only scrollbar thumbs with fixed dimensions",
+    "report title and help/brand above filters",
+    "optional click-only native-header control with fail-open Markdown links"
+  ],
+  "brand_sha256": {
+    "cross-data-accent-source.png": "1a6ad9e99bf49979b0b27114544f4e78102a9a11e9d89042b9426b8ee73bf309",
+    "cross-data-accent.webp": "7cd4eb9ea17228b4589aa531d3a7057dd97909ce8af6a993252321558d6ac33a"
+  },
+  "calculations": "Original metric formulas are retained; model changes are limited to the documented filter/transport bridges.",
+  "minifier": "terser 5.51.2 via pinned playbook kit/min.cjs",
+  "linter": "eslint 10.1.0 via pinned playbook kit/eslint.chart.cjs (source and delivery)",
+  "lint_messages_by_rule": {
+    "4. JS — весь отчёт.js source": {
+      "no-unused-vars": 22
+    },
+    "4. JS — весь отчёт.js delivery": {},
+    "6. JS — загрузчик каталога.js source": {},
+    "6. JS — загрузчик каталога.js delivery": {},
+    "8. JS — загрузчик панели.js source": {},
+    "8. JS — загрузчик панели.js delivery": {}
+  }
+}

@@ -58,7 +58,8 @@ def cold_css(browser, out, baseline_css):
         slots=page.evaluate('''async()=>{var nodes=[859563,859564].map(id=>document.querySelector('.dashboard-component-chart-holder.dashboard-chart-id-'+id));return await Promise.all(nodes.map(n=>new Promise(resolve=>{var o=new IntersectionObserver(e=>{resolve({ratio:e[0].intersectionRatio,top:e[0].boundingClientRect.top,bottom:e[0].boundingClientRect.bottom});o.disconnect()},{threshold:.99});o.observe(n)})))}''')
         assert all(s['ratio']>=.99 for s in slots),(w,h,slots)
     panel.locator('.react_sanbbox').evaluate("n=>{var f=document.createElement('iframe');f.style.cssText='height:100%;width:100%;border:0';f.srcdoc='<body style=background:white><button>Ready</button>';n.appendChild(f)}")
-    assert panel.evaluate('(n)=>getComputedStyle(n,"::after").content')=='none'
+    # Creating an iframe is not completion; its actual opaque paint hides the line.
+    assert panel.evaluate('(n)=>getComputedStyle(n,"::after").content')=='""'
     panel.locator('iframe').content_frame.get_by_role('button',name='Ready').click()
     panel.locator('iframe').evaluate('n=>n.remove()')
     panel.locator('.chart-container').evaluate('n=>n.insertAdjacentHTML("beforeend","<div role=alert>Query failed</div>")')

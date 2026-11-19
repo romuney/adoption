@@ -301,13 +301,16 @@ body:not(:has(.dashboard-header-container)) {grid}{{--pa-next-board-header-heigh
 .dashboard-chart-id-{main} :is(.chart-slice,.dashboard-chart,.chart-container,.slice_container,.slice_container>div,.react_sanbbox){{display:flex!important;flex-direction:column!important;flex:1 1 auto!important;height:100%!important;min-height:0!important;padding:0!important}}
 .dashboard-chart-id-{main} iframe{{display:block!important;flex:1 1 auto!important;width:100%!important;height:100%!important;min-height:0!important;border:0!important}}
 .dashboard-chart-id-{main} .dashboard-chart>div:not(.chart-container){{height:100%!important;width:100%!important}}
-/* Cold start lives in board CSS: visible before SQL and the chart JS arrive.
-   It is a background, never a covering layer: the opaque report paints over it. */
-{mainholder}:not(.dashboard--editing *) .dashboard-chart:not(:has([role="alert"],.alert,.error-container)){{background-color:#fff;background-image:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)),url("{brand_url}");background-position:center;background-size:auto,220px auto;background-repeat:no-repeat;position:relative}}
-{mainholder}:not(.dashboard--editing *):not(:has(iframe)) :is(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]){{opacity:0!important}}
-{mainholder}:not(.dashboard--editing *) .dashboard-chart:not(:has(iframe)):has(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]):not(:has([role="alert"],.alert,.error-container))::after{{content:"";position:absolute;pointer-events:none;left:50%;top:calc(50% + 44px);margin-left:-56px;width:112px;height:2px;border-radius:2px;background:linear-gradient(90deg,#e9edf4 0%,#e9edf4 30%,#245fd4 50%,#e9edf4 70%,#e9edf4 100%);animation:pa-next-boot-progress 2s ease-in-out infinite}}
+/* One cold-start signature in viewport coordinates. The transparent sandbox
+   continues showing it until the report actually paints over the background.
+   Creating an iframe or replacing native loading markers is not completion. */
+{mainholder}:not(.dashboard--editing *){{isolation:isolate}}
+{mainholder}:not(.dashboard--editing *) .dashboard-chart:not(:has([role="alert"],.alert,.error-container)){{background-color:#fff;background-image:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,.35)),url("{brand_url}");background-attachment:fixed,fixed;background-position:0 0,calc(50vw - 110px) calc(50vh - 12.666667px);background-size:100vw 100vh,220px auto;background-repeat:no-repeat;position:relative}}
+{mainholder}:not(.dashboard--editing *) .dashboard-chart>.chart-container{{position:relative;z-index:1}}
+{mainholder}:not(.dashboard--editing *) :is(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]){{opacity:0!important}}
+{mainholder}:not(.dashboard--editing *) .dashboard-chart:not(:has([role="alert"],.alert,.error-container))::after{{content:"";position:fixed;pointer-events:none;z-index:0;left:50vw;top:calc(50vh + 68px);margin-left:-56px;width:112px;height:2px;border-radius:2px;background:linear-gradient(90deg,#e9edf4 0%,#e9edf4 30%,#245fd4 50%,#e9edf4 70%,#e9edf4 100%);animation:pa-next-boot-progress 2s ease-in-out infinite}}
 @keyframes pa-next-boot-progress{{0%,100%{{opacity:.35}}50%{{opacity:1}}}}
-@media(prefers-reduced-motion:reduce){{{mainholder} .dashboard-chart::after{{animation:none!important}}}}
+@media(prefers-reduced-motion:reduce){{{mainholder} .dashboard-chart::after{{animation:none!important;opacity:1}}}}
 /* При обновлении сохраняем интерактивный iframe и его собственную загрузку. */
 {mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe) :is(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]){{display:none!important}}
 {mainholder}:not(.dashboard--editing *):has(.react_sanbbox iframe):has(img.loading,[data-test="loading-indicator"],[aria-label="Loading"]) *:not(iframe):not(:has(iframe)){{pointer-events:none!important}}

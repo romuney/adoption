@@ -31,7 +31,10 @@ def header_reveal_css(main: int) -> str:
     # #app may contain the scope root, be that root, or be its descendant.
     app_present = ':is(#app,:has(#app),#app *)'
     app_target = ':is(#app:target,:has(#app:target),#app:target *)'
-    board = f':scope:has({holder}):has({open_link}):has({close_link}):not(.dashboard--editing):not(:has(.dashboard--editing)):not(.dashboard--editing *)'
+    # A usable permanent app link proves this control's ownership before React
+    # mounts the main holder. Waiting for that holder causes a native-header flash.
+    identity = f':is(:has({holder}),:has({app_open}){app_present})'
+    board = f':scope{identity}:has({open_link}):has({close_link}):not(.dashboard--editing):not(:has(.dashboard--editing)):not(.dashboard--editing *)'
     enabled = board + f':is(:has({legacy_open}):has(#chart-id-{main}),:has({app_open}){app_present})'
     header = f'{enabled} .dashboard-header-container'
     # Do not toggle on opener focus: covering it on mousedown would cancel
@@ -40,7 +43,7 @@ def header_reveal_css(main: int) -> str:
     opened = enabled + f':is(:has(.dashboard-header-container:focus-within),:has(.dashboard-header-container .ant-dropdown-open),:has(.dashboard-header-container [aria-expanded="true"]),:has(#chart-id-{main}:target),:has({app_open}){app_target})'
     row = f'.dragdroppable-row:has(> .with-popover-menu > .grid-row > .dragdroppable:only-child > .with-popover-menu {any_link}):not(:has(.dashboard-chart)):not(:has(.dragdroppable-row))'
     component = f':is(.dashboard-markdown,.dashboard-component-markdown,.resizable-container,.dashboard-component-chart-holder):has({any_link}):not(:has(.dashboard-chart))'
-    return f'''/* Optional native-header control v5. Ordinary same-window Markdown links.
+    return f'''/* Optional native-header control v6. Ordinary same-window Markdown links.
    Explicit :scope works in Proteus @scope and ordinary global stylesheets.
    App-root target checks include ancestors outside the dashboard scope.
    Opening restores the 65px header to flow and reserves its height in the chart.
@@ -48,7 +51,7 @@ def header_reveal_css(main: int) -> str:
    The open header has a white background including the reserved action space.
    A visible collapse action exists only while open.
    No required Markdown class or sibling paragraph. The new control does
-   not depend on the mounted chart ID; legacy controls wait for their target.
+   not depend on the mounted chart ID or holder; legacy controls wait for their target.
    The new link targets the permanent Superset SPA root #app; v1 links work too.
    The permanent URL target retains state across pointer focus differences.
    No hover activation. Native button focus preserves keyboard access.

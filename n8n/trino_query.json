@@ -1,0 +1,47 @@
+{
+  "name": "trino_query",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "tq-01",
+      "name": "Вход: sql",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* Выполняет один SQL в Trino через REST (/v1/statement) и ждёт результата.\n   Вход:  $json.sql\n   Выход: { rows: [{колонка: значение}], update_count: число|null }\n   Ошибка Trino → исключение → у вызывающей Execute Workflow ошибка (флоу ответит 5xx).\n\n   Подключение — из переменных окружения n8n (нужен N8N_BLOCK_ENV_ACCESS_IN_NODE=false):\n     TRINO_URL (https://trino.local:8443), TRINO_USER, TRINO_PASSWORD, TRINO_CATALOG, TRINO_SCHEMA\n   Если в вашем n8n к Trino уже ходят иначе (своя нода, JDBC-шлюз) — используйте его,\n   главное сохранить вход/выход. */\nconst sql = $input.first().json.sql;\nif (!sql) throw new Error('trino_query: пустой sql');\nconst base = $env.TRINO_URL.replace(/\\/$/, '');\nconst headers = {\n  'X-Trino-User': $env.TRINO_USER,\n  'X-Trino-Catalog': $env.TRINO_CATALOG,\n  'X-Trino-Schema': $env.TRINO_SCHEMA,\n  'X-Trino-Source': 'n8n-ta_save',\n  Authorization: 'Basic ' + Buffer.from($env.TRINO_USER + ':' + $env.TRINO_PASSWORD).toString('base64'),\n};\nconst sleep = (ms) => new Promise((r) => setTimeout(r, ms));\n\nlet res = await this.helpers.httpRequest({ method: 'POST', url: base + '/v1/statement', headers, body: sql, json: true });\nlet columns = null;\nconst data = [];\nlet updateCount = null;\nconst started = Date.now();\nfor (;;) {\n  if (res.error) throw new Error('Trino: ' + res.error.errorName + ': ' + res.error.message);\n  if (res.columns) columns = res.columns.map((c) => c.name);\n  if (res.data) data.push(...res.data);\n  if (res.updateCount != null) updateCount = res.updateCount;\n  if (!res.nextUri) break;\n  if (Date.now() - started > 60000) throw new Error('Trino: таймаут 60 с');\n  if (!res.data) await sleep(200);\n  res = await this.helpers.httpRequest({ method: 'GET', url: res.nextUri, headers, json: true });\n}\nconst rows = columns ? data.map((r) => Object.fromEntries(columns.map((c, i) => [c, r[i]]))) : [];\n// Для INSERT Trino отдаёт число вставленных строк в updateCount (а также строкой rows в колонке \"rows\").\nif (updateCount == null && columns && columns[0] === 'rows' && rows.length === 1) updateCount = Number(rows[0].rows);\nreturn [{ json: { rows, update_count: updateCount } }];\n"
+      },
+      "id": "tq-02",
+      "name": "Trino REST",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Вход: sql": {
+      "main": [
+        [
+          {
+            "node": "Trino REST",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

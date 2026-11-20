@@ -1,0 +1,84 @@
+title: Proteus Adoption NEXT — утверждённые ЦА отчётов (DLH → ClickHouse)
+paragraphs:
+- title: Как запускать эту ноду
+  shebang: md
+  code: Отдельная маленькая нода, НЕ часть ноды pa_next. По расписанию раз в 15–30 минут. Читает журнал
+    pa_next_ta_event из DLH (его пишет n8n), собирает по одной строке на отчёт с действующей ЦА и выгружает
+    в prod_proteus.pa_next_ta. Таблица маленькая — каждый запуск пересобирает её целиком. В manifest
+    pa_next_* эта нода НЕ пишет и колонку _pa_next_run НЕ ставит — у неё свой цикл обновления; датасеты
+    не включают pa_next_ta в проверку версии. Таблицы создаются в рабочей схеме ноды, как в pa_next.
+    Параллельные запуски запрещены (расписание реже, чем длится запуск — с запасом).
+  isEnabled: true
+- title: Скопировать журнал ЦА из DLH в GP
+  shebang: gp
+  code: |
+    -- ЗАПОЛНИТЬ: способ, которым GP видит таблицу DLH. Ниже — вариант, когда журнал доступен
+    -- из GP внешней таблицей / схемой (<dlh_in_gp>.pa_next_ta_event). Если такого доступа нет —
+    -- заменить этот параграф python-параграфом, который читает Trino корпоративным клиентом и
+    -- кладёт строки в GP-таблицу pa_next_ta_src с теми же колонками (типы — как в CREATE ниже).
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    drop table if exists pa_next_ta_src;
+    create table pa_next_ta_src as
+    select
+        event_id::text, request_id::text, dashboard_id::bigint, action::text, version::int,
+        coalesce(f_org, array[]::text[])    as f_org,
+        coalesce(f_spec, array[]::text[])   as f_spec,
+        coalesce(f_stream, array[]::text[]) as f_stream,
+        coalesce(f_hq, array[]::text[])     as f_hq,
+        coalesce(f_it, array[]::text[])     as f_it,
+        coalesce(f_head, array[]::text[])   as f_head,
+        coalesce(f_adg, array[]::text[])    as f_adg,
+        ca_size::int, coalesce(comment, '')::text as comment, lower(saved_by)::text as saved_by,
+        saved_at::timestamp as saved_at
+    from <dlh_in_gp>.pa_next_ta_event
+    distributed by (dashboard_id);
+    analyze pa_next_ta_src;
+  isEnabled: true
+- title: Собрать действующие ЦА → pa_next_ta
+  shebang: gp
+  code: |
+    SELECT set_config('search_path', CASE
+        WHEN current_schema() IS NOT NULL
+         AND current_schema() NOT IN ('usr_cross_data', 'pg_catalog', 'information_schema')
+         AND current_schema() NOT LIKE 'pg_temp_%'
+        THEN quote_ident(current_schema()) ELSE '' END, false);
+
+    -- Последняя версия на отчёт. Две строки одной версии бывают, только если два владельца
+    -- сохранили в одну секунду (условная вставка в DLH не сериализуется): побеждает более поздняя.
+    -- deactivate → отчёт выпадает. Проверка «значение исчезло из структуры» — в SQL датасетов
+    -- (по текущему штату pa_next_staffx), а не здесь: там она всегда по свежей структуре.
+    drop table if exists pa_next_ta;
+    create table pa_next_ta as
+    select dashboard_id, version, f_org, f_spec, f_stream, f_hq, f_it, f_head, f_adg,
+           coalesce(ca_size, 0) as ca_size, comment, saved_by, saved_at,
+           now()::timestamp as loaded_at
+    from (
+        select s.*, row_number() over (partition by dashboard_id order by version desc, saved_at desc, event_id desc) as rn
+        from pa_next_ta_src s
+    ) t
+    where rn = 1 and action = 'save'
+    distributed by (dashboard_id);
+    analyze pa_next_ta;
+
+    -- Контроль: одна строка на отчёт. Ошибка здесь останавливает ноду до выгрузки.
+    do $$
+    begin
+      if (select count(*) <> count(distinct dashboard_id) from pa_next_ta) then
+        raise exception 'pa_next_ta: больше одной строки на отчёт';
+      end if;
+    end $$;
+  isEnabled: true
+- title: Выгрузить pa_next_ta в ClickHouse
+  shebang: python_condition
+  code: |
+    # Тот же поддерживаемый gp_to_click, что в ноде pa_next. Ошибка не перехватывается.
+    import proteus_py.database.clickhouse as ppy
+    ppy.gp_to_click('pa_next_ta', 'prod_proteus.pa_next_ta',
+                    order_by_columns='(dashboard_id)', array_type_cast=True)
+    print('PA NEXT TA: pa_next_ta выгружена')
+  isEnabled: true

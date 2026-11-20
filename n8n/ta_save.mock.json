@@ -1,5 +1,5 @@
 {
-  "name": "proteus · ta_save (МАКЕТ, STUB-ноды)",
+  "name": "proteus · ta_save (МАКЕТ: Trino-вызовы — заглушки)",
   "nodes": [
     {
       "parameters": {
@@ -14,23 +14,25 @@
       "typeVersion": 2,
       "position": [
         0,
-        200
+        220
       ],
-      "notes": "POST /webhook/proteus/ta. В бою — за SSO-прокси или через бэкенд Proteus (PLAN.md §7.1).",
+      "notes": "POST /webhook/proteus/ta",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "// Белый список разрезов — ровно AUD_DIMS из макета. Поимённых списков нет.\nconst DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq', 'adgroup'];\nconst MAX_VALUES = 200;\nconst item = $input.first().json;\nconst b = item.body || {};\nconst headers = item.headers || {};\nconst fail = (error, detail) => ({ json: { ok: false, status: 400, error, detail } });\n\nif (!['save', 'deactivate'].includes(b.action)) return [fail('bad_action')];\nif (!Number.isInteger(b.dashboard_id) || b.dashboard_id <= 0) return [fail('bad_dashboard_id')];\nif (typeof b.request_id !== 'string' || b.request_id.length < 8) return [fail('bad_request_id')];\nif (!Number.isInteger(b.expected_version) || b.expected_version < 0) return [fail('bad_expected_version')];\n\nconst filters = {};\nif (b.action === 'save') {\n  const f = b.filters || {};\n  const unknown = Object.keys(f).filter((k) => !DIMS.includes(k));\n  if (unknown.length) return [fail('unknown_dims', unknown)];\n  for (const k of DIMS) {\n    const v = f[k] || [];\n    if (!Array.isArray(v) || v.some((s) => typeof s !== 'string' || !s.trim())) return [fail('bad_values', k)];\n    if (v.length > MAX_VALUES) return [fail('too_many_values', k)];\n    filters[k] = [...new Set(v.map((s) => s.trim()))].sort();   // канонический вид\n  }\n  if (!DIMS.some((k) => filters[k].length)) return [fail('no_conditions')];\n}\n\nreturn [{ json: {\n  ok: true,\n  req: {\n    action: b.action, dashboard_id: b.dashboard_id, request_id: b.request_id,\n    expected_version: b.expected_version, filters,\n    comment: String(b.comment || '').slice(0, 500),\n    client: String(b.client || 'proteus_adoption_ui'),\n  },\n  headers,\n  ctx: {},\n} }];\n"
+        "jsCode": "/* ===== КОНФИГ — единственное место с именами таблиц и колонок ===== */\nconst cfg = {\n  T_EVENT:   '<catalog>.<schema>.ta_event',           // журнал ЦА (создать, DDL в FLOW.md §2)\n  T_OWNERS:  '<catalog>.<schema>.<dashboard_owners>', // dashboard_id, owner_login\n  T_MDM:     '<catalog>.<schema>.mdm_employee_daily_proteus',\n  T_ADGROUP: '<catalog>.<schema>.<ad_group_members>', // login, group_nm\n  MDM_LOGIN: 'login',\n  MDM_DT:    'report_dt',\n  // Разрез → SQL-выражение над строкой mdm (алиас e), возвращает ТО ЖЕ название,\n  // что показывает конструктор. adgroup считается через T_ADGROUP.\n  DIM_EXPR: {\n    lvl3:   'e.<lvl3_nm>',\n    lvl4:   'e.<lvl4_nm>',\n    stream: 'e.<stream_nm>',\n    spec:   'e.<spec_nm>',\n    exp:    \"CASE WHEN date_diff('year', e.<hire_dt>, current_date) < 1 THEN 'до 1 года' WHEN date_diff('year', e.<hire_dt>, current_date) < 3 THEN '1–3 года' WHEN date_diff('year', e.<hire_dt>, current_date) < 5 THEN '3–5 лет' WHEN date_diff('year', e.<hire_dt>, current_date) < 10 THEN '5–10 лет' ELSE '10+ лет' END\",\n    it:     \"CASE WHEN e.<it_flg> = 1 THEN 'IT' ELSE 'non-IT' END\",\n    hq:     \"CASE WHEN e.<hq_flg> = 1 THEN 'HQ' ELSE 'non-HQ' END\",\n  },\n};\n/* ================================================================== */\nconst DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq', 'adgroup'];\nconst MAX_VALUES = 200;\nconst b = $input.first().json.body || {};\nconst fail = (error, detail) => [{ json: { ok: false, status: 400, error, detail: detail || null } }];\nconst okStr = (s, max) => typeof s === 'string' && s.trim() && s.length <= max && !/[\\u0000-\\u001f]/.test(s);\n\nif (!['save', 'deactivate'].includes(b.action)) return fail('bad_action');\nif (!Number.isInteger(b.dashboard_id) || b.dashboard_id <= 0) return fail('bad_dashboard_id');\nif (!okStr(b.request_id, 64) || !/^[A-Za-z0-9-]{8,64}$/.test(b.request_id)) return fail('bad_request_id');\nif (!Number.isInteger(b.expected_version) || b.expected_version < 0) return fail('bad_expected_version');\n// Логин — тот, что Proteus подставил из user_name авторизованного пользователя.\nif (!okStr(b.login, 64) || !/^[A-Za-z0-9._-]+$/.test(b.login)) return [{ json: { ok: false, status: 401, error: 'no_login' } }];\n\nconst filters = {};\nif (b.action === 'save') {\n  const f = b.filters || {};\n  const unknown = Object.keys(f).filter((k) => !DIMS.includes(k));\n  if (unknown.length) return fail('unknown_dims', unknown);\n  for (const k of DIMS) {\n    const v = f[k] || [];\n    if (!Array.isArray(v) || v.some((s) => !okStr(s, 200))) return fail('bad_values', k);\n    if (v.length > MAX_VALUES) return fail('too_many_values', k);\n    filters[k] = [...new Set(v.map((s) => s.trim()))].sort();\n  }\n  if (!DIMS.some((k) => filters[k].length)) return fail('no_conditions');\n}\nif (b.comment != null && typeof b.comment !== 'string') return fail('bad_comment');\n\nreturn [{ json: {\n  ok: true, cfg, DIMS,\n  req: {\n    action: b.action, dashboard_id: b.dashboard_id, request_id: b.request_id,\n    expected_version: b.expected_version, filters,\n    login: b.login.toLowerCase(),\n    comment: String(b.comment || '').replace(/[\\u0000-\\u001f]/g, ' ').slice(0, 500),\n    client: 'proteus_adoption_ui',\n  },\n  ctx: {},\n} }];\n"
       },
       "id": "ta-02",
-      "name": "Валидация запроса",
+      "name": "Конфиг и валидация",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        260,
-        200
-      ]
+        240,
+        220
+      ],
+      "notes": "КОНФИГ: имена таблиц и колонок — здесь",
+      "notesInFlow": true
     },
     {
       "parameters": {
@@ -48,70 +50,48 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        520,
-        200
+        480,
+        220
       ]
     },
     {
       "parameters": {
-        "jsCode": "/* STUB. Заменить на проверку идентичности (PLAN.md §7.1).\n   Вход:  $json.headers\n   Выход: ctx.login — логин сотрудника из ПРОВЕРЕННОГО источника.\n          Нет/невалидно → ok:false, status:401, error:'unauthenticated'.\n   Нельзя: брать логин из тела запроса.\n   Мок: читает X-Forwarded-User (как от SSO-прокси), иначе 'a.petrova'. */\nconst it = $input.first().json;\nconst login = (it.headers['x-forwarded-user'] || 'a.petrova').toLowerCase();\nif (!login) return [{ json: { ok: false, status: 401, error: 'unauthenticated' } }];\nreturn [{ json: { ...it, ctx: { ...it.ctx, login } } }];\n"
+        "jsCode": "// Строковый литерал Trino. Значения уже проверены в «Конфиг и валидация»,\n// но экранируем всегда: SQL собирается из пользовательского ввода.\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst arr = (a) => (a.length ? 'ARRAY[' + a.map(q).join(', ') + ']' : 'CAST(ARRAY[] AS ARRAY(VARCHAR))');\n\nconst it = $input.first().json;\nconst sql = 'SELECT DISTINCT lower(owner_login) AS login FROM ' + it.cfg.T_OWNERS +\n  ' WHERE dashboard_id = ' + it.req.dashboard_id;\nreturn [{ json: { ...it, sql } }];\n"
       },
       "id": "ta-04",
-      "name": "STUB · Кто вызывает",
+      "name": "SQL: владельцы",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        780,
-        0
-      ],
-      "notes": "STUB: SSO-заголовок / токен Proteus",
-      "notesInFlow": true
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            {
-              "value1": "={{ $json.ok }}",
-              "value2": true
-            }
-          ]
-        }
-      },
-      "id": "ta-05",
-      "name": "Личность установлена?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        1040,
+        720,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "/* STUB. Заменить на запрос к метаданным Proteus (API дашборда или таблица\n   владельцев в prod_proteus).\n   Вход:  req.dashboard_id\n   Выход: ctx.owners: string[] (логины, нижний регистр), ctx.dashboard_nm.\n          Отчёта нет → ok:false, status:404, error:'report_not_found'.\n   Мок: отчёты 14000…15000 существуют, владельцы — a.petrova и d.sokolov. */\nconst it = $input.first().json;\nconst id = it.req.dashboard_id;\nif (id < 14000 || id > 15000) return [{ json: { ok: false, status: 404, error: 'report_not_found' } }];\nreturn [{ json: { ...it, ctx: { ...it.ctx, owners: ['a.petrova', 'd.sokolov'], dashboard_nm: 'Отчёт ' + id } } }];\n"
+        "jsCode": "/* STUB → заменить на Execute Workflow «trino_query» (вход: {{ $json.sql }}).\n   Выход подпроцесса: { rows: [{колонка: значение}], update_count: число|null }.\n   Ниже — мок-ответ, чтобы флоу работал без Trino. */\nconst sql = $input.first().json.sql;\nconst id = Number((sql.match(/dashboard_id = (\\d+)/) || [])[1]);\nreturn [{ json: { rows: id >= 14000 && id <= 15000 ? [{ login: 'a.petrova' }, { login: 'd.sokolov' }] : [], update_count: null } }];\n"
       },
-      "id": "ta-06",
-      "name": "STUB · Владельцы отчёта",
+      "id": "ta-05",
+      "name": "Trino: владельцы",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1300,
+        960,
         0
       ],
-      "notes": "STUB: owners из Proteus",
+      "notes": "STUB → Execute Workflow: trino_query",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "// Белый список админов — пока пустой (PLAN.md §7.2).\nconst ADMINS = [];\nconst it = $input.first().json;\nif (it.ok === false) return [{ json: it }];\nconst { login, owners } = it.ctx;\nif (!owners.includes(login) && !ADMINS.includes(login)) {\n  return [{ json: { ok: false, status: 403, error: 'not_owner', detail: { owners } } }];\n}\nreturn [{ json: { ...it, ok: true } }];\n"
+        "jsCode": "// Редактировать ЦА могут все владельцы отчёта, и только они.\nconst it = $('SQL: владельцы').first().json;\nconst owners = ($input.first().json.rows || []).map((r) => r.login);\nif (!owners.length) return [{ json: { ok: false, status: 404, error: 'report_not_found' } }];\nif (!owners.includes(it.req.login)) return [{ json: { ok: false, status: 403, error: 'not_owner', detail: { owners } } }];\nconst { sql, ...rest } = it;\nreturn [{ json: { ...rest, ok: true, ctx: { ...it.ctx, owners } } }];\n"
       },
-      "id": "ta-07",
+      "id": "ta-06",
       "name": "Проверка: владелец?",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1560,
+        1200,
         0
       ]
     },
@@ -126,40 +106,53 @@
           ]
         }
       },
-      "id": "ta-08",
+      "id": "ta-07",
       "name": "Владелец?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        1820,
+        1440,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "/* STUB. Заменить на SQL к DLH:\n     SELECT version, action, saved_by, saved_at, request_id\n     FROM proteus_adoption.ta_event\n     WHERE dashboard_id = :id ORDER BY version DESC LIMIT 1;\n   плюс поиск того же request_id:\n     SELECT version, saved_at FROM proteus_adoption.ta_event WHERE request_id = :rid;\n   Выход: ctx.current = {version, action, saved_by, saved_at} | null,\n          ctx.replay  = {version, saved_at} | null.\n   Мок: у отчёта 14037 уже есть v2 от d.sokolov, у остальных ничего. */\nconst it = $input.first().json;\nconst current = it.req.dashboard_id === 14037\n  ? { version: 2, action: 'save', saved_by: 'd.sokolov', saved_at: '2026-10-12T09:14:00Z' }\n  : null;\nreturn [{ json: { ...it, ctx: { ...it.ctx, current, replay: null } } }];\n"
+        "jsCode": "// Строковый литерал Trino. Значения уже проверены в «Конфиг и валидация»,\n// но экранируем всегда: SQL собирается из пользовательского ввода.\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst arr = (a) => (a.length ? 'ARRAY[' + a.map(q).join(', ') + ']' : 'CAST(ARRAY[] AS ARRAY(VARCHAR))');\n\nconst it = $input.first().json;\n// Одним запросом: последняя версия отчёта и, если есть, запись с тем же request_id.\nconst sql =\n  'SELECT dashboard_id, version, action, saved_by, ' +\n  \"to_iso8601(saved_at) AS saved_at, request_id FROM \" + it.cfg.T_EVENT +\n  ' WHERE dashboard_id = ' + it.req.dashboard_id + ' OR request_id = ' + q(it.req.request_id) +\n  ' ORDER BY version DESC';\nreturn [{ json: { ...it, sql } }];\n"
       },
-      "id": "ta-09",
-      "name": "STUB · Текущая версия в DLH",
+      "id": "ta-08",
+      "name": "SQL: текущая версия",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2080,
+        1680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB → заменить на Execute Workflow «trino_query» (вход: {{ $json.sql }}).\n   Выход подпроцесса: { rows: [{колонка: значение}], update_count: число|null }.\n   Ниже — мок-ответ, чтобы флоу работал без Trino. */\nconst sql = $input.first().json.sql;\nconst id = Number((sql.match(/dashboard_id = (\\d+)/) || [])[1]);\nreturn [{ json: { rows: id === 14037\n  ? [{ dashboard_id: 14037, version: 2, action: 'save', saved_by: 'd.sokolov', saved_at: '2026-10-12T09:14:00Z', request_id: 'old-req-0002' }]\n  : [], update_count: null } }];\n"
+      },
+      "id": "ta-09",
+      "name": "Trino: текущая версия",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
         0
       ],
-      "notes": "STUB: SELECT из ta_event",
+      "notes": "STUB → Execute Workflow: trino_query",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "const it = $input.first().json;\nconst { current, replay } = it.ctx;\n// Идемпотентность: тот же request_id уже записан — отвечаем прежним результатом.\nif (replay) return [{ json: { ok: false, status: 200, error: null, body: { ok: true, replay: true, ...replay } } }];\nconst have = current ? current.version : 0;\nif (it.req.expected_version !== have) {\n  return [{ json: { ok: false, status: 409, error: 'version_conflict',\n    detail: { current_version: have, saved_by: current && current.saved_by, saved_at: current && current.saved_at } } }];\n}\nif (it.req.action === 'deactivate' && (!current || current.action === 'deactivate')) {\n  return [{ json: { ok: false, status: 409, error: 'nothing_to_deactivate' } }];\n}\nreturn [{ json: { ...it, ok: true, ctx: { ...it.ctx, next_version: have + 1 } } }];\n"
+        "jsCode": "const it = $('SQL: текущая версия').first().json;\nconst rows = $input.first().json.rows || [];\nconst { sql, ...rest } = it;\n// Идемпотентность: этот request_id уже записан — отвечаем тем же результатом.\nconst replay = rows.find((r) => r.request_id === it.req.request_id);\nif (replay) return [{ json: { ok: false, status: 200, body: { ok: true, replay: true, dashboard_id: replay.dashboard_id,\n  action: replay.action, version: replay.version, saved_by: replay.saved_by, saved_at: replay.saved_at } } }];\nconst current = rows.find((r) => r.dashboard_id === it.req.dashboard_id) || null;\nconst have = current ? Number(current.version) : 0;\nif (it.req.expected_version !== have) {\n  return [{ json: { ok: false, status: 409, error: 'version_conflict',\n    detail: { current_version: have, saved_by: current && current.saved_by, saved_at: current && current.saved_at } } }];\n}\nif (it.req.action === 'deactivate' && (!current || current.action === 'deactivate')) {\n  return [{ json: { ok: false, status: 409, error: 'nothing_to_deactivate' } }];\n}\nreturn [{ json: { ...rest, ok: true, ctx: { ...it.ctx, next_version: have + 1, audience_cnt: null } } }];\n"
       },
       "id": "ta-10",
       "name": "Сверка версии",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2340,
+        2160,
         0
       ]
     },
@@ -179,72 +172,70 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        2600,
+        2400,
         0
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "/* STUB. Заменить на запросы к mdm_employee_daily_proteus (последний report_dt):\n   1) какие из переданных кодов существуют по каждому разрезу;\n   2) сколько сотрудников попадает под условия (те же предикаты, что\n      в PLAN.md §5.1) — audience_cnt;\n   3) у скольких из них есть доступ к отчёту — access_cnt;\n   4) имена для кодов — labels.\n   Для action='deactivate' шаг пропускается (см. первую строку).\n   Выход: ctx.audience_cnt, ctx.access_cnt, ctx.labels {код: имя}.\n          Неизвестные коды → 422 unknown_values; 0 человек → 422 empty_audience.\n   Мок: код, начинающийся с 'X_', считается несуществующим. */\nconst it = $input.first().json;\nif (it.req.action === 'deactivate') return [{ json: { ...it, ctx: { ...it.ctx, audience_cnt: 0, access_cnt: 0, labels: {} } } }];\nconst f = it.req.filters;\nconst unknown = {};\nObject.keys(f).forEach((k) => { const u = f[k].filter((v) => v.startsWith('X_')); if (u.length) unknown[k] = u; });\nif (Object.keys(unknown).length) return [{ json: { ok: false, status: 422, error: 'unknown_values', detail: unknown } }];\nconst labels = {};\nObject.values(f).flat().forEach((v) => { labels[v] = v; });\nconst audience_cnt = 1240, access_cnt = 1015;\nif (!audience_cnt) return [{ json: { ok: false, status: 422, error: 'empty_audience' } }];\nreturn [{ json: { ...it, ok: true, ctx: { ...it.ctx, audience_cnt, access_cnt, labels } } }];\n"
-      },
-      "id": "ta-12",
-      "name": "STUB · Справочники и численность mdm",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2860,
-        0
-      ],
-      "notes": "STUB: проверка кодов и численность",
-      "notesInFlow": true
     },
     {
       "parameters": {
         "conditions": {
-          "boolean": [
+          "string": [
             {
-              "value1": "={{ $json.ok }}",
-              "value2": true
+              "value1": "={{ $json.req.action }}",
+              "value2": "save"
             }
           ]
         }
       },
-      "id": "ta-13",
-      "name": "Условия валидны?",
+      "id": "ta-12",
+      "name": "Это save?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        3120,
+        2640,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Ровно схема proteus_adoption.ta_event (PLAN.md §2).\nconst it = $input.first().json;\nconst { req, ctx } = it;\nconst DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq', 'adgroup'];\nconst f = req.action === 'save' ? req.filters : {};\nconst row = {\n  event_id: $execution.id + '-' + req.request_id,\n  request_id: req.request_id,\n  dashboard_id: req.dashboard_id,\n  action: req.action,\n  version: ctx.next_version,\n  filters_json: JSON.stringify(Object.fromEntries(DIMS.map((k) => [k, f[k] || []]))),\n  labels_json: JSON.stringify(ctx.labels || {}),\n  audience_cnt: ctx.audience_cnt,\n  access_cnt: ctx.access_cnt,\n  comment: req.comment,\n  saved_by: ctx.login,            // из проверенной идентичности\n  saved_at: new Date().toISOString(),\n  client: req.client,\n};\nDIMS.forEach((k) => { row['f_' + k] = f[k] || []; });\nreturn [{ json: { ...it, row } }];\n"
+        "jsCode": "// Строковый литерал Trino. Значения уже проверены в «Конфиг и валидация»,\n// но экранируем всегда: SQL собирается из пользовательского ввода.\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst arr = (a) => (a.length ? 'ARRAY[' + a.map(q).join(', ') + ']' : 'CAST(ARRAY[] AS ARRAY(VARCHAR))');\n\nconst it = $input.first().json;\nconst { cfg, DIMS } = it;\nconst f = it.req.filters;\nconst lastDt = cfg.MDM_DT + ' = (SELECT max(' + cfg.MDM_DT + ') FROM ' + cfg.T_MDM + ')';\nconst inList = (a) => '(' + a.map(q).join(', ') + ')';\nconst parts = [];\nconst preds = [];\nDIMS.filter((k) => f[k].length).forEach((k) => {\n  if (k === 'adgroup') {\n    parts.push(\"SELECT DISTINCT 'adgroup' AS dim, group_nm AS val FROM \" + cfg.T_ADGROUP + ' WHERE group_nm IN ' + inList(f[k]));\n    preds.push('EXISTS (SELECT 1 FROM ' + cfg.T_ADGROUP + ' g WHERE lower(g.login) = lower(e.' + cfg.MDM_LOGIN + ') AND g.group_nm IN ' + inList(f[k]) + ')');\n  } else {\n    const ex = cfg.DIM_EXPR[k];\n    parts.push('SELECT DISTINCT ' + q(k) + ' AS dim, ' + ex + ' AS val FROM ' + cfg.T_MDM + ' e WHERE e.' + lastDt + ' AND ' + ex + ' IN ' + inList(f[k]));\n    preds.push(ex + ' IN ' + inList(f[k]));\n  }\n});\n// Последняя строка — численность: dim='__count'. Внутри разреза ИЛИ (IN), между — И.\nparts.push(\"SELECT '__count' AS dim, CAST(count(*) AS VARCHAR) AS val FROM \" + cfg.T_MDM + ' e WHERE e.' + lastDt + ' AND ' + preds.join(' AND '));\nreturn [{ json: { ...it, sql: parts.join('\\nUNION ALL\\n') } }];\n"
+      },
+      "id": "ta-13",
+      "name": "SQL: значения и численность",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB → заменить на Execute Workflow «trino_query» (вход: {{ $json.sql }}).\n   Выход подпроцесса: { rows: [{колонка: значение}], update_count: число|null }.\n   Ниже — мок-ответ, чтобы флоу работал без Trino. */\nconst sql = $input.first().json.sql;\n// Мок: значение, начинающееся с «Старое», считается исчезнувшим из структуры.\nconst rows = [];\nconst re = /'([a-z0-9]+)' AS dim, .*? IN \\(([^)]*)\\)/g;\nlet m;\nwhile ((m = re.exec(sql))) {\n  const vals = m[2].split(', ').map((s) => s.slice(1, -1).replace(/''/g, \"'\"));\n  vals.filter((v) => !v.startsWith('Старое')).forEach((v) => rows.push({ dim: m[1], val: v }));\n}\nconst adg = sql.match(/'adgroup' AS dim, group_nm AS val FROM \\S+ WHERE group_nm IN \\(([^)]*)\\)/);\nif (adg) adg[1].split(', ').forEach((s) => rows.push({ dim: 'adgroup', val: s.slice(1, -1) }));\nrows.push({ dim: '__count', val: sql.includes('Пустой') ? '0' : '1240' });\nreturn [{ json: { rows, update_count: null } }];\n"
       },
       "id": "ta-14",
-      "name": "Строка события",
+      "name": "Trino: значения и численность",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3380,
-        0
-      ]
+        3120,
+        -220
+      ],
+      "notes": "STUB → Execute Workflow: trino_query",
+      "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "/* STUB. Заменить на INSERT в proteus_adoption.ta_event.\n   Гонка между «Текущая версия» и записью: вставлять условно —\n     INSERT ... SELECT ... WHERE (SELECT coalesce(max(version),0)\n       FROM ta_event WHERE dashboard_id = :id) = :expected_version\n   и если вставилось 0 строк → ok:false, status:409, error:'version_conflict'.\n   Ошибка хранилища → ok:false, status:502, error:'storage_failed'.\n   Выход: тот же объект, ok:true.\n   Мок: всегда успешно. */\nconst it = $input.first().json;\nreturn [{ json: { ...it, ok: true } }];\n"
+        "jsCode": "const it = $('SQL: значения и численность').first().json;\nconst rows = $input.first().json.rows || [];\nconst { sql, ...rest } = it;\nconst found = {};\nlet cnt = 0;\nrows.forEach((r) => { if (r.dim === '__count') cnt = Number(r.val); else (found[r.dim] = found[r.dim] || new Set()).add(r.val); });\nconst unknown = {};\nit.DIMS.forEach((k) => {\n  const miss = it.req.filters[k].filter((v) => !(found[k] && found[k].has(v)));\n  if (miss.length) unknown[k] = miss;\n});\nif (Object.keys(unknown).length) return [{ json: { ok: false, status: 422, error: 'unknown_values', detail: unknown } }];\nif (!cnt) return [{ json: { ok: false, status: 422, error: 'empty_audience' } }];\nreturn [{ json: { ...rest, ok: true, ctx: { ...it.ctx, audience_cnt: cnt } } }];\n"
       },
       "id": "ta-15",
-      "name": "STUB · Запись в DLH",
+      "name": "Проверка условий",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3640,
-        0
-      ],
-      "notes": "STUB: INSERT в ta_event",
-      "notesInFlow": true
+        3360,
+        -220
+      ]
     },
     {
       "parameters": {
@@ -258,53 +249,86 @@
         }
       },
       "id": "ta-16",
-      "name": "Записано?",
+      "name": "Условия валидны?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 1,
       "position": [
-        3900,
+        3600,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Строковый литерал Trino. Значения уже проверены в «Конфиг и валидация»,\n// но экранируем всегда: SQL собирается из пользовательского ввода.\nconst q = (s) => \"'\" + String(s).replace(/'/g, \"''\") + \"'\";\nconst arr = (a) => (a.length ? 'ARRAY[' + a.map(q).join(', ') + ']' : 'CAST(ARRAY[] AS ARRAY(VARCHAR))');\n\nconst it = $input.first().json;\nconst { cfg, DIMS, req, ctx } = it;\nconst f = req.action === 'save' ? req.filters : {};\nconst savedAt = new Date().toISOString();\nconst row = {\n  event_id: req.request_id + '-v' + ctx.next_version,\n  request_id: req.request_id, dashboard_id: req.dashboard_id, action: req.action,\n  version: ctx.next_version, audience_cnt: ctx.audience_cnt, comment: req.comment,\n  saved_by: req.login, saved_at: savedAt, client: req.client,\n};\nDIMS.forEach((k) => { row['f_' + k] = f[k] || []; });\nconst cols = ['event_id', 'request_id', 'dashboard_id', 'action', 'version']\n  .concat(DIMS.map((k) => 'f_' + k)).concat(['audience_cnt', 'comment', 'saved_by', 'saved_at', 'client']);\nconst lit = {\n  event_id: q(row.event_id), request_id: q(row.request_id), dashboard_id: String(row.dashboard_id),\n  action: q(row.action), version: String(row.version),\n  audience_cnt: row.audience_cnt == null ? 'CAST(NULL AS INTEGER)' : String(row.audience_cnt),\n  comment: q(row.comment), saved_by: q(row.saved_by),\n  saved_at: 'from_iso8601_timestamp(' + q(savedAt) + ')', client: q(row.client),\n};\nDIMS.forEach((k) => { lit['f_' + k] = arr(row['f_' + k]); });\n/* Условная вставка: пишем, только если версия не сдвинулась и request_id новый.\n   Вставилось 0 строк → кто-то успел раньше → 409. */\nconst sql = 'INSERT INTO ' + cfg.T_EVENT + ' (' + cols.join(', ') + ')\\n' +\n  'SELECT ' + cols.map((c) => lit[c]).join(', ') + '\\n' +\n  'FROM (VALUES 1) AS t(x)\\n' +\n  'WHERE (SELECT coalesce(max(version), 0) FROM ' + cfg.T_EVENT + ' WHERE dashboard_id = ' + req.dashboard_id + ') = ' + req.expected_version + '\\n' +\n  '  AND NOT EXISTS (SELECT 1 FROM ' + cfg.T_EVENT + ' WHERE request_id = ' + q(req.request_id) + ')';\nreturn [{ json: { ...it, row, sql } }];\n"
+      },
+      "id": "ta-17",
+      "name": "SQL: запись события",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3840,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "/* STUB. Заменить на запуск ноутбука ta_sync через API планировщика\n   (PLAN.md §7.5). Ошибка здесь НЕ ломает ответ: запись уже в DLH,\n   ноутбук подхватит по расписанию.\n   Выход: ctx.sync = 'queued' | 'scheduled'.\n   Мок: 'queued'. */\nconst it = $input.first().json;\nlet sync = 'queued';\ntry { /* вызов API */ } catch (e) { sync = 'scheduled'; }\nreturn [{ json: { ...it, ctx: { ...it.ctx, sync } } }];\n"
+        "jsCode": "/* STUB → заменить на Execute Workflow «trino_query» (вход: {{ $json.sql }}).\n   Выход подпроцесса: { rows: [{колонка: значение}], update_count: число|null }.\n   Ниже — мок-ответ, чтобы флоу работал без Trino. */\nconst sql = $input.first().json.sql;\nreturn [{ json: { rows: [], update_count: 1 } }];\n"
       },
-      "id": "ta-17",
-      "name": "STUB · Пинок синхронизации",
+      "id": "ta-18",
+      "name": "Trino: запись события",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4160,
+        4080,
         0
       ],
-      "notes": "STUB: запуск ноутбука, некритично",
+      "notes": "STUB → Execute Workflow: trino_query",
       "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "const it = $input.first().json;\nreturn [{ json: { status: 200, body: {\n  ok: true,\n  action: it.req.action,\n  dashboard_id: it.req.dashboard_id,\n  version: it.row.version,\n  saved_by: it.row.saved_by,\n  saved_at: it.row.saved_at,\n  audience_cnt: it.row.audience_cnt,\n  access_cnt: it.row.access_cnt,\n  sync: it.ctx.sync,\n} } }];\n"
+        "jsCode": "const it = $('SQL: запись события').first().json;\nconst n = $input.first().json.update_count;\nif (n !== 1) return [{ json: { ok: false, status: 409, error: 'version_conflict', detail: { reason: 'concurrent_write' } } }];\nreturn [{ json: { ok: true, status: 200, body: {\n  ok: true, action: it.row.action, dashboard_id: it.row.dashboard_id, version: it.row.version,\n  saved_by: it.row.saved_by, saved_at: it.row.saved_at, audience_cnt: it.row.audience_cnt,\n  sync: 'scheduled',   // в ClickHouse появится после ближайшего запуска ноутбука\n} } }];\n"
       },
-      "id": "ta-18",
-      "name": "Тело ответа 200",
+      "id": "ta-19",
+      "name": "Проверка записи",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4420,
+        4320,
         0
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Сюда сходятся все ветки «нет». Внутренности (заголовки, ctx) наружу не отдаём.\nconst it = $input.first().json;\nif (it.body) return [{ json: { status: it.status, body: it.body } }];   // replay\nreturn [{ json: { status: it.status || 500, body: { ok: false, error: it.error || 'internal', detail: it.detail || null } } }];\n"
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
       },
-      "id": "ta-19",
+      "id": "ta-20",
+      "name": "Записано?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        4560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Все ветки «нет». Внутренности (cfg, sql, ctx) наружу не отдаём.\nconst it = $input.first().json;\nif (it.body) return [{ json: { status: it.status, body: it.body } }];   // повтор request_id\nreturn [{ json: { status: it.status || 500, body: { ok: false, error: it.error || 'internal', detail: it.detail || null } } }];\n"
+      },
+      "id": "ta-21",
       "name": "Тело ответа: ошибка",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2340,
-        400
+        2400,
+        440
       ]
     },
     {
@@ -315,12 +339,12 @@
           "responseCode": "={{ $json.status }}"
         }
       },
-      "id": "ta-20",
+      "id": "ta-22",
       "name": "Ответ: 200",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        4680,
+        4800,
         0
       ]
     },
@@ -332,13 +356,13 @@
           "responseCode": "={{ $json.status }}"
         }
       },
-      "id": "ta-21",
+      "id": "ta-23",
       "name": "Ответ: ошибка",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
       "position": [
-        2600,
-        400
+        2640,
+        440
       ]
     }
   ],
@@ -347,14 +371,14 @@
       "main": [
         [
           {
-            "node": "Валидация запроса",
+            "node": "Конфиг и валидация",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Валидация запроса": {
+    "Конфиг и валидация": {
       "main": [
         [
           {
@@ -369,7 +393,7 @@
       "main": [
         [
           {
-            "node": "STUB · Кто вызывает",
+            "node": "SQL: владельцы",
             "type": "main",
             "index": 0
           }
@@ -383,36 +407,18 @@
         ]
       ]
     },
-    "STUB · Кто вызывает": {
+    "SQL: владельцы": {
       "main": [
         [
           {
-            "node": "Личность установлена?",
+            "node": "Trino: владельцы",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Личность установлена?": {
-      "main": [
-        [
-          {
-            "node": "STUB · Владельцы отчёта",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Тело ответа: ошибка",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "STUB · Владельцы отчёта": {
+    "Trino: владельцы": {
       "main": [
         [
           {
@@ -438,7 +444,7 @@
       "main": [
         [
           {
-            "node": "STUB · Текущая версия в DLH",
+            "node": "SQL: текущая версия",
             "type": "main",
             "index": 0
           }
@@ -452,7 +458,18 @@
         ]
       ]
     },
-    "STUB · Текущая версия в DLH": {
+    "SQL: текущая версия": {
+      "main": [
+        [
+          {
+            "node": "Trino: текущая версия",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trino: текущая версия": {
       "main": [
         [
           {
@@ -478,7 +495,7 @@
       "main": [
         [
           {
-            "node": "STUB · Справочники и численность mdm",
+            "node": "Это save?",
             "type": "main",
             "index": 0
           }
@@ -492,7 +509,47 @@
         ]
       ]
     },
-    "STUB · Справочники и численность mdm": {
+    "Это save?": {
+      "main": [
+        [
+          {
+            "node": "SQL: значения и численность",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "SQL: запись события",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SQL: значения и численность": {
+      "main": [
+        [
+          {
+            "node": "Trino: значения и численность",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trino: значения и численность": {
+      "main": [
+        [
+          {
+            "node": "Проверка условий",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка условий": {
       "main": [
         [
           {
@@ -507,7 +564,7 @@
       "main": [
         [
           {
-            "node": "Строка события",
+            "node": "SQL: запись события",
             "type": "main",
             "index": 0
           }
@@ -521,18 +578,29 @@
         ]
       ]
     },
-    "Строка события": {
+    "SQL: запись события": {
       "main": [
         [
           {
-            "node": "STUB · Запись в DLH",
+            "node": "Trino: запись события",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "STUB · Запись в DLH": {
+    "Trino: запись события": {
+      "main": [
+        [
+          {
+            "node": "Проверка записи",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка записи": {
       "main": [
         [
           {
@@ -547,7 +615,7 @@
       "main": [
         [
           {
-            "node": "STUB · Пинок синхронизации",
+            "node": "Ответ: 200",
             "type": "main",
             "index": 0
           }
@@ -555,28 +623,6 @@
         [
           {
             "node": "Тело ответа: ошибка",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "STUB · Пинок синхронизации": {
-      "main": [
-        [
-          {
-            "node": "Тело ответа 200",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Тело ответа 200": {
-      "main": [
-        [
-          {
-            "node": "Ответ: 200",
             "type": "main",
             "index": 0
           }
@@ -600,7 +646,7 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "note": "Макет. Ноды «STUB · …» заменить на реальные; контракт — в коде каждой ноды и в docs/ta_saved/PLAN.md §3."
+    "note": "Ноды «Trino: …» заменить на Execute Workflow → trino_query. Имена таблиц — в ноде «Конфиг и валидация». Логика — docs/ta_saved/FLOW.md."
   },
   "pinData": {}
 }

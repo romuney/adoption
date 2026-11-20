@@ -1,0 +1,606 @@
+{
+  "name": "proteus · ta_save (МАКЕТ, STUB-ноды)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "proteus/ta",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ta-01",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        200
+      ],
+      "notes": "POST /webhook/proteus/ta. В бою — за SSO-прокси или через бэкенд Proteus (PLAN.md §7.1).",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Белый список разрезов — ровно AUD_DIMS из макета. Поимённых списков нет.\nconst DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq', 'adgroup'];\nconst MAX_VALUES = 200;\nconst item = $input.first().json;\nconst b = item.body || {};\nconst headers = item.headers || {};\nconst fail = (error, detail) => ({ json: { ok: false, status: 400, error, detail } });\n\nif (!['save', 'deactivate'].includes(b.action)) return [fail('bad_action')];\nif (!Number.isInteger(b.dashboard_id) || b.dashboard_id <= 0) return [fail('bad_dashboard_id')];\nif (typeof b.request_id !== 'string' || b.request_id.length < 8) return [fail('bad_request_id')];\nif (!Number.isInteger(b.expected_version) || b.expected_version < 0) return [fail('bad_expected_version')];\n\nconst filters = {};\nif (b.action === 'save') {\n  const f = b.filters || {};\n  const unknown = Object.keys(f).filter((k) => !DIMS.includes(k));\n  if (unknown.length) return [fail('unknown_dims', unknown)];\n  for (const k of DIMS) {\n    const v = f[k] || [];\n    if (!Array.isArray(v) || v.some((s) => typeof s !== 'string' || !s.trim())) return [fail('bad_values', k)];\n    if (v.length > MAX_VALUES) return [fail('too_many_values', k)];\n    filters[k] = [...new Set(v.map((s) => s.trim()))].sort();   // канонический вид\n  }\n  if (!DIMS.some((k) => filters[k].length)) return [fail('no_conditions')];\n}\n\nreturn [{ json: {\n  ok: true,\n  req: {\n    action: b.action, dashboard_id: b.dashboard_id, request_id: b.request_id,\n    expected_version: b.expected_version, filters,\n    comment: String(b.comment || '').slice(0, 500),\n    client: String(b.client || 'proteus_adoption_ui'),\n  },\n  headers,\n  ctx: {},\n} }];\n"
+      },
+      "id": "ta-02",
+      "name": "Валидация запроса",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "ta-03",
+      "name": "Запрос корректен?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB. Заменить на проверку идентичности (PLAN.md §7.1).\n   Вход:  $json.headers\n   Выход: ctx.login — логин сотрудника из ПРОВЕРЕННОГО источника.\n          Нет/невалидно → ok:false, status:401, error:'unauthenticated'.\n   Нельзя: брать логин из тела запроса.\n   Мок: читает X-Forwarded-User (как от SSO-прокси), иначе 'a.petrova'. */\nconst it = $input.first().json;\nconst login = (it.headers['x-forwarded-user'] || 'a.petrova').toLowerCase();\nif (!login) return [{ json: { ok: false, status: 401, error: 'unauthenticated' } }];\nreturn [{ json: { ...it, ctx: { ...it.ctx, login } } }];\n"
+      },
+      "id": "ta-04",
+      "name": "STUB · Кто вызывает",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        780,
+        0
+      ],
+      "notes": "STUB: SSO-заголовок / токен Proteus",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "ta-05",
+      "name": "Личность установлена?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB. Заменить на запрос к метаданным Proteus (API дашборда или таблица\n   владельцев в prod_proteus).\n   Вход:  req.dashboard_id\n   Выход: ctx.owners: string[] (логины, нижний регистр), ctx.dashboard_nm.\n          Отчёта нет → ok:false, status:404, error:'report_not_found'.\n   Мок: отчёты 14000…15000 существуют, владельцы — a.petrova и d.sokolov. */\nconst it = $input.first().json;\nconst id = it.req.dashboard_id;\nif (id < 14000 || id > 15000) return [{ json: { ok: false, status: 404, error: 'report_not_found' } }];\nreturn [{ json: { ...it, ctx: { ...it.ctx, owners: ['a.petrova', 'd.sokolov'], dashboard_nm: 'Отчёт ' + id } } }];\n"
+      },
+      "id": "ta-06",
+      "name": "STUB · Владельцы отчёта",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        0
+      ],
+      "notes": "STUB: owners из Proteus",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Белый список админов — пока пустой (PLAN.md §7.2).\nconst ADMINS = [];\nconst it = $input.first().json;\nif (it.ok === false) return [{ json: it }];\nconst { login, owners } = it.ctx;\nif (!owners.includes(login) && !ADMINS.includes(login)) {\n  return [{ json: { ok: false, status: 403, error: 'not_owner', detail: { owners } } }];\n}\nreturn [{ json: { ...it, ok: true } }];\n"
+      },
+      "id": "ta-07",
+      "name": "Проверка: владелец?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "ta-08",
+      "name": "Владелец?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1820,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB. Заменить на SQL к DLH:\n     SELECT version, action, saved_by, saved_at, request_id\n     FROM proteus_adoption.ta_event\n     WHERE dashboard_id = :id ORDER BY version DESC LIMIT 1;\n   плюс поиск того же request_id:\n     SELECT version, saved_at FROM proteus_adoption.ta_event WHERE request_id = :rid;\n   Выход: ctx.current = {version, action, saved_by, saved_at} | null,\n          ctx.replay  = {version, saved_at} | null.\n   Мок: у отчёта 14037 уже есть v2 от d.sokolov, у остальных ничего. */\nconst it = $input.first().json;\nconst current = it.req.dashboard_id === 14037\n  ? { version: 2, action: 'save', saved_by: 'd.sokolov', saved_at: '2026-10-12T09:14:00Z' }\n  : null;\nreturn [{ json: { ...it, ctx: { ...it.ctx, current, replay: null } } }];\n"
+      },
+      "id": "ta-09",
+      "name": "STUB · Текущая версия в DLH",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        0
+      ],
+      "notes": "STUB: SELECT из ta_event",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const it = $input.first().json;\nconst { current, replay } = it.ctx;\n// Идемпотентность: тот же request_id уже записан — отвечаем прежним результатом.\nif (replay) return [{ json: { ok: false, status: 200, error: null, body: { ok: true, replay: true, ...replay } } }];\nconst have = current ? current.version : 0;\nif (it.req.expected_version !== have) {\n  return [{ json: { ok: false, status: 409, error: 'version_conflict',\n    detail: { current_version: have, saved_by: current && current.saved_by, saved_at: current && current.saved_at } } }];\n}\nif (it.req.action === 'deactivate' && (!current || current.action === 'deactivate')) {\n  return [{ json: { ok: false, status: 409, error: 'nothing_to_deactivate' } }];\n}\nreturn [{ json: { ...it, ok: true, ctx: { ...it.ctx, next_version: have + 1 } } }];\n"
+      },
+      "id": "ta-10",
+      "name": "Сверка версии",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "ta-11",
+      "name": "Версия совпала?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB. Заменить на запросы к mdm_employee_daily_proteus (последний report_dt):\n   1) какие из переданных кодов существуют по каждому разрезу;\n   2) сколько сотрудников попадает под условия (те же предикаты, что\n      в PLAN.md §5.1) — audience_cnt;\n   3) у скольких из них есть доступ к отчёту — access_cnt;\n   4) имена для кодов — labels.\n   Для action='deactivate' шаг пропускается (см. первую строку).\n   Выход: ctx.audience_cnt, ctx.access_cnt, ctx.labels {код: имя}.\n          Неизвестные коды → 422 unknown_values; 0 человек → 422 empty_audience.\n   Мок: код, начинающийся с 'X_', считается несуществующим. */\nconst it = $input.first().json;\nif (it.req.action === 'deactivate') return [{ json: { ...it, ctx: { ...it.ctx, audience_cnt: 0, access_cnt: 0, labels: {} } } }];\nconst f = it.req.filters;\nconst unknown = {};\nObject.keys(f).forEach((k) => { const u = f[k].filter((v) => v.startsWith('X_')); if (u.length) unknown[k] = u; });\nif (Object.keys(unknown).length) return [{ json: { ok: false, status: 422, error: 'unknown_values', detail: unknown } }];\nconst labels = {};\nObject.values(f).flat().forEach((v) => { labels[v] = v; });\nconst audience_cnt = 1240, access_cnt = 1015;\nif (!audience_cnt) return [{ json: { ok: false, status: 422, error: 'empty_audience' } }];\nreturn [{ json: { ...it, ok: true, ctx: { ...it.ctx, audience_cnt, access_cnt, labels } } }];\n"
+      },
+      "id": "ta-12",
+      "name": "STUB · Справочники и численность mdm",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        0
+      ],
+      "notes": "STUB: проверка кодов и численность",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "ta-13",
+      "name": "Условия валидны?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        3120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ровно схема proteus_adoption.ta_event (PLAN.md §2).\nconst it = $input.first().json;\nconst { req, ctx } = it;\nconst DIMS = ['lvl3', 'lvl4', 'stream', 'spec', 'exp', 'it', 'hq', 'adgroup'];\nconst f = req.action === 'save' ? req.filters : {};\nconst row = {\n  event_id: $execution.id + '-' + req.request_id,\n  request_id: req.request_id,\n  dashboard_id: req.dashboard_id,\n  action: req.action,\n  version: ctx.next_version,\n  filters_json: JSON.stringify(Object.fromEntries(DIMS.map((k) => [k, f[k] || []]))),\n  labels_json: JSON.stringify(ctx.labels || {}),\n  audience_cnt: ctx.audience_cnt,\n  access_cnt: ctx.access_cnt,\n  comment: req.comment,\n  saved_by: ctx.login,            // из проверенной идентичности\n  saved_at: new Date().toISOString(),\n  client: req.client,\n};\nDIMS.forEach((k) => { row['f_' + k] = f[k] || []; });\nreturn [{ json: { ...it, row } }];\n"
+      },
+      "id": "ta-14",
+      "name": "Строка события",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB. Заменить на INSERT в proteus_adoption.ta_event.\n   Гонка между «Текущая версия» и записью: вставлять условно —\n     INSERT ... SELECT ... WHERE (SELECT coalesce(max(version),0)\n       FROM ta_event WHERE dashboard_id = :id) = :expected_version\n   и если вставилось 0 строк → ok:false, status:409, error:'version_conflict'.\n   Ошибка хранилища → ok:false, status:502, error:'storage_failed'.\n   Выход: тот же объект, ok:true.\n   Мок: всегда успешно. */\nconst it = $input.first().json;\nreturn [{ json: { ...it, ok: true } }];\n"
+      },
+      "id": "ta-15",
+      "name": "STUB · Запись в DLH",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3640,
+        0
+      ],
+      "notes": "STUB: INSERT в ta_event",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.ok }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "ta-16",
+      "name": "Записано?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        3900,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "/* STUB. Заменить на запуск ноутбука ta_sync через API планировщика\n   (PLAN.md §7.5). Ошибка здесь НЕ ломает ответ: запись уже в DLH,\n   ноутбук подхватит по расписанию.\n   Выход: ctx.sync = 'queued' | 'scheduled'.\n   Мок: 'queued'. */\nconst it = $input.first().json;\nlet sync = 'queued';\ntry { /* вызов API */ } catch (e) { sync = 'scheduled'; }\nreturn [{ json: { ...it, ctx: { ...it.ctx, sync } } }];\n"
+      },
+      "id": "ta-17",
+      "name": "STUB · Пинок синхронизации",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4160,
+        0
+      ],
+      "notes": "STUB: запуск ноутбука, некритично",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const it = $input.first().json;\nreturn [{ json: { status: 200, body: {\n  ok: true,\n  action: it.req.action,\n  dashboard_id: it.req.dashboard_id,\n  version: it.row.version,\n  saved_by: it.row.saved_by,\n  saved_at: it.row.saved_at,\n  audience_cnt: it.row.audience_cnt,\n  access_cnt: it.row.access_cnt,\n  sync: it.ctx.sync,\n} } }];\n"
+      },
+      "id": "ta-18",
+      "name": "Тело ответа 200",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4420,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Сюда сходятся все ветки «нет». Внутренности (заголовки, ctx) наружу не отдаём.\nconst it = $input.first().json;\nif (it.body) return [{ json: { status: it.status, body: it.body } }];   // replay\nreturn [{ json: { status: it.status || 500, body: { ok: false, error: it.error || 'internal', detail: it.detail || null } } }];\n"
+      },
+      "id": "ta-19",
+      "name": "Тело ответа: ошибка",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      },
+      "id": "ta-20",
+      "name": "Ответ: 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        4680,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.status }}"
+        }
+      },
+      "id": "ta-21",
+      "name": "Ответ: ошибка",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2600,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Валидация запроса",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Валидация запроса": {
+      "main": [
+        [
+          {
+            "node": "Запрос корректен?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Запрос корректен?": {
+      "main": [
+        [
+          {
+            "node": "STUB · Кто вызывает",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Тело ответа: ошибка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB · Кто вызывает": {
+      "main": [
+        [
+          {
+            "node": "Личность установлена?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Личность установлена?": {
+      "main": [
+        [
+          {
+            "node": "STUB · Владельцы отчёта",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Тело ответа: ошибка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB · Владельцы отчёта": {
+      "main": [
+        [
+          {
+            "node": "Проверка: владелец?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Проверка: владелец?": {
+      "main": [
+        [
+          {
+            "node": "Владелец?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Владелец?": {
+      "main": [
+        [
+          {
+            "node": "STUB · Текущая версия в DLH",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Тело ответа: ошибка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB · Текущая версия в DLH": {
+      "main": [
+        [
+          {
+            "node": "Сверка версии",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Сверка версии": {
+      "main": [
+        [
+          {
+            "node": "Версия совпала?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Версия совпала?": {
+      "main": [
+        [
+          {
+            "node": "STUB · Справочники и численность mdm",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Тело ответа: ошибка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB · Справочники и численность mdm": {
+      "main": [
+        [
+          {
+            "node": "Условия валидны?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Условия валидны?": {
+      "main": [
+        [
+          {
+            "node": "Строка события",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Тело ответа: ошибка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Строка события": {
+      "main": [
+        [
+          {
+            "node": "STUB · Запись в DLH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB · Запись в DLH": {
+      "main": [
+        [
+          {
+            "node": "Записано?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Записано?": {
+      "main": [
+        [
+          {
+            "node": "STUB · Пинок синхронизации",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Тело ответа: ошибка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "STUB · Пинок синхронизации": {
+      "main": [
+        [
+          {
+            "node": "Тело ответа 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Тело ответа 200": {
+      "main": [
+        [
+          {
+            "node": "Ответ: 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Тело ответа: ошибка": {
+      "main": [
+        [
+          {
+            "node": "Ответ: ошибка",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "note": "Макет. Ноды «STUB · …» заменить на реальные; контракт — в коде каждой ноды и в docs/ta_saved/PLAN.md §3."
+  },
+  "pinData": {}
+}

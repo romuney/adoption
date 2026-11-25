@@ -9,16 +9,12 @@
 -- и включён distributed_product_mode = 'global'. В 25.x новый анализатор на этом спотыкается
 -- в некоторых формах запроса. Q2–Q4 — по одной форме из SQL каталога, Q5–Q7 — варианты исправления.
 
--- Q1. Версия, настройки и движки таблиц
+-- Q1. Версия и настройки (system.* в SQL Lab запрещён — движки таблиц не смотрим)
 SELECT
   version() AS v,
   getSetting('allow_experimental_analyzer') AS analyzer,
   getSetting('distributed_product_mode') AS dpm,
-  getSetting('prefer_global_in_and_join') AS prefer_global,
-  (SELECT arrayStringConcat(groupArray(concat(name, ':', engine)), ', ')
-     FROM system.tables
-    WHERE database = 'prod_proteus'
-      AND name IN ('pa_next_pair', 'pa_next_pair_acc', 'pa_next_login_map', 'pa_next_dash_meta', 'pa_next_evd_day')) AS engines;
+  getSetting('prefer_global_in_and_join') AS prefer_global;
 
 -- Q2. IN (подзапрос) в списке SELECT — как колонка acc каталога (5. SQL, «зритель входит в ЦА по правам»)
 SELECT count() AS n, countIf(acc = 1) AS n_acc
@@ -77,3 +73,25 @@ SELECT
   (SELECT count() FROM e) AS n,
   (SELECT countIf((did, lg) IN (SELECT toInt32(ifNull(dashboard_id, 0)), toString(ifNull(login, '')) FROM prod_proteus.pa_next_pair_acc)) FROM e) AS n_acc
 SETTINGS distributed_product_mode = 'allow';
+
+-- ГЛАВНЫЕ ДВА. Точная форма, на которой падает каталог: CTE pvt («топ отчётов» мгновенной панели) в режиме
+-- готовых строк читает agg = pa_next_cat_grp UNION ALL pa_next_cat_rep, а затем стоит в «… IN (SELECT did FROM pvt)».
+-- Ожидание: Q8 — та же ошибка globalIn, Q9 (исправление: явный GLOBAL IN) — число.
+
+-- Q8. Как сейчас в каталоге
+WITH agg AS (
+  SELECT toUInt8(ifNull(kd, 0)) AS kd, toString(ifNull(k0, '')) AS k0 FROM prod_proteus.pa_next_cat_grp
+  UNION ALL
+  SELECT toUInt8(1) AS kd, toString(ifNull(dashboard_id, 0)) AS k0 FROM prod_proteus.pa_next_cat_rep
+),
+pvt AS (SELECT toInt32(k0) AS did FROM agg WHERE kd = 1 LIMIT 20)
+SELECT count() FROM prod_proteus.pa_next_dash_meta WHERE dashboard_id IN (SELECT did FROM pvt);
+
+-- Q9. Исправление: GLOBAL IN
+WITH agg AS (
+  SELECT toUInt8(ifNull(kd, 0)) AS kd, toString(ifNull(k0, '')) AS k0 FROM prod_proteus.pa_next_cat_grp
+  UNION ALL
+  SELECT toUInt8(1) AS kd, toString(ifNull(dashboard_id, 0)) AS k0 FROM prod_proteus.pa_next_cat_rep
+),
+pvt AS (SELECT toInt32(k0) AS did FROM agg WHERE kd = 1 LIMIT 20)
+SELECT count() FROM prod_proteus.pa_next_dash_meta WHERE dashboard_id GLOBAL IN (SELECT did FROM pvt);

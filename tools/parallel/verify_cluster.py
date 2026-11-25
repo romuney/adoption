@@ -84,7 +84,7 @@ def build(db):
     print('distributed:', len(tabs), 'tables over', SHARDS, 'shards')
 
 
-def run(db, inp, out):
+def run(db, inp, out, quick=False):
     import chdb
     cur = chdb.connect(f'{db}?config-file={config()}').cursor()
     def ex(sql):
@@ -98,10 +98,10 @@ def run(db, inp, out):
     for c in cases:
         st = stat.setdefault(c['kind'], dict(ok=0, base_err_cluster=0, cand_err_cluster=0, diff=0, base_err_flat=0))
         flat, _ = ex(c['base'].replace('prod_proteus.pa_next_', 'prod_flat.pa_next_') + f'\nSETTINGS {SET}')
-        b, t1 = ex(c['base'] + f"\nSETTINGS {SET}, distributed_product_mode='global'")
+        b, t1 = ('пропущен', 0.0) if quick else ex(c['base'] + f"\nSETTINGS {SET}, distributed_product_mode='global'")
         n, t2 = ex(c['cand'] + f"\nSETTINGS {SET}, distributed_product_mode='global'")
         tb += t1; tc += t2
-        if isinstance(b, str): st['base_err_cluster'] += 1
+        if isinstance(b, str) and b != 'пропущен': st['base_err_cluster'] += 1
         if isinstance(flat, str):
             st['base_err_flat'] += 1; bad.append((c, 'эталон на плоских: ' + flat))
         elif isinstance(n, str):
@@ -110,6 +110,9 @@ def run(db, inp, out):
             st['diff'] += 1; bad.append((c, f'ОТВЕТ ИЗМЕНИЛСЯ: строк {len(flat)} → {len(n)}'))
         else:
             st['ok'] += 1
+        done = sum(sum(v.values()) for v in stat.values())
+        if done % 20 == 0:
+            print(f'  {done}/{len(cases)}  ' + json.dumps(stat, ensure_ascii=False), flush=True)
     res = dict(stat=stat, failures=[dict(kind=c['kind'], label=c['label'], filters=c['filters'], error=e) for c, e in bad],
                cluster_seconds=dict(baseline=round(tb, 1), candidate=round(tc, 1)))
     Path(out).write_text(json.dumps(res, ensure_ascii=False, indent=1))
@@ -126,7 +129,7 @@ if __name__ == '__main__':
     sp = ap.add_subparsers(dest='cmd', required=True)
     r = sp.add_parser('render'); r.add_argument('--rev', required=True); r.add_argument('--out', required=True)
     b = sp.add_parser('build'); b.add_argument('db')
-    u = sp.add_parser('run'); u.add_argument('db'); u.add_argument('cases'); u.add_argument('--out', default=str(Path(tempfile.gettempdir()) / 'pa-next-cluster-results.json'))
+    u = sp.add_parser('run'); u.add_argument('db'); u.add_argument('cases'); u.add_argument('--quick', action='store_true', help='без прогона эталона на кластере (он и так падает)'); u.add_argument('--out', default=str(Path(tempfile.gettempdir()) / 'pa-next-cluster-results.json'))
     a = ap.parse_args()
     if a.cmd == 'render':
         assert os.environ.get('PA_DB'), 'PA_DB — стенд prepare_numeric_fixture.py'
@@ -134,4 +137,4 @@ if __name__ == '__main__':
     elif a.cmd == 'build':
         build(a.db)
     else:
-        sys.exit(0 if run(a.db, a.cases, a.out) else 1)
+        sys.exit(0 if run(a.db, a.cases, a.out, a.quick) else 1)

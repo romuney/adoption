@@ -55,7 +55,32 @@ def strip_alias(c):
     return re.sub(r'\s+AS\s+[A-Za-z_][A-Za-z0-9_]*\s*$', '', c.strip(), flags=re.I)
 
 
+# IN-подзапросы, которые в шаблоне подставляются Jinja-выражением (текст SELECT появляется только при рендере).
+# Все — одна колонка (проверено по определениям: CSET, DMETA, dsub, accset/curset/caset). Явный список + проверка,
+# что других «IN ({{ … }})» в шаблоне нет: новое место должно попасть сюда осознанно.
+JINJA_SETS = ['CSET', 'DMETA', 'dsub', 'accset()', 'curset()', 'caset()']
+JINJA_LITERAL = ["repids|join(', ') if repids else '0'"]     # список чисел, не подзапрос
+
+
+def rewrite_jinja_in(sql):
+    n = 0
+    for name in JINJA_SETS:
+        pat = re.compile(r'(?<![A-Za-z_])((?:NOT\s+)?IN)\s*\(\{\{ ' + re.escape(name) + r' \}\}\)', re.I)
+        sql, k = pat.subn(lambda m: m.group(1) + ' (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ ' + name + ' }}))))', sql)
+        n += k
+    left = [m.group(1) for m in re.finditer(r'IN\s*\(\{\{ (.*?) \}\}\)', sql) if m.group(1) not in JINJA_LITERAL]
+    if left:
+        raise ValueError('IN ({{ … }}) без переписи: ' + ', '.join(sorted(set(left))) + ' — добавить в JINJA_SETS (если подзапрос из одной колонки)')
+    return sql, n
+
+
 def rewrite_in(sql):
+    sql, nj = rewrite_jinja_in(sql)
+    sql, ns = rewrite_select_in(sql)
+    return sql, nj + ns
+
+
+def rewrite_select_in(sql):
     n = 0
     pos = 0
     while True:

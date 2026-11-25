@@ -84,10 +84,10 @@
     FROM prod_proteus.pa_next_pair p
     LEFT JOIN (SELECT dashboard_id, login, {% if LONG %}{% call H() %}groupUniqArray(toUInt16(k)){% endcall %}{% else %}{% call H() %}groupBitOr(bitShiftLeft(toUInt64(1), toUInt8(k))){% endcall %}{% endif %} AS m, {% call H() %}sumIf(views, k < {{ g.n }}){% endcall %} AS v
       FROM (SELECT dashboard_id, login, views, {{ kx('log_dttm') }} AS k FROM prod_proteus.pa_next_evd_day
-        WHERE dashboard_id IN ({{ dsub }}) AND log_dttm >= toDateTime({{ g.sf }}({{ AN }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month'}[grain] }}({{ 2 * g.n - 1 }}))
+        WHERE dashboard_id IN (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ dsub }})))) AND log_dttm >= toDateTime({{ g.sf }}({{ AN }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month'}[grain] }}({{ 2 * g.n - 1 }}))
           AND log_dttm < toDateTime({{ AN }}) + toIntervalDay(1))
       WHERE k >= 0 AND k < {{ 2 * g.n }} GROUP BY dashboard_id, login) c ON c.dashboard_id = p.dashboard_id AND c.login = p.login
-    WHERE p.dashboard_id IN ({{ dsub }}))
+    WHERE p.dashboard_id IN (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ dsub }})))))
 {%- else -%}prod_proteus.pa_next_pair{%- endif -%}
 {%- endmacro %}
 {% set pubv = filter_values('pub_f')|first|default('1', true) %}{% set pubv = pubv if pubv in ['0', '1'] else '1' %}
@@ -142,8 +142,8 @@
 {% macro capcond() -%}
 {% if cap.bad %} AND 0
 {% else %}
-{% if calogin %} AND lg IN (SELECT login FROM cap_logins){% endif %}
-{% if camaster %} AND lg IN (SELECT login FROM cap_masters){% endif %}
+{% if calogin %} AND lg IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT login AS __x FROM cap_logins)))){% endif %}
+{% if camaster %} AND lg IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT login AS __x FROM cap_masters)))){% endif %}
 {% endif %}
 {%- endmacro %}
 
@@ -174,7 +174,7 @@ SELECT lg FROM (
       {%- if caspec %} AND sp IN {{ q(caspec) }}{% endif %}{% if castrm %} AND st IN {{ q(castrm) }}{% endif %}
       {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
       {%- if cahead == '1' %} AND hdf = 1{% elif cahead == 'n' %} AND hdf = 0{% endif %}
-      {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_next_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
+      {%- if caadg %} AND lg IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT login AS __x FROM prod_proteus.pa_next_adg_member WHERE ad_group IN {{ q(caadg) }})))){% endif %}
 {{ capcond() }}
 {%- endmacro %}
 {% set pplf = loginf or exlf or attrson or freqf or custom or segv %}
@@ -210,7 +210,7 @@ SELECT lg FROM (
 {#- Строки подневного факта блока — только пары отчётов топа из evd: в них уже «без владельцев» и, при ЦА по условиям, только
     люди ЦА (у каждой строки факта есть пара — pa_pair строится из него же). Одно множество вместо проверки каждой строки
     на ЦА и на пары владельцев (на 12 месяцах при ЦА каталог считался 4,4 с, так — 2,35 с, без блока — 1,0 с; большой стенд). -#}
-{% set PVPAIR = "(toInt32(ifNull(e.dashboard_id, 0)), toString(ifNull(e.login, ''))) IN (SELECT did, login FROM evd WHERE did GLOBAL IN (SELECT did FROM pvt))" %}
+{% set PVPAIR = "(toInt32(ifNull(e.dashboard_id, 0)), toString(ifNull(e.login, ''))) IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT tuple(did, login) AS __x FROM evd WHERE did IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT did AS __x FROM pvt))))))))" %}
 {#- ЦА по условиям — можно (2026-10-22): пары блока — из evd, они уже только люди ЦА, как evd панели; просмотры по шагам
     тогда — из подневного факта по людям ЦА (как bv панели при ЦА). Людская шина, корзина частоты и сегмент ЦА — нет:
     панель их не читает, а каталог по ним сужен. -#}
@@ -263,13 +263,13 @@ WITH
 {% if calogin %}
 cap_input AS (SELECT {% call H() %}arrayJoin({{ qa(calogin) }}){% endcall %} AS login),
 cap_logins AS (
-  SELECT toString(lm.canon) AS login FROM prod_proteus.pa_next_login_map lm WHERE lm.login IN (SELECT login FROM cap_input)
-  UNION ALL SELECT login FROM cap_input WHERE login NOT IN (SELECT login FROM prod_proteus.pa_next_login_map)
+  SELECT toString(lm.canon) AS login FROM prod_proteus.pa_next_login_map lm WHERE lm.login IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT login AS __x FROM cap_input))))
+  UNION ALL SELECT login FROM cap_input WHERE login NOT IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT login AS __x FROM prod_proteus.pa_next_login_map))))
 ),
 {% endif %}
 {% if camaster %}
 cap_master_input AS (SELECT {% call H() %}arrayJoin({{ qa(camaster) }}){% endcall %} AS master_id),
-cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE status = 'ready' AND master_id IN (SELECT master_id FROM cap_master_input)),
+cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE status = 'ready' AND master_id IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT master_id AS __x FROM cap_master_input))))),
 {% endif %}
 {% endif %}
   {# Дата свежести: md пары; запасной источник — последний визит (при пустом md gp_to_click). #}
@@ -291,12 +291,12 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       {#- мгновенная панель: прошлое окно, шаг и день первого визита, месяцы активности пары -#}
       {% call H() %}ifNull(e.vp_{{ GK }}, 0){% endcall %} AS vp_cur, {% call H() %}ifNull(e.kmax_{{ GK }}, 0){% endcall %} AS fk, {% call H() %}toUInt64(ifNull(e.msk_mon, 0)){% endcall %} AS mon, ifNull(e.kmax_d, 0) AS fdd{% endif %}
     FROM {{ ppx('SELECT dashboard_id FROM dash_ok') }} e
-    WHERE e.dashboard_id IN (SELECT dashboard_id FROM dash_ok) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
+    WHERE e.dashboard_id IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT dashboard_id AS __x FROM dash_ok)))) AND isNotNull(e.login){% if excv == '1' %} AND ifNull(e.own_flg, 0) = 0{% endif %}
     {%- if loginf %} AND e.login IN {{ q(loginf) }}{% endif %}
     {%- if exlf %} AND e.login NOT IN {{ q(exlf) }}{% endif %}
-    {%- if custom %} AND lower(toString(e.login)) {% if segv == 'out' %}NOT {% endif %}IN ({{ caset() }}){% endif %}
-    {%- if segv in ['reach', 'out'] and not custom %} AND (toInt32(ifNull(e.dashboard_id, 0)), lower(toString(e.login))) {% if segv == 'out' %}NOT {% endif %}IN (SELECT {% call H() %}toInt32(ifNull(dashboard_id, 0)){% endcall %}, {% call H() %}toString(ifNull(login, '')){% endcall %} FROM prod_proteus.pa_next_pair_acc){% endif %}
-    {%- if attrson %} AND e.login IN (SELECT login FROM prod_proteus.pa_next_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% elif headsv == 'n' %} AND management_head_flg = 0{% endif %}{% if OC %} AND ({{ OC|join(' OR ') }}){% endif %}){% endif %}
+    {%- if custom %} AND lower(toString(e.login)) {% if segv == 'out' %}NOT {% endif %}IN (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ caset() }})))){% endif %}
+    {%- if segv in ['reach', 'out'] and not custom %} AND (toInt32(ifNull(e.dashboard_id, 0)), lower(toString(e.login))) {% if segv == 'out' %}NOT {% endif %}IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT tuple({% call H() %}toInt32(ifNull(dashboard_id, 0)){% endcall %}, {% call H() %}toString(ifNull(login, '')){% endcall %}) AS __x FROM prod_proteus.pa_next_pair_acc)))){% endif %}
+    {%- if attrson %} AND e.login IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT login AS __x FROM prod_proteus.pa_next_emp_attrs WHERE 1=1{% if lv3 and lv4 %} AND (lvl3_management_unit_nm IN {{ q(lv3) }} OR lvl4_management_unit_nm IN {{ q(lv4) }}){% elif lv3 %} AND lvl3_management_unit_nm IN {{ q(lv3) }}{% elif lv4 %} AND lvl4_management_unit_nm IN {{ q(lv4) }}{% endif %}{% if strm %} AND emp_stream_desc IN {{ q(strm) }}{% endif %}{% if spcf %} AND emp_specialization_desc IN {{ q(spcf) }}{% endif %}{% if adgf %} AND hasAny(ad_groups, {{ qa(adgf) }}){% endif %}{% if headsv == '1' %} AND management_head_flg = 1{% elif headsv == 'n' %} AND management_head_flg = 0{% endif %}{% if OC %} AND ({{ OC|join(' OR ') }}){% endif %})))){% endif %}
   ),
   kx AS (
     {#- Ключ строки размножается: 0 = ИТОГО, 2 = владелец, 3 = коллекция (1 = отчёт — ниже, прямо по парам).
@@ -336,7 +336,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       {% call H() %}arrayStringConcat(array(toString(ifNull(h4, 0)), toString(ifNull(h3, 0)), toString(ifNull(h2, 0)), toString(ifNull(h1, 0))), ','){% endcall %} AS rhythm
       {%- if WITH_CA %}, {% call H() %}toUInt64(ifNull(a_{{ grain }}, 0)){% endcall %} AS ca_u{% endif %}
     FROM prod_proteus.pa_next_cat_rep
-    WHERE ifNull(exc, -1) = {{ excv }} AND dashboard_id IN (SELECT dashboard_id FROM dash_ok)
+    WHERE ifNull(exc, -1) = {{ excv }} AND dashboard_id IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT dashboard_id AS __x FROM dash_ok))))
     {%- else %}
     SELECT kd, k0, {{ mets() }}, '' AS rhythm{% if WITH_CA %}, toUInt64(0) AS ca_u{% endif %}
     FROM kx GROUP BY kd, k0
@@ -355,7 +355,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       {#- acc = 1 — зритель входит в ЦА отчёта: по правам — пара есть в pa_pair_acc (право на отчёт поимённо или
           через AD-группу, действующий сотрудник); по условиям — все пары уже отобраны по ЦА выше.
           Только здесь: у ИТОГО / владельцев / коллекций «Охват ЦА» не выводится, множество строится один раз. -#}
-      {% if custom %}toUInt8(1){% else %}toUInt8((did, lower(login)) IN (SELECT {% call H() %}toInt32(ifNull(dashboard_id, 0)){% endcall %}, {% call H() %}toString(ifNull(login, '')){% endcall %} FROM prod_proteus.pa_next_pair_acc)){% endif %} AS acc
+      {% if custom %}toUInt8(1){% else %}toUInt8((did, lower(login)) IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT tuple({% call H() %}toInt32(ifNull(dashboard_id, 0)){% endcall %}, {% call H() %}toString(ifNull(login, '')){% endcall %}) AS __x FROM prod_proteus.pa_next_pair_acc))))){% endif %} AS acc
       {%- endif %}
       FROM evd
       {%- if FB %}
@@ -389,15 +389,15 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
     {%- if caspec %} AND sp IN {{ q(caspec) }}{% endif %}{% if castrm %} AND st IN {{ q(castrm) }}{% endif %}
     {%- if cahq %} AND hqc IN {{ q(cahq) }}{% endif %}{% if cait %} AND itc IN {{ q(cait) }}{% endif %}
     {%- if cahead == '1' %} AND hdf = 1{% elif cahead == 'n' %} AND hdf = 0{% endif %}
-    {%- if caadg %} AND lg IN (SELECT login FROM prod_proteus.pa_next_adg_member WHERE ad_group IN {{ q(caadg) }}){% endif %}
+    {%- if caadg %} AND lg IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT login AS __x FROM prod_proteus.pa_next_adg_member WHERE ad_group IN {{ q(caadg) }})))){% endif %}
 {{ capcond() }}
-    {%- if loginf %} AND lg IN (SELECT lower(x0) FROM (SELECT {% call H() %}arrayJoin({{ qa(loginf) }}){% endcall %} AS x0)){% endif %}
-    {%- if exlf %} AND lg NOT IN (SELECT lower(x0) FROM (SELECT {% call H() %}arrayJoin({{ qa(exlf) }}){% endcall %} AS x0)){% endif %}
+    {%- if loginf %} AND lg IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT lower(x0) AS __x FROM (SELECT {% call H() %}arrayJoin({{ qa(loginf) }}){% endcall %} AS x0))))){% endif %}
+    {%- if exlf %} AND lg NOT IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT lower(x0) AS __x FROM (SELECT {% call H() %}arrayJoin({{ qa(exlf) }}){% endcall %} AS x0))))){% endif %}
     {%- if spcf %} AND sp IN {{ q(spcf) }}{% endif %}{% if strm %} AND st IN {{ q(strm) }}{% endif %}
     {%- if headsv == '1' %} AND hdf = 1{% elif headsv == 'n' %} AND hdf = 0{% endif %}
     {%- if lv3 %} AND lv[1] IN {{ q(lv3) }}{% endif %}{% if lv4 %} AND lv[2] IN {{ q(lv4) }}{% endif %}
     {%- if orgf %} AND arrayExists(pz -> op = pz OR startsWith(op, concat(pz, ' › ')), {{ qa(orgf) }}){% endif %}
-    {%- if adgf %} AND lg IN (SELECT lower(toString(login)) FROM prod_proteus.pa_next_emp_attrs WHERE hasAny(ad_groups, {{ qa(adgf) }})){% endif %}
+    {%- if adgf %} AND lg IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT lower(toString(login)) AS __x FROM prod_proteus.pa_next_emp_attrs WHERE hasAny(ad_groups, {{ qa(adgf) }}))))){% endif %}
     GROUP BY lv, ol, sp, st, hqc, itc, hdf
   ),
   ak AS (
@@ -455,7 +455,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
         {% call H() %}bitCount(bitAnd(msk, {{ CUR }})){% endcall %} AS nbc, {% call H() %}bitCount(bitAnd(msk, {{ PREV }})){% endcall %} AS nbp,
         {% call H() %}tupleElement((SELECT h FROM pvd), 1){% endcall %} AS kt, {% call H() %}tupleElement((SELECT h FROM pvd), 2){% endcall %} AS ktd, {% call H() %}tupleElement((SELECT h FROM pvd), 4){% endcall %} AS cd
       FROM evd
-      WHERE did GLOBAL IN (SELECT did FROM pvt)
+      WHERE did IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT did AS __x FROM pvt))))
     )
     GROUP BY did
   ),
@@ -468,7 +468,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
     FROM (
       SELECT e.dashboard_id AS dashboard_id, {{ kx('e.log_dttm') }} AS k, toInt64(sum(e.views)) AS vv
       FROM prod_proteus.pa_next_evd_day e
-      WHERE e.dashboard_id GLOBAL IN (SELECT did FROM pvt)
+      WHERE e.dashboard_id IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT did AS __x FROM pvt))))
         AND e.log_dttm >= toDateTime({{ g.sf }}((SELECT md FROM maxd)) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] }}({{ g.n - 1 }}))
         AND {{ PVPAIR }}
       GROUP BY dashboard_id, k
@@ -476,7 +476,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
     )
     {%- else %}
     FROM prod_proteus.pa_next_dash_bkt
-    WHERE grain = '{{ grain }}' AND dashboard_id GLOBAL IN (SELECT did FROM pvt) AND k >= 0 AND k < {{ g.n }}
+    WHERE grain = '{{ grain }}' AND dashboard_id IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT did AS __x FROM pvt)))) AND k >= 0 AND k < {{ g.n }}
     {%- endif %}
     GROUP BY did
   ){% if PV_CAL %},
@@ -500,7 +500,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       SELECT {% call H() %}toInt32(ifNull(dashboard_id, 0)){% endcall %} AS did, {% call H() %}toInt64(dateDiff('day', toDate(dt), toDate((SELECT md FROM maxd)))){% endcall %} AS ck,
         {% call H() %}toUInt64(ifNull(users{{ '_nown' if excv == '1' else '' }}, 0)){% endcall %} AS cu, {% call H() %}toUInt64(ifNull(views{{ '_nown' if excv == '1' else '' }}, 0)){% endcall %} AS cv
       FROM prod_proteus.pa_next_dash_day
-      WHERE dashboard_id GLOBAL IN (SELECT did FROM pvt)
+      WHERE dashboard_id IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT did AS __x FROM pvt))))
         AND toDate(dt) >= tupleElement((SELECT h FROM pvd), 3) AND toDate(dt) <= toDate((SELECT md FROM maxd))
         {#- день, когда заходили только владельцы, при «без владельцев» — не день календаря (как в факте: строк нет) -#}
         AND ifNull(users{{ '_nown' if excv == '1' else '' }}, 0) > 0
@@ -508,7 +508,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       SELECT {% call H() %}toInt32(ifNull(e.dashboard_id, 0)){% endcall %} AS did, {% call H() %}toInt64(dateDiff('day', toDate(e.log_dttm), toDate((SELECT md FROM maxd)))){% endcall %} AS ck,
         {% call H() %}toUInt64(uniqExact(e.login)){% endcall %} AS cu, toUInt64(sum(e.views)) AS cv
       FROM prod_proteus.pa_next_evd_day e
-      WHERE e.dashboard_id GLOBAL IN (SELECT did FROM pvt)
+      WHERE e.dashboard_id IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT did AS __x FROM pvt))))
         AND e.log_dttm >= toDateTime(tupleElement((SELECT h FROM pvd), 3))
         AND e.log_dttm < toDateTime((SELECT md FROM maxd)) + toIntervalDay(1)
         AND {{ PVPAIR }}
@@ -519,7 +519,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       {# новые дня: дни первого визита пар (в окне и не раньше 90 дней истории, как cf панели) — счётом по дню и сложением с днём
           календаря (раньше countEqual по списку всех новых на каждый день — квадратично: 8 кварталов, 4,5 с на блок) #}
       SELECT did, toInt64(fdd) AS ck, toUInt64(0) AS cu, toUInt64(0) AS cv, toUInt64(count()) AS cn
-      FROM (SELECT did, fdd, {% call H() %}tupleElement((SELECT h FROM pvd), 2){% endcall %} AS ktd, {% call H() %}tupleElement((SELECT h FROM pvd), 4){% endcall %} AS cd FROM evd WHERE did GLOBAL IN (SELECT did FROM pvt))
+      FROM (SELECT did, fdd, {% call H() %}tupleElement((SELECT h FROM pvd), 2){% endcall %} AS ktd, {% call H() %}tupleElement((SELECT h FROM pvd), 4){% endcall %} AS cd FROM evd WHERE did IN (SELECT arrayJoin((SELECT groupArray(__x) FROM (SELECT did AS __x FROM pvt)))))
       WHERE fdd < cd AND fdd <= ktd
       GROUP BY did, ck
     )
@@ -554,7 +554,7 @@ FROM (
     {%- if custom and excv == '1' %}
     {#- ЦА по условиям без владельцев отчёта (как панель при «Без владельцев»): их визиты — свои. #}
     LEFT JOIN (SELECT dashboard_id, toInt64(count()) AS n_own FROM (SELECT dashboard_id, {% call H() %}lower(toString(arrayJoin(owners_string))){% endcall %} AS ow FROM prod_proteus.pa_next_dash_meta)
-      WHERE ow IN ({{ caset() }}) GROUP BY dashboard_id) oc ON oc.dashboard_id = if(kd = 1, ifNull(toInt32OrNull(k0), toInt32(0)), toInt32(0)){% endif %}{% endif %}
+      WHERE ow IN (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ caset() }})))) GROUP BY dashboard_id) oc ON oc.dashboard_id = if(kd = 1, ifNull(toInt32OrNull(k0), toInt32(0)), toInt32(0)){% endif %}{% endif %}
   )
   GROUP BY s_sec, s_g
 
@@ -614,7 +614,7 @@ FROM (
 UNION ALL
 SELECT 'pa_next_version' AS section, 'cat' AS g,
   (SELECT any(toString(run_id)) FROM prod_proteus.pa_next_manifest) AS k,
-  if((SELECT count() = 1 AND countIf(state = 'ready') = 1 FROM prod_proteus.pa_next_manifest) AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_adg_member) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_aud) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_grp) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_cat_rep) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_bkt) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_ca) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_day) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_dash_meta) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_emp_attrs) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_evd_day) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_login_map) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_md) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_pair) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_pair_acc) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_person_id_map) = 0 AND (SELECT countIf(ifNull(_pa_next_run, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) FROM prod_proteus.pa_next_staffx) = 0, 'ready', 'loading') AS parent,
+  if((SELECT count() = 1 AND countIf(state = 'ready') = 1 FROM prod_proteus.pa_next_manifest) AND (SELECT count() FROM (SELECT _pa_next_run AS r FROM prod_proteus.pa_next_adg_member UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_cat_aud UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_cat_grp UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_cat_rep UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_bkt UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_ca UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_meta UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_emp_attrs UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_evd_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_login_map UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_md UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_pair UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_pair_acc UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_person_id_map UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staffx) WHERE ifNull(r, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) = 0, 'ready', 'loading') AS parent,
   toInt64(parent = 'ready') AS n
 
 {% set PA_REQ = namespace(value='', seen=false) %}

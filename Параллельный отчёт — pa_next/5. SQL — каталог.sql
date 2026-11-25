@@ -210,7 +210,7 @@ SELECT lg FROM (
 {#- Строки подневного факта блока — только пары отчётов топа из evd: в них уже «без владельцев» и, при ЦА по условиям, только
     люди ЦА (у каждой строки факта есть пара — pa_pair строится из него же). Одно множество вместо проверки каждой строки
     на ЦА и на пары владельцев (на 12 месяцах при ЦА каталог считался 4,4 с, так — 2,35 с, без блока — 1,0 с; большой стенд). -#}
-{% set PVPAIR = "(toInt32(ifNull(e.dashboard_id, 0)), toString(ifNull(e.login, ''))) IN (SELECT did, login FROM evd WHERE did IN (SELECT did FROM pvt))" %}
+{% set PVPAIR = "(toInt32(ifNull(e.dashboard_id, 0)), toString(ifNull(e.login, ''))) IN (SELECT did, login FROM evd WHERE did GLOBAL IN (SELECT did FROM pvt))" %}
 {#- ЦА по условиям — можно (2026-10-22): пары блока — из evd, они уже только люди ЦА, как evd панели; просмотры по шагам
     тогда — из подневного факта по людям ЦА (как bv панели при ЦА). Людская шина, корзина частоты и сегмент ЦА — нет:
     панель их не читает, а каталог по ним сужен. -#}
@@ -455,7 +455,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
         {% call H() %}bitCount(bitAnd(msk, {{ CUR }})){% endcall %} AS nbc, {% call H() %}bitCount(bitAnd(msk, {{ PREV }})){% endcall %} AS nbp,
         {% call H() %}tupleElement((SELECT h FROM pvd), 1){% endcall %} AS kt, {% call H() %}tupleElement((SELECT h FROM pvd), 2){% endcall %} AS ktd, {% call H() %}tupleElement((SELECT h FROM pvd), 4){% endcall %} AS cd
       FROM evd
-      WHERE did IN (SELECT did FROM pvt)
+      WHERE did GLOBAL IN (SELECT did FROM pvt)
     )
     GROUP BY did
   ),
@@ -468,7 +468,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
     FROM (
       SELECT e.dashboard_id AS dashboard_id, {{ kx('e.log_dttm') }} AS k, toInt64(sum(e.views)) AS vv
       FROM prod_proteus.pa_next_evd_day e
-      WHERE e.dashboard_id IN (SELECT did FROM pvt)
+      WHERE e.dashboard_id GLOBAL IN (SELECT did FROM pvt)
         AND e.log_dttm >= toDateTime({{ g.sf }}((SELECT md FROM maxd)) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month', 'q': 'Quarter'}[grain] }}({{ g.n - 1 }}))
         AND {{ PVPAIR }}
       GROUP BY dashboard_id, k
@@ -476,7 +476,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
     )
     {%- else %}
     FROM prod_proteus.pa_next_dash_bkt
-    WHERE grain = '{{ grain }}' AND dashboard_id IN (SELECT did FROM pvt) AND k >= 0 AND k < {{ g.n }}
+    WHERE grain = '{{ grain }}' AND dashboard_id GLOBAL IN (SELECT did FROM pvt) AND k >= 0 AND k < {{ g.n }}
     {%- endif %}
     GROUP BY did
   ){% if PV_CAL %},
@@ -500,7 +500,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       SELECT {% call H() %}toInt32(ifNull(dashboard_id, 0)){% endcall %} AS did, {% call H() %}toInt64(dateDiff('day', toDate(dt), toDate((SELECT md FROM maxd)))){% endcall %} AS ck,
         {% call H() %}toUInt64(ifNull(users{{ '_nown' if excv == '1' else '' }}, 0)){% endcall %} AS cu, {% call H() %}toUInt64(ifNull(views{{ '_nown' if excv == '1' else '' }}, 0)){% endcall %} AS cv
       FROM prod_proteus.pa_next_dash_day
-      WHERE dashboard_id IN (SELECT did FROM pvt)
+      WHERE dashboard_id GLOBAL IN (SELECT did FROM pvt)
         AND toDate(dt) >= tupleElement((SELECT h FROM pvd), 3) AND toDate(dt) <= toDate((SELECT md FROM maxd))
         {#- день, когда заходили только владельцы, при «без владельцев» — не день календаря (как в факте: строк нет) -#}
         AND ifNull(users{{ '_nown' if excv == '1' else '' }}, 0) > 0
@@ -508,7 +508,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       SELECT {% call H() %}toInt32(ifNull(e.dashboard_id, 0)){% endcall %} AS did, {% call H() %}toInt64(dateDiff('day', toDate(e.log_dttm), toDate((SELECT md FROM maxd)))){% endcall %} AS ck,
         {% call H() %}toUInt64(uniqExact(e.login)){% endcall %} AS cu, toUInt64(sum(e.views)) AS cv
       FROM prod_proteus.pa_next_evd_day e
-      WHERE e.dashboard_id IN (SELECT did FROM pvt)
+      WHERE e.dashboard_id GLOBAL IN (SELECT did FROM pvt)
         AND e.log_dttm >= toDateTime(tupleElement((SELECT h FROM pvd), 3))
         AND e.log_dttm < toDateTime((SELECT md FROM maxd)) + toIntervalDay(1)
         AND {{ PVPAIR }}
@@ -519,7 +519,7 @@ cap_masters AS (SELECT login FROM prod_proteus.pa_next_person_id_map WHERE statu
       {# новые дня: дни первого визита пар (в окне и не раньше 90 дней истории, как cf панели) — счётом по дню и сложением с днём
           календаря (раньше countEqual по списку всех новых на каждый день — квадратично: 8 кварталов, 4,5 с на блок) #}
       SELECT did, toInt64(fdd) AS ck, toUInt64(0) AS cu, toUInt64(0) AS cv, toUInt64(count()) AS cn
-      FROM (SELECT did, fdd, {% call H() %}tupleElement((SELECT h FROM pvd), 2){% endcall %} AS ktd, {% call H() %}tupleElement((SELECT h FROM pvd), 4){% endcall %} AS cd FROM evd WHERE did IN (SELECT did FROM pvt))
+      FROM (SELECT did, fdd, {% call H() %}tupleElement((SELECT h FROM pvd), 2){% endcall %} AS ktd, {% call H() %}tupleElement((SELECT h FROM pvd), 4){% endcall %} AS cd FROM evd WHERE did GLOBAL IN (SELECT did FROM pvt))
       WHERE fdd < cd AND fdd <= ktd
       GROUP BY did, ck
     )

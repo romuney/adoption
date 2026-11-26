@@ -1,4 +1,4 @@
--- Журнал запросов кластера: из чего сложился САМЫЙ МЕДЛЕННЫЙ за последние 3 часа запрос КАТАЛОГА PA NEXT со «Своими датами» (period_param = c|…).
+-- Журнал запросов кластера: из чего сложился САМЫЙ МЕДЛЕННЫЙ за сутки запрос КАТАЛОГА (только НОВЫЙ SQL — после замены 26.11) PA NEXT со «Своими датами» (period_param = c|…).
 -- SQL Lab, база CHaaS, только чтение. Один запрос. Прислать CSV.
 -- Строки — подзапросы на шардах, сгруппированы по таблице и началу текста; больше всего прочитавшие сверху.
 WITH lg AS (
@@ -14,7 +14,7 @@ worst AS (
   FROM lg
   WHERE is_initial_query = 1 AND arrayExists(t -> startsWith(t, 'prod_proteus.pa_next_'), tables)
     AND position(query, '"period_param":["c|') > 0
-    AND position(query, '''pa_next_version'' AS section, ''cat''') > 0 AND event_time >= now() - INTERVAL 3 HOUR
+    AND position(query, '''pa_next_version'' AS section, ''cat''') > 0 AND position(query, 'CROSS JOIN (SELECT count() AS bad FROM') > 0
   ORDER BY query_duration_ms DESC LIMIT 1
 )
 SELECT

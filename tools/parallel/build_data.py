@@ -130,9 +130,17 @@ def versioned_sql(text, part):
     # (use_query_condition_cache) — до следующей выгрузки таблицы ради проверки не перечитываются. Замер на бою
     # 25.11, панель: 16,75 c → 5–6 c вместе с cluster_sql; на модели строка чужой загрузки после прогрева кэша → loading.
     union = ' UNION ALL '.join("SELECT _pa_next_run AS r FROM prod_proteus." + table for table in tables)
-    ready = ("(SELECT count() = 1 AND countIf(state = 'ready') = 1 FROM prod_proteus.pa_next_manifest) AND "
-             "(SELECT count() FROM (" + union + ") WHERE ifNull(r, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) = 0")
-    marker = "\nUNION ALL\nSELECT 'pa_next_version' AS section, '" + part + "' AS g,\n  (SELECT any(toString(run_id)) FROM prod_proteus.pa_next_manifest) AS k,\n  if(" + ready + ", 'ready', 'loading') AS parent,\n  toInt64(parent = 'ready') AS n\n"
+    # Проверка версии — обычной веткой запроса (FROM … CROSS JOIN …), а не скалярным подзапросом в выражении:
+    # скаляры кластер считает отдельной фазой ДО основного расчёта, и 80 мелких чтений (16 таблиц × 5 узлов) стояли
+    # в очереди перед ним (журнал 26.11: фаза ~1,5 c на обычном клике, 9–18 c под нагрузкой). Ветка считается
+    # вместе с остальными. Условие прежнее: один манифест, он ready, и ни одной строки чужой загрузки ни в одной
+    # таблице датасета. Фильтр WHERE — для кэша условий ClickHouse 25.x.
+    marker = ("\nUNION ALL\nSELECT 'pa_next_version' AS section, '" + part + "' AS g,\n  mf.run AS k,\n"
+              "  if(mf.ok AND chk.bad = 0, 'ready', 'loading') AS parent,\n  toInt64(parent = 'ready') AS n\n"
+              "FROM (SELECT any(toString(run_id)) AS run, count() = 1 AND countIf(state = 'ready') = 1 AS ok "
+              "FROM prod_proteus.pa_next_manifest) AS mf\n"
+              "CROSS JOIN (SELECT count() AS bad FROM (" + union + ") WHERE ifNull(r, '') != "
+              "(SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) AS chk")
     requests = ''
     if part in ('cat', 'one'):
         # Iterate filter_values: AlwaysTrueObject on Save supports iteration but

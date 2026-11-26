@@ -55,6 +55,8 @@ SELECT 'md' AS section, '' AS g, {% call H() %}ifNull(toString(toDate(md)), ''){
 FROM prod_proteus.pa_next_md
 UNION ALL
 SELECT 'pa_next_version' AS section, 'head' AS g,
-  (SELECT any(toString(run_id)) FROM prod_proteus.pa_next_manifest) AS k,
-  if((SELECT count() = 1 AND countIf(state = 'ready') = 1 FROM prod_proteus.pa_next_manifest) AND (SELECT count() FROM (SELECT _pa_next_run AS r FROM prod_proteus.pa_next_adg_size UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_md UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staff UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staffx) WHERE ifNull(r, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) = 0, 'ready', 'loading') AS parent,
+  mf.run AS k,
+  if(mf.ok AND chk.bad = 0, 'ready', 'loading') AS parent,
   toInt64(parent = 'ready') AS n
+FROM (SELECT any(toString(run_id)) AS run, count() = 1 AND countIf(state = 'ready') = 1 AS ok FROM prod_proteus.pa_next_manifest) AS mf
+CROSS JOIN (SELECT count() AS bad FROM (SELECT _pa_next_run AS r FROM prod_proteus.pa_next_adg_size UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_md UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staff UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staffx) WHERE ifNull(r, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) AS chk

@@ -120,14 +120,13 @@
 {%- if cper -%}
 (SELECT p.*, {% if LONG %}c.m{% else %}{% call H() %}toUInt64(ifNull(c.m, 0)){% endcall %}{% endif %} AS msk_c, toInt64(ifNull(c.v, 0)) AS v_c, {% call H() %}toInt64(ifNull(c.vp, 0)){% endcall %} AS vp_c,
       {% call H() %}greatest(toInt64(dateDiff('{{ g.u }}', {{ g.sf }}(p.dmin), {{ g.sf }}({{ AN }}))), toInt64(0)){% endcall %} AS kmax_c
-    FROM prod_proteus.pa_next_pair p
+    FROM (SELECT * FROM prod_proteus.pa_next_pair WHERE dashboard_id IN (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ dsub }}))))) p
     LEFT JOIN (SELECT dashboard_id, login, {% if LONG %}{% call H() %}groupUniqArray(toUInt16(k)){% endcall %}{% else %}{% call H() %}groupBitOr(bitShiftLeft(toUInt64(1), toUInt8(k))){% endcall %}{% endif %} AS m,
         {% call H() %}sumIf(views, k < {{ g.n }}){% endcall %} AS v, {% call H() %}sumIf(views, k >= {{ g.n }} AND k < {{ 2 * g.n }}){% endcall %} AS vp
       FROM (SELECT dashboard_id, login, views, {{ kx('log_dttm') }} AS k FROM prod_proteus.pa_next_evd_day
         WHERE dashboard_id IN (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ dsub }})))) AND log_dttm >= toDateTime({{ g.sf }}({{ AN }}) - toInterval{{ {'d': 'Day', 'w': 'Week', 'm': 'Month'}[grain] }}({{ RD - 1 }}))
           AND log_dttm < toDateTime({{ AN }}) + toIntervalDay(1))
-      WHERE k >= 0 AND k < {{ RD }} GROUP BY dashboard_id, login) c ON c.dashboard_id = p.dashboard_id AND c.login = p.login
-    WHERE p.dashboard_id IN (SELECT arrayJoin((SELECT groupArray(*) FROM ({{ dsub }})))))
+      WHERE k >= 0 AND k < {{ RD }} GROUP BY dashboard_id, login) c ON c.dashboard_id = p.dashboard_id AND c.login = p.login)
 {%- else -%}prod_proteus.pa_next_pair{%- endif -%}
 {%- endmacro %}
 {% set DOK = 'SELECT dashboard_id FROM dash_ok' %}
@@ -784,10 +783,11 @@ FROM (
 )
 UNION ALL
 SELECT 'pa_next_version' AS section, 'one' AS g,
-  (SELECT any(toString(run_id)) FROM prod_proteus.pa_next_manifest) AS k,
-  if((SELECT count() = 1 AND countIf(state = 'ready') = 1 FROM prod_proteus.pa_next_manifest) AND (SELECT count() FROM (SELECT _pa_next_run AS r FROM prod_proteus.pa_next_adg_member UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_all_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_acl UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_bkt UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_meta UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dict UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_emp_attrs UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_evd_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_login_map UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_md UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_pair UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_person_id_map UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staff UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staffx UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_viewer) WHERE ifNull(r, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) = 0, 'ready', 'loading') AS parent,
+  mf.run AS k,
+  if(mf.ok AND chk.bad = 0, 'ready', 'loading') AS parent,
   toInt64(parent = 'ready') AS n
-
+FROM (SELECT any(toString(run_id)) AS run, count() = 1 AND countIf(state = 'ready') = 1 AS ok FROM prod_proteus.pa_next_manifest) AS mf
+CROSS JOIN (SELECT count() AS bad FROM (SELECT _pa_next_run AS r FROM prod_proteus.pa_next_adg_member UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_all_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_acl UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_bkt UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dash_meta UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_dict UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_emp_attrs UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_evd_day UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_login_map UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_md UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_pair UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_person_id_map UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staff UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_staffx UNION ALL SELECT _pa_next_run AS r FROM prod_proteus.pa_next_viewer) WHERE ifNull(r, '') != (SELECT any(run_id) FROM prod_proteus.pa_next_manifest)) AS chk
 {% set PA_REQ = namespace(value='', seen=false) %}
 {% for item in filter_values('pa_next_head_req') %}{% if not PA_REQ.seen %}{% set PA_REQ.value = item|string %}{% set PA_REQ.seen = true %}{% endif %}{% endfor %}
 UNION ALL

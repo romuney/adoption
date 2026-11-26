@@ -77,7 +77,35 @@ def rewrite_jinja_in(sql):
 def rewrite_in(sql):
     sql, nj = rewrite_jinja_in(sql)
     sql, ns = rewrite_select_in(sql)
-    return sql, nj + ns
+    sql, np_ = rewrite_pair_join(sql)
+    return sql, nj + ns + np_
+
+
+# «Свои даты» (макрос ppx каталога и панели): пары LEFT JOIN окно из подневного факта. Когда слева стоит сама
+# распределённая таблица, кластер делает GLOBAL JOIN: окно (~1,1 млн строк) рассылается временной таблицей на все
+# узлы, и каждый строит по ней хэш-таблицу (журнал 26.11: 3 таких соединения × 6 узлов по 380–530 МБ в одной панели,
+# провалы 20–58 c и перегрузка кластера). Пары области в подзапросе слева — соединение выполняется один раз на
+# инициаторе. Фильтр по области переезжает из внешнего WHERE внутрь подзапроса: LEFT JOIN сохраняет все строки
+# левой стороны, поэтому отбор до или после соединения даёт те же строки.
+PAIR_JOIN = 'FROM prod_proteus.pa_next_pair p\n    LEFT JOIN'
+
+
+def rewrite_pair_join(sql):
+    n = 0
+    pos = 0
+    while True:
+        i = sql.find(PAIR_JOIN, pos)
+        if i < 0:
+            break
+        w = sql.index('\n    WHERE p.dashboard_id IN (', i)
+        op = sql.index('(', w + len('\n    WHERE p.dashboard_id IN'))
+        cl = match_paren(sql, op)
+        cond = sql[op:cl + 1]
+        head = 'FROM (SELECT * FROM prod_proteus.pa_next_pair WHERE dashboard_id IN ' + cond + ') p\n    LEFT JOIN'
+        sql = sql[:i] + head + sql[i + len(PAIR_JOIN):w] + sql[cl + 1:]
+        pos = i + len(head)
+        n += 1
+    return sql, n
 
 
 def rewrite_select_in(sql):

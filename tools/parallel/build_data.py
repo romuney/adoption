@@ -15,6 +15,7 @@ import yaml
 from unicode_empty import rewrite_acceleration
 from audience_people_data import PERSON_MAP_SQL, rewrite_sql as people_sql
 from cluster_sql import rewrite_in
+from catalog_pass import single_pass
 
 ROOT = Path(__file__).resolve().parents[2]
 BASE = ROOT / 'Единый лист — поставка 2026-10-23 (ускорение через GP)'
@@ -122,6 +123,8 @@ def versioned_sql(text, part):
     text = re.sub(r'\bprod_proteus\.pa_(\w+)', r'prod_proteus.pa_next_\1', text)
     # Кластер CHaaS (ClickHouse 25.8): IN-подзапросы → множество одним скалярным подзапросом (см. cluster_sql.py).
     text, _ = rewrite_in(text)
+    if part == 'cat':
+        text = single_pass(text)   # строки групп и строки отчётов — одним проходом по парам (catalog_pass.py)
     tables = sorted(set(re.findall(r'\bprod_proteus\.(pa_next_\w+)', text)))
     # The marker is an extra protocol row. Never alter business rows or tolerances.
     # Одна проверка по всем таблицам (UNION ALL), а не по запросу на таблицу: на кластере каждый скалярный
